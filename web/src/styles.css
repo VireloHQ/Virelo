@@ -99,13 +99,14 @@ button, a, input { -webkit-tap-highlight-color:transparent; }
 
 .button { font-family:var(--font-body); font-weight:650; letter-spacing:-.005em; transition:background-color var(--dur-short) var(--ease-out),border-color var(--dur-short) var(--ease-out),color var(--dur-short) var(--ease-out),transform var(--dur-micro) var(--ease-out); }
 .button:active { transform:translateY(1px); }
-.button:focus-visible,.input:focus-visible,select:focus-visible { outline:2px solid var(--color-focus); outline-offset:3px; }
+.button:focus-visible,select:focus-visible { outline:2px solid var(--color-focus); outline-offset:3px; }
 .button--primary { --button-bg:var(--text); --button-bg-hover:#dedede; --button-bg-pressed:#c9c9c9; --button-fg:var(--accent-ink); background:var(--button-bg); color:var(--button-fg); }
 .button--primary:hover { background:var(--button-bg-hover); }
 .button--secondary { --button-bg:rgba(255,255,255,.12); --button-bg-hover:rgba(255,255,255,.19); --button-bg-pressed:rgba(255,255,255,.24); --button-fg:#fff; background:var(--button-bg); color:var(--button-fg); backdrop-filter:blur(18px); }
 .button--secondary:hover { background:var(--button-bg-hover); }
 .button--ghost { --button-bg:transparent; --button-bg-hover:var(--control-hover); --button-bg-pressed:var(--control-pressed); --button-fg:#eee; color:var(--button-fg); }
 .input { background:rgba(255,255,255,.07); border-color:var(--line); color:#fff; }
+.input:focus,.input[data-focused="true"] { outline:2px solid var(--color-focus); outline-offset:-2px; box-shadow:none; }
 
 .app-shell { min-height:100vh; }
 .page-shell { min-height:100vh; padding-top:var(--topbar); }

@@ -11,6 +11,17 @@ const repo=fileURLToPath(new URL('../',import.meta.url));
 const {chromium}=createRequire(process.env.VIRELO_TEST_NODE_PACKAGE||join(repo,'package.json'))('playwright');
 const root=await mkdtemp(join(tmpdir(),'virelo-account-ui-'));
 const password='A private browser test passphrase';
+async function checkFieldFocus(page,label) {
+  const input=page.getByLabel(label,{exact:true});
+  await input.click();
+  assert.equal(await input.evaluate(element=>getComputedStyle(element).boxShadow),'none',label+' has no outer mouse-focus ring');
+  await page.keyboard.press('Tab');await page.keyboard.press('Shift+Tab');
+  const focus=await input.evaluate(element=>({visible:element.matches(':focus-visible'),outline:getComputedStyle(element).outlineStyle,width:getComputedStyle(element).outlineWidth,offset:getComputedStyle(element).outlineOffset,shadow:getComputedStyle(element).boxShadow}));
+  assert.equal(focus.visible,true,label+' remains keyboard-focusable');
+  assert.equal(focus.shadow,'none',label+' has no outer keyboard-focus ring');
+  assert.equal(focus.outline,'solid',label+' retains a visible focus indicator');
+  assert.equal(focus.width,'2px');assert.equal(focus.offset,'-2px',label+' focus indicator stays inside the field');
+}
 process.env.VIRELO_LOG_LEVEL='silent';
 let browser,server,diagnosticPage;
 try {
@@ -36,6 +47,8 @@ try {
   await page.goto(base);
   await page.getByRole('heading',{name:'Create administrator'}).waitFor();
   assert.equal(beforeSetup.some(url=>/\/api\/(?:home|media|libraries)/.test(url)),false,'catalog must not load before sign-in');
+  await checkFieldFocus(page,'Username');await checkFieldFocus(page,'Password');
+  await page.screenshot({path:join(repo,'node_modules/.cache/accounts-focus-setup.png')});
   await page.getByLabel('Username',{exact:true}).fill('owner');await page.getByLabel('Display name',{exact:true}).fill('Owner');
   await page.getByLabel('Password',{exact:true}).fill('short');await page.getByLabel('Confirm password',{exact:true}).fill('short');
   await page.getByRole('button',{name:'Create administrator',exact:true}).click();
@@ -47,6 +60,7 @@ try {
   const section=(current,name)=>current.locator('.settings-sidebar').getByRole('button',{name,exact:true}).click();
   await settings(page);await section(page,'Account Manager');
   await page.getByRole('button',{name:'Add user',exact:true}).click();
+  await checkFieldFocus(page,'Username');await checkFieldFocus(page,'Password');
   await page.getByLabel('Username',{exact:true}).fill('viewer');await page.getByLabel('Display name',{exact:true}).fill('Viewer');
   await page.getByLabel('Password',{exact:true}).fill(password);await page.getByLabel('Confirm password',{exact:true}).fill(password);
   await page.getByRole('switch',{name:'Shared',exact:true}).focus();await page.keyboard.press('Space');
@@ -61,6 +75,7 @@ try {
   const view=await viewer.newPage();view.on('pageerror',error=>errors.push(error.message));
   const signIn=async(current,name)=>{
     await current.getByRole('heading',{name:'Welcome back',exact:true}).waitFor();
+    await checkFieldFocus(current,'Username');await checkFieldFocus(current,'Password');
     await current.getByLabel('Username',{exact:true}).fill(name);await current.getByLabel('Password',{exact:true}).fill(password);
     await current.getByRole('button',{name:'Sign in',exact:true}).click();await current.locator('.desktop-nav').getByRole('link',{name:'Home',exact:true}).waitFor();
   };
@@ -116,6 +131,8 @@ try {
   assert.equal((await owner.request.get(base+'/api/media/'+ids[1])).status(),404);
   console.log('accounts: logout and account switching invalidate other tabs without exposing the old query cache');
   await settings(page);
+  await checkFieldFocus(page,'Display name');await checkFieldFocus(page,'Current password');
+  await page.screenshot({path:join(repo,'node_modules/.cache/accounts-focus-profile.png')});
   await page.getByLabel('Display name',{exact:true}).fill('My renamed account');
   await page.getByLabel('Username',{exact:true}).fill('viewer-renamed');
   await page.getByLabel('Current password',{exact:true}).fill('wrong');

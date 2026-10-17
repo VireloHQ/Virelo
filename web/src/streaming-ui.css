@@ -31,7 +31,7 @@
 .app-shell .header-search-shell.open { border-radius:4px; }
 .app-shell .header-search-shell:focus-within { outline:none; box-shadow:inset 0 0 0 2px var(--color-focus); }
 .app-shell .header-search-toggle:focus-visible { outline:none!important; box-shadow:inset 0 0 0 2px var(--color-focus)!important; }
-.app-shell :is(.input, select, .picker-trigger):focus-visible { outline-offset:-3px; }
+.app-shell :is(select, .picker-trigger):focus-visible { outline-offset:-3px; }
 .app-shell .brand { font-size:25px; }
 .app-shell .brand-mark { width:38px; height:38px; }
 .app-shell .settings-button svg { width:22px!important; height:22px!important; }
