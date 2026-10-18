@@ -146,6 +146,32 @@ try {
   await page.screenshot({path:join(repo,'node_modules/.cache/accounts-mobile.png')});
   await page.setViewportSize({width:1440,height:1000});
   await section(page,'Libraries');
+  const libraryLayout=await owner.newPage();
+  await libraryLayout.route('**/api/libraries',route=>route.fulfill({json:[]}));
+  await libraryLayout.goto(base+'/settings#libraries');
+  await libraryLayout.getByText('No saved libraries yet.',{exact:true}).waitFor();
+  await libraryLayout.locator('.splash-screen').waitFor({state:'hidden'});
+  for(const width of [1440,1920,390]){
+    await libraryLayout.setViewportSize({width,height:1000});
+    const spacing=await libraryLayout.evaluate(()=>{
+      const panel=document.querySelector('#settings-panel-libraries');
+      const scan=panel.querySelector('.library-scan');
+      const descriptions=[panel.querySelector('.library-group>p'),scan.querySelector('p'),panel.querySelector('.setting-copy p')];
+      return {widths:descriptions.map(element=>element.getBoundingClientRect().width),fonts:descriptions.map(element=>getComputedStyle(element).fontSize),
+        scanPadding:getComputedStyle(scan).paddingTop,savedPadding:getComputedStyle(panel.querySelector('.library-group')).paddingTop,
+        overflow:document.documentElement.scrollWidth>innerWidth};
+    });
+    assert.equal(spacing.scanPadding,'24px');assert.equal(spacing.savedPadding,'24px');
+    assert.deepEqual(spacing.fonts,['14px','14px','14px'],'library descriptions have a consistent type scale');
+    if(width>900)assert.ok(Math.max(...spacing.widths)-Math.min(...spacing.widths)<1,'library descriptions share one readable width');
+    assert.equal(spacing.overflow,false,'library sections fit the viewport at '+width);
+    await libraryLayout.screenshot({path:join(repo,`node_modules/.cache/libraries-spacing-${width}.png`)});
+  }
+  await libraryLayout.locator('.library-previous summary').click();
+  await libraryLayout.getByText('Folders from earlier runs are not active.',{exact:false}).waitFor();
+  assert.equal(await libraryLayout.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,'expanded previous folders keep the same alignment');
+  await libraryLayout.close();
+  console.log('accounts: library descriptions, section spacing and empty/expanded states stay consistent on desktop and mobile');
   const addedFolder=join(root,'Added folder');await mkdir(addedFolder);
   const browse=page.getByRole('button',{name:'Browse',exact:true});
   const pathInput=page.getByRole('textbox',{name:'Media folder path',exact:true});

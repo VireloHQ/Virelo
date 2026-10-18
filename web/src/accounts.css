@@ -44,7 +44,8 @@
 .account-toggle .switch__content { min-width:44px; min-height:44px; display:inline-flex; align-items:center; justify-content:center; }
 .account-notice { padding:12px 0; color:var(--text-muted); line-height:1.6; font-size:13px; }
 .account-feedback { color:var(--text-muted); margin:12px 0; line-height:1.5; }
-.library-group { margin-top:28px; }
+.library-group { margin:0; padding:24px 0; border-top:1px solid var(--line); }
+.library-folder-form { padding-bottom:24px; }
 .library-folder-form > label { display:block; margin-bottom:8px; font-size:14px; font-weight:600; }
 .library-folder-form .add-library { grid-template-columns:minmax(0,1fr) auto; }
 .library-folder-form .input { min-width:0; }
@@ -55,14 +56,25 @@
   .library-folder-actions > .button { flex:1; }
 }
 .library-group h3 { font-size:16px; font-weight:650; }
-.library-group > p,.library-previous > p { color:var(--text-muted); font-size:13px; line-height:1.6; margin:8px 0 16px; }
+.library-group > p,.library-previous > p,.library-scan > p { max-width:70ch; color:var(--text-muted); font-size:14px; line-height:1.6; margin:8px 0 16px; }
+.library-group > :last-child { margin-bottom:0; }
+.library-group > .account-notice { padding:0; margin:16px 0 0; }
 .library-item-actions { display:flex; align-items:center; gap:8px; flex:none; }
 .library-list > div > div:first-child { min-width:0; }
 .library-group .library-list span,.library-previous .library-list span { white-space:normal; overflow-wrap:anywhere; }
-.library-previous { border-top:1px solid var(--line); margin-top:28px; padding-top:20px; }
-.library-previous summary { cursor:pointer; font-size:14px; font-weight:600; padding:8px 0; }
+.library-previous { border-top:1px solid var(--line); margin:0; padding:12px 0; }
+.library-previous[open] { padding-bottom:24px; }
+.library-previous > p { margin-top:0; }
+.library-previous > :last-child { margin-bottom:0; }
+.library-previous summary { cursor:pointer; min-height:44px; font-size:14px; line-height:24px; font-weight:600; padding:10px 0; }
 .library-previous summary:focus-visible { outline:2px solid var(--color-focus); outline-offset:2px; }
 .library-previous .library-list > div { gap:16px; }
+.library-scan { padding:24px 0; border-top:1px solid var(--line); }
+.library-scan > p { margin:0 0 16px; }
+.app-shell .library-scan .scan-strip { padding:0; border:0; margin:0; }
+.library-scan .scan-strip > div { min-width:0; }
+.library-scan .scan-strip > div svg { flex:none; }
+.library-scan .scan-strip > .button { flex:none; }
 @media(max-width:600px) {
   .library-list > div { flex-wrap:wrap; gap:12px; }
   .library-item-actions { margin-left:auto; }
