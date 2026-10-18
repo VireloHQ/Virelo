@@ -8,7 +8,14 @@ const outDir = fileURLToPath(new URL('./dist/web', import.meta.url));
 
 export default defineConfig({
   root: webRoot,
-  plugins: [react(), tailwindcss()],
+  plugins: [react(), tailwindcss(), {
+    name: 'nonblocking-startup-css',
+    transformIndexHtml: {
+      order: 'post',
+      handler: html => html.replace(/<link\b[^>]*\brel="stylesheet"[^>]*>/g,
+        tag => tag.replace('rel="stylesheet"', 'rel="stylesheet" media="print" data-startup-style'))
+    }
+  }],
   build: {
     outDir,
     emptyOutDir: false,

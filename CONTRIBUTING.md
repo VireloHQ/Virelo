@@ -25,10 +25,13 @@ Some component audits expect a running Vite development server; inspect the scri
 URL/environment options before running it. Never point audit tools at a personal library.
 
 The `media-regressions` CI job installs FFmpeg and a pinned Playwright runtime,
-then runs the full checks plus `audit-scan-repair.mjs` and `audit-accounts.mjs`
+then runs the full checks plus `audit-scan-repair.mjs`, `audit-accounts.mjs`
+and `audit-startup-scan.mjs`
 against synthetic media. It covers damaged/missing thumbnails, changed sources,
 short clips, cache links, historical Windows IDs, account boundaries, deep links,
 failed route/startup downloads, offline recovery and uninterrupted Shorts feeds.
+The startup audit also checks non-video project folders, request latency during
+discovery, stalled scripts/styles and stylesheet-failure recovery.
 
 ## Repository hygiene
 

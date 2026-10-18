@@ -39,3 +39,4 @@ jobs:
       - run: npm run check
       - run: node scripts/audit-scan-repair.mjs
       - run: node scripts/audit-accounts.mjs
+      - run: node scripts/audit-startup-scan.mjs

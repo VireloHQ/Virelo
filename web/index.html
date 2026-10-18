@@ -25,6 +25,10 @@
     <title>Virelo</title>
     <style>
       html,body{margin:0;background:#111;color:#f4f2f6;font-family:system-ui,sans-serif}
+      #root[hidden],#startup-loading[hidden]{display:none!important}
+      #startup-loading{min-height:100dvh;display:grid;place-content:center;text-align:center;gap:16px}
+      #startup-loading strong{font-size:32px;letter-spacing:-1px}
+      #startup-loading span{font-size:14px;color:#c2bec6}
       #startup-error{max-width:560px;margin:12vh auto;padding:24px;line-height:1.6}
       #startup-error[hidden]{display:none}
       #startup-error h1{font-size:28px;font-weight:700;line-height:1.25;margin:0 0 16px}
@@ -34,16 +38,18 @@
       #startup-error button,#startup-error a{display:inline-block;padding:10px 16px;margin:8px 12px 0 0;border:1px solid #666;border-radius:6px;background:#242424;color:#f4f2f6;font:inherit;text-decoration:none;cursor:pointer}
       #startup-error :focus-visible{outline:2px solid #b6a0ff;outline-offset:3px}
     </style>
-    <script src="/startup.js" defer></script>
+    <script src="/startup.js" defer fetchpriority="high"></script>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="startup-loading" role="status"><strong>Virelo</strong><span>Loading…</span></div>
+    <div id="root" hidden></div>
     <section id="startup-error" hidden role="alert" aria-labelledby="startup-error-title">
       <h1 id="startup-error-title">Virelo couldn’t start</h1>
       <p>The app’s files could not be loaded. If Virelo was just updated, restart the server, then try again. Your videos and saved data have not been changed.</p>
       <details><summary>Error details</summary><pre id="startup-error-detail"></pre></details>
       <button id="startup-reload" type="button">Try again</button><a href="/">Go to home</a>
     </section>
+    <noscript><p>JavaScript is required to use Virelo. Enable it, then reload this page.</p></noscript>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

@@ -5,8 +5,8 @@ import type { CatalogScope } from './auth-types.js';
 import type { Library, MediaKind, MediaRecord, ScanStatus } from './types.js';
 import { makeThumbnail, probeMedia } from './ffmpeg.js';
 import { imageFileExists } from './image-files.js';
-
-const VIDEO_EXTENSIONS = new Set(['.mp4','.m4v','.mkv','.webm','.mov','.avi','.wmv','.mpg','.mpeg','.ts','.m2ts','.flv','.ogv','.3gp']);
+import { setImmediate as yieldToRequests } from 'node:timers/promises';
+import { ignoredMediaEntry, isMediaFile, isVideoPath } from './media-files.js';
 
 function cleanName(value: string) {
   return value
@@ -39,17 +39,30 @@ export function parseMediaName(path: string): {title:string; kind:MediaKind; ser
   return { title, kind: 'movie', seriesTitle: null, season: null, episode: null, year };
 }
 
-async function collectFiles(root: string, found: string[]): Promise<boolean> {
-  let entries;
-  try { entries = await readdir(root, { withFileTypes: true }); } catch { return false; }
-  const complete = await Promise.all(entries.map(async (entry) => {
-    if (entry.name.startsWith('.')) return;
-    const full = join(root, entry.name);
-    if (entry.isDirectory()) return collectFiles(full, found);
-    if (entry.isFile() && VIDEO_EXTENSIONS.has(extname(entry.name).toLowerCase())) found.push(resolve(full));
-    return true;
-  }));
-  return complete.every(result => result !== false);
+async function collectFiles(root: string, found: string[], existing: Set<string>, onDirectory: (path: string) => void, signal?: AbortSignal): Promise<boolean> {
+  const pending = [root];
+  let complete = true;
+  while (pending.length) {
+    if (signal?.aborted) return false;
+    const directory = pending.pop()!;
+    onDirectory(directory);
+    let entries;
+    try { entries = await readdir(directory, { withFileTypes: true }); }
+    catch { complete = false; continue; }
+    for (const entry of entries) {
+      if (signal?.aborted) return false;
+      if (ignoredMediaEntry(entry.name)) continue;
+      const full = resolve(directory, entry.name);
+      if (entry.isDirectory()) pending.push(full);
+      else if (entry.isFile() && isVideoPath(full)) {
+        existing.add(full);
+        try { if (await isMediaFile(full)) found.push(full); }
+        catch { complete = false; }
+      }
+    }
+    await yieldToRequests();
+  }
+  return complete;
 }
 
 async function mapLimit<T>(items: T[], limit: number, worker: (item:T)=>Promise<void>) {
@@ -89,14 +102,18 @@ async function repairImages(db:VireloDB,record:MediaRecord,dataDir:string,status
   return 'failed';
 }
 
-export async function scanLibrary(db: VireloDB, library: Library, dataDir: string, status: ScanStatus) {
+export async function scanLibrary(db: VireloDB, library: Library, dataDir: string, status: ScanStatus, signal?: AbortSignal) {
   const files: string[] = [];
-  const complete = await collectFiles(library.path, files);
+  const existingPaths = new Set<string>();
+  const complete = await collectFiles(library.path, files, existingPaths, path => {
+    status.message = `Finding videos · ${relative(library.path, path) || library.label}`;
+  }, signal);
+  if (signal?.aborted) return;
   if (!complete) status.errors++;
   const owned=files.filter(path=>db.libraryForPath(path)?.id===library.id);
   status.total += owned.length;
-  const existingPaths = new Set(files);
   await mapLimit(owned, 4, async (path) => {
+    if (signal?.aborted) return;
     try {
       const info = await stat(path);
       const previous = db.getMediaByPath(path);
@@ -156,12 +173,13 @@ export async function scanLibrary(db: VireloDB, library: Library, dataDir: strin
       status.errors++;
     } finally {status.scanned++;}
   });
-  if (complete) db.deleteMissingForLibrary(library.id, existingPaths);
+  if (complete && !signal?.aborted) db.deleteMissingForLibrary(library.id, existingPaths);
 }
 
-export async function scanAll(db: VireloDB, dataDir: string, status: ScanStatus, scope?: CatalogScope) {
+export async function scanAll(db: VireloDB, dataDir: string, status: ScanStatus, scope?: CatalogScope, signal?: AbortSignal) {
   for (const library of db.visibleLibraries(scope)) {
+    if (signal?.aborted) return;
     status.message = `Scanning ${library.label}`;
-    await scanLibrary(db, library, dataDir, status);
+    await scanLibrary(db, library, dataDir, status, signal);
   }
 }

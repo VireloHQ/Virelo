@@ -32,6 +32,12 @@ npx virelo
 
 Virelo scans the current directory, starts at `http://127.0.0.1:41777`, and opens in your browser. On first use or after upgrading from a version without accounts, create the first administrator using this localhost address on the PC running Virelo, then sign in to your library.
 
+Folder discovery runs in the background without waiting to show the interface.
+Hidden entries and nested `node_modules` directories are excluded from scanning
+and monitoring. `.ts` files are checked for transport-stream packets so TypeScript
+source files are not mistaken for recordings. The startup screen remains visible
+while scripts or styles load and offers recovery if those resources fail.
+
 To serve another folder without changing directories:
 
 ```bash

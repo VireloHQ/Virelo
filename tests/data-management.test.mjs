@@ -90,6 +90,7 @@ test('data API is admin-only, same-origin and only clears generated cache withou
     const server=await createVireloServer({dataDir,mediaPaths:[mediaDir],host:'127.0.0.1',port:0});
     app=server.app;server.db.updateSettings({libraryWatchEnabled:false,externalMetadataEnabled:false});
     const inject=await authenticatedInjector(app);
+    await inject({method:'POST',url:'/api/settings',payload:{libraryWatchEnabled:false,externalMetadataEnabled:false}});
     const original=join(mediaDir,'original.mp4');await writeFile(original,'source video');const before=await fingerprint(original);
     const library=server.db.visibleLibraries()[0];
     const item=server.db.upsertMedia({library_id:library.id,path:original,filename:'original.mp4',title:'Original',sort_title:'original',kind:'video',series_title:null,season:null,episode:null,year:null,duration:60,width:640,height:360,video_codec:'h264',audio_codec:'aac',container:'mp4',folder:'',size:12,mtime:1,thumbnail_path:null,poster_path:null,backdrop_path:null,overview:null,genres:null,external_id:null});

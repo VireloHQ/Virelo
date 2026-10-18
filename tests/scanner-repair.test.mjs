@@ -62,6 +62,16 @@ test('indexed videos without a previous thumbnail reference still report initial
   assert.deepEqual(await fingerprint(f.source),original);
 });
 
+test('real TS recordings still receive technical details and thumbnails',async t=>{
+  const f=await fixture(t);if(!f)return;
+  const recording=join(f.media,'Recording.ts');
+  execFileSync(process.env.FFMPEG_PATH||'ffmpeg',['-hide_banner','-loglevel','error','-i',f.source,'-c','copy','-f','mpegts',recording],{windowsHide:true});
+  const original=await fingerprint(recording),result=await f.scan(),item=f.db.getMediaByPath(recording);
+  assert.equal(result.added,1);assert.equal(result.errors,0);assert.equal(result.scanned,2);
+  assert.equal(item.video_codec,'h264');assert.ok(item.duration>0);assert.ok((await stat(item.thumbnail_path)).size>0);
+  assert.deepEqual(await fingerprint(recording),original);
+});
+
 test('rescan recreates a removed thumbnail directory and missing technical details',async t=>{
   const f=await fixture(t);if(!f)return;
   await rm(join(f.data,'thumbnails'),{recursive:true});

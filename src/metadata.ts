@@ -208,14 +208,17 @@ export async function refreshMetadata(db: VireloDB, dataDir: string, mediaId: nu
     : refreshCinemetaMetadata(db, dataDir, media,onArtworkFailure);
 }
 
-export async function refreshMissingMetadata(db: VireloDB, dataDir: string, onProgress?: (done: number, total: number) => void, scope?: import('./auth-types.js').CatalogScope) {
+export async function refreshMissingMetadata(db: VireloDB, dataDir: string, onProgress?: (done: number, total: number) => void, scope?: import('./auth-types.js').CatalogScope, signal?: AbortSignal) {
   const settings = db.getSettings();
   if (!settings.externalMetadataEnabled) return { attempted: 0, updated: 0, failed: 0, artworkFailed:0 };
   const candidates = db.listMetadataCandidates(5000, settings.externalImagesEnabled, scope);
   let updated = 0;
   let failed = 0;
   let artworkFailed=0;
+  let attempted=0;
   for (let index = 0; index < candidates.length; index++) {
+    if (signal?.aborted) break;
+    attempted++;
     try {
       await refreshMetadata(db, dataDir, candidates[index].id, false,()=>artworkFailed++);
       updated++;
@@ -223,7 +226,7 @@ export async function refreshMissingMetadata(db: VireloDB, dataDir: string, onPr
       failed++;
     }
     onProgress?.(index + 1, candidates.length);
-    if (index + 1 < candidates.length) await new Promise((resolve) => setTimeout(resolve, 150));
+    if (!signal?.aborted && index + 1 < candidates.length) await new Promise((resolve) => setTimeout(resolve, 150));
   }
-  return { attempted: candidates.length, updated, failed, artworkFailed };
+  return { attempted, updated, failed, artworkFailed };
 }

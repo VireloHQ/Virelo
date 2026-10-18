@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Keep cold startup responsive during folder discovery: bound traversal, skip dependency trees, use native recursive Windows monitoring without a startup crawl and distinguish TS recordings from TypeScript. Show a static loading screen independently of pending scripts/styles, recover failed startup CSS and finish active scans before shutdown.
 - Harden rescan recovery for changed sources, invalid/truncated images, very short clips, failed generation retries and accurate completed/skipped counts. Bound media-tool processes and keep failed technical probes retryable.
 - Remove recursive legacy-cache deletion from scanning. Extract subtitles atomically with shared jobs and source-specific cache keys; reject generated-path links and encode provider IDs within the artwork directory.
 - Keep historical Windows IDs consistent for metadata, technical details, favorite UI state and Shorts deep links. Preserve the active Shorts feed during scan refresh, count artwork download failures and cache standalone startup recovery for offline use.

@@ -1,7 +1,7 @@
 import Fastify from 'fastify';
 import fastifyStatic from '@fastify/static';
-import chokidar, { type FSWatcher } from 'chokidar';
-import { createReadStream, existsSync } from 'node:fs';
+import chokidar from 'chokidar';
+import { createReadStream, existsSync, watch as watchDirectory, type FSWatcher } from 'node:fs';
 import { stat } from 'node:fs/promises';
 import { basename, extname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -18,6 +18,7 @@ import { dataUsage, assertSeparateCache } from './data-management.js';
 import { directLocal, registerAccounts } from './auth.js';
 import type { CatalogScope } from './auth-types.js';
 import { pickNativeFolder } from './folder-picker.js';
+import { isMediaFile, isVideoPath, mediaWatchFilter } from './media-files.js';
 
 const SORT_KEYS: SortKey[] = ['title', 'newest', 'oldest', 'year', 'duration', 'random'];
 
@@ -64,10 +65,6 @@ function isTermuxRuntime() {
   return Boolean(process.env.TERMUX_VERSION || process.env.PREFIX?.includes('/com.termux/'));
 }
 
-function isHiddenPath(path: string) {
-  return path.split(/[\\/]/).some((segment) => segment.startsWith('.') && segment !== '.' && segment !== '..');
-}
-
 export async function createVireloServer(config: RuntimeConfig, pickFolder: (signal: AbortSignal) => Promise<string | null> = pickNativeFolder) {
   ensureDataDirs(config.dataDir);
   await initializeDemandCache(config.dataDir);
@@ -100,8 +97,11 @@ export async function createVireloServer(config: RuntimeConfig, pickFolder: (sig
   const webRoot = fileURLToPath(new URL('./web', import.meta.url));
   const { accounts, fresh } = registerAccounts(app, db);
   let activePicker: AbortController | null = null;
-  app.addHook('preClose', async () => { activePicker?.abort(); });
-  let watcher: FSWatcher | null = null;
+  let closing = false;
+  const scanAbort = new AbortController();
+  let scanTask: Promise<void> | null = null;
+  app.addHook('preClose', async () => { closing = true; scanAbort.abort(); activePicker?.abort(); });
+  let watcher: { close(): void | Promise<unknown> } | null = null;
   let watchDebounce: NodeJS.Timeout | null = null;
 
   if (config.mediaPaths.length) {
@@ -120,18 +120,18 @@ export async function createVireloServer(config: RuntimeConfig, pickFolder: (sig
   };
 
   async function runScan(scope?: CatalogScope) {
-    if (scanStatus.running) return false;
+    if (closing || scanStatus.running) return false;
     Object.assign(scanStatus, { running: true, startedAt: Date.now(), finishedAt: null, total: 0, scanned: 0, added: 0, updated: 0, skipped: 0, thumbnailsGenerated:0, thumbnailsRepaired:0, errors: 0, message: 'Starting scan' });
-    void (async () => {
+    scanTask = (async () => {
       try {
-        await scanAll(db, config.dataDir, scanStatus, scope);
+        await scanAll(db, config.dataDir, scanStatus, scope, scanAbort.signal);
         const settings = db.getSettings();
         let metadataSummary='';
-        if (settings.externalMetadataEnabled) {
+        if (settings.externalMetadataEnabled && !closing) {
           scanStatus.message = 'Matching metadata';
           const result = await refreshMissingMetadata(db, config.dataDir, (done, total) => {
             scanStatus.message = `Matching metadata · ${done}/${total}`;
-          }, scope);
+          }, scope, scanAbort.signal);
           scanStatus.errors+=result.failed+result.artworkFailed;
           if(result.attempted)metadataSummary=` · ${result.updated} metadata matches`;
         }
@@ -150,28 +150,54 @@ export async function createVireloServer(config: RuntimeConfig, pickFolder: (sig
 
   async function refreshWatcher() {
     if (watcher) { await watcher.close(); watcher = null; }
-    if (!db.getSettings().libraryWatchEnabled) return;
+    if (closing || !db.getSettings().libraryWatchEnabled) return;
     const paths = db.visibleLibraries().map((l) => l.path).filter((p) => existsSync(p));
     if (!paths.length) return;
-    watcher = chokidar.watch(paths, {
-      ignoreInitial: true,
-      ignored: isHiddenPath,
-      usePolling: isTermuxRuntime(),
-      awaitWriteFinish: { stabilityThreshold: 1200, pollInterval: 200 }
-    });
+    const ignored = mediaWatchFilter(paths);
     const schedule = () => {
+      if (closing) return;
       if (watchDebounce) clearTimeout(watchDebounce);
       watchDebounce = setTimeout(() => { void runScan(); }, 1400);
     };
-    watcher
-      .on('add', schedule)
-      .on('change', schedule)
-      .on('unlink', schedule)
+    const scheduleFile = (path: string) => {
+      if (closing) return;
+      if (extname(path).toLowerCase() !== '.ts' || db.getMediaByPath(path)) schedule();
+      else void isMediaFile(path).then(video => { if (video) schedule(); }).catch(() => undefined);
+    };
+    const warn = (error: unknown) => app.log.warn({ err: error }, 'Library watcher stopped; use Scan now to refresh manually');
+    if (process.platform === 'win32') {
+      const native: FSWatcher[] = [];
+      try {
+        // Windows can monitor a whole tree without a startup crawl or per-file handles.
+        for (const root of paths) native.push(watchDirectory(root, {recursive:true}, (event, name) => {
+          if (!name) { schedule(); return; }
+          const path = resolve(root, name.toString());
+          if (ignored(path)) return;
+          if (isVideoPath(path)) scheduleFile(path);
+          else if (event === 'rename') void stat(path).then(info => { if (info.isDirectory()) schedule(); }).catch(() => schedule());
+        }).on('error', warn));
+        watcher = {close() { for (const current of native) current.close(); }};
+        return;
+      } catch (error) {
+        for (const current of native) current.close();
+        app.log.warn({err:error}, 'Native folder monitoring is unavailable; using portable monitoring');
+      }
+    }
+    const portable = chokidar.watch(paths, {
+      ignoreInitial: true,
+      ignored,
+      followSymlinks: false,
+      usePolling: isTermuxRuntime(),
+      awaitWriteFinish: { stabilityThreshold: 1200, pollInterval: 200 }
+    });
+    watcher = portable;
+    portable
+      .on('add', scheduleFile)
+      .on('change', scheduleFile)
+      .on('unlink', path => { if (!closing && (extname(path).toLowerCase() !== '.ts' || db.getMediaByPath(path))) schedule(); })
       .on('addDir', schedule)
       .on('unlinkDir', schedule)
-      .on('error', (error) => {
-        app.log.warn({ err: error }, 'Library watcher stopped; use Scan now to refresh manually');
-      });
+      .on('error', warn);
   }
 
   const visibleScanStatus = (isAdmin: boolean) => isAdmin ? scanStatus : { ...scanStatus, message: scanStatus.running ? 'Scanning libraries' : 'Idle', total:0,scanned:0,added:0,updated:0,skipped:0,thumbnailsGenerated:0,thumbnailsRepaired:0,errors:0 };
@@ -471,6 +497,7 @@ export async function createVireloServer(config: RuntimeConfig, pickFolder: (sig
   app.addHook('onClose', async () => {
     if (watchDebounce) clearTimeout(watchDebounce);
     if (watcher) await watcher.close();
+    await scanTask;
     await stopAllTranscodes(config.dataDir);
     db.close();
   });
