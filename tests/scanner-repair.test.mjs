@@ -11,7 +11,7 @@ import { hasFfmpeg, hasFfprobe, makeThumbnail } from '../dist/ffmpeg.js';
 import { refreshMissingMetadata } from '../dist/metadata.js';
 import { Accounts, hashPassword } from '../dist/accounts.js';
 
-const status=()=>({running:true,total:0,scanned:0,added:0,updated:0,skipped:0,thumbnailsRepaired:0,errors:0,message:''});
+const status=()=>({running:true,total:0,scanned:0,added:0,updated:0,skipped:0,thumbnailsGenerated:0,thumbnailsRepaired:0,errors:0,message:''});
 const fingerprint=async path=>({sha256:createHash('sha256').update(await readFile(path)).digest('hex'),mtime:(await stat(path)).mtimeMs});
 async function fixture(t){
   if(!await hasFfmpeg()||!await hasFfprobe()){t.skip('FFmpeg and ffprobe are required');return;}
@@ -23,7 +23,8 @@ async function fixture(t){
   db.updateSettings({externalMetadataEnabled:false,libraryWatchEnabled:false});
   t.after(async()=>{db.close();await rm(root,{recursive:true,force:true});});
   const scan=async()=>{const result=status();await scanLibrary(db,library,data,result);return result;};
-  const initial=await scan();assert.equal(initial.added,1);assert.equal(initial.thumbnailsRepaired,1);assert.equal(initial.errors,0);
+  const initial=await scan();assert.equal(initial.added,1);assert.equal(initial.thumbnailsGenerated,1);assert.equal(initial.thumbnailsRepaired,0);assert.equal(initial.errors,0);
+  assert.match(initial.message,/^Generating thumbnail · Example\.mp4$/);
   const item=db.getMediaByPath(source);
   return {root,data,media,source,db,library,item,scan};
 }
@@ -40,7 +41,8 @@ test('rescan restores deleted and empty thumbnails for unchanged videos while pr
   assert.deepEqual(await fingerprint(item.thumbnail_path),healthy,'healthy thumbnails are not rewritten');
   for(const damage of ['deleted','empty']){
     if(damage==='deleted')await rm(item.thumbnail_path);else await writeFile(item.thumbnail_path,'');
-    const repaired=await scan();assert.equal(repaired.scanned,1);assert.equal(repaired.updated,1);assert.equal(repaired.thumbnailsRepaired,1);assert.equal(repaired.errors,0);
+    const repaired=await scan();assert.equal(repaired.scanned,1);assert.equal(repaired.updated,1);assert.equal(repaired.thumbnailsGenerated,0);assert.equal(repaired.thumbnailsRepaired,1);assert.equal(repaired.errors,0);
+    assert.match(repaired.message,/^Restoring thumbnail · Example\.mp4$/);
     const after=db.getMedia(item.id);
     for(const key of ['id','path','size','mtime','added_at','title','year','overview','external_id','liked','progress_position','progress_duration'])assert.equal(after[key],before[key],key+' is preserved');
     assert.ok(after.metadata_revision>before.metadata_revision,'image URL changes so failed browser images can retry');
@@ -48,6 +50,16 @@ test('rescan restores deleted and empty thumbnails for unchanged videos while pr
     assert.deepEqual(await fingerprint(source),original,'source content and timestamp never change');
     assert.equal(await readFile(join(playbackCache,'index.m3u8'),'utf8'),'keep active playback','thumbnail-only repair never clears playback cache');
   }
+});
+
+test('indexed videos without a previous thumbnail reference still report initial generation',async t=>{
+  const f=await fixture(t);if(!f)return;
+  await rm(f.item.thumbnail_path);
+  f.db.db.prepare('UPDATE media SET thumbnail_path=NULL WHERE id=?').run(f.item.id);
+  const original=await fingerprint(f.source),generated=await f.scan();
+  assert.match(generated.message,/^Generating thumbnail · Example\.mp4$/);
+  assert.equal(generated.added,0);assert.equal(generated.thumbnailsGenerated,1);assert.equal(generated.thumbnailsRepaired,0);
+  assert.deepEqual(await fingerprint(f.source),original);
 });
 
 test('rescan recreates a removed thumbnail directory and missing technical details',async t=>{

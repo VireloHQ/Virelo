@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Distinguish initial thumbnail generation from missing-thumbnail restoration in scan progress and completion counts.
 - Repair thumbnails for every historical Windows case-variant media record, retaining IDs, favorites and watch history. Show each file only once in libraries, Home, favorites and Shorts, and prevent new case-variant duplicates.
 - Recognize new web build files without a server restart. Show a recovery screen when startup scripts cannot load, and make navigation error explanations and details readable.
 - Normalize library-section spacing and description widths, separating scan help and results from previously used folders while retaining mobile layout and disclosure controls.

@@ -75,11 +75,13 @@ async function repairImages(db:VireloDB,record:MediaRecord,dataDir:string,status
     if(shared)status.thumbnailsRepaired=(status.thumbnailsRepaired??0)+1;
     return missingPoster||missingBackdrop||shared>0;
   }
-  status.message=`Restoring thumbnail · ${record.filename}`;
+  const restoring=Boolean(record.thumbnail_path);
+  status.message=`${restoring?'Restoring':'Generating'} thumbnail · ${record.filename}`;
   const target=join(dataDir,'thumbnails',`${record.id}.jpg`);
   if(await makeThumbnail(record.path,target,record.duration)){
     db.shareThumbnail(record.path,target,true);
-    status.thumbnailsRepaired=(status.thumbnailsRepaired??0)+1;
+    const counter=restoring?'thumbnailsRepaired':'thumbnailsGenerated';
+    status[counter]=(status[counter]??0)+1;
     return true;
   }
   status.errors++;

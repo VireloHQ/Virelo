@@ -116,12 +116,12 @@ export async function createVireloServer(config: RuntimeConfig, pickFolder: (sig
   }
 
   const scanStatus: ScanStatus = {
-    running: false, startedAt: null, finishedAt: null, total: 0, scanned: 0, added: 0, updated: 0, skipped: 0, thumbnailsRepaired:0, errors: 0, message: 'Idle'
+    running: false, startedAt: null, finishedAt: null, total: 0, scanned: 0, added: 0, updated: 0, skipped: 0, thumbnailsGenerated:0, thumbnailsRepaired:0, errors: 0, message: 'Idle'
   };
 
   async function runScan(scope?: CatalogScope) {
     if (scanStatus.running) return false;
-    Object.assign(scanStatus, { running: true, startedAt: Date.now(), finishedAt: null, total: 0, scanned: 0, added: 0, updated: 0, skipped: 0, thumbnailsRepaired:0, errors: 0, message: 'Starting scan' });
+    Object.assign(scanStatus, { running: true, startedAt: Date.now(), finishedAt: null, total: 0, scanned: 0, added: 0, updated: 0, skipped: 0, thumbnailsGenerated:0, thumbnailsRepaired:0, errors: 0, message: 'Starting scan' });
     void (async () => {
       try {
         await scanAll(db, config.dataDir, scanStatus, scope);
@@ -135,7 +135,7 @@ export async function createVireloServer(config: RuntimeConfig, pickFolder: (sig
           scanStatus.errors+=result.failed;
           if(result.attempted)metadataSummary=` · ${result.updated} metadata matches`;
         }
-        scanStatus.message = `Scan complete · ${scanStatus.scanned} checked · ${scanStatus.added} added · ${scanStatus.updated} updated · ${scanStatus.thumbnailsRepaired} thumbnail${scanStatus.thumbnailsRepaired===1?'':'s'} restored${metadataSummary} · ${scanStatus.errors} errors`;
+        scanStatus.message = `Scan complete · ${scanStatus.scanned} checked · ${scanStatus.added} added · ${scanStatus.updated} updated · ${scanStatus.thumbnailsGenerated} thumbnail${scanStatus.thumbnailsGenerated===1?'':'s'} generated · ${scanStatus.thumbnailsRepaired} thumbnail${scanStatus.thumbnailsRepaired===1?'':'s'} restored${metadataSummary} · ${scanStatus.errors} errors`;
       } catch (error) {
         scanStatus.errors++;
         scanStatus.message = error instanceof Error ? error.message : 'Scan failed';
@@ -174,7 +174,7 @@ export async function createVireloServer(config: RuntimeConfig, pickFolder: (sig
       });
   }
 
-  const visibleScanStatus = (isAdmin: boolean) => isAdmin ? scanStatus : { ...scanStatus, message: scanStatus.running ? 'Scanning libraries' : 'Idle', total:0,scanned:0,added:0,updated:0,skipped:0,thumbnailsRepaired:0,errors:0 };
+  const visibleScanStatus = (isAdmin: boolean) => isAdmin ? scanStatus : { ...scanStatus, message: scanStatus.running ? 'Scanning libraries' : 'Idle', total:0,scanned:0,added:0,updated:0,skipped:0,thumbnailsGenerated:0,thumbnailsRepaired:0,errors:0 };
   app.get('/api/health', async request => ({ ok: true, version: VIRELO_VERSION, ffmpeg: await hasFfmpeg(), ffprobe: await hasFfprobe(), scan: visibleScanStatus(request.account!.isAdmin) }));
   app.get('/api/settings', async () => publicSettings(db.getSettings()));
   app.get('/api/data', async request => {

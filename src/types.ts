@@ -93,6 +93,7 @@ export interface ScanStatus {
   added: number;
   updated: number;
   skipped: number;
+  thumbnailsGenerated?: number;
   thumbnailsRepaired?: number;
   errors: number;
   message: string;

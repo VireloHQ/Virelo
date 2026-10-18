@@ -152,6 +152,7 @@ test('accounts enforce authentication, catalog privacy and administrative bounda
     while(server.scanStatus.running) await new Promise(resolve=>setTimeout(resolve,10));
     assert.equal(db.getMedia(items[1].id).mtime,1,'a hidden library is never scanned by the viewer');
     assert.equal((await call('GET','/api/scan/status',undefined,viewerCookie)).json().scanned,0,'other library scan details are not disclosed');
+    assert.equal((await call('GET','/api/scan/status',undefined,viewerCookie)).json().thumbnailsGenerated,0,'thumbnail generation counts are not disclosed');
     assert.equal((await call('DELETE','/api/libraries/'+id,undefined,viewerCookie)).statusCode,200);
     await call('PATCH','/api/accounts/'+viewerId,{permissions:{manageLibraries:false,scanLibraries:false}},ownerCookie);viewerCookie=await login('viewer');
   });

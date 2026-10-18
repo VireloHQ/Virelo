@@ -24,6 +24,8 @@ try{
   const setup=await server.app.inject({method:'POST',url:'/api/auth/setup',headers:{'x-virelo-request':'1'},payload:{username:'owner',password:'1'}});
   assert.equal(setup.statusCode,200,setup.body);
   await server.runScan();while(server.scanStatus.running)await new Promise(done=>setTimeout(done,10));
+  assert.equal(server.scanStatus.thumbnailsGenerated,1);assert.equal(server.scanStatus.thumbnailsRepaired,0);
+  assert.match(server.scanStatus.message,/1 thumbnail generated · 0 thumbnails restored/);
   const item=server.db.getMediaByPath(source);assert.ok(item.thumbnail_path);
   let resumeId=item.id;
   if(process.platform==='win32'){
@@ -57,9 +59,10 @@ try{
   await page.getByRole('button',{name:'Settings',exact:true}).click();
   await page.locator('.settings-sidebar').getByRole('button',{name:'Libraries',exact:true}).click();
   await page.getByText('Scan checks video files, fills in missing technical details',{exact:false}).waitFor();
+  await page.locator('.scan-strip').filter({hasText:'1 thumbnail generated'}).waitFor();
   await page.getByRole('button',{name:'Scan',exact:true}).click();
   await page.locator('.scan-strip').filter({hasText:'1 thumbnail restored'}).waitFor();
-  assert.equal(server.scanStatus.errors,0);assert.equal(server.scanStatus.updated,1);
+  assert.equal(server.scanStatus.errors,0);assert.equal(server.scanStatus.updated,1);assert.equal(server.scanStatus.thumbnailsGenerated,0);
   await page.locator('.desktop-nav').getByRole('link',{name:'Home',exact:true}).click();
   await waitRepaired();
   const aliasImage=await page.request.get(base+`/api/media/${resumeId}/artwork/thumbnail`);
@@ -135,6 +138,10 @@ try{
   await startup.locator('#startup-error').waitFor({state:'hidden'});
   console.log('startup: a missing entry script shows standalone recovery instead of blank, and retry restores sign-in');
   await startupContext.close();
+  await server.runScan();while(server.scanStatus.running)await new Promise(done=>setTimeout(done,10));
+  assert.equal(server.scanStatus.thumbnailsGenerated,0);assert.equal(server.scanStatus.thumbnailsRepaired,0);
+  assert.match(server.scanStatus.message,/0 thumbnails generated · 0 thumbnails restored/);
+  console.log('scan labels: initial generation, restoration, completion counts and counter reset are distinct');
 }catch(error){
   if(page&&!page.isClosed())await page.screenshot({path:join(repo,'node_modules/.cache/rescan-failure.png')}).catch(()=>{});
   throw error;
