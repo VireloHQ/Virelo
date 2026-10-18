@@ -23,6 +23,7 @@ export interface Library {
 
 export interface MediaRecord {
   id: number;
+  canonical_id?: number;
   library_id: number;
   path: string;
   filename: string;
@@ -82,6 +83,7 @@ export interface ShortsItem extends MediaRecord {
 export interface ShortsFeed {
   items: ShortsItem[];
   total: number;
+  startId?: number;
 }
 
 export interface ScanStatus {

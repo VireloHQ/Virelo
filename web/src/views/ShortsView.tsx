@@ -92,7 +92,7 @@ function ShortsFeedView({ startId }: { startId?: number }) {
 
   if (query.isError && items.length === 0) return <div className="shorts-empty"><p>Shorts could not be loaded.</p><button onClick={() => void query.refetch()}>Try again</button></div>;
   if (query.isLoading) return <PageSkeleton kind="shorts" />;
-  if (startId !== undefined && query.data && items[0]?.id !== startId) {
+  if (startId !== undefined && query.data && items[0]?.id !== (query.data.pages[0]?.startId??startId)) {
     return <div className="shorts-empty"><p>This Short is no longer available in your Shorts feed.</p>
       <button onClick={() => history.back()}>Back</button></div>;
   }

@@ -6,6 +6,7 @@ export type QueueBehavior = 'auto' | 'loop' | 'manual';
 
 export interface MediaItem {
   id: number;
+  canonical_id?: number;
   library_id: number;
   path: string;
   filename: string;
@@ -68,6 +69,7 @@ export interface ShortItem extends MediaItem {
 export interface ShortsFeed {
   items: ShortItem[];
   total: number;
+  startId?: number;
 }
 
 export interface Library { id:number; path:string; label:string; created_at:number; persistent:number }

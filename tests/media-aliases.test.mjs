@@ -34,6 +34,8 @@ test('Windows collections collapse legacy case aliases before paging while retai
     assert.equal(db.getHome(access).total,2);assert.equal(db.getHome(access).continueWatching.length,1);
     assert.equal(db.getFolders(access)[0].count,2);
     assert.equal(db.getShorts({},access).total,2);assert.equal(db.getShorts({startId:alias,limit:1},access).items[0].id,first.id);
+    assert.equal(db.getShorts({startId:alias,limit:1},access).startId,first.id);
+    assert.equal(db.getMedia(alias,access).canonical_id,first.id);
     assert.equal(db.getShorts({offset:2},access).items.length,0);
     for(const id of [first.id,alias]){assert.equal(db.getMedia(id,access).id,id);assert.equal(db.getMedia(id,access).liked,1);}
   }
@@ -51,9 +53,21 @@ test('Windows collections collapse legacy case aliases before paging while retai
   db.setProgress(alias,119,120,owner.id);assert.equal(db.getMedia(first.id,scope).progress_completed,1);
   db.setLike(first.id,false);assert.equal(db.getMedia(alias).liked,0);
   assert.equal(db.db.prepare('SELECT COUNT(*) AS count FROM media').get().count,3,'historical IDs are retained');
+  db.updateExternalMetadata(alias,{title:'Matched title',external_id:'fixture:matched'});
+  assert.equal(db.getMedia(first.id).title,'Matched title');
+  const stale=db.getMedia(first.id).metadata_revision;
+  db.clearExternalMetadata(alias,{title:'Example',year:null});
+  assert.equal(db.getMedia(first.id).metadata_blocked,1);assert.equal(db.getMedia(first.id).external_id,null);
+  db.updateExternalMetadata(first.id,{title:'Stale request'},stale);
+  assert.equal(db.getMedia(alias).title,'Example','clearing an alias invalidates in-flight matching for every spelling');
+  db.upsertMedia({...input,size:2,mtime:2,width:640,height:360});
+  assert.equal(db.getMedia(alias).width,640);assert.equal(db.getMedia(alias).size,2);
+  db.updateTechnicalMetadata(alias,{width:1280});assert.equal(db.getMedia(first.id).width,1280);
+  assert.equal(db.getMedia(alias,otherScope).progress_position,50);
   // A hidden older alias must not suppress a file in a visible library.
   const hidden=db.addLibrary(join(data,'Hidden'),'Hidden');
   db.db.prepare('UPDATE media SET library_id=? WHERE id=?').run(hidden.id,first.id);
   const visible=db.listMedia({},otherScope);assert.deepEqual(visible.map(x=>x.id),[alias,second.id]);
+  assert.equal(db.getMedia(alias,otherScope).canonical_id,alias,'canonical IDs never point into an inaccessible library');
   assert.equal(db.getMedia(first.id,otherScope),undefined);
 });

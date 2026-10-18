@@ -1,7 +1,7 @@
-import { spawn } from 'node:child_process';
+import { spawn, type ChildProcess } from 'node:child_process';
 import { rename, rm } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
-import { imageFileExists, prepareImageDirectory } from './image-files.js';
+import { imageFileExists, prepareGeneratedFile } from './image-files.js';
 
 export interface PlaybackTrack {
   index: number;
@@ -48,6 +48,13 @@ const QUALITY_BITRATES: Record<number, number> = {
   360: 800_000
 };
 
+export function limitMediaProcess(child:ChildProcess,milliseconds:number){
+  const timer=setTimeout(()=>child.kill('SIGKILL'),milliseconds);timer.unref();
+  const clear=()=>clearTimeout(timer);
+  child.once('error',clear);child.once('close',clear);
+  return child;
+}
+
 export function playbackQualities(width: number | null, height: number | null): PlaybackQuality[] {
   if (!width || !height) return [];
   const sourceHeight = Math.max(144, Math.round(Math.min(width, height) / 2) * 2);
@@ -65,7 +72,7 @@ async function canRun(command: string): Promise<boolean> {
   return await new Promise((resolve) => {
     let child;
     try {
-      child = spawn(command, ['-version'], { stdio: 'ignore', windowsHide: true });
+      child = limitMediaProcess(spawn(command, ['-version'], { stdio: 'ignore', windowsHide: true }),5000);
     } catch {
       resolve(false);
       return;
@@ -92,14 +99,14 @@ async function ffprobeJson(path: string): Promise<any | null> {
     const chunks: Buffer[] = [];
     let child;
     try {
-      child = spawn(process.env.FFPROBE_PATH || 'ffprobe', ['-v','quiet','-print_format','json','-show_format','-show_streams',path], { windowsHide: true });
+      child = limitMediaProcess(spawn(process.env.FFPROBE_PATH || 'ffprobe', ['-v','quiet','-print_format','json','-show_format','-show_streams',path], { windowsHide: true }),30000);
     } catch {
       resolve(null);
       return;
     }
-    child.stdout.on('data', (chunk) => chunks.push(Buffer.from(chunk)));
+    child.stdout?.on('data', (chunk) => chunks.push(Buffer.from(chunk)));
     child.once('error', () => resolve(null));
-    child.once('exit', (code) => {
+    child.once('close', (code) => {
       if (code !== 0) return resolve(null);
       try { resolve(JSON.parse(Buffer.concat(chunks).toString('utf8'))); }
       catch { resolve(null); }
@@ -174,29 +181,32 @@ export async function probePlaybackInfo(path: string): Promise<PlaybackInfo | nu
   };
 }
 
-export async function makeThumbnail(source: string, target: string, duration?: number | null): Promise<boolean> {
-  if(await imageFileExists(target))return true;
+export async function makeThumbnail(source: string, target: string, duration?: number | null, replace=false): Promise<boolean> {
+  if(!replace&&await imageFileExists(target))return true;
   if (!(await hasFfmpeg())) return false;
-  await prepareImageDirectory(target);
+  await prepareGeneratedFile(target);
   const temporary=`${target}.${randomUUID()}.tmp.jpg`;
-  const seek = duration && duration > 0 ? Math.min(Math.max(duration * 0.12, 0.1), 60) : 3;
+  const seek = duration && duration >= 1 ? Math.min(duration * 0.12, 60) : 0;
   try {
-    const generated=await new Promise<boolean>((resolve) => {
-      let child;
-      try {
-        child = spawn(process.env.FFMPEG_PATH || 'ffmpeg', [
-          '-hide_banner','-loglevel','error','-ss',String(seek),'-i',source,'-frames:v','1','-vf','scale=min(960\\,iw):-2','-q:v','3','-y',temporary
-        ], { stdio: 'ignore', windowsHide: true });
-      } catch {
-        resolve(false);
-        return;
-      }
-      child.once('error', () => resolve(false));
-      child.once('exit', (code) => resolve(code === 0));
-    });
-    if(!generated||!await imageFileExists(temporary))return false;
-    await prepareImageDirectory(target);
-    await rename(temporary,target);
-    return true;
+    for(const position of seek>0?[seek,0]:[0]){
+      const generated=await new Promise<boolean>((resolve) => {
+        let child;
+        try {
+          child = limitMediaProcess(spawn(process.env.FFMPEG_PATH || 'ffmpeg', [
+            '-hide_banner','-loglevel','error','-ss',String(position),'-i',source,'-frames:v','1','-vf','scale=min(960\\,iw):-2','-q:v','3','-y',temporary
+          ], { stdio: 'ignore', windowsHide: true }),60000);
+        } catch {
+          resolve(false);
+          return;
+        }
+        child.once('error', () => resolve(false));
+        child.once('close', (code) => resolve(code === 0));
+      });
+      if(!generated||!await imageFileExists(temporary))continue;
+      await prepareGeneratedFile(target);
+      await rename(temporary,target);
+      return true;
+    }
+    return false;
   }finally{await rm(temporary,{force:true}).catch(()=>{});}
 }

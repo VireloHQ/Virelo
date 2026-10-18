@@ -20,3 +20,22 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run check
+  media-regressions:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: sudo apt-get update
+      - run: sudo apt-get install --yes ffmpeg
+      - run: npm ci
+      - run: npm install --no-save --package-lock=false playwright@1.62.1
+      - run: npx playwright install --with-deps chromium
+      - run: npm run check
+      - run: node scripts/audit-scan-repair.mjs
+      - run: node scripts/audit-accounts.mjs

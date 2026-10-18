@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Harden rescan recovery for changed sources, invalid/truncated images, very short clips, failed generation retries and accurate completed/skipped counts. Bound media-tool processes and keep failed technical probes retryable.
+- Remove recursive legacy-cache deletion from scanning. Extract subtitles atomically with shared jobs and source-specific cache keys; reject generated-path links and encode provider IDs within the artwork directory.
+- Keep historical Windows IDs consistent for metadata, technical details, favorite UI state and Shorts deep links. Preserve the active Shorts feed during scan refresh, count artwork download failures and cache standalone startup recovery for offline use.
+- Add media/browser regression CI alongside the cross-platform checks, using FFmpeg and pinned Playwright with synthetic data.
 - Distinguish initial thumbnail generation from missing-thumbnail restoration in scan progress and completion counts.
 - Repair thumbnails for every historical Windows case-variant media record, retaining IDs, favorites and watch history. Show each file only once in libraries, Home, favorites and Shorts, and prevent new case-variant duplicates.
 - Recognize new web build files without a server restart. Show a recovery screen when startup scripts cannot load, and make navigation error explanations and details readable.

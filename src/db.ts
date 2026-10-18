@@ -24,6 +24,7 @@ const SORT_ORDER: Record<SortKey, string> = {
   duration: 'm.duration IS NULL, m.duration DESC, m.sort_title COLLATE NOCASE ASC',
   random: 'RANDOM()'
 };
+const MEDIA_ALIASES=`SELECT id FROM media WHERE path=(SELECT path FROM media WHERE id=?) ${process.platform==='win32'?'COLLATE NOCASE':''}`;
 
 export class VireloDB {
   readonly db: DatabaseSync;
@@ -275,13 +276,16 @@ export class VireloDB {
 
   getMedia(id: number, scope?: CatalogScope): MediaRecord | undefined {
     const joins = this.personalJoins(scope), visible = scope ? this.visibleIdClause(scope) : { sql: '1=1', params: [] };
+    const canonical=process.platform==='win32'
+      ? {sql:`(SELECT MIN(alias.id) FROM media alias WHERE alias.path=m.path COLLATE NOCASE AND ${visible.sql.replaceAll('m.','alias.')})`,params:visible.params}
+      : {sql:'m.id',params:[]};
     return this.db.prepare(`
-      SELECT m.*, p.position AS progress_position, p.duration AS progress_duration, p.completed AS progress_completed,
+      SELECT m.*,${canonical.sql} AS canonical_id, p.position AS progress_position, p.duration AS progress_duration, p.completed AS progress_completed,
         (l.media_id IS NOT NULL) AS liked
       FROM media m
       ${joins.sql}
       WHERE m.id=? AND ${visible.sql}
-    `).get(...joins.params, id, ...visible.params) as unknown as MediaRecord | undefined;
+    `).get(...canonical.params,...joins.params, id, ...visible.params) as unknown as MediaRecord | undefined;
   }
 
   upsertMedia(input: Omit<MediaRecord, 'id' | 'added_at' | 'updated_at'>): MediaRecord {
@@ -301,8 +305,11 @@ export class VireloDB {
       ON CONFLICT(path) DO UPDATE SET
         library_id=excluded.library_id, filename=excluded.filename, title=excluded.title, sort_title=excluded.sort_title,
         kind=excluded.kind, series_title=excluded.series_title, season=excluded.season, episode=excluded.episode, year=excluded.year,
-        duration=COALESCE(excluded.duration,media.duration), width=COALESCE(excluded.width,media.width), height=COALESCE(excluded.height,media.height),
-        video_codec=COALESCE(excluded.video_codec,media.video_codec), audio_codec=COALESCE(excluded.audio_codec,media.audio_codec),
+        duration=CASE WHEN media.size!=excluded.size OR media.mtime!=excluded.mtime THEN excluded.duration ELSE COALESCE(excluded.duration,media.duration) END,
+        width=CASE WHEN media.size!=excluded.size OR media.mtime!=excluded.mtime THEN excluded.width ELSE COALESCE(excluded.width,media.width) END,
+        height=CASE WHEN media.size!=excluded.size OR media.mtime!=excluded.mtime THEN excluded.height ELSE COALESCE(excluded.height,media.height) END,
+        video_codec=CASE WHEN media.size!=excluded.size OR media.mtime!=excluded.mtime THEN excluded.video_codec ELSE COALESCE(excluded.video_codec,media.video_codec) END,
+        audio_codec=CASE WHEN media.size!=excluded.size OR media.mtime!=excluded.mtime THEN excluded.audio_codec ELSE COALESCE(excluded.audio_codec,media.audio_codec) END,
         container=COALESCE(excluded.container,media.container), folder=excluded.folder, size=excluded.size, mtime=excluded.mtime,
         thumbnail_path=COALESCE(excluded.thumbnail_path,media.thumbnail_path), poster_path=COALESCE(media.poster_path,excluded.poster_path),
         backdrop_path=COALESCE(media.backdrop_path,excluded.backdrop_path), overview=COALESCE(media.overview,excluded.overview),
@@ -312,15 +319,18 @@ export class VireloDB {
       input.duration,input.width,input.height,input.video_codec,input.audio_codec,input.container,input.folder ?? '',input.size,input.mtime,input.thumbnail_path,
       input.poster_path,input.backdrop_path,input.overview,input.genres,input.external_id,now,now
     );
-    return this.getMediaByPath(input.path)!;
+    const record=this.getMediaByPath(input.path)!;
+    if(process.platform==='win32')this.db.prepare(`UPDATE media SET library_id=?,folder=?,size=?,mtime=?,duration=?,width=?,height=?,video_codec=?,audio_codec=?,container=?,updated_at=? WHERE id IN (${MEDIA_ALIASES}) AND id!=?`)
+      .run(record.library_id,record.folder,record.size,record.mtime,record.duration,record.width,record.height,record.video_codec,record.audio_codec,record.container,now,record.id,record.id);
+    return record;
   }
 
   updateTechnicalMetadata(id: number, data: Partial<Pick<MediaRecord,'duration'|'width'|'height'|'video_codec'|'audio_codec'|'container'|'thumbnail_path'>>) {
-    this.db.prepare(`UPDATE media SET duration=COALESCE(?,duration),width=COALESCE(?,width),height=COALESCE(?,height),video_codec=COALESCE(?,video_codec),audio_codec=COALESCE(?,audio_codec),container=COALESCE(?,container),thumbnail_path=COALESCE(?,thumbnail_path),metadata_revision=metadata_revision+?,updated_at=? WHERE id=?`)
+    this.db.prepare(`UPDATE media SET duration=COALESCE(?,duration),width=COALESCE(?,width),height=COALESCE(?,height),video_codec=COALESCE(?,video_codec),audio_codec=COALESCE(?,audio_codec),container=COALESCE(?,container),thumbnail_path=COALESCE(?,thumbnail_path),metadata_revision=metadata_revision+?,updated_at=? WHERE id IN (${MEDIA_ALIASES})`)
       .run(data.duration ?? null,data.width ?? null,data.height ?? null,data.video_codec ?? null,data.audio_codec ?? null,data.container ?? null,data.thumbnail_path ?? null,Number(Boolean(data.thumbnail_path)),Date.now(),id);
   }
 
-  shareThumbnail(path:string,thumbnail:string,invalidate=false){
+  shareThumbnail(path:string,thumbnail:string|null,invalidate=false){
     // Keep historical media IDs valid for progress, favorites and saved links.
     return Number(this.db.prepare(`UPDATE media SET thumbnail_path=?,metadata_revision=metadata_revision+1,updated_at=?
       WHERE path=? ${process.platform==='win32'?'COLLATE NOCASE':''} AND (?=1 OR thumbnail_path IS NOT ?)`)
@@ -335,18 +345,18 @@ export class VireloDB {
   updateExternalMetadata(id: number, data: Partial<Pick<MediaRecord,'title'|'overview'|'genres'|'poster_path'|'backdrop_path'|'external_id'|'year'>>, expectedRevision?: number) {
     const current = this.getMedia(id);
     if (!current || (expectedRevision !== undefined && current.metadata_revision !== expectedRevision)) return;
-    this.db.prepare(`UPDATE media SET metadata_blocked=0,metadata_revision=metadata_revision+1,title=?,sort_title=?,overview=?,genres=?,poster_path=?,backdrop_path=?,external_id=?,year=?,updated_at=? WHERE id=?`)
+    this.db.prepare(`UPDATE media SET metadata_blocked=0,metadata_revision=metadata_revision+1,title=?,sort_title=?,overview=?,genres=?,poster_path=?,backdrop_path=?,external_id=?,year=?,updated_at=? WHERE id IN (${MEDIA_ALIASES})`)
       .run(data.title ?? current.title,(data.title ?? current.title).toLowerCase(),data.overview ?? current.overview,data.genres ?? current.genres,data.poster_path ?? current.poster_path,data.backdrop_path ?? current.backdrop_path,data.external_id ?? current.external_id,data.year ?? current.year,Date.now(),id);
   }
 
   clearExternalMetadata(id: number, parsed: {title: string; year: number|null}) {
-    this.db.prepare(`UPDATE media SET title=?,sort_title=?,year=?,overview=NULL,genres=NULL,poster_path=NULL,backdrop_path=NULL,external_id=NULL,metadata_blocked=1,metadata_revision=metadata_revision+1,updated_at=? WHERE id=?`)
+    this.db.prepare(`UPDATE media SET title=?,sort_title=?,year=?,overview=NULL,genres=NULL,poster_path=NULL,backdrop_path=NULL,external_id=NULL,metadata_blocked=1,metadata_revision=metadata_revision+1,updated_at=? WHERE id IN (${MEDIA_ALIASES})`)
       .run(parsed.title, parsed.title.toLowerCase(), parsed.year, Date.now(), id);
     return this.getMedia(id);
   }
 
   clearAllExternalMetadata() {
-    const rows = this.db.prepare('SELECT id,path FROM media').all() as Array<{id:number;path:string}>;
+    const rows = this.db.prepare(`SELECT MIN(id) AS id,path FROM media GROUP BY path ${process.platform==='win32'?'COLLATE NOCASE':''}`).all() as Array<{id:number;path:string}>;
     this.db.exec('BEGIN IMMEDIATE');
     try {
       for (const row of rows) this.clearExternalMetadata(row.id, parseMediaName(row.path));
@@ -434,7 +444,8 @@ export class VireloDB {
       ORDER BY (m.path=(SELECT path FROM media WHERE id=?) ${process.platform==='win32'?'COLLATE NOCASE':''}) DESC,shorts_rank(m.id,?),m.id LIMIT ? OFFSET ?
     `).all(...joins.params,...visible.params, startId, Number.isFinite(options.seed) ? Number(options.seed) >>> 0 : 0, limit, offset) as unknown as ShortsItem[];
     const total = Number((this.db.prepare(`SELECT COUNT(*) c FROM media m WHERE ${visible.sql} AND ${cond}`).get(...visible.params) as {c:number}).c);
-    return { items, total };
+    const start=startId?this.getMedia(startId,scope):undefined;
+    return { items, total, ...(start&&items[0]&&this.pathKey(items[0].path)===this.pathKey(start.path)?{startId:items[0].id}:{}) };
   }
 
   getFolders(scope?: CatalogScope): FolderEntry[] {

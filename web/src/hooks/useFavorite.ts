@@ -7,6 +7,7 @@ interface FavoriteState { liked: boolean; pending: boolean; error: string }
 const mediaKeys = new Set(['home', 'media', 'shorts', 'related', 'watch-queue', 'queue', 'favorites']);
 
 export function useFavorite(item: MediaItem) {
+  item={...item,id:item.canonical_id??item.id};
   const client = useQueryClient();
   const key = ['favorite-state', item.id] as const;
   const fallback: FavoriteState = { liked: Boolean(item.liked), pending: false, error: '' };

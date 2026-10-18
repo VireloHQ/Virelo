@@ -73,6 +73,83 @@ test('rescan recreates a removed thumbnail directory and missing technical detai
   const next=await f.scan();assert.equal(next.skipped,1);assert.equal(next.thumbnailsRepaired,0,'silent videos do not endlessly reprobe a missing audio track');
 });
 
+test('changed videos refresh their thumbnail without deleting old cache folders or personal state',async t=>{
+  const f=await fixture(t);if(!f)return;
+  const before=await fingerprint(f.item.thumbnail_path);
+  f.db.setLike(f.item.id,true);f.db.setProgress(f.item.id,2,4);
+  const cache=join(f.data,'cache','hls',String(f.item.id));await mkdir(cache,{recursive:true});
+  await writeFile(join(cache,'notes.txt'),'not a generated file');
+  execFileSync(process.env.FFMPEG_PATH||'ffmpeg',['-y','-hide_banner','-loglevel','error','-f','lavfi','-i','color=c=red:s=640x360:r=5:d=4','-c:v','libx264','-preset','ultrafast','-pix_fmt','yuv420p',f.source],{windowsHide:true});
+  const original=await fingerprint(f.source),result=await f.scan(),after=f.db.getMedia(f.item.id);
+  assert.notEqual((await fingerprint(after.thumbnail_path)).sha256,before.sha256,'the thumbnail follows the changed source');
+  assert.equal(after.width,640);assert.equal(after.liked,1);assert.equal(after.progress_position,2);
+  assert.deepEqual(await fingerprint(f.source),original);
+  assert.equal(await readFile(join(cache,'notes.txt'),'utf8'),'not a generated file');
+  assert.equal(result.errors,0);
+});
+
+test('rescanning a changed file never recursively deletes through a legacy cache junction',async t=>{
+  const f=await fixture(t);if(!f)return;
+  const originals=join(f.root,'originals'),protectedFolder=join(originals,String(f.item.id)),file=join(protectedFolder,'Original.mp4');
+  await mkdir(protectedFolder,{recursive:true});await writeFile(file,'original video bytes');
+  await mkdir(join(f.data,'cache'));await symlink(originals,join(f.data,'cache','hls'),process.platform==='win32'?'junction':'dir');
+  f.db.db.prepare('UPDATE media SET mtime=0 WHERE id=?').run(f.item.id);
+  const before=await fingerprint(file);await f.scan();assert.deepEqual(await fingerprint(file),before);
+});
+
+test('progress counts completed videos, and failed thumbnails are not counted as skipped',async t=>{
+  const f=await fixture(t);if(!f)return;
+  await rm(f.item.thumbnail_path);
+  const result=status(),observed=[];let message='';
+  Object.defineProperty(result,'message',{get:()=>message,set:value=>{message=value;if(value.startsWith('Restoring thumbnail'))observed.push(result.scanned);}});
+  await scanLibrary(f.db,f.library,f.data,result);
+  assert.deepEqual(observed,[0]);assert.equal(result.scanned,1);
+  await rm(f.item.thumbnail_path);await writeFile(f.source,'invalid video');
+  await f.scan();
+  const failed=await f.scan();assert.equal(failed.errors,1);assert.equal(failed.skipped,0);assert.equal(failed.scanned,1);
+});
+
+test('rescans detect nonempty corrupt and truncated image containers',async t=>{
+  const f=await fixture(t);if(!f)return;
+  const valid=await readFile(f.item.thumbnail_path);
+  for(const damaged of [Buffer.from('not an image'),valid.subarray(0,valid.length-20)]){
+    await writeFile(f.item.thumbnail_path,damaged);
+    const result=await f.scan();assert.equal(result.thumbnailsRepaired,1);assert.equal(result.errors,0);
+    assert.deepEqual(await readFile(f.item.thumbnail_path),valid);
+  }
+});
+
+test('videos shorter than one tenth of a second still get a thumbnail',async t=>{
+  const f=await fixture(t);if(!f)return;
+  const source=join(f.media,'Tiny.mp4');
+  execFileSync(process.env.FFMPEG_PATH||'ffmpeg',['-hide_banner','-loglevel','error','-f','lavfi','-i','color=c=red:s=160x90:r=25:d=0.04','-c:v','libx264','-preset','ultrafast','-pix_fmt','yuv420p',source],{windowsHide:true});
+  const result=await f.scan();assert.equal(result.added,1);assert.equal(result.errors,0);assert.equal(result.thumbnailsGenerated,1);
+  assert.ok((await stat(f.db.getMediaByPath(source).thumbnail_path)).size>0);
+});
+
+test('a failed refresh cannot leave an old thumbnail permanently trusted',async t=>{
+  const f=await fixture(t);if(!f)return;
+  const command=process.env.FFMPEG_PATH;
+  f.db.db.prepare('UPDATE media SET mtime=0 WHERE id=?').run(f.item.id);
+  try{
+    process.env.FFMPEG_PATH=join(f.root,'unavailable-ffmpeg');
+    const failed=await f.scan();assert.equal(failed.errors,1);assert.equal(f.db.getMedia(f.item.id).thumbnail_path,null);
+  }finally{if(command===undefined)delete process.env.FFMPEG_PATH;else process.env.FFMPEG_PATH=command;}
+  const retried=await f.scan();assert.equal(retried.errors,0);assert.equal(retried.thumbnailsGenerated,1);
+  assert.ok(f.db.getMedia(f.item.id).thumbnail_path);
+});
+
+test('failed probing of a changed source leaves technical details retryable rather than restoring stale dimensions',async t=>{
+  const f=await fixture(t);if(!f)return;
+  const command=process.env.FFPROBE_PATH;
+  f.db.db.prepare('UPDATE media SET mtime=0 WHERE id=?').run(f.item.id);
+  try{
+    process.env.FFPROBE_PATH=join(f.root,'unavailable-ffprobe');
+    await f.scan();assert.equal(f.db.getMedia(f.item.id).width,null);
+  }finally{if(command===undefined)delete process.env.FFPROBE_PATH;else process.env.FFPROBE_PATH=command;}
+  await f.scan();assert.equal(f.db.getMedia(f.item.id).width,320);
+});
+
 test('Windows rescans repair every historical path alias without losing IDs or personal state',{skip:process.platform!=='win32'},async t=>{
   const f=await fixture(t);if(!f)return;
   const columns=f.db.db.prepare('PRAGMA table_info(media)').all().map(column=>column.name).filter(name=>!['id','path'].includes(name));
@@ -146,7 +223,7 @@ test('rescan repairs missing downloaded artwork only when enabled and respects c
     requests++;const url=String(input);
     if(url.includes('/catalog/movie/'))return Response.json({metas:[{id:'fixture',name:'Example'}]});
     if(url.endsWith('/meta/movie/fixture.json'))return Response.json({meta:{id:'fixture',name:'Example',poster:'https://images.example/poster.jpg',background:'https://images.example/backdrop.jpg'}});
-    if(url.startsWith('https://images.example/'))return new Response(new Uint8Array([255,216,255,217]),{headers:{'content-type':'image/jpeg'}});
+    if(url.startsWith('https://images.example/'))return new Response(Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a4nUAAAAASUVORK5CYII=','base64'),{headers:{'content-type':'image/png'}});
     throw Error('Unexpected request: '+url);
   };
   try{

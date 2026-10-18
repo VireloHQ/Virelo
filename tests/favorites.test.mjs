@@ -30,6 +30,7 @@ test('favorites updates patch every shelf and virtualized Shorts page without mo
   assert.deepEqual(patchFavoriteData(patched, 1, false), data);
   assert.equal(patchFavoriteData(item(1), 1, true).liked, 1);
   assert.equal(patchFavoriteData(undefined, 1, true), undefined);
+  assert.equal(patchFavoriteData({...item(2),canonical_id:1},1,true).liked,1,'historical links share canonical favorite state');
 });
 
 test('Home saves exact episodes and Shorts once, and removes only the selected favorite', () => {

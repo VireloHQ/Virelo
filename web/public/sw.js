@@ -2,6 +2,7 @@ const CACHE_NAME = 'virelo-shell-transparent-1';
 
 function responseKind(request, url) {
   if (/^\/(?:api|hls|audio|playback|media)(?:\/|$)/.test(url.pathname)) return null;
+  if (url.pathname === '/startup.js') return 'script';
   if (url.pathname === '/assets' || url.pathname.startsWith('/assets/')) {
     if (/\.m?js$/i.test(url.pathname)) return 'script';
     if (/\.css$/i.test(url.pathname)) return 'style';

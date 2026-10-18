@@ -32,7 +32,7 @@ test('matches free metadata and replaces generated artwork for an episode', asyn
         } });
       }
       if (url.startsWith('https://images.example/')) {
-        return new Response(new Uint8Array([0xff, 0xd8, 0xff, 0xd9]), { headers: { 'content-type': 'image/jpeg' } });
+        return new Response(Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a4nUAAAAASUVORK5CYII=','base64'), { headers: { 'content-type': 'image/png' } });
       }
       throw new Error(`Unexpected request: ${url}`);
     };

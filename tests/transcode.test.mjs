@@ -4,7 +4,7 @@ import { mkdtemp, mkdir, writeFile, rm, stat, readdir, readFile, utimes } from '
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
-import { startAdaptiveTranscode, stopAllTranscodes, transcodeStatus, startHlsTranscode } from '../dist/transcode.js';
+import { extractSubtitleVtt, startAdaptiveTranscode, stopAllTranscodes, transcodeStatus, startHlsTranscode } from '../dist/transcode.js';
 import { mediaPlaylist, demandManifest, demandSegment, clearPlaybackCache } from '../dist/demand-playback.js';
 import { DemandCache } from '../dist/demand-cache.js';
 import { hasFfmpeg } from '../dist/ffmpeg.js';
@@ -83,4 +83,28 @@ test('missing sources report a preparation error without starting endless jobs',
   const root=await mkdtemp(join(tmpdir(),'virelo-demand-error-'));
   try{assert.equal((await startHlsTranscode(root,3,join(root,'missing.mp4'))).status,'error');assert.equal(transcodeStatus(root,3).status,'error');}
   finally{await stopAllTranscodes(root);await rm(root,{recursive:true,force:true});}
+});
+
+test('subtitle extraction shares complete atomic results and changes its cache key with the source',async t=>{
+  if(!await hasFfmpeg())return t.skip('FFmpeg is unavailable');
+  const root=await mkdtemp(join(tmpdir(),'virelo-subtitle-cache-'));
+  t.after(()=>rm(root,{recursive:true,force:true}));
+  const source=join(root,'source.mkv'),caption=join(root,'captions.srt');
+  const generate=async text=>{
+    await writeFile(caption,`1\n00:00:00,000 --> 00:00:01,000\n${text}\n`);
+    execFileSync(process.env.FFMPEG_PATH||'ffmpeg',['-y','-hide_banner','-loglevel','error','-f','lavfi','-i','color=c=black:s=160x90:r=5:d=2','-i',caption,'-c:v','libx264','-preset','ultrafast','-c:s','srt',source],{windowsHide:true});
+  };
+  await generate('First caption');
+  const firstBytes=await readFile(source),firstStat=await stat(source);
+  const [first,concurrent]=await Promise.all([extractSubtitleVtt(root,1,source,1),extractSubtitleVtt(root,1,source,1)]);
+  assert.equal(first.path,concurrent.path);assert.match(await readFile(first.path,'utf8'),/^WEBVTT[\s\S]*First caption/);
+  assert.deepEqual(await readdir(join(first.path,'..')),['1.vtt']);
+  assert.deepEqual(await readFile(source),firstBytes);assert.equal((await stat(source)).mtimeMs,firstStat.mtimeMs);
+  await generate('Replacement caption with different text');
+  const next=await extractSubtitleVtt(root,1,source,1);
+  assert.notEqual(next.path,first.path);assert.match(await readFile(next.path,'utf8'),/Replacement caption/);
+  await writeFile(next.path,'');
+  await extractSubtitleVtt(root,1,source,1);assert.match(await readFile(next.path,'utf8'),/^WEBVTT/);
+  await assert.rejects(extractSubtitleVtt(root,1,source,99));
+  assert.deepEqual(await readdir(join(next.path,'..')),['1.vtt'],'failed conversions leave no partial files');
 });

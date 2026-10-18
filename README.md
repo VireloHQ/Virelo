@@ -194,11 +194,16 @@ previous media library, or contains filesystem links.
 Virelo is a player: it never deletes, moves, renames or edits source video files.
 
 **Scan** also checks the files behind cached images, even when source videos have
-not changed. Missing or empty thumbnails are regenerated, and missing technical
-details are probed again. Missing downloaded artwork is fetched again when online
+not changed. Missing, empty or invalid/truncated image containers are regenerated,
+and missing technical details are probed again. Changed videos get fresh thumbnails;
+short clips fall back to their first frame if necessary. Cached image checks inspect
+container headers and endings, not every decoded pixel. Missing downloaded artwork is fetched again when online
 metadata and images are enabled; manually cleared metadata stays cleared. The
-scan result reports checked videos, additions, updates, restored thumbnails and
-errors. Lists and failed images refresh after completion without a page reload.
+scan result reports completed video checks, additions, updates, newly generated
+and restored thumbnails, and errors (including failed artwork downloads).
+Lists and failed images refresh after completion without a page reload. A playing
+Shorts feed keeps its ordering until you leave it, so a scan cannot switch its video.
+Source changes use a separate subtitle cache key rather than deleting cache folders.
 
 ## 🔐 Network access
 

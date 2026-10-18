@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { createRequire } from 'node:module';
 import { execFileSync } from 'node:child_process';
-import { mkdtemp, mkdir, readFile, rm, stat } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, rm, stat, copyFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -23,6 +23,7 @@ try{
   server.db.updateSettings({libraryWatchEnabled:false,externalMetadataEnabled:false});
   const setup=await server.app.inject({method:'POST',url:'/api/auth/setup',headers:{'x-virelo-request':'1'},payload:{username:'owner',password:'1'}});
   assert.equal(setup.statusCode,200,setup.body);
+  await server.app.inject({method:'POST',url:'/api/settings',headers:{'x-virelo-request':'1',cookie:setup.headers['set-cookie'].split(';')[0]},payload:{libraryWatchEnabled:false,externalMetadataEnabled:false}});
   await server.runScan();while(server.scanStatus.running)await new Promise(done=>setTimeout(done,10));
   assert.equal(server.scanStatus.thumbnailsGenerated,1);assert.equal(server.scanStatus.thumbnailsRepaired,0);
   assert.match(server.scanStatus.message,/1 thumbnail generated · 0 thumbnails restored/);
@@ -142,6 +143,45 @@ try{
   assert.equal(server.scanStatus.thumbnailsGenerated,0);assert.equal(server.scanStatus.thumbnailsRepaired,0);
   assert.match(server.scanStatus.message,/0 thumbnails generated · 0 thumbnails restored/);
   console.log('scan labels: initial generation, restoration, completion counts and counter reset are distinct');
+  const portrait=join(media,'Portrait.mp4');
+  execFileSync(process.env.VIRELO_TEST_FFMPEG||'ffmpeg',['-hide_banner','-loglevel','error','-f','lavfi','-i','color=c=0x334455:s=160x240:r=5:d=60','-c:v','libx264','-preset','ultrafast','-pix_fmt','yuv420p',portrait],{windowsHide:true});
+  await server.runScan();while(server.scanStatus.running)await new Promise(done=>setTimeout(done,10));
+  const short=server.db.getMediaByPath(portrait);
+  const future=Number(server.db.db.prepare('SELECT MAX(id)+1 AS id FROM media').get().id);
+  let seed=0;
+  while(server.db.db.prepare('SELECT shorts_rank(?,?) < shorts_rank(?,?) AS before').get(future,seed,short.id,seed).before!==1)seed++;
+  await context.addInitScript(seed=>{const original=crypto.getRandomValues.bind(crypto);crypto.getRandomValues=value=>{if(value instanceof Uint32Array&&value.length===1){value[0]=seed;return value;}return original(value);};},seed);
+  await page.goto(base+'/shorts');await page.locator('.short-video').first().waitFor();
+  await page.waitForFunction(()=>document.querySelector('.short-video')?.currentTime>0);
+  await page.evaluate(()=>{window.__auditShort=document.querySelector('.short-video');});
+  let feedRequests=0;page.on('request',request=>{if(new URL(request.url()).pathname==='/api/shorts')feedRequests++;});
+  await copyFile(portrait,join(media,'New portrait.mp4'));
+  const lastFinished=server.scanStatus.finishedAt;
+  // Capture the old timestamp before the asynchronous scan updates the server status.
+  const observed=page.waitForResponse(async response=>new URL(response.url()).pathname==='/api/scan/status'&&(await response.json()).finishedAt>lastFinished);
+  await page.request.post(base+'/api/scan',{headers:{'x-virelo-request':'1'}});
+  await observed;await page.waitForTimeout(500);
+  assert.equal(feedRequests,0,'scan completion must not reshuffle the active infinite Shorts feed');
+  assert.equal(await page.evaluate(()=>window.__auditShort===document.querySelector('.short-video')),true);
+  assert.equal(server.db.getShorts({seed}).items[0].id,future,'the regression fixture would insert the new video before the playing one');
+  if(process.platform==='win32'){
+    const columns=server.db.db.prepare('PRAGMA table_info(media)').all().map(column=>column.name).filter(name=>!['id','path'].includes(name));
+    const alias=Number(server.db.db.prepare(`INSERT INTO media(path,${columns.join(',')}) SELECT ?,${columns.join(',')} FROM media WHERE id=?`).run(portrait.toLowerCase(),short.id).lastInsertRowid);
+    await page.goto(base+'/shorts?startId='+alias);await page.locator('.short-video').first().waitFor();
+    assert.equal(await page.locator('.short-info h2').innerText(),'Portrait');
+  }
+  console.log('shorts: scan completion preserves the playing video and historical case-alias deep links remain usable');
+  const offlineContext=await browser.newContext({serviceWorkers:'allow'}),offline=await offlineContext.newPage();offline.setDefaultTimeout(20000);
+  await offline.goto(base);await offline.getByRole('heading',{name:'Welcome back',exact:true}).waitFor();
+  await offline.waitForFunction(()=>Boolean(navigator.serviceWorker.controller));
+  await offline.reload();await offline.getByRole('heading',{name:'Welcome back',exact:true}).waitFor();
+  const entry=await offline.locator('script[type="module"]').getAttribute('src');
+  await offline.waitForFunction(async entry=>{const cache=await caches.open('virelo-shell-transparent-1');return Boolean(await cache.match(entry))&&Boolean(await cache.match('/startup.js'))&&Boolean(await cache.match('/'));},entry);
+  await offline.evaluate(async entry=>{await (await caches.open('virelo-shell-transparent-1')).delete(entry);},entry);
+  await offlineContext.setOffline(true);await offline.reload();
+  await offline.locator('#startup-error').waitFor({state:'visible'});
+  await offlineContext.close();
+  console.log('offline: cached recovery works even when the entry module is unavailable and the server cannot be reached');
 }catch(error){
   if(page&&!page.isClosed())await page.screenshot({path:join(repo,'node_modules/.cache/rescan-failure.png')}).catch(()=>{});
   throw error;

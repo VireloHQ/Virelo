@@ -1,4 +1,4 @@
-import { readdir, rm, stat } from 'node:fs/promises';
+import { readdir, stat } from 'node:fs/promises';
 import { basename, dirname, extname, join, relative, resolve } from 'node:path';
 import type { VireloDB } from './db.js';
 import type { CatalogScope } from './auth-types.js';
@@ -64,39 +64,39 @@ async function mapLimit<T>(items: T[], limit: number, worker: (item:T)=>Promise<
   await Promise.all(Array.from({ length: Math.min(limit, Math.max(items.length,1)) }, run));
 }
 
-async function repairImages(db:VireloDB,record:MediaRecord,dataDir:string,status:ScanStatus){
+async function repairImages(db:VireloDB,record:MediaRecord,dataDir:string,status:ScanStatus,sourceChanged=false){
   const [thumbnail,poster,backdrop]=await Promise.all([
     imageFileExists(record.thumbnail_path),imageFileExists(record.poster_path),imageFileExists(record.backdrop_path)
   ]);
   const missingPoster=Boolean(record.poster_path&&!poster),missingBackdrop=Boolean(record.backdrop_path&&!backdrop);
   if(missingPoster||missingBackdrop)db.clearMissingArtwork(record.id,missingPoster,missingBackdrop);
-  if(thumbnail){
+  if(thumbnail&&!sourceChanged){
     const shared=db.shareThumbnail(record.path,record.thumbnail_path!);
     if(shared)status.thumbnailsRepaired=(status.thumbnailsRepaired??0)+1;
-    return missingPoster||missingBackdrop||shared>0;
+    return missingPoster||missingBackdrop||shared>0?'updated':'unchanged';
   }
-  const restoring=Boolean(record.thumbnail_path);
+  const restoring=Boolean(record.thumbnail_path)&&!sourceChanged;
   status.message=`${restoring?'Restoring':'Generating'} thumbnail · ${record.filename}`;
+  if(sourceChanged)db.shareThumbnail(record.path,null,true);
   const target=join(dataDir,'thumbnails',`${record.id}.jpg`);
-  if(await makeThumbnail(record.path,target,record.duration)){
+  if(await makeThumbnail(record.path,target,record.duration,sourceChanged||!record.thumbnail_path)){
     db.shareThumbnail(record.path,target,true);
     const counter=restoring?'thumbnailsRepaired':'thumbnailsGenerated';
     status[counter]=(status[counter]??0)+1;
-    return true;
+    return 'updated';
   }
   status.errors++;
-  return missingPoster||missingBackdrop;
+  return 'failed';
 }
 
 export async function scanLibrary(db: VireloDB, library: Library, dataDir: string, status: ScanStatus) {
   const files: string[] = [];
   const complete = await collectFiles(library.path, files);
   if (!complete) status.errors++;
-  status.total += files.length;
+  const owned=files.filter(path=>db.libraryForPath(path)?.id===library.id);
+  status.total += owned.length;
   const existingPaths = new Set(files);
-  await mapLimit(files, 4, async (path) => {
-    if (db.libraryForPath(path)?.id !== library.id) return;
-    status.scanned++;
+  await mapLimit(owned, 4, async (path) => {
     try {
       const info = await stat(path);
       const previous = db.getMediaByPath(path);
@@ -109,10 +109,13 @@ export async function scanLibrary(db: VireloDB, library: Library, dataDir: strin
             Object.assign(previous,db.getMedia(previous.id));updated=true;
           }
         }
-        if(await repairImages(db,previous,dataDir,status)||updated)status.updated++;else status.skipped++;
+        const images=await repairImages(db,previous,dataDir,status);
+        if(images==='updated'||updated)status.updated++;
+        else if(images==='unchanged')status.skipped++;
         return;
       }
       const parsed = parseMediaName(path);
+      const sourceChanged=Boolean(previous&&(previous.mtime!==Math.trunc(info.mtimeMs)||previous.size!==info.size));
       const probe = await probeMedia(path);
       const parent = dirname(path);
       let folder = '';
@@ -131,11 +134,11 @@ export async function scanLibrary(db: VireloDB, library: Library, dataDir: strin
         season: parsed.season,
         episode: parsed.episode,
         year: parsed.year,
-        duration: probe?.duration ?? previous?.duration ?? null,
-        width: probe?.width ?? previous?.width ?? null,
-        height: probe?.height ?? previous?.height ?? null,
-        video_codec: probe?.videoCodec ?? previous?.video_codec ?? null,
-        audio_codec: probe?.audioCodec ?? previous?.audio_codec ?? null,
+        duration: probe?.duration ?? (sourceChanged?null:previous?.duration) ?? null,
+        width: probe?.width ?? (sourceChanged?null:previous?.width) ?? null,
+        height: probe?.height ?? (sourceChanged?null:previous?.height) ?? null,
+        video_codec: probe?.videoCodec ?? (sourceChanged?null:previous?.video_codec) ?? null,
+        audio_codec: probe?.audioCodec ?? (sourceChanged?null:previous?.audio_codec) ?? null,
         container: probe?.container ?? extname(path).slice(1),
         folder,
         size: info.size,
@@ -147,12 +150,11 @@ export async function scanLibrary(db: VireloDB, library: Library, dataDir: strin
         genres: previous?.genres ?? null,
         external_id: previous?.external_id ?? null
       });
-      if (previous) await rm(join(dataDir, 'cache', 'hls', String(record.id)), { recursive: true, force: true }).catch(() => undefined);
-      await repairImages(db,record,dataDir,status);
+      await repairImages(db,record,dataDir,status,sourceChanged);
       if (previous) status.updated++; else status.added++;
     } catch {
       status.errors++;
-    }
+    } finally {status.scanned++;}
   });
   if (complete) db.deleteMissingForLibrary(library.id, existingPaths);
 }

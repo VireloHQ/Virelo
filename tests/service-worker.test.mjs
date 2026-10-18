@@ -113,6 +113,16 @@ test('valid shell assets return immediately while waitUntil owns the cache write
   assert.deepEqual(sw.calls.put, [origin + '/assets/route-old.js']);
 });
 
+test('the standalone startup recovery script remains available offline',async()=>{
+  const sw=worker(),stored=sw.fetch('/startup.js',{destination:'script'});
+  assert.equal((await stored.response).status,200);await stored.done;
+  assert.deepEqual(sw.calls.put,[origin+'/startup.js']);
+  const offline=worker({network:async()=>{throw Error('offline');}});
+  offline.seed('/startup.js',response('// standalone recovery'));
+  const cached=offline.fetch('/startup.js',{destination:'script'});
+  assert.equal(await (await cached.response).text(),'// standalone recovery');await cached.done;
+});
+
 test('network errors, HTTP failures and incorrect MIME fall back to the exact cached module', async () => {
   for (const network of [
     async () => { throw new Error('offline'); },

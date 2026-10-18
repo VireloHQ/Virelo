@@ -132,7 +132,7 @@ export async function createVireloServer(config: RuntimeConfig, pickFolder: (sig
           const result = await refreshMissingMetadata(db, config.dataDir, (done, total) => {
             scanStatus.message = `Matching metadata · ${done}/${total}`;
           }, scope);
-          scanStatus.errors+=result.failed;
+          scanStatus.errors+=result.failed+result.artworkFailed;
           if(result.attempted)metadataSummary=` · ${result.updated} metadata matches`;
         }
         scanStatus.message = `Scan complete · ${scanStatus.scanned} checked · ${scanStatus.added} added · ${scanStatus.updated} updated · ${scanStatus.thumbnailsGenerated} thumbnail${scanStatus.thumbnailsGenerated===1?'':'s'} generated · ${scanStatus.thumbnailsRepaired} thumbnail${scanStatus.thumbnailsRepaired===1?'':'s'} restored${metadataSummary} · ${scanStatus.errors} errors`;

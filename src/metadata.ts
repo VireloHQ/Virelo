@@ -5,7 +5,7 @@ import { Readable } from 'node:stream';
 import type { ReadableStream as NodeReadableStream } from 'node:stream/web';
 import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
-import { imageFileExists, prepareImageDirectory } from './image-files.js';
+import { imageFileExists, prepareGeneratedFile } from './image-files.js';
 import type { VireloDB } from './db.js';
 import type { MediaRecord } from './types.js';
 
@@ -51,7 +51,7 @@ async function fetchJson<T>(url: string): Promise<T> {
 
 async function download(url: string, target: string) {
   if (await imageFileExists(target)) return;
-  await prepareImageDirectory(target);
+  await prepareGeneratedFile(target);
   const parsed = new URL(url);
   if (parsed.protocol !== 'https:') throw new Error('Artwork URL must use HTTPS.');
   const response = await fetch(parsed, { redirect: 'follow', signal: AbortSignal.timeout(REQUEST_TIMEOUT) });
@@ -61,8 +61,8 @@ async function download(url: string, target: string) {
   const temporary = `${target}.${randomUUID()}.tmp`;
   try {
     await pipeline(Readable.fromWeb(response.body as unknown as NodeReadableStream), createWriteStream(temporary));
-    if(!await imageFileExists(temporary))throw Error('Artwork download was empty.');
-    await prepareImageDirectory(target);
+    if(!await imageFileExists(temporary))throw Error('Artwork download was not a supported image.');
+    await prepareGeneratedFile(target);
     await rename(temporary, target);
   } catch (error) {
     await rm(temporary, { force: true }).catch(() => undefined);
@@ -95,7 +95,7 @@ function chooseCinemetaMatch(results: CinemetaPreview[], query: string, expected
     .sort((a, b) => b.score - a.score)[0]?.item;
 }
 
-async function refreshCinemetaMetadata(db: VireloDB, dataDir: string, media: MediaRecord) {
+async function refreshCinemetaMetadata(db: VireloDB, dataDir: string, media: MediaRecord, onArtworkFailure?:()=>void) {
   const type = media.kind === 'series' ? 'series' : 'movie';
   const query = media.kind === 'series' && media.series_title ? media.series_title : media.title;
   const searchUrl = `${CINEMETA_API}/catalog/${type}/top/search=${encodeURIComponent(query)}.json`;
@@ -115,14 +115,14 @@ async function refreshCinemetaMetadata(db: VireloDB, dataDir: string, media: Med
   let backdropPath = media.backdrop_path;
   if (settings.externalImagesEnabled) {
     if (metadata.poster) {
-      const target = join(dataDir, 'artwork', `cinemeta-${match.id}-poster.jpg`);
-      try { await download(metadata.poster, target); posterPath = target; } catch { /* metadata remains useful without artwork */ }
+      const target = join(dataDir, 'artwork', `cinemeta-${encodeURIComponent(match.id)}-poster.jpg`);
+      try { await download(metadata.poster, target); posterPath = target; } catch { onArtworkFailure?.(); }
     }
     const backdrop = episode?.thumbnail || metadata.background;
     if (backdrop) {
       const suffix = episode ? `-s${media.season}-e${media.episode}` : '';
-      const target = join(dataDir, 'artwork', `cinemeta-${match.id}${suffix}-backdrop.jpg`);
-      try { await download(backdrop, target); backdropPath = target; } catch { /* metadata remains useful without artwork */ }
+      const target = join(dataDir, 'artwork', `cinemeta-${encodeURIComponent(match.id)}${suffix}-backdrop.jpg`);
+      try { await download(backdrop, target); backdropPath = target; } catch { onArtworkFailure?.(); }
     }
   }
 
@@ -143,7 +143,7 @@ async function refreshCinemetaMetadata(db: VireloDB, dataDir: string, media: Med
   return db.getMedia(media.id);
 }
 
-async function refreshTmdbMetadata(db: VireloDB, dataDir: string, media: MediaRecord, apiKey: string) {
+async function refreshTmdbMetadata(db: VireloDB, dataDir: string, media: MediaRecord, apiKey: string, onArtworkFailure?:()=>void) {
   const settings = db.getSettings();
   const type = media.kind === 'series' ? 'tv' : 'movie';
   const query = media.kind === 'series' && media.series_title ? media.series_title : media.title;
@@ -169,13 +169,13 @@ async function refreshTmdbMetadata(db: VireloDB, dataDir: string, media: MediaRe
   let backdropPath = media.backdrop_path;
   if (settings.externalImagesEnabled) {
     if (details.poster_path) {
-      const target = join(dataDir, 'artwork', `tmdb-${type}-${details.id}-poster.jpg`);
-      try { await download(`${TMDB_IMAGE}/w780${details.poster_path}`, target); posterPath = target; } catch { /* metadata remains useful without artwork */ }
+      const target = join(dataDir, 'artwork', `tmdb-${type}-${encodeURIComponent(String(details.id))}-poster.jpg`);
+      try { await download(`${TMDB_IMAGE}/w780${details.poster_path}`, target); posterPath = target; } catch { onArtworkFailure?.(); }
     }
     const backdrop = content.still_path || details.backdrop_path;
     if (backdrop) {
       const target = join(dataDir, 'artwork', `${media.id}-backdrop.jpg`);
-      try { await download(`${TMDB_IMAGE}/w1280${backdrop}`, target); backdropPath = target; } catch { /* metadata remains useful without artwork */ }
+      try { await download(`${TMDB_IMAGE}/w1280${backdrop}`, target); backdropPath = target; } catch { onArtworkFailure?.(); }
     }
   }
 
@@ -196,7 +196,7 @@ async function refreshTmdbMetadata(db: VireloDB, dataDir: string, media: MediaRe
   return db.getMedia(media.id);
 }
 
-export async function refreshMetadata(db: VireloDB, dataDir: string, mediaId: number, manual = true) {
+export async function refreshMetadata(db: VireloDB, dataDir: string, mediaId: number, manual = true, onArtworkFailure?:()=>void) {
   const settings = db.getSettings();
   if (!settings.externalMetadataEnabled) throw new Error('Online metadata is disabled. Enable it in Settings first.');
   const media = db.getMedia(mediaId);
@@ -204,19 +204,20 @@ export async function refreshMetadata(db: VireloDB, dataDir: string, mediaId: nu
   if (!manual && media.metadata_blocked) return media;
   const tmdbApiKey = settings.tmdbApiKey || process.env.VIRELO_TMDB_API_KEY?.trim();
   return tmdbApiKey
-    ? refreshTmdbMetadata(db, dataDir, media, tmdbApiKey)
-    : refreshCinemetaMetadata(db, dataDir, media);
+    ? refreshTmdbMetadata(db, dataDir, media, tmdbApiKey,onArtworkFailure)
+    : refreshCinemetaMetadata(db, dataDir, media,onArtworkFailure);
 }
 
 export async function refreshMissingMetadata(db: VireloDB, dataDir: string, onProgress?: (done: number, total: number) => void, scope?: import('./auth-types.js').CatalogScope) {
   const settings = db.getSettings();
-  if (!settings.externalMetadataEnabled) return { attempted: 0, updated: 0, failed: 0 };
+  if (!settings.externalMetadataEnabled) return { attempted: 0, updated: 0, failed: 0, artworkFailed:0 };
   const candidates = db.listMetadataCandidates(5000, settings.externalImagesEnabled, scope);
   let updated = 0;
   let failed = 0;
+  let artworkFailed=0;
   for (let index = 0; index < candidates.length; index++) {
     try {
-      await refreshMetadata(db, dataDir, candidates[index].id, false);
+      await refreshMetadata(db, dataDir, candidates[index].id, false,()=>artworkFailed++);
       updated++;
     } catch {
       failed++;
@@ -224,5 +225,5 @@ export async function refreshMissingMetadata(db: VireloDB, dataDir: string, onPr
     onProgress?.(index + 1, candidates.length);
     if (index + 1 < candidates.length) await new Promise((resolve) => setTimeout(resolve, 150));
   }
-  return { attempted: candidates.length, updated, failed };
+  return { attempted: candidates.length, updated, failed, artworkFailed };
 }

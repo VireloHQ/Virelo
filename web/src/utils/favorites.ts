@@ -5,7 +5,7 @@ export function patchFavoriteData(data: unknown, id: number, liked: boolean): un
   if (Array.isArray(data)) return data.map(value => patchFavoriteData(value, id, liked));
   if (!data || typeof data !== 'object') return data;
   const record = data as Record<string, unknown>;
-  if (record.id === id && typeof record.title === 'string') return { ...record, liked: Number(liked) };
+  if ((record.id === id || record.canonical_id === id) && typeof record.title === 'string') return { ...record, liked: Number(liked) };
   return Object.fromEntries(Object.entries(record).map(([key, value]) =>
     [key, Array.isArray(value) ? patchFavoriteData(value, id, liked) : value]));
 }
