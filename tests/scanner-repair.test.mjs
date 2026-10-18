@@ -9,6 +9,7 @@ import { VireloDB } from '../dist/db.js';
 import { scanLibrary } from '../dist/scanner.js';
 import { hasFfmpeg, hasFfprobe, makeThumbnail } from '../dist/ffmpeg.js';
 import { refreshMissingMetadata } from '../dist/metadata.js';
+import { Accounts, hashPassword } from '../dist/accounts.js';
 
 const status=()=>({running:true,total:0,scanned:0,added:0,updated:0,skipped:0,thumbnailsRepaired:0,errors:0,message:''});
 const fingerprint=async path=>({sha256:createHash('sha256').update(await readFile(path)).digest('hex'),mtime:(await stat(path)).mtimeMs});
@@ -58,6 +59,50 @@ test('rescan recreates a removed thumbnail directory and missing technical detai
   assert.equal(item.width,320);assert.equal(item.height,180);assert.equal(item.video_codec,'h264');assert.ok(item.duration>0);
   assert.deepEqual(await readdir(join(f.data,'thumbnails')),[`${item.id}.jpg`],'temporary output is cleaned up');
   const next=await f.scan();assert.equal(next.skipped,1);assert.equal(next.thumbnailsRepaired,0,'silent videos do not endlessly reprobe a missing audio track');
+});
+
+test('Windows rescans repair every historical path alias without losing IDs or personal state',{skip:process.platform!=='win32'},async t=>{
+  const f=await fixture(t);if(!f)return;
+  const columns=f.db.db.prepare('PRAGMA table_info(media)').all().map(column=>column.name).filter(name=>!['id','path'].includes(name));
+  const duplicateId=Number(f.db.db.prepare(`INSERT INTO media(path,${columns.join(',')}) SELECT ?,${columns.join(',')} FROM media WHERE id=?`)
+    .run(f.source.toLowerCase(),f.item.id).lastInsertRowid);
+  const missing=join(f.data,'thumbnails',duplicateId+'.jpg');
+  f.db.db.prepare('UPDATE media SET thumbnail_path=?,metadata_revision=0 WHERE id=?').run(missing,duplicateId);
+  const accounts=new Accounts(f.db.db),owner=accounts.save({username:'owner'},await hashPassword('1'),undefined,true);
+  f.db.setLike(f.item.id,true);f.db.setProgress(f.item.id,1,4);
+  f.db.setLike(duplicateId,true,owner.id);
+  f.db.db.prepare('INSERT INTO user_progress(user_id,media_id,position,duration,completed,updated_at) VALUES(?,?,20,60,0,?)').run(owner.id,duplicateId,Date.now());
+  const personal=()=>JSON.stringify(['progress','likes','user_progress','user_likes'].map(table=>f.db.db.prepare(`SELECT * FROM ${table} ORDER BY media_id`).all()));
+  const before=personal(),original=await fingerprint(f.source),image=await fingerprint(f.item.thumbnail_path);
+  const resumed=f.db.getHome(accounts.scope(owner)).continueWatching;
+  assert.equal(resumed.length,1);assert.equal(resumed[0].id,f.item.id);assert.equal(resumed[0].progress_position,20,'history on the alias remains visible on the single catalog card');
+  const existing=await f.scan();assert.equal(existing.thumbnailsRepaired,1);assert.equal(existing.updated,1);assert.equal(existing.errors,0);
+  assert.equal(f.db.getMedia(duplicateId).thumbnail_path,f.item.thumbnail_path,'a healthy image is shared without re-encoding');
+  assert.deepEqual(await fingerprint(f.item.thumbnail_path),image);
+  await rm(f.item.thumbnail_path);
+  const rebuilt=await f.scan();assert.equal(rebuilt.thumbnailsRepaired,1);assert.equal(rebuilt.errors,0);
+  for(const id of [f.item.id,duplicateId]){
+    const item=f.db.getMedia(id);assert.equal(item.id,id);assert.equal(item.thumbnail_path,f.item.thumbnail_path);
+    assert.ok(item.metadata_revision>0);assert.ok((await stat(item.thumbnail_path)).size>0);
+  }
+  assert.equal(personal(),before,'both legacy and per-account histories and favorites are untouched');
+  assert.deepEqual(await fingerprint(f.source),original);
+  const healthy=await f.scan();assert.equal(healthy.skipped,1);assert.equal(healthy.thumbnailsRepaired,0);
+});
+
+test('Windows upserts reuse the existing spelling instead of inserting case-variant media IDs',{skip:process.platform!=='win32'},async t=>{
+  const f=await fixture(t);if(!f)return;
+  const repeated=f.db.upsertMedia({...f.item,path:f.source.toUpperCase()});
+  assert.equal(repeated.id,f.item.id);assert.equal(repeated.path,f.item.path);
+  assert.equal(f.db.db.prepare('SELECT COUNT(*) AS total FROM media').get().total,1);
+});
+
+test('case-sensitive platforms never share images between distinct filenames',{skip:process.platform==='win32'},async t=>{
+  const f=await fixture(t);if(!f)return;
+  const other=f.db.upsertMedia({...f.item,path:join(f.media,'example.mp4'),thumbnail_path:null});
+  assert.notEqual(other.id,f.item.id);
+  f.db.shareThumbnail(f.item.path,f.item.thumbnail_path,true);
+  assert.equal(f.db.getMedia(other.id).thumbnail_path,null);
 });
 
 test('thumbnail failures are counted, stay retryable, and never leave a partial successful image',async t=>{

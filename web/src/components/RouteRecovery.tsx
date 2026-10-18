@@ -7,6 +7,12 @@ import './RouteRecovery.css';
 
 export type RouteView = FunctionComponent & { preload: () => Promise<void>; pending: FunctionComponent };
 
+function ErrorDetails({error}:{error:unknown}) {
+  const cause=error instanceof Error ? error.cause : undefined;
+  const message=cause instanceof Error ? cause.message : error instanceof Error ? error.message : String(error);
+  return <details className="route-recovery-details"><summary>Error details</summary><pre>{message}</pre></details>;
+}
+
 export function createRouteView<T>(importer: () => Promise<T>, exportName: keyof T, kind: SkeletonKind): RouteView {
   const loader = createRouteLoader(importer, { validate: module => {
     if (!module || typeof module[exportName] !== 'function') throw new Error('The downloaded page module is incomplete.');
@@ -45,6 +51,7 @@ export function RouteErrorView({ error, reset }: ErrorComponentProps) {
   return <section className="route-error-view" aria-labelledby="route-error-title">
     <h1 id="route-error-title">This page is temporarily unavailable</h1>
     <p>{error instanceof RouteLoadError ? 'Check your connection and try again. If the app was updated, reload when you are ready.' : 'The page could not be displayed. You can try opening it again.'}</p>
+    <ErrorDetails error={error}/>
     <div className="route-recovery-actions">
       <button disabled={retrying} onClick={() => void retry()}><ArrowClockwise aria-hidden="true" />{retrying ? 'Retrying…' : 'Try again'}</button>
       <button className="route-recovery-secondary" onClick={() => window.location.reload()}>Reload app</button>
@@ -55,7 +62,7 @@ export function RouteErrorView({ error, reset }: ErrorComponentProps) {
 export function RouteNavigationGuard({ viewForPath }: { viewForPath: (pathname: string) => RouteView | undefined }) {
   const router = useRouter();
   const sequence = useRef(0);
-  const [notice, setNotice] = useState<{ retry: () => void } | null>(null);
+  const [notice, setNotice] = useState<{ error:unknown; retry: () => void } | null>(null);
   const shouldBlock = useCallback(async ({ next }: { next: { pathname: string; search: unknown } }) => {
     const attempt = ++sequence.current;
     const view = viewForPath(next.pathname);
@@ -67,7 +74,7 @@ export function RouteNavigationGuard({ viewForPath }: { viewForPath: (pathname: 
       return false;
     } catch (error) {
       console.warn('Virelo kept the current page after a route download failed.', error);
-      if (attempt === sequence.current) setNotice({ retry: () => {
+      if (attempt === sequence.current) setNotice({ error, retry: () => {
         void router.navigate({ to: next.pathname, search: () => next.search as never });
       } });
       return true;
@@ -79,6 +86,7 @@ export function RouteNavigationGuard({ viewForPath }: { viewForPath: (pathname: 
   useBlocker({ shouldBlockFn: shouldBlock, enableBeforeUnload: false });
   return notice ? <aside className="route-recovery-notice" role="status" aria-live="polite">
     <div><strong>Couldn’t open that page</strong><p>Your current screen is still available. Try again, or reload when you’re ready.</p></div>
+    <ErrorDetails error={notice.error}/>
     <div className="route-recovery-actions">
       <button onClick={notice.retry}><ArrowClockwise aria-hidden="true" />Try again</button>
       <button className="route-recovery-secondary" onClick={() => window.location.reload()}>Reload app</button>

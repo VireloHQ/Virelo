@@ -454,9 +454,9 @@ export async function createVireloServer(config: RuntimeConfig, pickFolder: (sig
   await app.register(fastifyStatic, { root: resolve(config.dataDir, 'cache', 'hls'), prefix: '/hls/', wildcard: true, decorateReply: false, cacheControl: false });
   await app.register(fastifyStatic, { root: resolve(config.dataDir, 'cache', 'audio'), prefix: '/audio/', wildcard: true, decorateReply: false, cacheControl: false });
   await app.register(fastifyStatic, {
-    root: webRoot, prefix: '/', wildcard: false, decorateReply: true,
+    root: webRoot, prefix: '/', wildcard: true, decorateReply: true,
     setHeaders(reply, path) {
-      if (extname(path).toLowerCase() === '.html' || basename(path) === 'sw.js') reply.header('Cache-Control', 'no-cache');
+      if (extname(path).toLowerCase() === '.html' || ['sw.js','startup.js'].includes(basename(path))) reply.header('Cache-Control', 'no-cache');
     }
   });
   app.setNotFoundHandler(async (request, reply) => {

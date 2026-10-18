@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { mkdtemp, readdir, rm } from 'node:fs/promises';
+import { mkdtemp, readdir, rm, writeFile } from 'node:fs/promises';
+import { randomUUID } from 'node:crypto';
 import { registerHooks, stripTypeScriptTypes } from 'node:module';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -39,11 +40,11 @@ test('static serving keeps deployment shell fresh and missing resources out of S
   const inject = await authenticatedInjector(app);
 
   await t.test('HTML and service worker use no-cache including query strings and nested routes', async () => {
-    for (const url of ['/', '/index.html', '/index.html?version=2', '/watch/123', '/settings?tab=playback', '/sw.js', '/sw.js?version=2']) {
+    for (const url of ['/', '/index.html', '/index.html?version=2', '/watch/123', '/settings?tab=playback', '/sw.js', '/sw.js?version=2','/startup.js']) {
       const result = await inject({ method: 'GET', url });
       assert.equal(result.statusCode, 200, url);
       assert.equal(result.headers['cache-control'], 'no-cache', url);
-      assert.match(result.headers['content-type'], url.startsWith('/sw.js') ? /javascript/ : /text\/html/, url);
+      assert.match(result.headers['content-type'], /\/(?:sw|startup)\.js/.test(url) ? /javascript/ : /text\/html/, url);
     }
   });
 
@@ -99,5 +100,16 @@ test('static serving keeps deployment shell fresh and missing resources out of S
       assert.match(result.headers['content-type'], /javascript/);
       assert.doesNotMatch(result.body.slice(0, 100), /<!doctype html/i);
     }
+  });
+
+  await t.test('new build files are served even when created after server startup',async()=>{
+    const name='static-serving-audit-'+randomUUID()+'.js',file=new URL('../dist/web/assets/'+name,import.meta.url);
+    try{
+      await writeFile(file,'export const afterStartup = true;');
+      for(const suffix of ['', '?virelo-retry=1']){
+        const response=await inject({method:'GET',url:'/assets/'+name+suffix});
+        assert.equal(response.statusCode,200);assert.match(response.headers['content-type'],/javascript/);assert.match(response.body,/afterStartup/);
+      }
+    }finally{await rm(file,{force:true});}
   });
 });

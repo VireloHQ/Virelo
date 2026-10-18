@@ -25,7 +25,14 @@ try{
   assert.equal(setup.statusCode,200,setup.body);
   await server.runScan();while(server.scanStatus.running)await new Promise(done=>setTimeout(done,10));
   const item=server.db.getMediaByPath(source);assert.ok(item.thumbnail_path);
-  server.db.setProgress(item.id,20,60,1);server.db.setLike(item.id,true,1);
+  let resumeId=item.id;
+  if(process.platform==='win32'){
+    const columns=server.db.db.prepare('PRAGMA table_info(media)').all().map(column=>column.name).filter(name=>!['id','path'].includes(name));
+    resumeId=Number(server.db.db.prepare(`INSERT INTO media(path,${columns.join(',')}) SELECT ?,${columns.join(',')} FROM media WHERE id=?`)
+      .run(source.toLowerCase(),item.id).lastInsertRowid);
+    server.db.db.prepare('UPDATE media SET thumbnail_path=?,metadata_revision=0 WHERE id=?').run(join(root,'data','thumbnails',resumeId+'.jpg'),resumeId);
+  }
+  server.db.setProgress(resumeId,20,60,1);server.db.setLike(resumeId,true,1);
   await rm(item.thumbnail_path);
   await server.app.listen({host:'127.0.0.1',port:0});const base='http://127.0.0.1:'+server.app.server.address().port;
   browser=await chromium.launch({headless:true,executablePath:process.env.VIRELO_TEST_CHROMIUM});
@@ -55,6 +62,9 @@ try{
   assert.equal(server.scanStatus.errors,0);assert.equal(server.scanStatus.updated,1);
   await page.locator('.desktop-nav').getByRole('link',{name:'Home',exact:true}).click();
   await waitRepaired();
+  const aliasImage=await page.request.get(base+`/api/media/${resumeId}/artwork/thumbnail`);
+  assert.equal(aliasImage.status(),200,'the historical media ID serves its repaired thumbnail');
+  assert.ok((await aliasImage.body()).length>0);
   assert.notEqual(await firstCard().getAttribute('src'),originalUrl);
   assert.equal(await page.evaluate(()=>performance.timeOrigin),documentTime,'SPA navigation restores previously failed images without reloading');
   console.log('scan: Libraries Scan restores deleted thumbnail, reports repair count and refreshes Continue watching + hero');
@@ -64,10 +74,67 @@ try{
   await waitRepaired();
   assert.equal(await page.evaluate(()=>performance.timeOrigin),secondDocument,'global scan completion refreshes an already-mounted Home without navigation');
   assert.deepEqual(await fingerprint(source),original);
-  const after=server.db.getMedia(item.id,{userId:1,libraryIds:null});assert.equal(after.liked,1);assert.equal(after.progress_position,20);
+  const after=server.db.getMedia(resumeId,{userId:1,libraryIds:null});assert.equal(after.liked,1);assert.equal(after.progress_position,20);
   await page.screenshot({path:join(repo,'node_modules/.cache/rescan-repaired-home.png')});
   assert.deepEqual(errors,[]);
   console.log('scan: background completion retries failed images without reload and preserves source file, favorites and progress');
+  assert.equal((await page.request.get(base+'/api/home')).status(),200);
+  const catalog=await (await page.request.get(base+'/api/media')).json();assert.equal(catalog.length,1,'legacy aliases produce only one catalog entry');
+  await page.goto(base+'/title/'+resumeId);
+  await page.locator('.detail-copy h1').filter({hasText:'Example'}).waitFor();
+  await page.reload();await page.locator('.detail-copy h1').waitFor();
+  await page.goto(base+'/watch/'+resumeId);
+  await page.locator('.player video').waitFor();
+  await page.waitForFunction(()=>document.querySelector('.player video')?.readyState>=2);
+  assert.deepEqual(errors,[]);
+  console.log('navigation: direct-open, reload and playback work for the historical alias ID');
+
+  const faultContext=await browser.newContext({serviceWorkers:'block',viewport:{width:1280,height:900},reducedMotion:'reduce'});
+  await faultContext.addCookies(await context.cookies());
+  const fault=await faultContext.newPage();fault.setDefaultTimeout(15000);
+  let blockRoute=true;
+  await fault.route(/\/assets\/DetailView-[^/?]+\.js/,route=>blockRoute?route.fulfill({status:404,contentType:'text/plain',body:'Missing deployment chunk'}):route.continue());
+  await fault.goto(base);
+  await fault.locator('.media-card').first().waitFor();
+  await fault.locator('.splash-screen').waitFor({state:'hidden'});
+  await fault.locator('.media-card[href^="/title/"]').first().click();
+  await fault.locator('.route-recovery-notice').waitFor();
+  assert.equal(new URL(fault.url()).pathname,'/','failed navigation keeps Home mounted');
+  const contrast=await fault.locator('.route-recovery-notice p').evaluate(element=>{
+    const canvas=document.createElement('canvas'),ctx=canvas.getContext('2d');
+    const luminance=color=>{ctx.fillStyle=color;ctx.fillRect(0,0,1,1);const rgb=[...ctx.getImageData(0,0,1,1).data].slice(0,3).map(x=>{x/=255;return x<=.04045?x/12.92:((x+.055)/1.055)**2.4;});return rgb[0]*.2126+rgb[1]*.7152+rgb[2]*.0722;};
+    const foreground=luminance(getComputedStyle(element).color),background=luminance(getComputedStyle(element.closest('aside')).backgroundColor);
+    return (Math.max(foreground,background)+.05)/(Math.min(foreground,background)+.05);
+  });
+  assert.ok(contrast>=4.5,'error explanation has accessible text contrast');
+  await fault.locator('.route-recovery-notice').getByText('Error details',{exact:true}).click();
+  assert.match(await fault.locator('.route-recovery-details pre').innerText(),/DetailView-/);
+  await fault.screenshot({path:join(repo,'node_modules/.cache/navigation-error-readable.png')});
+  await fault.goto(base+'/title/'+resumeId);
+  await fault.locator('.route-error-view').waitFor();
+  await fault.getByRole('button',{name:'Reload app',exact:true}).click();
+  await fault.locator('.route-error-view').waitFor();
+  blockRoute=false;
+  await fault.getByRole('button',{name:'Try again',exact:true}).click();
+  await fault.locator('.detail-copy h1').waitFor();
+  console.log('navigation: missing route chunks preserve Home, expose readable error details, and recover after reload or retry');
+  await faultContext.close();
+
+  const startupContext=await browser.newContext({serviceWorkers:'block',reducedMotion:'reduce'});
+  const startup=await startupContext.newPage();startup.setDefaultTimeout(20000);
+  let blockEntry=true;
+  await startup.route(/\/assets\/index-[^/?]+\.js/,route=>blockEntry?route.abort('failed'):route.continue());
+  await startup.goto(base+'/title/'+resumeId);
+  await startup.locator('#startup-error').waitFor({state:'visible'});
+  await startup.locator('#startup-error').getByText('Error details',{exact:true}).click();
+  assert.match(await startup.locator('#startup-error-detail').innerText(),/Could not load.*index-/);
+  await startup.screenshot({path:join(repo,'node_modules/.cache/startup-recovery.png')});
+  blockEntry=false;
+  await startup.getByRole('button',{name:'Try again',exact:true}).click();
+  await startup.getByRole('heading',{name:'Welcome back',exact:true}).waitFor();
+  await startup.locator('#startup-error').waitFor({state:'hidden'});
+  console.log('startup: a missing entry script shows standalone recovery instead of blank, and retry restores sign-in');
+  await startupContext.close();
 }catch(error){
   if(page&&!page.isClosed())await page.screenshot({path:join(repo,'node_modules/.cache/rescan-failure.png')}).catch(()=>{});
   throw error;

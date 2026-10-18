@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Repair thumbnails for every historical Windows case-variant media record, retaining IDs, favorites and watch history. Show each file only once in libraries, Home, favorites and Shorts, and prevent new case-variant duplicates.
+- Recognize new web build files without a server restart. Show a recovery screen when startup scripts cannot load, and make navigation error explanations and details readable.
 - Normalize library-section spacing and description widths, separating scan help and results from previously used folders while retaining mobile layout and disclosure controls.
 - Left-align desktop Settings with the app gutter, widen navigation descriptions and let section descriptions use more horizontal space while preserving mobile section navigation.
 - Make rescans restore missing or empty thumbnails and missing downloaded artwork even for unchanged videos, retry missing technical details, report repair counts and refresh library images after completion. Preserve original files and personal viewing data.

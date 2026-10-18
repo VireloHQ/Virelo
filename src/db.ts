@@ -101,6 +101,7 @@ export class VireloDB {
     for (const name of ['metadata_blocked', 'metadata_revision']) {
       if (!columns.some((column) => column.name === name)) this.db.exec(`ALTER TABLE media ADD COLUMN ${name} INTEGER NOT NULL DEFAULT 0`);
     }
+    if(process.platform==='win32')this.db.exec('CREATE INDEX IF NOT EXISTS idx_media_path_nocase ON media(path COLLATE NOCASE)');
     this.migrateFolderColumn();
     const libraryColumns = this.db.prepare('PRAGMA table_info(libraries)').all() as Array<{name:string}>;
     if (!libraryColumns.some(column => column.name === 'persistent'))
@@ -223,6 +224,13 @@ export class VireloDB {
       : { sql: '0=1', params: [] };
   }
 
+  private catalogClause(scope?: CatalogScope) {
+    const visible=this.visibleIdClause(scope);
+    if(process.platform!=='win32')return visible;
+    // Hide case aliases only in collections; historical IDs still resolve individually.
+    return {sql:`${visible.sql} AND m.id=(SELECT MIN(alias.id) FROM media alias WHERE alias.path=m.path COLLATE NOCASE AND ${visible.sql.replaceAll('m.','alias.')})`,params:[...visible.params,...visible.params]};
+  }
+
   addLibrary(path: string, label: string, persistent = true): Library {
     path = resolve(path);
     const now = Date.now();
@@ -249,6 +257,18 @@ export class VireloDB {
   }
 
   private personalJoins(scope?: CatalogScope) {
+    if(process.platform==='win32'){
+      const progress=scope?'user_progress':'progress',likes=scope?'user_likes':'likes';
+      const user=scope?'AND history.user_id=?':'';
+      return {sql:`LEFT JOIN ${progress} p ON p.media_id=(
+        SELECT history.media_id FROM media alias JOIN ${progress} history ON history.media_id=alias.id ${user}
+        WHERE alias.path=m.path COLLATE NOCASE ORDER BY history.updated_at DESC,history.media_id DESC LIMIT 1)
+        ${scope?'AND p.user_id=?':''}
+        LEFT JOIN ${likes} l ON l.media_id=(
+        SELECT history.media_id FROM media alias JOIN ${likes} history ON history.media_id=alias.id ${user}
+        WHERE alias.path=m.path COLLATE NOCASE ORDER BY history.media_id LIMIT 1)
+        ${scope?'AND l.user_id=?':''}`,params:scope?[scope.userId,scope.userId,scope.userId,scope.userId]:[]};
+    }
     return scope ? { sql: 'LEFT JOIN user_progress p ON p.media_id=m.id AND p.user_id=? LEFT JOIN user_likes l ON l.media_id=m.id AND l.user_id=?', params: [scope.userId, scope.userId] }
       : { sql: 'LEFT JOIN progress p ON p.media_id=m.id LEFT JOIN likes l ON l.media_id=m.id', params: [] };
   }
@@ -265,6 +285,10 @@ export class VireloDB {
   }
 
   upsertMedia(input: Omit<MediaRecord, 'id' | 'added_at' | 'updated_at'>): MediaRecord {
+    if(process.platform==='win32'){
+      const existing=this.getMediaByPath(input.path);
+      if(existing)input={...input,path:existing.path};
+    }
     const owner=this.libraryForPath(input.path);
     if (owner&&owner.id!==input.library_id)
       input={...input,library_id:owner.id,folder:relative(owner.path,dirname(input.path)).replaceAll('\\','/')};
@@ -294,6 +318,13 @@ export class VireloDB {
   updateTechnicalMetadata(id: number, data: Partial<Pick<MediaRecord,'duration'|'width'|'height'|'video_codec'|'audio_codec'|'container'|'thumbnail_path'>>) {
     this.db.prepare(`UPDATE media SET duration=COALESCE(?,duration),width=COALESCE(?,width),height=COALESCE(?,height),video_codec=COALESCE(?,video_codec),audio_codec=COALESCE(?,audio_codec),container=COALESCE(?,container),thumbnail_path=COALESCE(?,thumbnail_path),metadata_revision=metadata_revision+?,updated_at=? WHERE id=?`)
       .run(data.duration ?? null,data.width ?? null,data.height ?? null,data.video_codec ?? null,data.audio_codec ?? null,data.container ?? null,data.thumbnail_path ?? null,Number(Boolean(data.thumbnail_path)),Date.now(),id);
+  }
+
+  shareThumbnail(path:string,thumbnail:string,invalidate=false){
+    // Keep historical media IDs valid for progress, favorites and saved links.
+    return Number(this.db.prepare(`UPDATE media SET thumbnail_path=?,metadata_revision=metadata_revision+1,updated_at=?
+      WHERE path=? ${process.platform==='win32'?'COLLATE NOCASE':''} AND (?=1 OR thumbnail_path IS NOT ?)`)
+      .run(thumbnail,Date.now(),path,Number(invalidate),thumbnail).changes);
   }
 
   clearMissingArtwork(id:number,poster:boolean,backdrop:boolean){
@@ -337,7 +368,7 @@ export class VireloDB {
   listMedia(options: { search?: string; kind?: MediaKind; limit?: number; offset?: number; libraryId?: number; folder?: string; sort?: SortKey; liked?: boolean } = {}, scope?: CatalogScope) {
     const clauses: string[] = [];
     const params: SQLInputValue[] = [];
-    const visible = this.visibleIdClause(scope), joins = this.personalJoins(scope);
+    const visible = this.catalogClause(scope), joins = this.personalJoins(scope);
     clauses.push(visible.sql);
     params.push(...visible.params);
     if (options.search) {
@@ -364,7 +395,7 @@ export class VireloDB {
   }
 
   getHome(scope?: CatalogScope) {
-    const visible = this.visibleIdClause(scope), joins = this.personalJoins(scope);
+    const visible = this.catalogClause(scope), joins = this.personalJoins(scope);
     // Curate one visible catalog snapshot; only bounded shelves are sent to clients.
     const items = this.db.prepare(`SELECT m.*,p.position AS progress_position,
       p.duration AS progress_duration,p.completed AS progress_completed,p.updated_at AS progress_updated_at,
@@ -377,7 +408,7 @@ export class VireloDB {
 
   listMetadataCandidates(limit = 500, includeMissingArtwork = false, scope?: CatalogScope): MediaRecord[] {
     const safeLimit = Math.min(Math.max(limit, 1), 5000);
-    const visible = this.visibleIdClause(scope);
+    const visible = this.catalogClause(scope);
     return this.db.prepare(`
       SELECT m.*,p.position AS progress_position,p.duration AS progress_duration,p.completed AS progress_completed,
         (l.media_id IS NOT NULL) AS liked
@@ -395,19 +426,19 @@ export class VireloDB {
     const startId = Number.isSafeInteger(options.startId) && Number(options.startId) > 0 ? Number(options.startId) : 0;
     const dims = '(m.width IS NOT NULL AND m.height IS NOT NULL AND m.width>0 AND m.height>0)';
     const cond = options.includeLandscapes ? dims : `${dims} AND m.height>m.width`;
-    const visible = this.visibleIdClause(scope), joins = this.personalJoins(scope);
+    const visible = this.catalogClause(scope), joins = this.personalJoins(scope);
     const items = this.db.prepare(`
       SELECT m.*,p.position AS progress_position,p.duration AS progress_duration,p.completed AS progress_completed,(l.media_id IS NOT NULL) AS liked
       FROM media m ${joins.sql}
       WHERE ${visible.sql} AND ${cond}
-      ORDER BY (m.id=?) DESC,shorts_rank(m.id,?),m.id LIMIT ? OFFSET ?
+      ORDER BY (m.path=(SELECT path FROM media WHERE id=?) ${process.platform==='win32'?'COLLATE NOCASE':''}) DESC,shorts_rank(m.id,?),m.id LIMIT ? OFFSET ?
     `).all(...joins.params,...visible.params, startId, Number.isFinite(options.seed) ? Number(options.seed) >>> 0 : 0, limit, offset) as unknown as ShortsItem[];
     const total = Number((this.db.prepare(`SELECT COUNT(*) c FROM media m WHERE ${visible.sql} AND ${cond}`).get(...visible.params) as {c:number}).c);
     return { items, total };
   }
 
   getFolders(scope?: CatalogScope): FolderEntry[] {
-    const visible = this.visibleIdClause(scope);
+    const visible = this.catalogClause(scope);
     return this.db.prepare(`
       SELECT library_id, folder, COUNT(*) AS count FROM media m
       WHERE ${visible.sql}
@@ -418,11 +449,11 @@ export class VireloDB {
   setLike(mediaId: number, liked: boolean, userId?: number) {
     if (userId !== undefined) {
       if (liked) this.db.prepare('INSERT OR IGNORE INTO user_likes(user_id,media_id,created_at) VALUES(?,?,?)').run(userId,mediaId,Date.now());
-      else this.db.prepare('DELETE FROM user_likes WHERE user_id=? AND media_id=?').run(userId,mediaId);
+      else this.db.prepare(`DELETE FROM user_likes WHERE user_id=? AND media_id IN (SELECT id FROM media WHERE path=(SELECT path FROM media WHERE id=?) ${process.platform==='win32'?'COLLATE NOCASE':''})`).run(userId,mediaId);
       return;
     }
     if (liked) this.db.prepare('INSERT OR IGNORE INTO likes(media_id,created_at) VALUES(?,?)').run(mediaId, Date.now());
-    else this.db.prepare('DELETE FROM likes WHERE media_id=?').run(mediaId);
+    else this.db.prepare(`DELETE FROM likes WHERE media_id IN (SELECT id FROM media WHERE path=(SELECT path FROM media WHERE id=?) ${process.platform==='win32'?'COLLATE NOCASE':''})`).run(mediaId);
   }
 
   setProgress(mediaId: number, position: number, duration: number, userId?: number) {
@@ -430,12 +461,16 @@ export class VireloDB {
     const safeDuration = Number.isFinite(duration) ? Math.max(duration, 0) : 0;
     const completed = safeDuration > 0 && safePosition / safeDuration >= 0.92 ? 1 : 0;
     if (userId !== undefined) {
-      this.db.prepare(`INSERT INTO user_progress(user_id,media_id,position,duration,completed,updated_at) VALUES(?,?,?,?,?,?) ON CONFLICT(user_id,media_id) DO UPDATE SET position=excluded.position,duration=excluded.duration,completed=excluded.completed,updated_at=excluded.updated_at`)
-        .run(userId,mediaId,safePosition,safeDuration,completed,Date.now());
+      this.db.prepare(`INSERT INTO user_progress(user_id,media_id,position,duration,completed,updated_at)
+        SELECT ?,id,?,?,?,? FROM media WHERE path=(SELECT path FROM media WHERE id=?) ${process.platform==='win32'?'COLLATE NOCASE':''}
+        ON CONFLICT(user_id,media_id) DO UPDATE SET position=excluded.position,duration=excluded.duration,completed=excluded.completed,updated_at=excluded.updated_at`)
+        .run(userId,safePosition,safeDuration,completed,Date.now(),mediaId);
       return;
     }
-    this.db.prepare(`INSERT INTO progress(media_id,position,duration,completed,updated_at) VALUES(?,?,?,?,?) ON CONFLICT(media_id) DO UPDATE SET position=excluded.position,duration=excluded.duration,completed=excluded.completed,updated_at=excluded.updated_at`)
-      .run(mediaId, safePosition, safeDuration, completed, Date.now());
+    this.db.prepare(`INSERT INTO progress(media_id,position,duration,completed,updated_at)
+      SELECT id,?,?,?,? FROM media WHERE path=(SELECT path FROM media WHERE id=?) ${process.platform==='win32'?'COLLATE NOCASE':''}
+      ON CONFLICT(media_id) DO UPDATE SET position=excluded.position,duration=excluded.duration,completed=excluded.completed,updated_at=excluded.updated_at`)
+      .run(safePosition,safeDuration,completed,Date.now(),mediaId);
   }
 }
 
