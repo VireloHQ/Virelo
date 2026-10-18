@@ -193,6 +193,13 @@ previous media library, or contains filesystem links.
 
 Virelo is a player: it never deletes, moves, renames or edits source video files.
 
+**Scan** also checks the files behind cached images, even when source videos have
+not changed. Missing or empty thumbnails are regenerated, and missing technical
+details are probed again. Missing downloaded artwork is fetched again when online
+metadata and images are enabled; manually cleared metadata stays cleared. The
+scan result reports checked videos, additions, updates, restored thumbnails and
+errors. Lists and failed images refresh after completion without a page reload.
+
 ## 🔐 Network access
 
 Virelo binds to `127.0.0.1` by default. To access it from another device on a trusted LAN:

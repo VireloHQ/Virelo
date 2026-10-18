@@ -135,6 +135,7 @@ test('health remains available when FFmpeg tools cannot be started', async () =>
         added: 0,
         updated: 0,
         skipped: 0,
+        thumbnailsRepaired: 0,
         errors: 0,
         message: 'Idle'
       }

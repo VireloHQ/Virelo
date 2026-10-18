@@ -1,9 +1,11 @@
-import { createWriteStream, existsSync } from 'node:fs';
+import { createWriteStream } from 'node:fs';
 import { rename, rm } from 'node:fs/promises';
 import { pipeline } from 'node:stream/promises';
 import { Readable } from 'node:stream';
 import type { ReadableStream as NodeReadableStream } from 'node:stream/web';
 import { join } from 'node:path';
+import { randomUUID } from 'node:crypto';
+import { imageFileExists, prepareImageDirectory } from './image-files.js';
 import type { VireloDB } from './db.js';
 import type { MediaRecord } from './types.js';
 
@@ -48,20 +50,23 @@ async function fetchJson<T>(url: string): Promise<T> {
 }
 
 async function download(url: string, target: string) {
-  if (existsSync(target)) return;
+  if (await imageFileExists(target)) return;
+  await prepareImageDirectory(target);
   const parsed = new URL(url);
   if (parsed.protocol !== 'https:') throw new Error('Artwork URL must use HTTPS.');
   const response = await fetch(parsed, { redirect: 'follow', signal: AbortSignal.timeout(REQUEST_TIMEOUT) });
   if (!response.ok || !response.body) throw new Error(`Artwork download failed: ${response.status}`);
   const contentType = response.headers.get('content-type') || '';
   if (!contentType.toLowerCase().startsWith('image/')) throw new Error('Artwork response was not an image.');
-  const temporary = `${target}.${process.pid}.${Date.now()}.tmp`;
+  const temporary = `${target}.${randomUUID()}.tmp`;
   try {
     await pipeline(Readable.fromWeb(response.body as unknown as NodeReadableStream), createWriteStream(temporary));
+    if(!await imageFileExists(temporary))throw Error('Artwork download was empty.');
+    await prepareImageDirectory(target);
     await rename(temporary, target);
   } catch (error) {
     await rm(temporary, { force: true }).catch(() => undefined);
-    if (!existsSync(target)) throw error;
+    if (!await imageFileExists(target)) throw error;
   }
 }
 

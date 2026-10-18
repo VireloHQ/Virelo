@@ -1,6 +1,7 @@
 import { spawn } from 'node:child_process';
-import { access } from 'node:fs/promises';
-import { constants } from 'node:fs';
+import { rename, rm } from 'node:fs/promises';
+import { randomUUID } from 'node:crypto';
+import { imageFileExists, prepareImageDirectory } from './image-files.js';
 
 export interface PlaybackTrack {
   index: number;
@@ -174,20 +175,28 @@ export async function probePlaybackInfo(path: string): Promise<PlaybackInfo | nu
 }
 
 export async function makeThumbnail(source: string, target: string, duration?: number | null): Promise<boolean> {
-  try { await access(target, constants.F_OK); return true; } catch { /* generate */ }
+  if(await imageFileExists(target))return true;
   if (!(await hasFfmpeg())) return false;
+  await prepareImageDirectory(target);
+  const temporary=`${target}.${randomUUID()}.tmp.jpg`;
   const seek = duration && duration > 0 ? Math.min(Math.max(duration * 0.12, 0.1), 60) : 3;
-  return await new Promise((resolve) => {
-    let child;
-    try {
-      child = spawn(process.env.FFMPEG_PATH || 'ffmpeg', [
-        '-hide_banner','-loglevel','error','-ss',String(seek),'-i',source,'-frames:v','1','-vf','scale=min(960\\,iw):-2','-q:v','3','-y',target
-      ], { stdio: 'ignore', windowsHide: true });
-    } catch {
-      resolve(false);
-      return;
-    }
-    child.once('error', () => resolve(false));
-    child.once('exit', (code) => resolve(code === 0));
-  });
+  try {
+    const generated=await new Promise<boolean>((resolve) => {
+      let child;
+      try {
+        child = spawn(process.env.FFMPEG_PATH || 'ffmpeg', [
+          '-hide_banner','-loglevel','error','-ss',String(seek),'-i',source,'-frames:v','1','-vf','scale=min(960\\,iw):-2','-q:v','3','-y',temporary
+        ], { stdio: 'ignore', windowsHide: true });
+      } catch {
+        resolve(false);
+        return;
+      }
+      child.once('error', () => resolve(false));
+      child.once('exit', (code) => resolve(code === 0));
+    });
+    if(!generated||!await imageFileExists(temporary))return false;
+    await prepareImageDirectory(target);
+    await rename(temporary,target);
+    return true;
+  }finally{await rm(temporary,{force:true}).catch(()=>{});}
 }

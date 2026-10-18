@@ -292,8 +292,13 @@ export class VireloDB {
   }
 
   updateTechnicalMetadata(id: number, data: Partial<Pick<MediaRecord,'duration'|'width'|'height'|'video_codec'|'audio_codec'|'container'|'thumbnail_path'>>) {
-    this.db.prepare(`UPDATE media SET duration=COALESCE(?,duration),width=COALESCE(?,width),height=COALESCE(?,height),video_codec=COALESCE(?,video_codec),audio_codec=COALESCE(?,audio_codec),container=COALESCE(?,container),thumbnail_path=COALESCE(?,thumbnail_path),updated_at=? WHERE id=?`)
-      .run(data.duration ?? null,data.width ?? null,data.height ?? null,data.video_codec ?? null,data.audio_codec ?? null,data.container ?? null,data.thumbnail_path ?? null,Date.now(),id);
+    this.db.prepare(`UPDATE media SET duration=COALESCE(?,duration),width=COALESCE(?,width),height=COALESCE(?,height),video_codec=COALESCE(?,video_codec),audio_codec=COALESCE(?,audio_codec),container=COALESCE(?,container),thumbnail_path=COALESCE(?,thumbnail_path),metadata_revision=metadata_revision+?,updated_at=? WHERE id=?`)
+      .run(data.duration ?? null,data.width ?? null,data.height ?? null,data.video_codec ?? null,data.audio_codec ?? null,data.container ?? null,data.thumbnail_path ?? null,Number(Boolean(data.thumbnail_path)),Date.now(),id);
+  }
+
+  clearMissingArtwork(id:number,poster:boolean,backdrop:boolean){
+    this.db.prepare(`UPDATE media SET poster_path=CASE WHEN ? THEN NULL ELSE poster_path END,backdrop_path=CASE WHEN ? THEN NULL ELSE backdrop_path END,metadata_revision=metadata_revision+1,updated_at=? WHERE id=?`)
+      .run(Number(poster),Number(backdrop),Date.now(),id);
   }
 
   updateExternalMetadata(id: number, data: Partial<Pick<MediaRecord,'title'|'overview'|'genres'|'poster_path'|'backdrop_path'|'external_id'|'year'>>, expectedRevision?: number) {

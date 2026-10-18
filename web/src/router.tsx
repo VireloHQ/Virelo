@@ -6,6 +6,7 @@ import { NotFoundView } from './views/NotFoundView';
 import type { SortKey } from './types';
 import { validateShortsSearch } from './utils/shorts-navigation';
 import { PlaybackAccess } from './components/AccountSession';
+import { useScanRefresh } from './hooks/useScanRefresh';
 
 const HomeRouteView = createRouteView(() => import('./views/HomeView'), 'HomeView', 'home');
 const FavoritesRouteView = createRouteView(() => import('./views/FavoritesView'), 'FavoritesView', 'library');
@@ -47,6 +48,7 @@ function validateWatchSearch(input: Record<string, unknown>): WatchRouteSearch {
 }
 
 function Shell() {
+  useScanRefresh();
   return <div className="app-shell"><RouteNavigationGuard viewForPath={viewForPath} /><Header /><main className="page-shell"><Outlet /></main><MobileNav /></div>;
 }
 

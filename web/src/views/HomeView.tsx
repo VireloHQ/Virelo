@@ -66,7 +66,7 @@ function FilteredHome({filter}:{filter:HomeFilter}) {
         onClick={()=>setFilter(value)}>{label}</button>)}</div>
     </nav>
     {hero?<section ref={heroRef} className={'hero-banner home-feature'+(hero.backdrop_path||hero.thumbnail_path||hero.poster_path?'':' home-feature-text')} aria-label="Featured titles" aria-roledescription="carousel" data-animate={animate}>
-      <FeaturedArtwork key={hero.id+':'+hero.backdrop_path+':'+hero.thumbnail_path+':'+hero.poster_path} item={hero}/>
+      <FeaturedArtwork key={hero.id+':'+hero.metadata_revision+':'+hero.backdrop_path+':'+hero.thumbnail_path+':'+hero.poster_path} item={hero}/>
       <div className="hero-vignette"/>
       <div className="hero-content">
         <h1>{hero.kind==='series'?hero.series_title||hero.title:hero.title}</h1>

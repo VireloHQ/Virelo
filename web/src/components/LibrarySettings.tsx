@@ -65,6 +65,7 @@ export function LibrarySettings() {
         <Button variant="secondary" isDisabled={save.isPending} onPress={()=>saveLibrary(library)}>Save library</Button></div>)}</div>
       {previous.data?.length===0&&<p>No previous folders.</p>}
     </details>}
+    <p className="account-help">Scan checks video files, fills in missing technical details and restores missing thumbnails. Missing downloaded artwork is fetched again when online metadata and images are enabled. Original video files are never changed.</p>
     <div className="scan-strip"><div>{scan.data?.running?<ArrowsClockwise className="spin"/>:<CheckCircle/>}<span><strong>{scan.data?.message||'Idle'}</strong></span></div>
       {session?.user.permissions.scanLibraries&&<Button variant="secondary" isPending={Boolean(scan.data?.running)||startScan.isPending} onPress={()=>startScan.mutate()}>Scan</Button>}
     </div>

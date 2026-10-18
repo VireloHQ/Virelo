@@ -58,7 +58,7 @@ export function PlaybackQueue({items,activeIndex,repeatMode,onRepeatChange,onSel
           <button ref={active?(element)=>{activeItem.current=element;}:undefined} type="button" className={`playback-queue-item${active?' active':''}`} onClick={()=>onSelect(index)} aria-current={active?'true':undefined}>
             <span className="playback-queue-art">
               <span className="playback-queue-fallback"><Play weight="fill"/></span>
-              <img src={artwork(item,item.backdrop_path?'backdrop':item.poster_path?'poster':'thumbnail')} alt="" loading="lazy" decoding="async" onError={(event)=>{event.currentTarget.style.display='none';}}/>
+              <img key={item.metadata_revision??0} src={artwork(item,item.backdrop_path?'backdrop':item.poster_path?'poster':'thumbnail')} alt="" loading="lazy" decoding="async" onError={(event)=>{event.currentTarget.style.display='none';}}/>
             </span>
             <span className="playback-queue-copy">
               <small>{active?'Now playing':index===activeIndex+1?'Up next':`Video ${index+1}`}</small>

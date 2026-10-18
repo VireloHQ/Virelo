@@ -2,8 +2,9 @@ import { readdir, rm, stat } from 'node:fs/promises';
 import { basename, dirname, extname, join, relative, resolve } from 'node:path';
 import type { VireloDB } from './db.js';
 import type { CatalogScope } from './auth-types.js';
-import type { Library, MediaKind, ScanStatus } from './types.js';
+import type { Library, MediaKind, MediaRecord, ScanStatus } from './types.js';
 import { makeThumbnail, probeMedia } from './ffmpeg.js';
+import { imageFileExists } from './image-files.js';
 
 const VIDEO_EXTENSIONS = new Set(['.mp4','.m4v','.mkv','.webm','.mov','.avi','.wmv','.mpg','.mpeg','.ts','.m2ts','.flv','.ogv','.3gp']);
 
@@ -63,6 +64,24 @@ async function mapLimit<T>(items: T[], limit: number, worker: (item:T)=>Promise<
   await Promise.all(Array.from({ length: Math.min(limit, Math.max(items.length,1)) }, run));
 }
 
+async function repairImages(db:VireloDB,record:MediaRecord,dataDir:string,status:ScanStatus){
+  const [thumbnail,poster,backdrop]=await Promise.all([
+    imageFileExists(record.thumbnail_path),imageFileExists(record.poster_path),imageFileExists(record.backdrop_path)
+  ]);
+  const missingPoster=Boolean(record.poster_path&&!poster),missingBackdrop=Boolean(record.backdrop_path&&!backdrop);
+  if(missingPoster||missingBackdrop)db.clearMissingArtwork(record.id,missingPoster,missingBackdrop);
+  if(thumbnail)return missingPoster||missingBackdrop;
+  status.message=`Restoring thumbnail · ${record.filename}`;
+  const target=join(dataDir,'thumbnails',`${record.id}.jpg`);
+  if(await makeThumbnail(record.path,target,record.duration)){
+    db.updateTechnicalMetadata(record.id,{thumbnail_path:target});
+    status.thumbnailsRepaired=(status.thumbnailsRepaired??0)+1;
+    return true;
+  }
+  status.errors++;
+  return missingPoster||missingBackdrop;
+}
+
 export async function scanLibrary(db: VireloDB, library: Library, dataDir: string, status: ScanStatus) {
   const files: string[] = [];
   const complete = await collectFiles(library.path, files);
@@ -76,7 +95,15 @@ export async function scanLibrary(db: VireloDB, library: Library, dataDir: strin
       const info = await stat(path);
       const previous = db.getMediaByPath(path);
       if (previous && previous.library_id === library.id && previous.mtime === Math.trunc(info.mtimeMs) && previous.size === info.size) {
-        status.skipped++;
+        let updated=false;
+        if(previous.duration==null||previous.width==null||previous.height==null||previous.video_codec==null){
+          const probe=await probeMedia(path);
+          if(probe){
+            db.updateTechnicalMetadata(previous.id,{duration:probe.duration,width:probe.width,height:probe.height,video_codec:probe.videoCodec,audio_codec:probe.audioCodec,container:probe.container});
+            Object.assign(previous,db.getMedia(previous.id));updated=true;
+          }
+        }
+        if(await repairImages(db,previous,dataDir,status)||updated)status.updated++;else status.skipped++;
         return;
       }
       const parsed = parseMediaName(path);
@@ -115,10 +142,7 @@ export async function scanLibrary(db: VireloDB, library: Library, dataDir: strin
         external_id: previous?.external_id ?? null
       });
       if (previous) await rm(join(dataDir, 'cache', 'hls', String(record.id)), { recursive: true, force: true }).catch(() => undefined);
-      if (!record.thumbnail_path) {
-        const target = join(dataDir, 'thumbnails', `${record.id}.jpg`);
-        if (await makeThumbnail(path, target, probe?.duration ?? record.duration)) db.updateTechnicalMetadata(record.id, { thumbnail_path: target });
-      }
+      await repairImages(db,record,dataDir,status);
       if (previous) status.updated++; else status.added++;
     } catch {
       status.errors++;
