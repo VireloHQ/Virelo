@@ -38,6 +38,11 @@ Administrators have full administrative trust even if their browsing is restrict
 
 ## Localhost-only administrators
 
+Passwords and PINs have no minimum length or complexity requirement; an empty
+password is not accepted. A 1024-byte limit bounds hashing input. Passwords are
+salted and hashed with scrypt, and sign-in attempts are rate limited. Short PINs
+are intended for trusted local use, not exposure to the public Internet.
+
 The optional Account Manager restriction blocks administrator accounts unless the direct socket peer is loopback and there are no forwarding headers. It applies to login and existing sessions, not just management endpoints. Regular users remain accessible over the network. Change the restriction only from a direct localhost connection on the server PC; changing it revokes other administrator sessions.
 
 **A local reverse proxy, SSH tunnel, or port forward can make a remote client appear to be localhost.** No HTTP application can recover an original address that such an intermediary discards. Do not use the localhost-only option as a guarantee against remote access behind a header-stripping loopback proxy or tunnel. Preserve forwarding headers (Virelo treats those connections as non-local), and enforce remote administrative restrictions at the proxy/firewall as well. This setting is not an OS-level sandbox.

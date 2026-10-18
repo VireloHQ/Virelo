@@ -104,7 +104,7 @@ export async function createVireloServer(config: RuntimeConfig) {
     for (const mediaPath of config.mediaPaths) {
       try {
         const info = await stat(mediaPath);
-        if (info.isDirectory()) db.addLibrary(mediaPath, basename(mediaPath) || mediaPath);
+        if (info.isDirectory()) db.addLibrary(mediaPath, basename(mediaPath) || mediaPath, false);
       } catch {
         app.log.warn({ mediaPath }, 'Skipping unreadable media directory');
       }
@@ -175,7 +175,7 @@ export async function createVireloServer(config: RuntimeConfig) {
   app.post<{ Body: Partial<AppSettings> & { tmdbApiKey?: string; clearTmdbApiKey?: boolean } }>('/api/settings', async (request) => {
     const body = request.body || {};
     const patch: Partial<AppSettings> = {};
-    for (const key of ['externalMetadataEnabled','externalImagesEnabled','metadataProvider','metadataLanguage','libraryWatchEnabled','shortsIncludeLandscapes','queueBehavior','showAllLibraries'] as const) {
+    for (const key of ['externalMetadataEnabled','externalImagesEnabled','metadataProvider','metadataLanguage','libraryWatchEnabled','shortsIncludeLandscapes','queueBehavior'] as const) {
       if (body[key] !== undefined) (patch as any)[key] = body[key];
     }
     if (body.clearTmdbApiKey === true) patch.tmdbApiKey = '';

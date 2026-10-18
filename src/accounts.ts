@@ -23,8 +23,8 @@ async function derive(password: string, salt: string) {
 }
 
 export function validatePassword(value: unknown): string {
-  if (typeof value !== 'string' || [...value].length < 15 || [...value].length > 128 || Buffer.byteLength(value) > 1024)
-    throw new AccountError('Use a password of 15–128 characters. A long passphrase is welcome.');
+  if (typeof value !== 'string' || !value.length || Buffer.byteLength(value) > 1024)
+    throw new AccountError('Enter a password or PIN (up to 1024 bytes).');
   return value;
 }
 export async function hashPassword(value: unknown) {

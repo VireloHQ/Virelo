@@ -1,6 +1,6 @@
 param(
   [Parameter(Mandatory = $true)][string]$Source,
-  [string[]]$Repositories = @((Split-Path $PSScriptRoot -Parent), (Join-Path (Split-Path (Split-Path $PSScriptRoot -Parent) -Parent) 'virelo-web'))
+  [string[]]$Repositories = @((Split-Path $PSScriptRoot -Parent))
 )
 
 $ErrorActionPreference = 'Stop'

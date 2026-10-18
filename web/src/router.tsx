@@ -28,6 +28,7 @@ function viewForPath(pathname: string) {
 
 export interface WatchRouteSearch {
   queue?: boolean;
+  favorites?: boolean;
   folder?: string;
   libraryId?: number;
   sort?: SortKey;
@@ -37,6 +38,7 @@ export interface WatchRouteSearch {
 function validateWatchSearch(input: Record<string, unknown>): WatchRouteSearch {
   return {
     queue: input.queue === true || input.queue === '1' || input.queue === 'true',
+    favorites: input.favorites === true || input.favorites === '1' || input.favorites === 'true',
     folder: typeof input.folder === 'string' && input.folder !== '' ? input.folder.slice(0, 500) : undefined,
     libraryId: typeof input.libraryId === 'string' && /^\d+$/.test(input.libraryId) ? Number(input.libraryId) : undefined,
     sort: (['title', 'newest', 'oldest', 'year', 'duration', 'random'] as string[]).includes(String(input.sort ?? '')) ? input.sort as SortKey : undefined,

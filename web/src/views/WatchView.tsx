@@ -7,6 +7,7 @@ import { api } from '../api';
 import { PlaybackQueue } from '../components/PlaybackQueue';
 import { Player } from '../components/Player';
 import { queueDestination, type RepeatMode } from '../utils/playback-repeat';
+import { loadFavoriteQueue } from '../utils/favorites';
 
 export function WatchView(){
   const { mediaId } = useParams({from:'/watch/$mediaId'});
@@ -18,7 +19,9 @@ export function WatchView(){
   const repeat=repeatOverride??(behavior==='loop'?'queue':'off');
   const queueQ = useQuery({
     queryKey:['watch-queue',searchParams],
-    queryFn:()=>api.media({search:searchParams.search,folder:searchParams.folder,libraryId:searchParams.libraryId,sort:searchParams.sort,limit:500}),
+    queryFn:()=>searchParams.favorites
+      ? loadFavoriteQueue((offset,limit)=>api.media({liked:1,search:searchParams.search,sort:searchParams.sort,offset,limit}))
+      : api.media({search:searchParams.search,folder:searchParams.folder,libraryId:searchParams.libraryId,sort:searchParams.sort,limit:500}),
     enabled:queueEnabled
   });
   const itemQ = useQuery({queryKey:['media',Number(mediaId)],queryFn:()=>api.mediaById(Number(mediaId)),enabled:!queueEnabled});
@@ -27,9 +30,10 @@ export function WatchView(){
   const setIndex=(index:number)=>setSelectedId(items[index]?.id ?? Number(mediaId));
   useEffect(()=>{
     setSelectedId(Number(mediaId));
-  },[queueEnabled,mediaId,searchParams.search,searchParams.folder,searchParams.libraryId,searchParams.sort]);
+  },[queueEnabled,mediaId,searchParams.search,searchParams.folder,searchParams.libraryId,searchParams.sort,searchParams.favorites]);
 
   if (queueEnabled) {
+    if (queueQ.isError) return <div className="watch-empty" role="alert"><h1>Could not load queue</h1><p>{queueQ.error.message}</p><button onClick={()=>void queueQ.refetch()}>Try again</button></div>;
     if (!queueQ.data) return <PageSkeleton kind="watch" />;
     const activeIndex=Math.max(items.findIndex((item)=>item.id===selectedId),0);
     const current = items[activeIndex];

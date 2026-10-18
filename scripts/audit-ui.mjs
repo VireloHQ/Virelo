@@ -29,7 +29,7 @@ try{
     const id=Number(u.pathname.split('/')[3]),item=fixtures.find(i=>i.id===id);
     if(u.pathname.endsWith('/stream'))return route.fulfill({body:id===46?landscape:portrait,contentType:'video/mp4'});
     if(u.pathname.includes('/artwork/'))return route.fulfill({status:404,body:''});
-    if(u.pathname==='/api/settings')body={externalMetadataEnabled:true,externalImagesEnabled:true,queueBehavior:'auto',shortsIncludeLandscapes:false,showAllLibraries:true};
+    if(u.pathname==='/api/settings')body={externalMetadataEnabled:true,externalImagesEnabled:true,queueBehavior:'auto',shortsIncludeLandscapes:false};
     else if(u.pathname==='/api/libraries')body=[{id:1,label:'Audit',path:'Audit',created_at:1}];
     else if(u.pathname==='/api/home')body={total:fixtures.length,recent:fixtures,movies:fixtures,series:[],continueWatching:[]};
     else if(u.pathname==='/api/folders')body=[];

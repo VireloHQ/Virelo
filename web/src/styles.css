@@ -475,7 +475,6 @@ button, a, input { -webkit-tap-highlight-color:transparent; }
 .settings-save-error { margin:-10px 0 18px; }
 .settings-layout { display:grid; grid-template-columns:minmax(190px,220px) minmax(0,1fr); align-items:start; gap:clamp(20px,3.5vw,46px); }
 .settings-sidebar { position:sticky; top:calc(var(--topbar) + 86px); display:grid; gap:3px; padding:11px; border:1px solid rgba(255,255,255,.12); border-radius:18px; background:linear-gradient(160deg,rgba(28,28,28,.76),rgba(14,14,14,.72)); box-shadow:inset 0 1px rgba(255,255,255,.04); backdrop-filter:blur(18px); }
-.settings-sidebar-label { padding:6px 10px 9px; color:var(--muted-2); font-size:10px; font-weight:800; letter-spacing:.15em; text-transform:uppercase; }
 .settings-nav-item { display:grid; grid-template-columns:34px minmax(0,1fr); align-items:center; gap:10px; min-height:58px; padding:8px 9px; border:1px solid transparent; border-radius:12px; background-color:transparent; color:#858585; transition:background-color var(--dur-short) var(--ease-out),border-color var(--dur-short) var(--ease-out),color var(--dur-short) var(--ease-out),transform var(--dur-micro) var(--ease-out); }
 .settings-nav-item:hover { border-color:rgba(255,255,255,.1); background:rgba(255,255,255,.055); color:#efefef; }
 .settings-nav-item:active { background-color:var(--control-pressed); color:#fff; transform:translateY(1px); }
@@ -483,9 +482,6 @@ button, a, input { -webkit-tap-highlight-color:transparent; }
 .settings-nav-item>span:last-child { display:grid; gap:2px; min-width:0; }
 .settings-nav-item strong { overflow:hidden; color:inherit; font-size:14px; font-weight:700; letter-spacing:-.015em; line-height:1.25; text-overflow:ellipsis; white-space:nowrap; }
 .settings-nav-item small { overflow:hidden; color:#5f5f5f; font-size:10px; text-overflow:ellipsis; white-space:nowrap; }
-.settings-nav-icon { width:34px; height:34px; display:grid; place-items:center; border:1px solid rgba(255,255,255,.1); border-radius:10px; background:rgba(255,255,255,.045); color:#aaa; }
-.settings-nav-icon svg { width:18px; height:18px; }
-.settings-nav-item:hover .settings-nav-icon { border-color:rgba(255,255,255,.18); color:#fff; }
 .settings-content { display:grid; gap:12px; min-width:0; }
 .settings-section { scroll-margin-top:calc(var(--topbar) + 28px); margin-bottom:0; padding:clamp(20px,3vw,30px); border-radius:20px; background:linear-gradient(145deg,rgba(22,22,22,.98),rgba(13,13,13,.98)); }
 .settings-section .settings-card-head { display:block; padding-bottom:20px; }
@@ -718,13 +714,10 @@ button, a, input { -webkit-tap-highlight-color:transparent; }
   .settings-heading-actions { width:100%; }
   .settings-layout { display:block; }
   .settings-sidebar { position:static; display:flex; gap:6px; overflow-x:auto; margin:0 -4px 14px; padding:6px; border-radius:15px; }
-  .settings-sidebar-label { display:none; }
   .settings-nav-item { display:flex; flex:none; gap:8px; min-height:44px; padding:6px 9px; border-color:rgba(255,255,255,.08); background:rgba(255,255,255,.025); }
   .settings-nav-item>span:last-child { display:block; }
   .settings-nav-item small { display:none; }
   .settings-nav-item strong { font-size:12px; }
-  .settings-nav-icon { width:28px; height:28px; border-radius:8px; }
-  .settings-nav-icon svg { width:16px; height:16px; }
   .settings-content { gap:10px; }
   .settings-section { padding:20px 18px; }
   .settings-section .settings-card-head { padding-bottom:17px; }
@@ -748,7 +741,6 @@ button, a, input { -webkit-tap-highlight-color:transparent; }
 .settings-nav-item { appearance:none; width:100%; font:inherit; text-align:left; cursor:pointer; }
 .settings-nav-item strong { display:block; min-width:0; }
 .settings-nav-item.active { border-color:rgba(195,166,255,.42); border-color:color-mix(in oklch,var(--color-brand) 42%,transparent); background:rgba(195,166,255,.12); background:color-mix(in oklch,var(--color-brand) 12%,rgba(255,255,255,.035)); color:var(--text); }
-.settings-nav-item.active .settings-nav-icon { border-color:rgba(195,166,255,.42); border-color:color-mix(in oklch,var(--color-brand) 42%,transparent); color:var(--color-brand); background:rgba(195,166,255,.1); background:color-mix(in oklch,var(--color-brand) 10%,rgba(255,255,255,.045)); }
 .settings-content { min-height:420px; }
 
 @media (max-width: 900px) {
@@ -764,15 +756,6 @@ button, a, input { -webkit-tap-highlight-color:transparent; }
 }
 @media (max-width: 900px) {
   .shorts-back { display:grid; }
-}
-
-/* Settings navigation: let the glyphs stand on their own. */
-.settings-nav-icon { width:34px; height:34px; border:0; border-radius:0; background:transparent; }
-.settings-nav-icon svg { width:22px; height:22px; }
-.settings-nav-item.active .settings-nav-icon { border-color:transparent; background:transparent; }
-@media (max-width: 900px) {
-  .settings-nav-icon { width:28px; height:28px; border:0; border-radius:0; background:transparent; }
-  .settings-nav-icon svg { width:20px; height:20px; }
 }
 
 /* Virelo launch screen · logo → wordmark → horizontal handoff */

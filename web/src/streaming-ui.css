@@ -92,12 +92,13 @@
 }
 .app-shell .settings-nav-item:hover { background:rgba(255,255,255,.04); color:var(--text); }
 .app-shell .settings-nav-item:active { background:var(--control-pressed); transform:none; }
-.app-shell .settings-nav-item.active { background:none; color:var(--text); }
+.app-shell .settings-nav-item.active { background:var(--surface-3); color:var(--text); }
 .app-shell .settings-nav-item.active::before { content:""; position:absolute; inset:12px auto 12px 0; width:2px; background:var(--text); }
 .app-shell .settings-nav-item:focus-visible { outline:2px solid var(--color-focus); outline-offset:2px; }
 .app-shell .settings-nav-copy { display:block; min-width:0; }
 .app-shell .settings-nav-copy strong { display:block; font-size:16px; font-weight:500; line-height:1.5; white-space:normal; }
-.app-shell .settings-nav-copy small,.app-shell .settings-nav-chevron { display:none; }
+.app-shell .settings-nav-copy small { display:block; margin-top:4px; font-size:12px; font-weight:400; line-height:1.45; color:var(--text-muted); white-space:normal; }
+.app-shell .settings-nav-chevron { display:none; }
 .app-shell .settings-content { display:block; min-height:360px; min-width:0; }
 .app-shell .settings-back { display:none; }
 .app-shell .settings-section {

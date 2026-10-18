@@ -30,7 +30,7 @@ try {
         await new Promise(resolve=>{release=resolve;});
         return route.fulfill(fail?{status:500,json:{error:'Test failure. Try again.'}}:{json:{cleared:12}});
       }
-      return route.fulfill({json:url.pathname==='/api/settings'?{externalMetadataEnabled:true,externalImagesEnabled:true,queueBehavior:'auto',shortsIncludeLandscapes:false,showAllLibraries:true}:url.pathname==='/api/libraries'?[]:{}});
+      return route.fulfill({json:url.pathname==='/api/settings'?{externalMetadataEnabled:true,externalImagesEnabled:true,queueBehavior:'auto',shortsIncludeLandscapes:false}:url.pathname==='/api/libraries'?[]:{}});
     });
     await page.goto(base+prefix+'/settings');
     await page.locator('#settings-nav-'+(mode==='npm'?'network':'metadata')).click();

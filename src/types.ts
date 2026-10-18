@@ -9,6 +9,7 @@ export interface Library {
   path: string;
   label: string;
   created_at: number;
+  persistent: number;
 }
 
 export interface MediaRecord {
@@ -63,7 +64,6 @@ export interface AppSettings {
   libraryWatchEnabled: boolean;
   shortsIncludeLandscapes: boolean;
   queueBehavior: QueueBehavior;
-  showAllLibraries: boolean;
 }
 
 export interface ShortsItem extends MediaRecord {

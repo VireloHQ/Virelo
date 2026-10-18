@@ -1,5 +1,5 @@
 import { DatabaseSync, type SQLInputValue } from 'node:sqlite';
-import { dirname, isAbsolute, relative, resolve } from 'node:path';
+import { dirname, isAbsolute, relative, resolve, sep } from 'node:path';
 import { parseMediaName } from './scanner.js';
 import { buildHome } from './home.js';
 import type { CatalogScope } from './auth-types.js';
@@ -13,8 +13,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   tmdbApiKey: '',
   libraryWatchEnabled: true,
   shortsIncludeLandscapes: false,
-  queueBehavior: 'auto',
-  showAllLibraries: false
+  queueBehavior: 'auto'
 };
 
 const SORT_ORDER: Record<SortKey, string> = {
@@ -103,6 +102,35 @@ export class VireloDB {
       if (!columns.some((column) => column.name === name)) this.db.exec(`ALTER TABLE media ADD COLUMN ${name} INTEGER NOT NULL DEFAULT 0`);
     }
     this.migrateFolderColumn();
+    const libraryColumns = this.db.prepare('PRAGMA table_info(libraries)').all() as Array<{name:string}>;
+    if (!libraryColumns.some(column => column.name === 'persistent'))
+      this.db.exec('ALTER TABLE libraries ADD COLUMN persistent INTEGER NOT NULL DEFAULT 0');
+    this.mergeLibraryAliases();
+  }
+
+  private pathKey(path: string) {
+    const absolute = resolve(path);
+    return process.platform === 'win32' ? absolute.toLowerCase() : absolute;
+  }
+
+  private mergeLibraryAliases() {
+    if (process.platform !== 'win32') return;
+    const canonical = new Map<string, Library>();
+    const hasGrants = Boolean(this.db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='account_libraries'").get());
+    this.db.exec('BEGIN IMMEDIATE');
+    try {
+      for (const library of this.listLibraries()) {
+        const key = this.pathKey(library.path), previous = canonical.get(key);
+        if (!previous) { canonical.set(key, library); continue; }
+        this.db.prepare('UPDATE media SET library_id=? WHERE library_id=?').run(previous.id, library.id);
+        if (hasGrants) {
+          this.db.prepare('INSERT OR IGNORE INTO account_libraries(user_id,library_id) SELECT user_id,? FROM account_libraries WHERE library_id=?').run(previous.id, library.id);
+        }
+        this.db.prepare('UPDATE libraries SET persistent=MAX(persistent,?) WHERE id=?').run(library.persistent, previous.id);
+        this.db.prepare('DELETE FROM libraries WHERE id=?').run(library.id);
+      }
+      this.db.exec('COMMIT');
+    } catch (error) { this.db.exec('ROLLBACK'); throw error; }
   }
 
   private migrateFolderColumn() {
@@ -155,19 +183,37 @@ export class VireloDB {
     return this.db.prepare('SELECT * FROM libraries ORDER BY created_at ASC').all() as unknown as Library[];
   }
 
-  private static pathInside(target: string, root: string): boolean {
-    let rel: string;
-    try { rel = relative(root, target); } catch { return false; }
-    if (rel === '') return true;
-    if (rel.startsWith('..') || isAbsolute(rel)) return false;
-    return true;
+  visibleLibraries(scope?: CatalogScope): Library[] {
+    return this.listLibraries().filter(l => (l.persistent === 1 || this.sessionPinned.has(l.id))
+      && (!scope || scope.libraryIds === null || scope.libraryIds.includes(l.id)));
   }
 
-  visibleLibraries(scope?: CatalogScope): Library[] {
-    const settings = this.getSettings();
-    const cwd = process.cwd();
-    return this.listLibraries().filter(l => (settings.showAllLibraries || this.sessionPinned.has(l.id) || VireloDB.pathInside(l.path, cwd))
-      && (!scope || scope.libraryIds === null || scope.libraryIds.includes(l.id)));
+  previousLibraries(): Library[] {
+    return this.listLibraries().filter(l => !l.persistent && !this.sessionPinned.has(l.id));
+  }
+
+  libraryForPath(path: string): Library | undefined {
+    return this.ownerForPath(path,this.visibleLibraries());
+  }
+
+  private ownerForPath(path: string,libraries: readonly Library[]): Library | undefined {
+    let owner: Library | undefined;
+    for (const library of libraries) {
+      const rest=relative(library.path,path);
+      if (rest!=='..'&&!rest.startsWith('..'+sep)&&!isAbsolute(rest)&&(!owner||library.path.length>owner.path.length)) owner=library;
+    }
+    return owner;
+  }
+
+  private reassignMedia() {
+    const libraries=this.visibleLibraries();
+    const rows=this.db.prepare('SELECT id,path,library_id FROM media').all() as Array<{id:number;path:string;library_id:number}>;
+    const update=this.db.prepare('UPDATE media SET library_id=?,folder=? WHERE id=?');
+    for (const row of rows) {
+      const owner=this.ownerForPath(row.path,libraries);
+      if (owner&&owner.id!==row.library_id)
+        update.run(owner.id,relative(owner.path,dirname(row.path)).replaceAll('\\','/'),row.id);
+    }
   }
 
   private visibleIdClause(scope?: CatalogScope): { sql: string; params: SQLInputValue[] } {
@@ -177,20 +223,29 @@ export class VireloDB {
       : { sql: '0=1', params: [] };
   }
 
-  addLibrary(path: string, label: string): Library {
+  addLibrary(path: string, label: string, persistent = true): Library {
+    path = resolve(path);
     const now = Date.now();
-    this.db.prepare('INSERT OR IGNORE INTO libraries(path,label,created_at) VALUES(?,?,?)').run(path, label, now);
-    const library = this.db.prepare('SELECT * FROM libraries WHERE path=?').get(path) as unknown as Library;
+    const existing = this.listLibraries().find(library => this.pathKey(library.path) === this.pathKey(path));
+    if (existing) {
+      if (persistent) this.db.prepare('UPDATE libraries SET persistent=1 WHERE id=?').run(existing.id);
+    } else {
+      this.db.prepare('INSERT INTO libraries(path,label,created_at,persistent) VALUES(?,?,?,?)').run(path, label, now, Number(persistent));
+    }
+    const library = this.db.prepare('SELECT * FROM libraries WHERE path=?').get(existing?.path ?? path) as unknown as Library;
     this.sessionPinned.add(library.id);
+    this.reassignMedia();
     return library;
   }
 
   removeLibrary(id: number) {
-    this.db.prepare('DELETE FROM libraries WHERE id=?').run(id);
+    this.db.prepare('UPDATE libraries SET persistent=0 WHERE id=?').run(id);
+    this.sessionPinned.delete(id);
+    this.reassignMedia();
   }
 
   getMediaByPath(path: string): MediaRecord | undefined {
-    return this.db.prepare('SELECT * FROM media WHERE path=?').get(path) as unknown as MediaRecord | undefined;
+    return this.db.prepare(`SELECT * FROM media WHERE path=? ${process.platform === 'win32' ? 'COLLATE NOCASE' : ''} ORDER BY id LIMIT 1`).get(path) as unknown as MediaRecord | undefined;
   }
 
   private personalJoins(scope?: CatalogScope) {
@@ -210,6 +265,9 @@ export class VireloDB {
   }
 
   upsertMedia(input: Omit<MediaRecord, 'id' | 'added_at' | 'updated_at'>): MediaRecord {
+    const owner=this.libraryForPath(input.path);
+    if (owner&&owner.id!==input.library_id)
+      input={...input,library_id:owner.id,folder:relative(owner.path,dirname(input.path)).replaceAll('\\','/')};
     const now = Date.now();
     this.db.prepare(`
       INSERT INTO media(
@@ -265,9 +323,10 @@ export class VireloDB {
   }
 
   deleteMissingForLibrary(libraryId: number, existingPaths: Set<string>) {
+    const paths = new Set([...existingPaths].map(path => this.pathKey(path)));
     const rows = this.db.prepare('SELECT id,path FROM media WHERE library_id=?').all(libraryId) as Array<{id:number;path:string}>;
     const del = this.db.prepare('DELETE FROM media WHERE id=?');
-    for (const row of rows) if (!existingPaths.has(row.path)) del.run(row.id);
+    for (const row of rows) if (!paths.has(this.pathKey(row.path))) del.run(row.id);
   }
 
   listMedia(options: { search?: string; kind?: MediaKind; limit?: number; offset?: number; libraryId?: number; folder?: string; sort?: SortKey; liked?: boolean } = {}, scope?: CatalogScope) {

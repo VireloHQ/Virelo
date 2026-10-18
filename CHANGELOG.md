@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+- Accept short passwords and PINs without complexity rules; preserve hashing, sign-in rate limits and optional localhost-only administration.
+- Separate temporary startup folders from saved libraries. Keep UI-added libraries across startup folders, allow saving temporary/previous folders, and show only the active catalog in Account Manager.
+- Preserve indexed media and personal state when deactivating a library; merge Windows path aliases without changing media IDs or grants, and avoid pruning during incomplete/offline scans.
+- Group Account Manager into user selection, profile, role/status, library access, actions and network settings with visible section boundaries.
+- Add Play all to Favorites in both players, including unloaded pages. Default new quality preferences to Original Quality while retaining explicit selections.
+- Replace obsolete development run reports with current contribution and library-storage documentation.
+
 ## 0.4.0 — 2026-10-17
 
 Upgrade note: all server access now requires a local account. After upgrading, open Virelo directly on the server PC using localhost to create the first administrator. That account inherits existing favorites and watch history; media files are unchanged. Existing API clients must sign in and include `X-Virelo-Request: 1` for state-changing requests. The project is now AGPL-3.0-only; see LICENSE for the terms and preserved permissions for older MIT releases.

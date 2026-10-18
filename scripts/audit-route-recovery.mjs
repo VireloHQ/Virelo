@@ -97,7 +97,7 @@ try {
     const legalPage = await legalContext.newPage();
     await legalPage.goto(base + prefix + '/settings');
     await legalPage.locator('.settings-legal').waitFor();
-    check(await legalPage.getByRole('link',{name:'Source code',exact:true}).getAttribute('href') === 'https://github.com/Riyoway/' + (mode === 'web' ? 'Virelo-web' : 'Virelo'), mode + ' source offer points to this project');
+    check(await legalPage.getByRole('link',{name:'Source code',exact:true}).getAttribute('href') === 'https://github.com/VireloHQ/' + (mode === 'web' ? 'Virelo-Web' : 'Virelo'), mode + ' source offer points to this project');
     check(await legalPage.getByRole('link',{name:'AGPL-3.0-only',exact:true}).getAttribute('href') === '/LICENSE.txt', mode + ' full local license is accessible from Settings');
     const licenseResponse = await legalPage.request.get(base + '/LICENSE.txt');
     check(licenseResponse.status() === 200 && (await licenseResponse.text()).includes('13. Remote Network Interaction'), mode + ' built web distribution includes the full AGPL');

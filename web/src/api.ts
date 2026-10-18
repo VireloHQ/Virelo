@@ -37,6 +37,7 @@ export const api = {
   updateAccount: (body: {username:string;displayName:string;currentPassword:string;password?:string}) => request<AuthStatus>('/api/auth/me', {method:'PATCH',body:JSON.stringify(body)}),
   accounts: () => request<Account[]>('/api/accounts'),
   accountLibraries: () => request<Library[]>('/api/accounts/libraries'),
+  previousLibraries: () => request<Library[]>('/api/accounts/previous-libraries'),
   saveAccount: (body: object, id?:number) => request<Account>(id === undefined ? '/api/accounts' : `/api/accounts/${id}`, {method:id === undefined?'POST':'PATCH',body:JSON.stringify(body)}),
   deleteAccount: (id:number) => request(`/api/accounts/${id}`, {method:'DELETE'}),
   accountSecurity: () => request<{adminLocalOnly:boolean;localAccess:boolean}>('/api/accounts/security'),

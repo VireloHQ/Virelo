@@ -3,9 +3,21 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { stripTypeScriptTypes } from 'node:module';
 const source = await readFile(new URL('../web/src/utils/favorites.ts', import.meta.url), 'utf8');
-const { patchFavoriteData, updateHomeFavorites, nextFavoritesPage } = await import(
+const { patchFavoriteData, updateHomeFavorites, nextFavoritesPage, loadFavoriteQueue } = await import(
   'data:text/javascript;base64,' + Buffer.from(stripTypeScriptTypes(source)).toString('base64'));
 const item = (id, liked = 0) => ({ id, title: 'Video ' + id, liked, progress_position: 42 });
+
+test('Play all loads every favorite beyond the display and 500-item queue limits', async () => {
+  const all = Array.from({length:1205}, (_, id) => item(id, 1)), offsets = [];
+  const queue = await loadFavoriteQueue(async (offset, limit) => {
+    offsets.push(offset); return all.slice(offset, offset + limit);
+  });
+  assert.deepEqual(queue, all);
+  assert.equal(offsets.at(-1), 1200);
+  assert.deepEqual(await loadFavoriteQueue(async () => []), []);
+  await assert.rejects(loadFavoriteQueue(async () => all.slice(0,100)), /changed while loading/);
+  await assert.rejects(loadFavoriteQueue(async () => {throw new Error('Offline');}), /Offline/);
+});
 
 test('favorites updates patch every shelf and virtualized Shorts page without moving items', () => {
   const data = { pages: [{ items: [item(1), item(2)], total: 2 }], pageParams: [0] };

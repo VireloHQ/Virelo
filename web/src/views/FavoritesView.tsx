@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useInfiniteQuery } from '@tanstack/react-query';
-import { Link } from '@tanstack/react-router';
+import { Link, useNavigate } from '@tanstack/react-router';
+import { Play } from '@phosphor-icons/react';
 import { Button } from '@heroui/react';
 import { api } from '../api';
 import { useUIStore } from '../store';
@@ -16,6 +17,7 @@ const SORT_OPTIONS = [
 ];
 
 export function FavoritesView() {
+  const navigate = useNavigate();
   const search = useUIStore(s => s.search);
   const [sort, setSort] = useState<SortKey>('title');
   const query = useInfiniteQuery({
@@ -29,7 +31,13 @@ export function FavoritesView() {
   return <div className="content-view favorites-view">
     <div className="content-heading">
       <div><h1>Favorites</h1><p>Your saved videos and Shorts.</p></div>
-      <Select label="Sort favorites" value={sort} options={SORT_OPTIONS} onChange={value => setSort(value as SortKey)} />
+      <div className="heading-controls">
+        <Select label="Sort favorites" value={sort} options={SORT_OPTIONS} onChange={value => setSort(value as SortKey)} />
+        {items.length > 0 && <Button className="play-all-btn" onPress={() => void navigate({
+          to:'/watch/$mediaId', params:{mediaId:String(items[0].id)},
+          search:{queue:true,favorites:true,sort,search:search||undefined}
+        })}><Play weight="fill"/> Play all</Button>}
+      </div>
     </div>
     {query.isError && <div className="favorites-feedback" role="alert">
       <p>Could not load favorites. Your saved videos have not been deleted.</p>

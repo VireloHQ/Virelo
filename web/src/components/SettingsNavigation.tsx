@@ -16,6 +16,7 @@ export function SettingsNavigation({ sections, activeSection, onSelect }: {
       key={section.id}
       id={`settings-nav-${section.id}`}
       type="button"
+      aria-label={section.label}
       className={`settings-nav-item${activeSection === section.id ? ' active' : ''}`}
       aria-current={activeSection === section.id ? 'page' : undefined}
       aria-controls={activeSection === section.id ? `settings-panel-${section.id}` : undefined}

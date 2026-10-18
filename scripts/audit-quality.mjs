@@ -129,7 +129,7 @@ try {
   await page.getByRole('button',{name:'Quality',exact:true}).click();
   check(await page.getByRole('menuitemradio',{name:/^Auto/}).count()===(mode==='npm-network'?1:0),mode+' Auto is available only on network connections');
   check(await page.getByRole('menuitemradio',{name:/^Original Quality/}).count()===1&&await page.getByRole('menuitemradio',{name:/^1080p/}).count()===1,mode+' Original Quality and 1080p are separate options');
-  if(mode==='npm-network')check(await page.getByRole('menuitemradio',{name:/^Auto/}).getAttribute('aria-checked')==='true',mode+' network default is Auto without preparation');
+  check(await page.getByRole('menuitemradio',{name:/^Original Quality/}).getAttribute('aria-checked')==='true',mode+' default is Original Quality without preparation');
   await page.getByRole('button',{name:'Quality',exact:true}).click();
   await choose(720);await waitVideo(720);
   check(await preference()==='720',mode+' manual quality saved');
@@ -162,7 +162,7 @@ try {
   await page.getByRole('button',{name:'Audio',exact:true}).click();await page.getByRole('menuitemradio',{name:/^Two/}).click();
   await page.locator('.player-status.error').waitFor();
   check(await page.locator('.player video').evaluate(v=>v.paused)&&await preference()==='480',mode+' audio-switch failure cannot bypass manual ceiling');
-  await page.evaluate(()=>{window.__failQuality=false;window.__noLower=true;localStorage.setItem('virelo-playback-quality:v1','720');});
+  await page.evaluate(()=>{window.__failQuality=false;window.__noLower=true;localStorage.removeItem('virelo-playback-audio:v1');localStorage.setItem('virelo-playback-quality:v1','720');});
   await page.reload();await page.locator('.splash-screen').waitFor({state:'hidden'});await setup();
   await page.evaluate(()=>{window.__noLower=true;});requested.length=0;await mount(6);
   await page.locator('.player-status.error').waitFor({timeout:45000});

@@ -115,18 +115,18 @@ test('Home keeps hidden libraries out of every discovery shelf',async()=>{
   const {VireloDB}=await import('../dist/db.js');
   const dir=await mkdtemp(join(tmpdir(),'virelo-home-'));let db=new VireloDB(dir);
   try{
-    const visible=db.addLibrary(join(dir,'visible'),'Visible'),hidden=db.addLibrary(join(dir,'hidden'),'Hidden');
+    const visible=db.addLibrary(join(dir,'visible'),'Visible',false),hidden=db.addLibrary(join(dir,'hidden'),'Hidden',false);
     for(const library of [visible,hidden])for(let i=1;i<=4;i++)db.upsertMedia({
       ...item(i),library_id:library.id,path:join(library.path,'Film '+i+'.mp4'),filename:'Film '+i+'.mp4',sort_title:'film '+i,year:2020,
       video_codec:'h264',audio_codec:'aac',container:'mp4',folder:'',size:1,mtime:1,
       thumbnail_path:null,poster_path:null,backdrop_path:null,overview:null,genres:'Drama',external_id:null
     });
-    db.close();db=new VireloDB(dir);db.addLibrary(visible.path,'Visible');
+    db.close();db=new VireloDB(dir);db.addLibrary(visible.path,'Visible',false);
     const home=db.getHome();assert.equal(home.total,4);
     for(const values of Object.values(home))if(Array.isArray(values))for(const entry of values){
       if(entry.items)for(const media of entry.items)assert.equal(media.library_id,visible.id);
       else assert.equal(entry.library_id,visible.id);
     }
-    db.updateSettings({showAllLibraries:true});assert.equal(db.getHome().total,8);
+    db.addLibrary(hidden.path,'Hidden');assert.equal(db.getHome().total,8);
   }finally{db.close();await rm(dir,{recursive:true,force:true});}
 });

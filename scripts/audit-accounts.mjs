@@ -10,7 +10,7 @@ import { createVireloServer } from '../dist/server.js';
 const repo=fileURLToPath(new URL('../',import.meta.url));
 const {chromium}=createRequire(process.env.VIRELO_TEST_NODE_PACKAGE||join(repo,'package.json'))('playwright');
 const root=await mkdtemp(join(tmpdir(),'virelo-account-ui-'));
-const password='A private browser test passphrase';
+const password='1234';
 async function checkFieldFocus(page,label) {
   const input=page.getByLabel(label,{exact:true});
   await input.click();
@@ -25,8 +25,11 @@ async function checkFieldFocus(page,label) {
 process.env.VIRELO_LOG_LEVEL='silent';
 let browser,server,diagnosticPage;
 try {
-  server=await createVireloServer({dataDir:root,mediaPaths:[],host:'127.0.0.1',port:0});
+  const temporary=join(root,'Temporary'),previous=join(root,'Previous');
+  await mkdir(temporary);await mkdir(previous);
+  server=await createVireloServer({dataDir:root,mediaPaths:[temporary],host:'127.0.0.1',port:0});
   server.db.updateSettings({libraryWatchEnabled:false,externalMetadataEnabled:false});
+  const archived=server.db.addLibrary(previous,'Previous',false);server.db.removeLibrary(archived.id);
   const clip=execFileSync(process.env.VIRELO_TEST_FFMPEG||'ffmpeg',['-hide_banner','-loglevel','error','-f','lavfi','-i','color=c=0x334455:s=640x360:r=5:d=60',
     '-c:v','libx264','-preset','ultrafast','-pix_fmt','yuv420p','-movflags','frag_keyframe+empty_moov','-f','mp4','pipe:1'],{windowsHide:true});
   const ids=[];
@@ -50,9 +53,6 @@ try {
   await checkFieldFocus(page,'Username');await checkFieldFocus(page,'Password');
   await page.screenshot({path:join(repo,'node_modules/.cache/accounts-focus-setup.png')});
   await page.getByLabel('Username',{exact:true}).fill('owner');await page.getByLabel('Display name',{exact:true}).fill('Owner');
-  await page.getByLabel('Password',{exact:true}).fill('short');await page.getByLabel('Confirm password',{exact:true}).fill('short');
-  await page.getByRole('button',{name:'Create administrator',exact:true}).click();
-  await page.getByRole('alert').filter({hasText:'15–128'}).waitFor();
   await page.getByLabel('Password',{exact:true}).fill(password);await page.getByLabel('Confirm password',{exact:true}).fill(password);
   await page.getByRole('button',{name:'Create administrator',exact:true}).click();
   await page.locator('.desktop-nav').getByRole('link',{name:'Home',exact:true}).waitFor();
@@ -68,7 +68,27 @@ try {
   await page.getByRole('button',{name:'Save user',exact:true}).waitFor();
   assert.equal(await page.getByRole('switch',{name:'Shared',exact:true}).isChecked(),true);
   assert.equal(await page.getByRole('switch',{name:'Hidden',exact:true}).isChecked(),false);
+  await page.evaluate(()=>window.scrollTo(0,0));
   await page.screenshot({path:join(repo,'node_modules/.cache/accounts-desktop.png')});
+  assert.equal(await page.getByRole('switch',{name:'Previous',exact:true}).count(),0,'Account Manager excludes previous folders');
+  assert.equal(await page.getByRole('group',{name:'Profile',exact:true}).count(),1);
+  assert.equal(await page.getByRole('group',{name:'Library access',exact:true}).count(),1);
+  await page.setViewportSize({width:390,height:844});
+  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
+  await page.screenshot({path:join(repo,'node_modules/.cache/accounts-mobile.png')});
+  await page.setViewportSize({width:1440,height:1000});
+  await section(page,'Libraries');
+  await page.getByRole('heading',{name:'Temporary folders',exact:true}).waitFor();
+  await page.getByRole('button',{name:'Save library',exact:true}).click();
+  await page.getByRole('heading',{name:'Temporary folders',exact:true}).waitFor({state:'hidden'});
+  assert.equal(server.db.visibleLibraries().find(l=>l.path===temporary).persistent,1);
+  await page.locator('.library-previous summary').click();
+  await page.locator('.library-previous').getByRole('button',{name:'Save library',exact:true}).click();
+  await page.waitForFunction(()=>!document.querySelector('.library-previous .library-list button'));
+  assert.equal(server.db.visibleLibraries().find(l=>l.path===previous).persistent,1);
+  await page.screenshot({path:join(repo,'node_modules/.cache/accounts-libraries.png')});
+  await section(page,'Account Manager');
+  await page.locator('.account-manager-list').getByRole('button',{name:/Viewer/}).click();
   console.log('accounts: production bootstrap and Account Manager create a restricted viewer');
 
   const viewer=await browser.newContext({serviceWorkers:'block',viewport:{width:1440,height:1000},reducedMotion:'reduce'});

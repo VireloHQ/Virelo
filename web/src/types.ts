@@ -70,7 +70,7 @@ export interface ShortsFeed {
   total: number;
 }
 
-export interface Library { id:number; path:string; label:string; created_at:number }
+export interface Library { id:number; path:string; label:string; created_at:number; persistent:number }
 export interface Settings {
   externalMetadataEnabled: boolean;
   externalImagesEnabled: boolean;
@@ -81,7 +81,6 @@ export interface Settings {
   libraryWatchEnabled: boolean;
   shortsIncludeLandscapes: boolean;
   queueBehavior: QueueBehavior;
-  showAllLibraries: boolean;
 }
 export interface ScanStatus {
   running:boolean; startedAt:number|null; finishedAt:number|null; total:number; scanned:number; added:number; updated:number; skipped:number; errors:number; message:string;

@@ -1,10 +1,10 @@
 import { PageSkeleton } from '../components/PageSkeleton';
 import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Button, Input, Switch } from '@heroui/react';
-import { ArrowLeft, ArrowsClockwise, CheckCircle, FolderPlus, Trash, WarningCircle } from '@phosphor-icons/react';
+import { Button, Switch } from '@heroui/react';
+import { ArrowLeft, CheckCircle, WarningCircle } from '@phosphor-icons/react';
 import { api } from '../api';
-import { ScanProgress } from '../components/ScanProgress';
+import { LibrarySettings } from '../components/LibrarySettings';
 import { Select } from '../components/Select';
 import { SettingsNavigation } from '../components/SettingsNavigation';
 import { ConfirmationDialog } from '../components/ConfirmationDialog';
@@ -31,16 +31,11 @@ type SettingsSectionId = (typeof settingsSections)[number]['id'];
 export function SettingsView(){
   const session=useAccount();
   const isAdmin=Boolean(session?.user.isAdmin);
-  const canManageLibraries=Boolean(session?.user.permissions.manageLibraries);
-  const canScan=Boolean(session?.user.permissions.scanLibraries);
   const sections=settingsSections.filter(section=>isAdmin||['account','libraries','tools'].includes(section.id));
   const client=useQueryClient();
   const settingsQuery=useQuery({queryKey:['settings'],queryFn:api.settings});
-  const libraries=useQuery({queryKey:['libraries'],queryFn:api.libraries});
-  const scan=useQuery({queryKey:['scan'],queryFn:api.scanStatus,refetchInterval:(q)=>q.state.data?.running?1000:5000});
   const health=useQuery({queryKey:['health'],queryFn:async()=>{const r=await fetch('/api/health');return r.json() as Promise<{ffmpeg:boolean;ffprobe:boolean}>;}});
   const [form,setForm]=useState<Settings|null>(null);
-  const [path,setPath]=useState('');
   const [activeSection,setActiveSection]=useState<SettingsSectionId>('account');
   const [mobileDetail,setMobileDetail]=useState(false);
   const openSection=(id:string)=>{
@@ -54,8 +49,6 @@ export function SettingsView(){
   };
   useEffect(()=>{if(settingsQuery.data&&!form)setForm(settingsQuery.data);},[settingsQuery.data,form]);
   const save=useMutation({mutationFn:()=>api.saveSettings(form!),onSuccess:(data)=>{setForm(data);client.setQueryData(['settings'],data);}});
-  const add=useMutation({mutationFn:()=>api.addLibrary(path),onSuccess:()=>{setPath('');void client.invalidateQueries({queryKey:['libraries']});void client.invalidateQueries({queryKey:['scan']});}});
-  const remove=useMutation({mutationFn:(id:number)=>api.removeLibrary(id),onSuccess:()=>{void client.invalidateQueries({queryKey:['libraries']});void client.invalidateQueries({queryKey:['home']});}});
   const clearMetadata=useMutation({mutationFn:api.clearAllMetadata,onSuccess:()=>client.invalidateQueries({predicate:(query)=>['home','media','related','shorts','watch-queue','queue','search'].includes(String(query.queryKey[0]))})});
   if(!form)return <PageSkeleton kind="settings" />;
   const hasChanges=JSON.stringify(form)!==JSON.stringify(settingsQuery.data);
@@ -72,14 +65,8 @@ export function SettingsView(){
         {activeSection==='accounts'&&isAdmin&&<div id="settings-panel-accounts" className="settings-card settings-section"><AccountManager/></div>}
         {activeSection==='libraries'&&<section id="settings-panel-libraries" className="settings-card settings-section" aria-labelledby="settings-title-libraries">
           <div className="settings-card-head"><div><h2 id="settings-title-libraries" tabIndex={-1}>Libraries</h2><p>Manage the folders Virelo scans for media.</p></div></div>
-          {canManageLibraries&&<div className="add-library"><Input aria-label="Media folder path" placeholder={navigator.userAgent.includes('Windows')?'D:\\Videos':'/home/user/Videos'} value={path} onChange={(e)=>setPath(e.target.value)}/><Button isPending={add.isPending} onPress={()=>add.mutate()} isDisabled={!path.trim()}><FolderPlus/> Add folder</Button></div>}
-          {add.error&&<p className="error-copy">{add.error.message}</p>}
-          <div className="library-list">{libraries.data?.map(lib=><div key={lib.id}><div><strong>{lib.label}</strong>{canManageLibraries&&<span>{lib.path}</span>}</div>{canManageLibraries&&<Button isIconOnly variant="ghost" aria-label={`Remove ${lib.label}`} onPress={()=>remove.mutate(lib.id)}><Trash/></Button>}</div>)}</div>
-          {!libraries.data?.length&&<p className="account-notice">No libraries are available for this account. Ask an administrator to grant access.</p>}
-          <div className="scan-strip"><div>{scan.data?.running?<ArrowsClockwise className="spin"/>:<CheckCircle/>}<span><strong>{scan.data?.message||'Idle'}</strong>{isAdmin&&scan.data?.running&&` · ${scan.data.scanned} scanned`}</span></div>{canScan&&<Button variant="secondary" isPending={scan.data?.running} onPress={()=>api.startScan().then(()=>client.invalidateQueries({queryKey:['scan']})).catch(()=>undefined)}>Scan</Button>}</div>
-          <ScanProgress status={scan.data} compact/>
-          {isAdmin&&<><SettingSwitch checked={form.showAllLibraries} onChange={(v)=>setForm({...form,showAllLibraries:v})} title="Show libraries from other folders" description="Include folders added outside the folder where Virelo was started."/>
-          <SettingSwitch checked={form.libraryWatchEnabled} onChange={(v)=>setForm({...form,libraryWatchEnabled:v})} title="Watch local folders" description="Monitor configured folders and scan when files change."/></>}
+          <LibrarySettings/>
+          {isAdmin&&<SettingSwitch checked={form.libraryWatchEnabled} onChange={(v)=>setForm({...form,libraryWatchEnabled:v})} title="Watch local folders" description="Monitor configured folders and scan when files change."/>}
         </section>}
 
         {activeSection==='network'&&<section id="settings-panel-network" className="settings-card settings-section" aria-labelledby="settings-title-network">

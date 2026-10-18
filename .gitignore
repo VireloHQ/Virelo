@@ -3,5 +3,14 @@ dist/
 *.tgz
 .DS_Store
 .env
+.env.*
+!.env.example
+.npmrc
+*.pem
+*.key
+.codex-remote-attachments/
+demo/
+.wrangler/
+.vercel/
 .virelo/
 .gstack/

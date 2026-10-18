@@ -52,9 +52,9 @@ test('manual choice persists across reloads and migrates existing npm preference
   assert.equal(entries.get('virelo-playback-quality:v1'),'480');
   q=await fresh();assert.equal(q.readQualityPreference(true),480);
 });
-test('defaults stay highest locally and Auto only on a network connection',async()=>{
+test('defaults use Original Quality on local and network connections',async()=>{
   storage();const q=await fresh();
-  assert.equal(q.readQualityPreference(false),'source');assert.equal(q.readQualityPreference(true),'auto');
+  assert.equal(q.readQualityPreference(false),'source');assert.equal(q.readQualityPreference(true),'source');
   assert.equal(q.resolvePreferredQuality(qualities(1080,720),q.readQualityPreference(false)),1080);
   assert.equal(q.resolvePreferredQuality(qualities(1080,720),'auto'),null);
 });
@@ -86,6 +86,6 @@ test('portrait HLS levels respect the same short-side ceiling as landscape video
 test('malformed stored values are not treated as an Auto or manual selection',async()=>{
   for(const value of ['', '-720','NaN','Infinity','720.5','garbage']){
     storage({'virelo-playback-quality:v1':value});const q=await fresh();
-    assert.equal(q.readQualityPreference(false),'source');assert.equal(q.readQualityPreference(true),'auto');
+    assert.equal(q.readQualityPreference(false),'source');assert.equal(q.readQualityPreference(true),'source');
   }
 });

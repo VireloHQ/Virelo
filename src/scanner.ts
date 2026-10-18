@@ -38,15 +38,17 @@ export function parseMediaName(path: string): {title:string; kind:MediaKind; ser
   return { title, kind: 'movie', seriesTitle: null, season: null, episode: null, year };
 }
 
-async function collectFiles(root: string, found: string[]) {
+async function collectFiles(root: string, found: string[]): Promise<boolean> {
   let entries;
-  try { entries = await readdir(root, { withFileTypes: true }); } catch { return; }
-  await Promise.all(entries.map(async (entry) => {
+  try { entries = await readdir(root, { withFileTypes: true }); } catch { return false; }
+  const complete = await Promise.all(entries.map(async (entry) => {
     if (entry.name.startsWith('.')) return;
     const full = join(root, entry.name);
     if (entry.isDirectory()) return collectFiles(full, found);
     if (entry.isFile() && VIDEO_EXTENSIONS.has(extname(entry.name).toLowerCase())) found.push(resolve(full));
+    return true;
   }));
+  return complete.every(result => result !== false);
 }
 
 async function mapLimit<T>(items: T[], limit: number, worker: (item:T)=>Promise<void>) {
@@ -63,10 +65,12 @@ async function mapLimit<T>(items: T[], limit: number, worker: (item:T)=>Promise<
 
 export async function scanLibrary(db: VireloDB, library: Library, dataDir: string, status: ScanStatus) {
   const files: string[] = [];
-  await collectFiles(library.path, files);
+  const complete = await collectFiles(library.path, files);
+  if (!complete) status.errors++;
   status.total += files.length;
   const existingPaths = new Set(files);
   await mapLimit(files, 4, async (path) => {
+    if (db.libraryForPath(path)?.id !== library.id) return;
     status.scanned++;
     try {
       const info = await stat(path);
@@ -85,7 +89,7 @@ export async function scanLibrary(db: VireloDB, library: Library, dataDir: strin
       } catch { /* keep root */ }
       const record = db.upsertMedia({
         library_id: library.id,
-        path,
+        path: previous?.path ?? path,
         filename: basename(path),
         title: previous?.title || parsed.title,
         sort_title: (previous?.title || parsed.title).toLowerCase(),
@@ -120,7 +124,7 @@ export async function scanLibrary(db: VireloDB, library: Library, dataDir: strin
       status.errors++;
     }
   });
-  db.deleteMissingForLibrary(library.id, existingPaths);
+  if (complete) db.deleteMissingForLibrary(library.id, existingPaths);
 }
 
 export async function scanAll(db: VireloDB, dataDir: string, status: ScanStatus, scope?: CatalogScope) {

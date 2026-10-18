@@ -19,8 +19,9 @@ test('passwords use salted scrypt and support long Unicode passphrases', async (
   assert.equal(await verifyPassword(password,one),true);
   assert.equal(await verifyPassword(password+'x',one),false);
   assert.equal(await verifyPassword(password),false);
-  await assert.rejects(hashPassword('too short'));
-  await assert.rejects(hashPassword('x'.repeat(129)));
+  for (const pin of ['1','1234','short']) assert.equal(await verifyPassword(pin,await hashPassword(pin)),true);
+  await assert.rejects(hashPassword(''));
+  await assert.rejects(hashPassword('x'.repeat(1025)));
   assert.equal(await verifyPassword('秘密の合言葉を十五文字より長く設定する',await hashPassword('秘密の合言葉を十五文字より長く設定する')),true);
 });
 
@@ -216,7 +217,7 @@ test('accounts enforce authentication, catalog privacy and administrative bounda
     assert.equal((await call('POST','/api/auth/logout',{},viewerCookie)).statusCode,200);
     assert.equal((await call('GET','/api/home',undefined,viewerCookie)).statusCode,401);
     assert.equal((await call('DELETE','/api/accounts/'+viewerId,undefined,ownerCookie)).statusCode,200);
-    await access(items[0].path);assert.equal(db.listLibraries().length,2);
+    await access(items[0].path);assert.equal(db.visibleLibraries().length,2);assert.equal(db.previousLibraries().length,1);
   });
   await t.test('sessions have bounded absolute and idle lifetimes',async()=>{
     const user=accounts.get(accounts.findUsername('owner')), value=accounts.createSession(user);

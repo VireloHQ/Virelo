@@ -60,12 +60,14 @@ test('moves unchanged media into a more specific library when it is rescanned th
     await writeFile(videoPath, 'not-a-real-video');
     const db = new VireloDB(dir);
     const parent = db.addLibrary(mediaRoot, 'Media');
-    const child = db.addLibrary(showRoot, 'Show');
     const status = () => ({ running:true,startedAt:null,finishedAt:null,total:0,scanned:0,added:0,updated:0,skipped:0,errors:0,message:'' });
     await scanLibrary(db, parent, dir, status());
     assert.equal(db.getMediaByPath(videoPath)?.library_id, parent.id);
+    const child = db.addLibrary(showRoot, 'Show');
     await scanLibrary(db, child, dir, status());
     assert.equal(db.getMediaByPath(videoPath)?.library_id, child.id);
+    await scanLibrary(db, parent, dir, status());
+    assert.equal(db.getMediaByPath(videoPath)?.library_id, child.id,'a parent rescan cannot expose a nested library');
     db.close();
   } finally {
     await rm(dir, { recursive: true, force: true });

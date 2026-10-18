@@ -147,7 +147,8 @@ export function registerAccounts(app: FastifyInstance, db: VireloDB) {
     return beginSession(request, reply, updated);
   });
   app.get('/api/accounts', async () => accounts.list());
-  app.get('/api/accounts/libraries', async () => db.listLibraries());
+  app.get('/api/accounts/libraries', async () => db.visibleLibraries());
+  app.get('/api/accounts/previous-libraries', async () => db.previousLibraries());
   app.post('/api/accounts', async (request, reply) => {
     const body = object(request.body), password = await hashPassword(body.password);
     fresh(request, true);

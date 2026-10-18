@@ -145,7 +145,7 @@ Virelo works without FFmpeg for formats supported by the browser. Installing `ff
 - on-demand audio-only AAC/HLS fallback for incompatible audio, without re-encoding video the browser can already play
 - Auto video quality that adapts to network conditions, plus manual resolution selection up to the source quality
 
-Virelo can automatically match filenames to movie and series metadata, then cache posters, backdrops, and episode artwork locally. Configure this from **Settings → Network**. Source video files are never sent to the metadata provider.
+Virelo can automatically match filenames to movie and series metadata, then cache posters, backdrops, and episode artwork locally. Configure this from **Settings → Metadata**. Source video files are never sent to the metadata provider.
 
 Audio and subtitle choices, including subtitle Off, are saved in your browser. Compatible track configurations restore the selected track even if stream IDs or order change. Different configurations use that video's defaults without overwriting the saved choices; ambiguous or unsupported tracks are not guessed.
 
@@ -164,6 +164,18 @@ The default data directory is `~/.virelo`:
 ```
 
 Videos stay in their original folders and are never copied into the data directory. Use `--data <path>` to choose another location.
+
+The current directory or `--media` folders are temporary for the current run.
+Use **Settings → Libraries → Save library** to keep one, or **Add folder** to save
+any other readable folder. Saved libraries remain available when Virelo starts
+elsewhere using the same data directory. Previous startup folders do not fill
+Account Manager; administrators can restore them from **Previously used folders**.
+Older databases retain those folders and their watch history without guessing
+which ones were intentionally saved. See [Library storage](docs/libraries.md).
+
+New playback sessions default to **Original Quality** on both local and network
+connections. Explicit quality choices are remembered. Favorites has **Play all**
+to queue the entire matching collection, including items beyond the first page.
 
 Converted playback uses **six-second segments generated only when the browser requests them**, at the requested resolution/audio track. Choosing Auto does not pre-convert every rendition or the whole movie. Directly playable files still use HTTP Range playback without conversion. At most two segment encoders run concurrently; abandoned requests are cancelled.
 
@@ -186,6 +198,9 @@ Local-only startup explains how to enable network access. Displayed addresses do
 The npm server requires a local Virelo account. On first use (including upgrades), open the server's localhost address **on the PC running Virelo** to create the first administrator. Remote devices cannot claim an unconfigured server. Existing favorites and watch history are copied to this first account; video files and libraries are preserved.
 
 In **Settings → Account Manager**, administrators can add, disable or delete users, reset passwords, promote other administrators, and choose each account's allowed libraries. New users see no libraries until granted access. You can select all libraries (including future additions), or an explicit list. Library access applies to search, Home, Shorts, playback, subtitles and artwork, not just navigation. Favorites and watch history are separate for every account.
+
+Passwords may be short PINs; no minimum length or complexity rule is imposed.
+Use a stronger password or localhost-only administration on untrusted networks.
 
 Playback, transcoding, library management, scanning and metadata editing can be granted separately to regular users. Adding/removing libraries is a trusted filesystem-management permission: that user can add folders readable by the server. Global server settings and Account Manager remain administrator-only. Administrators may limit their own browsing, but can change permissions, so this is not a security boundary between administrators.
 

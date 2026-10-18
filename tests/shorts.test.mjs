@@ -122,8 +122,8 @@ test('an explicit Short starts first even beyond page one, without duplicating o
 
 test('pinning cannot bypass library visibility or the Shorts eligibility setting', async () => {
   await withDb((db, dir) => {
-    const library = db.addLibrary('/tmp/shorts-visible', 'Visible');
-    const other = db.addLibrary('/tmp/shorts-hidden', 'Hidden');
+    const library = db.addLibrary('/tmp/shorts-visible', 'Visible',false);
+    const other = db.addLibrary('/tmp/shorts-hidden', 'Hidden',false);
     const visible = seed(db, library, '/tmp/shorts-visible/clip.mp4', 'Visible', 720, 1280);
     const hidden = seed(db, other, '/tmp/shorts-hidden/clip.mp4', 'Hidden', 720, 1280);
     const wide = seed(db, library, '/tmp/shorts-visible/wide.mp4', 'Wide', 1280, 720);

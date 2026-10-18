@@ -515,6 +515,27 @@ try {
   await page.screenshot({ path: process.env.VIRELO_TEST_SCREENSHOT || join(repo, 'node_modules/.cache/favorites-mobile.png') });
   assert.deepEqual(errors, []);
   console.log(mode + ': mobile layout, navigation and runtime checks pass');
+  await page.setViewportSize({width:1440,height:1000});
+  await page.evaluate(async () => {
+    const {useUIStore} = await import('/src/store.ts');
+    useUIStore.setState({search:''});
+    window.__items.forEach(item=>{item.liked=1;});
+    await window.__client.invalidateQueries({queryKey:['favorites']});
+  });
+  await navigate('/favorites');
+  await page.getByRole('button',{name:'Play all',exact:true}).click();
+  await page.locator('.playback-queue').waitFor();
+  const expected = await page.evaluate(()=>window.__items.filter(item=>item.liked).map(item=>item.id));
+  assert.ok(expected.length>100);
+  assert.equal(await page.locator('.playback-queue-item').count(),expected.length);
+  assert.equal(new URL(page.url()).searchParams.get('favorites'),'true');
+  assert.equal(await page.locator('.playback-queue-item.active strong').textContent(),await page.evaluate(id=>window.__items.find(item=>item.id===id).title,expected[0]));
+  await page.getByRole('button',{name:'Next video',exact:true}).click();
+  assert.equal(await page.locator('.playback-queue-item.active strong').textContent(),await page.evaluate(id=>window.__items.find(item=>item.id===id).title,expected[1]));
+  await page.getByRole('button',{name:'Previous video',exact:true}).click();
+  assert.equal(await page.locator('.playback-queue-item.active strong').textContent(),await page.evaluate(id=>window.__items.find(item=>item.id===id).title,expected[0]));
+  assert.deepEqual(errors,[]);
+  console.log(mode + ': Favorites Play all includes unloaded pages and supports next/previous');
   await context.close();
 } finally {
   if (browser) await browser.close();
