@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button, Input } from '@heroui/react';
-import { ArrowsClockwise, CheckCircle, FolderPlus, Trash } from '@phosphor-icons/react';
+import { ArrowsClockwise, CheckCircle, FolderOpen, FolderPlus, Trash } from '@phosphor-icons/react';
 import { api } from '../api';
 import { useAccount } from './AccountSession';
 import { ScanProgress } from './ScanProgress';
@@ -10,7 +10,8 @@ import type { Library } from '../types';
 export function LibrarySettings() {
   const session = useAccount(), client = useQueryClient();
   const canManage = Boolean(session?.user.permissions.manageLibraries);
-  const [path, setPath] = useState(''), [showPrevious, setShowPrevious] = useState(false);
+  const [path, setPath] = useState('');
+  const [showPrevious, setShowPrevious] = useState(false);
   const libraries = useQuery({queryKey:['libraries'],queryFn:api.libraries});
   const previous = useQuery({queryKey:['previous-libraries'],queryFn:api.previousLibraries,enabled:Boolean(session?.user.isAdmin)&&showPrevious});
   const scan = useQuery({queryKey:['scan'],queryFn:api.scanStatus,refetchInterval:q=>q.state.data?.running?1000:5000});
@@ -19,6 +20,7 @@ export function LibrarySettings() {
   };
   const save = useMutation({mutationFn:({path,label}:{path:string;label?:string})=>api.addLibrary(path,label),
     onSuccess:async()=>{setPath('');await refresh();}});
+  const pick = useMutation({mutationFn:api.pickFolder,onSuccess:result=>{if(result.path)setPath(result.path);}});
   const remove = useMutation({mutationFn:api.removeLibrary,onSuccess:refresh});
   const startScan = useMutation({mutationFn:api.startScan,onSuccess:()=>client.invalidateQueries({queryKey:['scan']})});
   const temporary = libraries.data?.filter(library=>!library.persistent) ?? [];
@@ -32,11 +34,21 @@ export function LibrarySettings() {
     </div>}
   </div>)}</div>;
   return <>
-    {canManage&&<form className="add-library" onSubmit={event=>{event.preventDefault();if(path.trim()&&!save.isPending)save.mutate({path});}}>
-      <Input aria-label="Media folder path" placeholder={navigator.userAgent.includes('Windows')?'D:\\Videos':'/home/user/Videos'} value={path} onChange={event=>setPath(event.target.value)}/>
-      <Button type="submit" isPending={save.isPending} isDisabled={!path.trim()||save.isPending}><FolderPlus/> Add folder</Button>
+    {canManage&&<form className="library-folder-form" onSubmit={event=>{
+      event.preventDefault();
+      if(path.trim()&&!save.isPending&&!pick.isPending)save.mutate({path});
+    }}>
+      <label htmlFor="library-folder-path">Media folder path</label>
+      <div className="add-library">
+        <Input id="library-folder-path" aria-describedby="library-folder-help" placeholder={navigator.userAgent.includes('Windows')?'D:\\Videos':'/home/user/Videos'} value={path} onChange={event=>{setPath(event.target.value);if(pick.isError)pick.reset();}} disabled={save.isPending||pick.isPending}/>
+        <div className="library-folder-actions">
+          <Button type="button" variant="secondary" isPending={pick.isPending} isDisabled={!session?.localAccess||pick.isPending||save.isPending} onPress={()=>pick.mutate()}><FolderOpen/> Browse</Button>
+          <Button type="submit" isPending={save.isPending} isDisabled={!path.trim()||save.isPending||pick.isPending}><FolderPlus/> Add folder</Button>
+        </div>
+      </div>
+      <p id="library-folder-help" className="account-help">{pick.isPending?'Choose a folder in the window on this PC.':session?.localAccess?'Browse for a folder on this PC, or enter its path. Then select Add folder.':'Browsing is only available on localhost. Enter the folder path on the PC running Virelo, not on this device.'}</p>
     </form>}
-    {(save.error||remove.error)&&<p className="error-copy" role="alert">{save.error?.message||remove.error?.message}</p>}
+    {(pick.error||save.error||remove.error)&&<p className="error-copy" role="alert">{pick.error?.message||save.error?.message||remove.error?.message}</p>}
     {libraries.isError&&<p className="error-copy" role="alert">Could not load libraries. <button onClick={()=>void libraries.refetch()}>Try again</button></p>}
     {temporary.length>0&&<section className="library-group" aria-labelledby="temporary-libraries-title">
       <h3 id="temporary-libraries-title">Temporary folders</h3><p>Available for this run only. Save a folder to keep it when Virelo starts elsewhere.</p>{list(temporary,true)}

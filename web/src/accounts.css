@@ -45,11 +45,20 @@
 .account-notice { padding:12px 0; color:var(--text-muted); line-height:1.6; font-size:13px; }
 .account-feedback { color:var(--text-muted); margin:12px 0; line-height:1.5; }
 .library-group { margin-top:28px; }
+.library-folder-form > label { display:block; margin-bottom:8px; font-size:14px; font-weight:600; }
+.library-folder-form .add-library { grid-template-columns:minmax(0,1fr) auto; }
+.library-folder-form .input { min-width:0; }
+.library-folder-actions { display:flex; gap:8px; }
+.library-folder-form > p { margin-top:10px; }
+@media (max-width:700px) {
+  .library-folder-form .add-library { grid-template-columns:1fr; }
+  .library-folder-actions > .button { flex:1; }
+}
 .library-group h3 { font-size:16px; font-weight:650; }
 .library-group > p,.library-previous > p { color:var(--text-muted); font-size:13px; line-height:1.6; margin:8px 0 16px; }
 .library-item-actions { display:flex; align-items:center; gap:8px; flex:none; }
 .library-list > div > div:first-child { min-width:0; }
-.library-list span { overflow-wrap:anywhere; }
+.library-group .library-list span,.library-previous .library-list span { white-space:normal; overflow-wrap:anywhere; }
 .library-previous { border-top:1px solid var(--line); margin-top:28px; padding-top:20px; }
 .library-previous summary { cursor:pointer; font-size:14px; font-weight:600; padding:8px 0; }
 .library-previous summary:focus-visible { outline:2px solid var(--color-focus); outline-offset:2px; }

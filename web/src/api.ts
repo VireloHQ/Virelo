@@ -49,6 +49,7 @@ export const api = {
   setLike: (id: number, liked: boolean) => request<{ok:boolean;liked:boolean}>(`/api/media/${id}/like`, { method: 'POST', body: JSON.stringify({ liked }) }),
   folders: () => request<FolderEntry[]>('/api/folders'),
   libraries: () => request<Library[]>('/api/libraries'),
+  pickFolder: () => request<{path:string|null}>('/api/libraries/pick',{method:'POST'}),
   addLibrary: (path: string, label?: string) => request<Library>('/api/libraries', { method: 'POST', body: JSON.stringify({ path, label }) }),
   removeLibrary: (id: number) => request<{ok:boolean}>(`/api/libraries/${id}`, { method:'DELETE' }),
   settings: () => request<Settings>('/api/settings'),

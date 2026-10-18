@@ -7,6 +7,12 @@ Folders added in Settings → Libraries are saved libraries. They remain availab
 when the server is started from another folder using the same data directory.
 Use **Save library** to promote a temporary folder.
 
+On the server PC, open Virelo using its localhost address and use **Browse** to
+select a folder in the system folder chooser. Confirm the path with **Add folder**.
+When connecting from another device or through a proxy, Browse is disabled: enter
+the folder's path on the server PC instead. Manual entry also works on headless
+servers; Linux desktop browsing requires Zenity or KDialog.
+
 Each account's library allowlist applies to both saved and active temporary
 libraries. Account Manager lists the active catalog, including libraries outside
 the administrator's own browsing allowlist; administrators manage server-wide access.

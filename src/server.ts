@@ -14,8 +14,9 @@ import { adaptiveTranscodeStatus, audioTranscodeStatus, extractSubtitleVtt, star
 import type { AppSettings, MediaKind, ScanStatus, SortKey } from './types.js';
 import { VIRELO_VERSION } from './version.js';
 import { demandManifest, demandSegment, initializeDemandCache } from './demand-playback.js';
-import { registerAccounts } from './auth.js';
+import { directLocal, registerAccounts } from './auth.js';
 import type { CatalogScope } from './auth-types.js';
+import { pickNativeFolder } from './folder-picker.js';
 
 const SORT_KEYS: SortKey[] = ['title', 'newest', 'oldest', 'year', 'duration', 'random'];
 
@@ -66,7 +67,7 @@ function isHiddenPath(path: string) {
   return path.split(/[\\/]/).some((segment) => segment.startsWith('.') && segment !== '.' && segment !== '..');
 }
 
-export async function createVireloServer(config: RuntimeConfig) {
+export async function createVireloServer(config: RuntimeConfig, pickFolder: (signal: AbortSignal) => Promise<string | null> = pickNativeFolder) {
   ensureDataDirs(config.dataDir);
   await initializeDemandCache(config.dataDir);
   const db = new VireloDB(config.dataDir);
@@ -97,6 +98,8 @@ export async function createVireloServer(config: RuntimeConfig) {
   });
   const webRoot = fileURLToPath(new URL('./web', import.meta.url));
   const { accounts, fresh } = registerAccounts(app, db);
+  let activePicker: AbortController | null = null;
+  app.addHook('preClose', async () => { activePicker?.abort(); });
   let watcher: FSWatcher | null = null;
   let watchDebounce: NodeJS.Timeout | null = null;
 
@@ -188,6 +191,22 @@ export async function createVireloServer(config: RuntimeConfig) {
   });
 
   app.get('/api/libraries', async request => db.visibleLibraries(request.catalogScope!));
+  app.post('/api/libraries/pick', async (request, reply) => {
+    if (!directLocal(request)) return reply.code(403).send({ error: 'Folder browsing is only available on localhost. Enter a path on the server PC instead.' });
+    if (activePicker) return reply.code(409).send({ error: 'A folder selection window is already open on this PC.' });
+    const controller = new AbortController();
+    activePicker = controller;
+    const abort = () => controller.abort();
+    reply.raw.once('close', abort);
+    try {
+      const path = await pickFolder(controller.signal);
+      if (!fresh(request).permissions.manageLibraries) return reply.code(403).send({ error: 'Library management is not allowed.' });
+      return { path };
+    } finally {
+      reply.raw.off('close', abort);
+      activePicker = null;
+    }
+  });
   app.post<{ Body: { path?: string; label?: string } }>('/api/libraries', async (request, reply) => {
     const raw = typeof request.body?.path === 'string' ? request.body.path.trim() : '';
     if (!raw) return reply.code(400).send({ error: 'path is required' });

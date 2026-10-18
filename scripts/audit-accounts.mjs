@@ -24,10 +24,14 @@ async function checkFieldFocus(page,label) {
 }
 process.env.VIRELO_LOG_LEVEL='silent';
 let browser,server,diagnosticPage;
+let chosenFolder=null,pickCalls=0,pickError=false;
 try {
   const temporary=join(root,'Temporary'),previous=join(root,'Previous');
   await mkdir(temporary);await mkdir(previous);
-  server=await createVireloServer({dataDir:root,mediaPaths:[temporary],host:'127.0.0.1',port:0});
+  server=await createVireloServer({dataDir:root,mediaPaths:[temporary],host:'127.0.0.1',port:0},async()=>{
+    pickCalls++;if(pickError)throw Object.assign(new Error('Folder chooser unavailable. Enter the path manually.'),{statusCode:503});
+    return chosenFolder;
+  });
   server.db.updateSettings({libraryWatchEnabled:false,externalMetadataEnabled:false});
   const archived=server.db.addLibrary(previous,'Previous',false);server.db.removeLibrary(archived.id);
   const clip=execFileSync(process.env.VIRELO_TEST_FFMPEG||'ffmpeg',['-hide_banner','-loglevel','error','-f','lavfi','-i','color=c=0x334455:s=640x360:r=5:d=60',
@@ -78,6 +82,43 @@ try {
   await page.screenshot({path:join(repo,'node_modules/.cache/accounts-mobile.png')});
   await page.setViewportSize({width:1440,height:1000});
   await section(page,'Libraries');
+  const addedFolder=join(root,'Added folder');await mkdir(addedFolder);
+  const browse=page.getByRole('button',{name:'Browse',exact:true});
+  const pathInput=page.getByRole('textbox',{name:'Media folder path',exact:true});
+  const addFolder=page.getByRole('button',{name:'Add folder',exact:true});
+  assert.equal(await addFolder.isDisabled(),true);
+  assert.equal(await browse.isEnabled(),true,'localhost can browse even with an empty path');
+  await pathInput.fill(addedFolder);
+  await browse.click();await browse.waitFor({state:'visible'});
+  await page.waitForFunction(()=>document.querySelector('.add-library button')?.getAttribute('aria-busy')!=='true');
+  assert.equal(await pathInput.inputValue(),addedFolder,'cancelling does not erase a typed path');
+  pickError=true;await browse.click();await page.getByRole('alert').filter({hasText:'Folder chooser unavailable'}).waitFor();
+  assert.equal(await pathInput.inputValue(),addedFolder,'chooser failures retain manual input');pickError=false;
+  await pathInput.fill('');await page.getByRole('alert').filter({hasText:'Folder chooser unavailable'}).waitFor({state:'hidden'});
+  chosenFolder=addedFolder;await browse.click();
+  await page.waitForFunction(expected=>document.querySelector('.add-library input')?.value===expected,addedFolder);
+  assert.equal(pickCalls,3);
+  assert.equal(await addFolder.isEnabled(),true,'a server folder path enables Add folder');
+  await addFolder.click();
+  await page.waitForFunction(()=>document.querySelector('.add-library input')?.value==='');
+  assert.equal(server.db.visibleLibraries().find(l=>l.path===addedFolder)?.persistent,1,'Add folder saves a new library outside the startup path');
+  await owner.route('**/api/auth/status',async route=>{
+    const response=await route.fetch();await route.fulfill({response,json:{...await response.json(),localAccess:false}});
+  });
+  await page.reload();await section(page,'Libraries');
+  assert.equal(await browse.isDisabled(),true,'remote sessions cannot open a chooser on the host PC');
+  await page.getByText('Browsing is only available on localhost. Enter the folder path on the PC running Virelo, not on this device.',{exact:true}).waitFor();
+  const remoteFolder=join(root,'Remote addition');await mkdir(remoteFolder);await pathInput.fill(remoteFolder);
+  await addFolder.click();await page.waitForFunction(()=>document.querySelector('.add-library input')?.value==='');
+  assert.equal(server.db.visibleLibraries().find(l=>l.path===remoteFolder)?.persistent,1,'remote sessions can still add a host path');
+  assert.equal(pickCalls,3,'remote path entry never invokes the native chooser');
+  await page.setViewportSize({width:390,height:844});
+  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,'folder entry fits a mobile screen');
+  assert.equal(await page.locator('.library-list .button').evaluateAll(buttons=>buttons.every(button=>button.getBoundingClientRect().right<=innerWidth)),true,'library actions stay inside the mobile viewport');
+  await page.screenshot({path:join(repo,'node_modules/.cache/accounts-library-remote.png')});
+  await page.setViewportSize({width:1440,height:1000});
+  await owner.unroute('**/api/auth/status');await page.reload();await section(page,'Libraries');
+  await checkFieldFocus(page,'Media folder path');
   await page.getByRole('heading',{name:'Temporary folders',exact:true}).waitFor();
   await page.getByRole('button',{name:'Save library',exact:true}).click();
   await page.getByRole('heading',{name:'Temporary folders',exact:true}).waitFor({state:'hidden'});
