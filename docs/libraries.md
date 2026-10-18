@@ -12,6 +12,9 @@ libraries. Account Manager lists the active catalog, including libraries outside
 the administrator's own browsing allowlist; administrators manage server-wide access.
 Only administrators can view the collapsed **Previously used folders** list.
 
+For overlapping folders, media belongs to the most specific active library.
+Scanning a parent cannot move that media out of a nested library's access rules.
+
 ## Existing installations
 
 Older databases did not record whether a folder was added manually or at startup.

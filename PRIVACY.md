@@ -14,4 +14,11 @@ When online metadata is enabled, Virelo sends the parsed title, media type, rele
 
 ## Video files
 
+Temporary startup folders are active only for that server run. Their indexed
+paths and personal viewing state can remain in the local database so that opening
+the same folder later restores its history. Removing a saved library deactivates
+it rather than erasing that index. Administrators can restore previous folders
+from Libraries settings; regular users cannot list inactive folders. Deleting an
+account removes its favorites and watch history, not the shared video files.
+
 Virelo streams source videos only to clients connected to the Virelo server. Metadata matching never uploads video files to a third party.

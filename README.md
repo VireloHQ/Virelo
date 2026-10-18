@@ -171,7 +171,7 @@ any other readable folder. Saved libraries remain available when Virelo starts
 elsewhere using the same data directory. Previous startup folders do not fill
 Account Manager; administrators can restore them from **Previously used folders**.
 Older databases retain those folders and their watch history without guessing
-which ones were intentionally saved. See [Library storage](docs/libraries.md).
+which ones were intentionally saved. See [Library storage](https://github.com/VireloHQ/Virelo/blob/main/docs/libraries.md).
 
 New playback sessions default to **Original Quality** on both local and network
 connections. Explicit quality choices are remembered. Favorites has **Play all**
