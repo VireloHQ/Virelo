@@ -193,7 +193,7 @@ export async function createVireloServer(config: RuntimeConfig, pickFolder: (sig
   app.get('/api/libraries', async request => db.visibleLibraries(request.catalogScope!));
   app.post('/api/libraries/pick', async (request, reply) => {
     if (!directLocal(request)) return reply.code(403).send({ error: 'Folder browsing is only available on localhost. Enter a path on the server PC instead.' });
-    if (activePicker) return reply.code(409).send({ error: 'A folder selection window is already open on this PC.' });
+    if (activePicker) return reply.code(409).send({ error: 'A folder selection window is already open on this PC. Finish or cancel that window, then try again.' });
     const controller = new AbortController();
     activePicker = controller;
     const abort = () => controller.abort();

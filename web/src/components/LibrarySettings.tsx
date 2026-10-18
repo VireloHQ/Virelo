@@ -42,7 +42,7 @@ export function LibrarySettings() {
       <div className="add-library">
         <Input id="library-folder-path" aria-describedby="library-folder-help" placeholder={navigator.userAgent.includes('Windows')?'D:\\Videos':'/home/user/Videos'} value={path} onChange={event=>{setPath(event.target.value);if(pick.isError)pick.reset();}} disabled={save.isPending||pick.isPending}/>
         <div className="library-folder-actions">
-          <Button type="button" variant="secondary" isPending={pick.isPending} isDisabled={!session?.localAccess||pick.isPending||save.isPending} onPress={()=>pick.mutate()}><FolderOpen/> Browse</Button>
+          <Button type="button" variant="secondary" isPending={pick.isPending} isDisabled={!session?.localAccess||pick.isPending||save.isPending} onPress={()=>pick.mutate()}><FolderOpen/> {pick.isPending?'Opening…':'Browse'}</Button>
           <Button type="submit" isPending={save.isPending} isDisabled={!path.trim()||save.isPending||pick.isPending}><FolderPlus/> Add folder</Button>
         </div>
       </div>

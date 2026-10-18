@@ -3,7 +3,10 @@ import assert from 'node:assert/strict';
 import {mkdtemp,mkdir,rm,writeFile} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join,relative,resolve} from 'node:path';
+import {execFile} from 'node:child_process';
+import {promisify} from 'node:util';
 import {pickNativeFolder} from '../dist/folder-picker.js';
+import {windowsFolderPicker} from '../dist/windows-folder-picker.js';
 import {createVireloServer} from '../dist/server.js';
 
 process.env.VIRELO_LOG_LEVEL='silent';
@@ -25,12 +28,45 @@ test('native choosers return existing paths without passing them to a shell',asy
     let calls=0;
     const run=async(file,args,options)=>{
       calls++;assert.equal(file,command);assert.equal(options.shell,false);assert.equal(options.windowsHide,true);
+      if(platform==='win32') {
+        assert.ok(args.includes('-STA'));
+        const script=Buffer.from(args[args.indexOf('-EncodedCommand')+1],'base64').toString('utf16le');
+        assert.ok(script.includes('VireloFileOpenDialog'),'uses the Explorer-style Common Item Dialog');
+        assert.ok(!script.includes('FolderBrowserDialog'),'never falls back to the legacy tree picker');
+        assert.ok(script.includes('SetForegroundWindow(window)'));
+        assert.ok(script.includes('AttachThreadInput(current, foreground, false)'),'foreground input queues are always detached');
+      }
       assert.equal(options.timeout,300_000);assert.equal(options.signal,signal);
       assert.ok(!args.some(arg=>arg.includes(folder)),'selected paths are output, never executable input');
       return {stdout:(platform==='win32'?JSON.stringify(folder):folder)+'\r\n'};
     };
     assert.equal(await pickNativeFolder(signal,run,platform),folder);assert.equal(calls,1);
   }
+});
+
+test('Windows Common Item Dialog code compiles and connects its COM callbacks without opening a window',{skip:process.platform!=='win32',timeout:20000},async()=>{
+  const validation=String.raw`
+public static class VireloPickerComTest {
+  public static string Check() {
+    var dialog = (VireloIFileDialog)new VireloFileOpenDialog();
+    try {
+      uint options, cookie;
+      dialog.GetOptions(out options);
+      dialog.SetOptions(options | 0x20 | 0x40 | 0x800 | 0x08 | 0x02000000);
+      dialog.SetTitle("Choose a media folder - Virelo");
+      dialog.SetOkButtonLabel("Select folder");
+      dialog.Advise(new VireloFolderPicker(), out cookie);
+      dialog.Unadvise(cookie);
+      return "COM_OK";
+    } finally { Marshal.ReleaseComObject(dialog); }
+  }
+}
+`;
+  const script=windowsFolderPicker.slice(0,windowsFolderPicker.indexOf('$path = [VireloFolderPicker]::Pick()'))
+    .replace("\n'@",validation+"\n'@")+'[VireloPickerComTest]::Check()';
+  const result=await promisify(execFile)('powershell.exe',['-NoProfile','-NonInteractive','-STA','-EncodedCommand',Buffer.from(script,'utf16le').toString('base64')],
+    {encoding:'utf8',windowsHide:true,shell:false,timeout:15000}).catch(error=>{throw new Error(error.stderr);});
+  assert.equal(result.stdout.trim(),'COM_OK');
 });
 
 test('cancellation is harmless; unavailable, invalid or timed-out dialogs allow manual fallback',async t=>{

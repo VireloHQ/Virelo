@@ -3,28 +3,8 @@ import { stat } from 'node:fs/promises';
 import { isAbsolute } from 'node:path';
 import { promisify } from 'node:util';
 import { AccountError } from './accounts.js';
+import { windowsFolderPicker } from './windows-folder-picker.js';
 
-const windowsDialog = `
-$ErrorActionPreference = 'Stop'
-[Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false)
-Add-Type -AssemblyName System.Windows.Forms
-[System.Windows.Forms.Application]::EnableVisualStyles()
-$dialog = [System.Windows.Forms.FolderBrowserDialog]::new()
-$owner = [System.Windows.Forms.Form]::new()
-try {
-  $dialog.Description = 'Choose a media folder for Virelo'
-  $dialog.ShowNewFolderButton = $false
-  $owner.TopMost = $true
-  $owner.ShowInTaskbar = $false
-  $owner.Opacity = 0
-  $owner.Show()
-  if ($dialog.ShowDialog($owner) -eq [System.Windows.Forms.DialogResult]::OK) {
-    ConvertTo-Json -InputObject $dialog.SelectedPath -Compress
-  }
-} finally {
-  $dialog.Dispose()
-  $owner.Dispose()
-}`;
 const macDialog = `try
   POSIX path of (choose folder with prompt "Choose a media folder for Virelo")
 on error number -128
@@ -36,7 +16,7 @@ export async function pickNativeFolder(signal: AbortSignal, run = promisify(exec
   try {
     let stdout: string;
     if (platform === 'win32') {
-      ({ stdout } = await run('powershell.exe', ['-NoProfile', '-NonInteractive', '-STA', '-Command', windowsDialog], options));
+      ({ stdout } = await run('powershell.exe', ['-NoProfile', '-NonInteractive', '-STA', '-EncodedCommand', Buffer.from(windowsFolderPicker, 'utf16le').toString('base64')], options));
     } else if (platform === 'darwin') {
       ({ stdout } = await run('/usr/bin/osascript', ['-e', macDialog], options));
     } else {
