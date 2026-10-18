@@ -12,6 +12,7 @@ import { ConfirmationDialog } from '../components/ConfirmationDialog';
 import type { QueueBehavior, Settings } from '../types';
 import { useAccount } from '../components/AccountSession';
 import { AccountManager, AccountProfile } from '../components/AccountSettings';
+import { DataManagement } from '../components/DataManagement';
 
 const settingsSections = [
   { id:'account', label:'Account', description:'Your name, password and sign-in' },
@@ -20,6 +21,7 @@ const settingsSections = [
   { id:'network', label:'Metadata', description:'Titles, posters and artwork' },
   { id:'playback', label:'Playback', description:'What plays next' },
   { id:'shorts', label:'Shorts', description:'Videos in your vertical feed' },
+  { id:'data', label:'Data management', description:'Storage usage and playback cache' },
   { id:'tools', label:'Advanced', description:'Media tool availability' },
 ] as const;
 const QUEUE_OPTIONS = [
@@ -64,6 +66,7 @@ export function SettingsView(){
         <button type="button" className="settings-back" onClick={closeSection}><ArrowLeft aria-hidden="true"/> All settings</button>
         {activeSection==='account'&&<div id="settings-panel-account" className="settings-card settings-section"><AccountProfile/></div>}
         {activeSection==='accounts'&&isAdmin&&<div id="settings-panel-accounts" className="settings-card settings-section"><AccountManager/></div>}
+        {activeSection==='data'&&isAdmin&&<DataManagement/>}
         {activeSection==='libraries'&&<section id="settings-panel-libraries" className="settings-card settings-section" aria-labelledby="settings-title-libraries">
           <div className="settings-card-head"><div><h2 id="settings-title-libraries" tabIndex={-1}>Libraries</h2><p>Manage the folders Virelo scans for media.</p></div></div>
           <LibrarySettings/>

@@ -1,5 +1,6 @@
 import type { FolderEntry, HomeData, Library, MediaItem, PlaybackInfo, PlaybackQuality, ScanStatus, Settings, ShortsFeed } from './types';
 import type { Account, AuthStatus } from '../../src/auth-types';
+import type { DataUsage } from '../../src/types';
 
 export interface QualityTranscodeState {
   status:string;
@@ -53,6 +54,8 @@ export const api = {
   addLibrary: (path: string, label?: string) => request<Library>('/api/libraries', { method: 'POST', body: JSON.stringify({ path, label }) }),
   removeLibrary: (id: number) => request<{ok:boolean}>(`/api/libraries/${id}`, { method:'DELETE' }),
   settings: () => request<Settings>('/api/settings'),
+  dataUsage: () => request<DataUsage>('/api/data'),
+  clearPlaybackCache: () => request<{deletedFiles:number;freedBytes:number;retainedFiles:number;retainedBytes:number}>('/api/data/cache',{method:'DELETE'}),
   saveSettings: (settings: Partial<Settings>) => request<Settings>('/api/settings', { method: 'POST', body: JSON.stringify(settings) }),
   startScan: () => request<{started:boolean;status:ScanStatus}>('/api/scan', { method: 'POST' }),
   scanStatus: () => request<ScanStatus>('/api/scan/status'),

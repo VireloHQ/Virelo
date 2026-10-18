@@ -125,3 +125,5 @@ class Manager {
 }
 export async function stopDemandPlayback(dataDir?:string){await Promise.all([...managers].filter(([root])=>!dataDir||root===resolve(dataDir)).map(([,manager])=>manager.stop()));}
 export function initializeDemandCache(dataDir:string){return managerFor(dataDir).cache.prune();}
+export function playbackCacheLimit(dataDir:string){return managerFor(dataDir).cache.limit;}
+export function clearPlaybackCache(dataDir:string,authorize:()=>void){return managerFor(dataDir).cache.clearUnused(authorize);}

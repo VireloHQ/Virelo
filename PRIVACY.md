@@ -22,3 +22,11 @@ from Libraries settings; regular users cannot list inactive folders. Deleting an
 account removes its favorites and watch history, not the shared video files.
 
 Virelo streams source videos only to clients connected to the Virelo server. Metadata matching never uploads video files to a third party.
+
+## Data management
+
+Administrators can view storage usage and clear unused playback cache in Settings.
+This operates only on Virelo-generated playback files, not source videos or their
+folders. It does not remove accounts, libraries, metadata, thumbnails, artwork,
+favorites or watch history. Files needed by active playback and extracted subtitles
+are retained; converted video and audio can be generated again when requested.

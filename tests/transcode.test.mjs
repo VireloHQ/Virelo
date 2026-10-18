@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { startAdaptiveTranscode, stopAllTranscodes, transcodeStatus, startHlsTranscode } from '../dist/transcode.js';
-import { mediaPlaylist, demandManifest, demandSegment } from '../dist/demand-playback.js';
+import { mediaPlaylist, demandManifest, demandSegment, clearPlaybackCache } from '../dist/demand-playback.js';
 import { DemandCache } from '../dist/demand-cache.js';
 import { hasFfmpeg } from '../dist/ffmpeg.js';
 
@@ -68,7 +68,14 @@ test('preparation creates no renditions; real conversion generates only requeste
     execFileSync(process.env.FFMPEG_PATH||'ffmpeg',['-y','-hide_banner','-loglevel','error','-i',source,'-c:v','copy','-an',silentSource],{windowsHide:true});
     const silent=await startAdaptiveTranscode(root,4,silentSource,{hasAudio:false,sourceWidth:320,sourceHeight:180,qualities,duration:19.7});
     const silentSegment=await demandSegment(root,silent.playlist.replace('/master.m3u8',''),'90/segment-0.ts',signal);
-    assert.ok((await stat(silentSegment.path)).size>0);silentSegment.release();
+    assert.ok((await stat(silentSegment.path)).size>0);
+    const cleaned=await clearPlaybackCache(root,()=>{});
+    assert.ok(cleaned.deletedFiles>=2);assert.ok((await stat(silentSegment.path)).size>0,'active playback survives cleanup');
+    silentSegment.release();
+    assert.equal((await clearPlaybackCache(root,()=>{})).deletedFiles,1);
+    await assert.rejects(stat(silentSegment.path));
+    const regenerated=await demandSegment(root,silent.playlist.replace('/master.m3u8',''),'90/segment-0.ts',signal);
+    assert.ok((await stat(regenerated.path)).size>0,'cleared segments regenerate without a new session');regenerated.release();
   }finally{await stopAllTranscodes(root);await rm(root,{recursive:true,force:true});}
 });
 test('missing sources report a preparation error without starting endless jobs',async t=>{

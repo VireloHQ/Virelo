@@ -13,7 +13,8 @@ import { hasFfmpeg, hasFfprobe, playbackQualities, probePlaybackInfo } from './f
 import { adaptiveTranscodeStatus, audioTranscodeStatus, extractSubtitleVtt, startAdaptiveTranscode, startAudioTranscode, startHlsTranscode, transcodeStatus, stopAllTranscodes } from './transcode.js';
 import type { AppSettings, MediaKind, ScanStatus, SortKey } from './types.js';
 import { VIRELO_VERSION } from './version.js';
-import { demandManifest, demandSegment, initializeDemandCache } from './demand-playback.js';
+import { demandManifest, demandSegment, initializeDemandCache, playbackCacheLimit, clearPlaybackCache } from './demand-playback.js';
+import { dataUsage, assertSeparateCache } from './data-management.js';
 import { directLocal, registerAccounts } from './auth.js';
 import type { CatalogScope } from './auth-types.js';
 import { pickNativeFolder } from './folder-picker.js';
@@ -175,6 +176,20 @@ export async function createVireloServer(config: RuntimeConfig, pickFolder: (sig
   const visibleScanStatus = (isAdmin: boolean) => isAdmin ? scanStatus : { ...scanStatus, message: scanStatus.running ? 'Scanning libraries' : 'Idle', total:0,scanned:0,added:0,updated:0,skipped:0,errors:0 };
   app.get('/api/health', async request => ({ ok: true, version: VIRELO_VERSION, ffmpeg: await hasFfmpeg(), ffprobe: await hasFfprobe(), scan: visibleScanStatus(request.account!.isAdmin) }));
   app.get('/api/settings', async () => publicSettings(db.getSettings()));
+  app.get('/api/data', async request => {
+    fresh(request,true);
+    const usage=await dataUsage(config.dataDir,playbackCacheLimit(config.dataDir));
+    fresh(request,true);
+    return usage;
+  });
+  app.delete('/api/data/cache', async (request,reply) => {
+    fresh(request,true);
+    if(request.body!==undefined&&request.body!==null)return reply.code(400).send({error:'This action does not accept paths or options.'});
+    return clearPlaybackCache(config.dataDir,()=>{
+      fresh(request,true);
+      assertSeparateCache(config.dataDir,db.listLibraries().map(library=>library.path));
+    });
+  });
   app.post<{ Body: Partial<AppSettings> & { tmdbApiKey?: string; clearTmdbApiKey?: boolean } }>('/api/settings', async (request) => {
     const body = request.body || {};
     const patch: Partial<AppSettings> = {};

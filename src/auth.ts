@@ -76,6 +76,7 @@ export function registerAccounts(app: FastifyInstance, db: VireloDB) {
     if (!user) return reply.code(401).send({ error: blocked ? 'Administrator access is limited to localhost.' : 'Sign in to access this server.', code: 'SESSION_REVOKED' });
     const deny = () => reply.code(403).send({ error: 'Your account does not have permission for this action.' });
     if (/^\/api\/accounts(?:\/|$)/.test(path) && !user.isAdmin) return deny();
+    if (/^\/api\/data(?:\/|$)/.test(path) && !user.isAdmin) return deny();
     if ((path === '/api/settings' && request.method !== 'GET') || path === '/api/metadata') { if (!user.isAdmin) return deny(); }
     if (path === '/api/libraries' && request.method === 'POST' || /^\/api\/libraries\//.test(path)) {
       if (!user.permissions.manageLibraries) return deny();

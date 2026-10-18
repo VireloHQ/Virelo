@@ -4,6 +4,15 @@ export type SortKey = 'title' | 'newest' | 'oldest' | 'year' | 'duration' | 'ran
 
 export type QueueBehavior = 'auto' | 'loop' | 'manual';
 
+export type DataCategory = 'database' | 'thumbnails' | 'artwork' | 'cache';
+export interface DataUsage {
+  dataDir: string;
+  totalBytes: number;
+  categories: Record<DataCategory, {bytes: number; files: number}>;
+  skippedLinks: number;
+  cacheLimitBytes: number;
+}
+
 export interface Library {
   id: number;
   path: string;

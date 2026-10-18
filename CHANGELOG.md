@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Add administrator-only Data management with storage usage and confirmed cleanup of unused playback cache. Preserve source videos, active playback, extracted subtitles and personal/catalog data; refuse cleanup across media-library overlaps and filesystem links.
 - Accept short passwords and PINs without complexity rules; preserve hashing, sign-in rate limits and optional localhost-only administration.
 - Separate temporary startup folders from saved libraries. Keep UI-added libraries across startup folders, allow saving temporary/previous folders, and show only the active catalog in Account Manager.
 - Preserve indexed media and personal state when deactivating a library; merge Windows path aliases without changing media IDs or grants, and avoid pruning during incomplete/offline scans.

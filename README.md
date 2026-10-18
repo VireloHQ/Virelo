@@ -183,6 +183,16 @@ Playback cache is limited to **512 MiB by default** across video and audio. Unus
 
 Set `VIRELO_CACHE_MAX_MB` before starting the server to change the playback-cache budget (128–65536 MiB). This controls disk usage, not the browser's short playback buffer.
 
+Administrators can open **Settings → Data management** to view the data directory
+and storage used by the database, thumbnails, artwork and playback cache. **Clear
+cache** removes only unused generated playback files, with confirmation. Active
+segments, extracted subtitles and unrelated files are retained. The cache is
+recreated as needed; accounts, library settings, metadata, favorites and watch
+history are not reset. Cleanup is refused if the cache overlaps a current or
+previous media library, or contains filesystem links.
+
+Virelo is a player: it never deletes, moves, renames or edits source video files.
+
 ## 🔐 Network access
 
 Virelo binds to `127.0.0.1` by default. To access it from another device on a trusted LAN:

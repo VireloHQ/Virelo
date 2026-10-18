@@ -1,0 +1,26 @@
+.data-safety { display:flex; align-items:flex-start; gap:12px; padding:15px 17px; border:1px solid var(--line); border-radius:12px; background:rgba(255,255,255,.025); }
+.data-safety svg { flex:none; width:22px; height:22px; color:var(--color-brand); }
+.data-safety p { margin:0; color:#b8b8bd; font-size:13px; line-height:1.55; }
+.data-usage-heading { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:24px; }
+.data-usage-heading h3,.data-cleanup h3 { margin:0; font-size:15px; font-weight:650; }
+.data-total { display:flex; align-items:baseline; gap:12px; margin:14px 0 18px; }
+.data-total strong { font-size:clamp(28px,4vw,38px); line-height:1.2; font-weight:650; letter-spacing:-.04em; }
+.data-total span,.data-location>span { color:#a0a0a0; font-size:12px; }
+.data-location { display:grid; gap:7px; margin-bottom:19px; }
+.data-location code { padding:10px 12px; border:1px solid var(--line); border-radius:8px; background:#111; color:#c4c4ca; font-size:12px; overflow-wrap:anywhere; }
+.data-breakdown { margin:0; }
+.data-breakdown>div { display:flex; align-items:baseline; justify-content:space-between; gap:20px; padding:16px 0; border-top:1px solid var(--line); }
+.data-breakdown dt { min-width:0; }
+.data-breakdown dt strong { display:block; font-size:14px; font-weight:600; }
+.data-breakdown dt span { display:block; max-width:56ch; margin-top:4px; color:#9a9aa0; font-size:12px; line-height:1.5; }
+.data-breakdown dd { flex:none; margin:0; font-size:14px; font-variant-numeric:tabular-nums; }
+.data-note { margin:12px 0; color:#9a9aa0; font-size:12px; line-height:1.55; }
+.settings-section .data-cleanup { margin-top:23px; align-items:flex-start; }
+.settings-section .data-cleanup .setting-copy p { color:#a0a0a6; line-height:1.5; margin-top:7px; }
+.data-cleanup>.button { flex:none; }
+.data-result { margin:0 0 12px; color:#c9b9ff; font-size:13px; line-height:1.6; }
+@media(max-width:600px) {
+  .data-safety { padding:12px; gap:9px; }
+  .data-usage-heading { flex-wrap:wrap; }
+  .data-cleanup { flex-direction:column; gap:14px; }
+}
