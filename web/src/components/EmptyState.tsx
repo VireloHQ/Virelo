@@ -17,7 +17,7 @@ export function EmptyState() {
     {scan.data?.running ? <ScanProgress status={scan.data}/> : <p>{account?.permissions.manageLibraries ? 'Add video files to this folder, then scan again. You can add other folders in Settings.' : 'No videos are available for this account. Ask an administrator to grant library access.'}</p>}
     <div className="empty-actions">
       {account?.permissions.scanLibraries&&<Button isPending={scan.data?.running} onPress={()=>void startScan()}><ArrowsClockwise/> Scan again</Button>}
-      {account?.permissions.manageLibraries&&<Button variant="secondary" onPress={()=>void navigate({to:'/settings'})}><Gear/> Add folder</Button>}
+      {account?.permissions.manageLibraries&&<Button variant="secondary" onPress={()=>void navigate({to:'/settings',hash:'libraries'})}><Gear/> Add folder</Button>}
     </div>
   </div>;
 }

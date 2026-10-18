@@ -1,6 +1,7 @@
 import { PageSkeleton } from '../components/PageSkeleton';
 import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useLocation, useNavigate } from '@tanstack/react-router';
 import { Button, Switch } from '@heroui/react';
 import { ArrowLeft, CheckCircle, WarningCircle } from '@phosphor-icons/react';
 import { api } from '../api';
@@ -26,25 +27,25 @@ const QUEUE_OPTIONS = [
   { value: 'loop', label: 'Auto next, loop folder' },
   { value: 'manual', label: 'Manual next only' }
 ];
-type SettingsSectionId = (typeof settingsSections)[number]['id'];
-
 export function SettingsView(){
   const session=useAccount();
   const isAdmin=Boolean(session?.user.isAdmin);
   const sections=settingsSections.filter(section=>isAdmin||['account','libraries','tools'].includes(section.id));
+  const hash=useLocation({select:location=>location.hash});
+  const navigate=useNavigate();
+  const selectedSection=sections.find(section=>section.id===hash)?.id;
+  const activeSection=selectedSection??'account';
+  const mobileDetail=Boolean(selectedSection);
   const client=useQueryClient();
   const settingsQuery=useQuery({queryKey:['settings'],queryFn:api.settings});
   const health=useQuery({queryKey:['health'],queryFn:async()=>{const r=await fetch('/api/health');return r.json() as Promise<{ffmpeg:boolean;ffprobe:boolean}>;}});
   const [form,setForm]=useState<Settings|null>(null);
-  const [activeSection,setActiveSection]=useState<SettingsSectionId>('account');
-  const [mobileDetail,setMobileDetail]=useState(false);
   const openSection=(id:string)=>{
-    setActiveSection(id as SettingsSectionId);
-    setMobileDetail(true);
+    void navigate({to:'/settings',hash:id});
     if(window.matchMedia('(max-width: 900px)').matches) window.requestAnimationFrame(()=>document.querySelector<HTMLElement>(`#settings-title-${id}`)?.focus());
   };
   const closeSection=()=>{
-    setMobileDetail(false);
+    void navigate({to:'/settings',hash:''});
     window.requestAnimationFrame(()=>document.getElementById(`settings-nav-${activeSection}`)?.focus());
   };
   useEffect(()=>{if(settingsQuery.data&&!form)setForm(settingsQuery.data);},[settingsQuery.data,form]);

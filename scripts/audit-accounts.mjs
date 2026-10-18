@@ -62,6 +62,25 @@ try {
   await page.locator('.desktop-nav').getByRole('link',{name:'Home',exact:true}).waitFor();
   const settings=async current=>{await current.goto(base+'/settings');await current.getByRole('heading',{name:'Settings',exact:true}).waitFor();};
   const section=(current,name)=>current.locator('.settings-sidebar').getByRole('button',{name,exact:true}).click();
+  await owner.route('**/api/home',async route=>{
+    const response=await route.fetch();await route.fulfill({response,json:{...await response.json(),total:0}});
+  });
+  for(const viewport of [{width:1440,height:1000},{width:390,height:844}]) {
+    await page.setViewportSize(viewport);await page.goto(base);
+    await page.getByRole('heading',{name:'No videos found',exact:true}).waitFor();
+    await page.getByRole('button',{name:'Add folder',exact:true}).click();
+    await page.getByRole('heading',{name:'Libraries',exact:true}).waitFor();
+    assert.equal(new URL(page.url()).hash,'#libraries','empty-state Add folder links directly to Libraries');
+    assert.equal(await page.getByRole('textbox',{name:'Media folder path',exact:true}).isVisible(),true);
+    assert.equal(await page.locator('#settings-panel-account').count(),0,'Account never replaces the requested section');
+    await page.reload();await page.getByRole('heading',{name:'Libraries',exact:true}).waitFor();
+    await page.goBack();await page.getByRole('heading',{name:'No videos found',exact:true}).waitFor();
+    await page.goForward();await page.getByRole('heading',{name:'Libraries',exact:true}).waitFor();
+  }
+  await owner.unroute('**/api/home');await page.setViewportSize({width:1440,height:1000});
+  await settings(page);await page.locator('#settings-panel-account').waitFor();
+  await page.goto(base+'/settings#not-a-section');await page.locator('#settings-panel-account').waitFor();
+  console.log('accounts: empty-state Add folder opens Libraries on desktop and mobile, including reload and history navigation');
   await settings(page);await section(page,'Account Manager');
   await page.getByRole('button',{name:'Add user',exact:true}).click();
   await checkFieldFocus(page,'Username');await checkFieldFocus(page,'Password');
