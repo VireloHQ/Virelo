@@ -75,11 +75,11 @@
 .app-shell .picker-option svg { color:var(--text); }
 
 /* A settings page, not a collection of floating panels. */
-.app-shell .settings-view { max-width:1160px; padding-top:48px; }
+.app-shell .settings-view { width:100%; max-width:1680px; margin-inline:0; padding-top:48px; }
 .app-shell .settings-heading { align-items:center; gap:16px; margin-bottom:48px; }
 .app-shell .settings-heading h1 { margin:0; font-size:36px; line-height:1.2; letter-spacing:-.035em; font-weight:600; }
 .app-shell .settings-heading-actions { width:auto; gap:12px; }
-.app-shell .settings-layout { display:grid; grid-template-columns:180px minmax(0,1fr); gap:64px; align-items:start; }
+.app-shell .settings-layout { display:grid; grid-template-columns:clamp(240px,20vw,280px) minmax(0,1fr); gap:clamp(32px,3.5vw,56px); align-items:start; }
 .app-shell .settings-sidebar {
   position:sticky; top:calc(var(--topbar) + 32px); display:grid; gap:4px;
   padding:0; margin:0; border:0; border-radius:0; background:none; box-shadow:none; backdrop-filter:none; overflow:visible;
@@ -109,10 +109,10 @@
 }
 .app-shell .settings-section .settings-card-head h2 { margin:0 0 8px; font-size:26px; line-height:1.25; font-weight:600; letter-spacing:-.025em; }
 .app-shell .settings-section h2:focus { outline:none; }
-.app-shell .settings-section .settings-card-head p { color:var(--text-muted); font-size:15px; line-height:1.6; max-width:58ch; }
+.app-shell .settings-section .settings-card-head p { color:var(--text-muted); font-size:15px; line-height:1.6; max-width:70ch; }
 .app-shell .settings-section .setting-row { padding:24px 0; gap:24px; border-top:1px solid var(--line); }
 .app-shell .settings-section .setting-copy strong { font-size:16px; line-height:1.5; font-weight:500; }
-.app-shell .settings-section .setting-copy p { margin-top:6px; font-size:14px; line-height:1.6; color:var(--text-muted); max-width:55ch; }
+.app-shell .settings-section .setting-copy p { margin-top:6px; font-size:14px; line-height:1.6; color:var(--text-muted); max-width:70ch; }
 .app-shell .settings-picker { min-width:240px; max-width:100%; flex-shrink:0; }
 .app-shell .settings-view .input { min-height:44px; border-radius:4px; font-size:16px; }
 .app-shell .settings-view .switch { min-height:44px; min-width:44px; align-items:center; justify-content:center; }

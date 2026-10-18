@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Left-align desktop Settings with the app gutter, widen navigation descriptions and let section descriptions use more horizontal space while preserving mobile section navigation.
 - Make rescans restore missing or empty thumbnails and missing downloaded artwork even for unchanged videos, retry missing technical details, report repair counts and refresh library images after completion. Preserve original files and personal viewing data.
 - Add administrator-only Data management with storage usage and confirmed cleanup of unused playback cache. Preserve source videos, active playback, extracted subtitles and personal/catalog data; refuse cleanup across media-library overlaps and filesystem links.
 - Accept short passwords and PINs without complexity rules; preserve hashing, sign-in rate limits and optional localhost-only administration.

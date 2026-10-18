@@ -81,6 +81,23 @@ try {
   await settings(page);await page.locator('#settings-panel-account').waitFor();
   await page.goto(base+'/settings#not-a-section');await page.locator('#settings-panel-account').waitFor();
   console.log('accounts: empty-state Add folder opens Libraries on desktop and mobile, including reload and history navigation');
+  await page.locator('.splash-screen').waitFor({state:'hidden'});
+  for(const width of [901,1024,1440,1920,2560]){
+    await page.setViewportSize({width,height:1000});
+    const layout=await page.evaluate(()=>{
+      const sidebar=document.querySelector('.settings-sidebar'),heading=document.querySelector('.settings-heading h1'),brand=document.querySelector('.brand');
+      const description=document.querySelector('#settings-nav-account small');
+      return {sidebar:sidebar.getBoundingClientRect().width,heading:heading.getBoundingClientRect().left,brand:brand.getBoundingClientRect().left,
+        description:description.getBoundingClientRect().height,lineHeight:parseFloat(getComputedStyle(description).lineHeight),overflow:document.documentElement.scrollWidth>innerWidth};
+    });
+    assert.ok(layout.sidebar>=240&&layout.sidebar<=280,'settings navigation has room for descriptions at '+width);
+    assert.ok(Math.abs(layout.heading-layout.brand)<1,'settings stay aligned to the app gutter at '+width);
+    assert.equal(layout.overflow,false,'settings fit the viewport at '+width);
+    if(width>=1440)assert.ok(layout.description<=layout.lineHeight+1,'account description fits on one line at '+width);
+    if([1440,1920].includes(width))await page.screenshot({path:join(repo,`node_modules/.cache/settings-layout-${width}.png`)});
+  }
+  await page.setViewportSize({width:1440,height:1000});
+  console.log('accounts: settings stay left-aligned with wider descriptions from small desktop to ultrawide');
   const cached=join(root,'cache','hls','segment-0.ts');await writeFile(cached,'cache fixture');
   await page.goto(base+'/settings#data');
   await page.getByRole('heading',{name:'Data management',exact:true}).waitFor();
