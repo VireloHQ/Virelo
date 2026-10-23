@@ -4,6 +4,25 @@
 
 Do not open a public issue for a suspected vulnerability. Use GitHub private vulnerability reporting for the `VireloHQ/Virelo` repository and include the affected version, reproduction steps, and expected impact.
 
+## Runtime security updates
+
+Virelo supports stable Node.js 22.23.4+, 24.22.1+ and 26.12.1+ within those release
+lines. The CLI checks this before creating data or loading the server; direct
+server creation also checks before initializing storage. Help and version output
+remain available on unsupported runtimes. npm's `engines` declaration alone is
+not sufficient because npm normally treats it as advisory.
+
+These minimums include the
+[October 2026 Node.js security fixes](https://nodejs.org/en/blog/vulnerability/october-2026-security-releases),
+including the Brotli decoder vulnerability CVE-2026-111497. Node's built-in fetch
+decodes compressed responses from metadata and artwork providers, so local-only
+listening and account authentication do not replace updating the runtime.
+
+Keep Node.js and optional FFmpeg/ffprobe installations updated. `npm audit` checks
+published npm dependency advisories, not the Node.js executable, system media
+tools, operating system or hosting configuration. A clean audit is not a guarantee
+that the entire installation is free of vulnerabilities.
+
 ## Network exposure
 
 Virelo binds to `127.0.0.1` by default. All media, catalog and management APIs require an account, even on localhost. Only the account-status, login, initial-setup and logout endpoints are public. Initial administrator setup is restricted to a direct loopback connection and is atomic. The login screen does not list accounts.

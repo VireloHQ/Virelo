@@ -7,6 +7,7 @@ import { defaultDataDir, ensureDataDirs } from './config.js';
 import { CliUsageError, DEFAULT_PORT, parseCliArgs } from './cli-options.js';
 import { VIRELO_VERSION } from './version.js';
 import { acceptsIpv4, networkUrls, serverUrl } from './network-urls.js';
+import { assertSupportedNode, NODE_REQUIREMENT } from './runtime.js';
 
 function usage() {
   console.log(`Virelo — personal media server
@@ -28,6 +29,7 @@ Options:
   -v, --version       Show version
 
 With no --media option, Virelo serves the directory where the command is run.
+Requires Node.js ${NODE_REQUIREMENT} within those release lines.
 `);
 }
 
@@ -49,6 +51,7 @@ async function main() {
   const options = parseCliArgs(process.argv.slice(2));
   if (options.help) { usage(); return; }
   if (options.version) { console.log(VIRELO_VERSION); return; }
+  assertSupportedNode();
   if (options.resetPassword) {
     const dataDir = options.dataDir ?? defaultDataDir();
     try { await stat(join(dataDir, 'virelo.db')); } catch { throw new CliUsageError('No Virelo database found. Check --data.'); }

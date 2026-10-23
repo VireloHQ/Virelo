@@ -6,10 +6,14 @@ and API changes first. Update public documentation when behavior changes.
 
 New contributions are licensed under AGPL-3.0-only, as described in [LICENSE](LICENSE). Include any required copyright and license notices for third-party material. This does not change the terms under which earlier contributions were received.
 
-Use Node.js 22.16 or newer. Install dependencies with `npm ci`, then run
+Use stable Node.js 22.23.4+, 24.22.1+ or 26.12.1+ within those release lines.
+Install dependencies with `npm ci`, then run
 `npm run check` before opening a pull request. The check builds the server and
 player, typechecks the web app, runs unit/API tests and checks the npm package contents.
-CI also tests Node 24 on Windows, macOS and Linux.
+CI tests all three supported Node lines on Windows, macOS and Linux, fetching the
+latest patch rather than relying on the runner's cached runtime. Update the
+runtime guard, package/lockfile engines and documentation together when changing
+the supported security baseline.
 
 ## Browser checks
 

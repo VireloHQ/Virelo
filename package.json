@@ -25,7 +25,7 @@
     "dev:server": "npm run build:server && node --watch dist/cli.js --no-open",
     "prepublishOnly": "npm run check",
     "pack:check": "npm pack --dry-run",
-    "test": "node --disable-warning=ExperimentalWarning --test tests/*.test.mjs",
+    "test": "node --disable-warning=ExperimentalWarning --test --test-concurrency=4 tests/*.test.mjs",
     "check": "npm run build && npm run typecheck:web && npm test && npm run pack:check"
   },
   "keywords": [
@@ -48,7 +48,7 @@
   },
   "homepage": "https://github.com/VireloHQ/Virelo#readme",
   "engines": {
-    "node": ">=22.16.0"
+    "node": "^22.23.4 || ^24.22.1 || ^26.12.1"
   },
   "dependencies": {
     "@fastify/static": "^10.1.2",

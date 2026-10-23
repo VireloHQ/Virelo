@@ -24,6 +24,11 @@
 
 ## ⚡ Quick start
 
+Use a current stable Node.js release in one of these supported lines:
+**22.23.4+**, **24.22.1+** or **26.12.1+**. Earlier releases are rejected before
+Virelo creates data or starts a server. These minimums include the
+[October 2026 Node.js security fixes](https://nodejs.org/en/blog/vulnerability/october-2026-security-releases).
+
 Run Virelo in the folder you want to serve:
 
 ```bash
@@ -279,6 +284,19 @@ The web app uses React, Vite, HeroUI, Tailwind CSS, TanStack Router, TanStack Qu
 </details>
 
 ## 🚀 Releases
+
+### Upgrading to 0.4.0
+
+Update Node.js to a supported version before upgrading. Back up the Virelo data
+directory with the server stopped, then use the same data directory with the new
+version. Create the first administrator from localhost on the server PC; existing
+libraries, favorites and watch history are preserved. Startup folders are now
+temporary unless explicitly saved in Libraries. See [CHANGELOG.md](CHANGELOG.md)
+for account, library and license changes.
+
+Git pushes do not publish to npm. To prepare a package for manual publication, run
+`npm run check` and `npm pack`, inspect the archive, then publish that archive with
+`npm publish ./virelo-<version>.tgz --access public`.
 
 Version tags matching `v*` trigger the npm publish workflow. Configure the repository's `NPM_TOKEN` secret before creating a release tag.
 

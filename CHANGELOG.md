@@ -1,6 +1,17 @@
 # Changelog
 
-## Unreleased
+## 0.4.0 — 2026-10-23
+
+### Upgrade notes
+
+- Use stable Node.js 22.23.4+, 24.22.1+ or 26.12.1+ within those release lines. Earlier releases are rejected before data initialization or server startup; these minimums include the October 2026 security fixes, including CVE-2026-111497.
+- All server access now requires a local account. After upgrading, open Virelo directly on the server PC using localhost to create the first administrator. That account inherits existing favorites and watch history; media files are unchanged. Existing API clients must sign in and include `X-Virelo-Request: 1` for state-changing requests.
+- Startup folders are temporary unless explicitly saved in Libraries. Older indexed folders and personal state remain in the database and can be restored from Previously used folders.
+- The project is now AGPL-3.0-only; see LICENSE for the terms and preserved permissions for older MIT releases.
+
+### Changes
+
+- Enforce the supported Node.js security baseline in package metadata and at runtime, including direct server creation. Keep help/version available on unsupported runtimes, add rejection-before-data tests, and test the latest patches of Node 22, 24 and 26 in cross-platform CI. Bound test-file concurrency to keep parallel server/media checks reliable.
 
 - Keep cold startup responsive during folder discovery: bound traversal, skip dependency trees, use native recursive Windows monitoring without a startup crawl and distinguish TS recordings from TypeScript. Show a static loading screen independently of pending scripts/styles, recover failed startup CSS and finish active scans before shutdown.
 - Harden rescan recovery for changed sources, invalid/truncated images, very short clips, failed generation retries and accurate completed/skipped counts. Bound media-tool processes and keep failed technical probes retryable.
@@ -20,10 +31,6 @@
 - Group Account Manager into user selection, profile, role/status, library access, actions and network settings with visible section boundaries.
 - Add Play all to Favorites in both players, including unloaded pages. Default new quality preferences to Original Quality while retaining explicit selections.
 - Replace obsolete development run reports with current contribution and library-storage documentation.
-
-## 0.4.0 — 2026-10-17
-
-Upgrade note: all server access now requires a local account. After upgrading, open Virelo directly on the server PC using localhost to create the first administrator. That account inherits existing favorites and watch history; media files are unchanged. Existing API clients must sign in and include `X-Virelo-Request: 1` for state-changing requests. The project is now AGPL-3.0-only; see LICENSE for the terms and preserved permissions for older MIT releases.
 
 - Require local accounts in the npm server. Add localhost-only first-administrator setup, sign-in/out, Account Manager, per-user library and action permissions, profile/password changes, administrator promotion, disabling/deletion, optional localhost-only administrator access and local CLI recovery. Isolate favorites and watch history, migrate legacy personal data to the first administrator, revoke sessions on account changes, and protect media, cached playback and artwork at the server boundary. Web-only Virelo is unchanged.
 

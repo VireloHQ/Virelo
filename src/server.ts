@@ -19,6 +19,7 @@ import { directLocal, registerAccounts } from './auth.js';
 import type { CatalogScope } from './auth-types.js';
 import { pickNativeFolder } from './folder-picker.js';
 import { isMediaFile, isVideoPath, mediaWatchFilter } from './media-files.js';
+import { assertSupportedNode } from './runtime.js';
 
 const SORT_KEYS: SortKey[] = ['title', 'newest', 'oldest', 'year', 'duration', 'random'];
 
@@ -66,6 +67,7 @@ function isTermuxRuntime() {
 }
 
 export async function createVireloServer(config: RuntimeConfig, pickFolder: (signal: AbortSignal) => Promise<string | null> = pickNativeFolder) {
+  assertSupportedNode();
   ensureDataDirs(config.dataDir);
   await initializeDemandCache(config.dataDir);
   const db = new VireloDB(config.dataDir);
