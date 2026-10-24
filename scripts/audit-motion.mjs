@@ -47,6 +47,10 @@ try {
       isMobile: scenario.touch, hasTouch: scenario.touch, reducedMotion: scenario.reduce ? 'reduce' : 'no-preference' });
     const page = lastPage = await context.newPage(), errors = [];
     page.setDefaultTimeout(20000);
+    if (process.env.VIRELO_TEST_SLOW_CPU) {
+      const cdp = await context.newCDPSession(page);
+      await cdp.send('Emulation.setCPUThrottlingRate', { rate: Number(process.env.VIRELO_TEST_SLOW_CPU) });
+    }
     page.on('pageerror', error => errors.push(error.message));
     await page.addInitScript(() => {
       window.__motion = [];
@@ -85,7 +89,10 @@ try {
       await page.locator('#settings-panel-' + section).waitFor();
       await page.evaluate(() => document.fonts.ready);
     }
-    const settled = locator => locator.evaluate(element => Promise.all(element.getAnimations().map(animation => animation.finished.catch(() => {}))));
+    const settled = locator => locator.evaluate(async element => {
+      await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+      await Promise.all(element.getAnimations().map(animation => animation.finished.catch(() => {})));
+    });
     const focused = async locator => {
       const element = await locator.elementHandle();
       try { await page.waitForFunction(target => document.activeElement === target, element, { timeout: 1000 }); }
@@ -174,12 +181,14 @@ try {
     check(await page.locator('.virelo-confirm-container').evaluate(element => element.getAnimations().length === 0), label + ' keyboard Modal does not animate');
     await page.keyboard.press('Escape'); await dialog.waitFor({ state: 'hidden' });
 
-    await modalTrigger.click();
-    const cancelBox = await dialog.getByRole('button', { name: 'Cancel', exact: true }).boundingBox();
-    await page.mouse.click(cancelBox.x + cancelBox.width / 2, cancelBox.y + cancelBox.height / 2);
-    await dialog.waitFor({ state: 'hidden' });
-    await focused(modalTrigger);
-    check(await modalTrigger.evaluate(element => element === document.activeElement), label + ' Modal can be dismissed during entry without trapping focus');
+    for (let attempt = 0; attempt < 3; attempt++) {
+      await modalTrigger.click();
+      const cancelBox = await dialog.getByRole('button', { name: 'Cancel', exact: true }).boundingBox();
+      await page.mouse.click(cancelBox.x + cancelBox.width / 2, cancelBox.y + cancelBox.height / 2);
+      await dialog.waitFor({ state: 'hidden' });
+      await focused(modalTrigger);
+      check(await modalTrigger.evaluate(element => element === document.activeElement), label + ' rapid Modal dismissal restores focus (' + (attempt + 1) + '/3)');
+    }
 
     await settings('playback');
     const brandBefore = await page.locator('.brand').boundingBox();

@@ -53,6 +53,11 @@ test('modal motion reverses CSS transitions instead of restarting exit keyframes
   assert.match(css, /data-exiting="true"[^}]*transition-duration:var\(--dur-micro\)/);
   assert.match(css, /prefers-reduced-motion:reduce/);
   assert.doesNotMatch(css, /@keyframes|translateY/);
+  assert.match(css, /data-animate="false"[^}]*transition:none/);
+  assert.doesNotMatch(css, /:root:has/);
+  const dialog = await source('components/ConfirmationDialog.tsx');
+  assert.match(dialog, /onPressStart=.*pointerType/);
+  assert.equal((dialog.match(/data-animate=\{animate\}/g) || []).length, 2);
 });
 
 test('scan progress animates only the fill transform, without changing layout widths', async () => {

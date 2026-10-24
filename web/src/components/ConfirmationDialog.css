@@ -20,7 +20,7 @@
 :is(.virelo-confirm-backdrop,.virelo-confirm-container):is([data-entering="true"],[data-exiting="true"]) { animation:none; opacity:0; }
 .virelo-confirm-container:is([data-entering="true"],[data-exiting="true"]) { transform:scale(.97); }
 :is(.virelo-confirm-backdrop,.virelo-confirm-container)[data-exiting="true"] { transition-duration:var(--dur-micro); }
-:root:has(:focus-visible) :is(.virelo-confirm-backdrop,.virelo-confirm-container) { transition:none; }
+:is(.virelo-confirm-backdrop,.virelo-confirm-container)[data-animate="false"] { transition:none; }
 @media (max-width:600px) {
   .virelo-confirm-dialog { padding:24px; }
   .virelo-confirm-footer { flex-direction:column-reverse; align-items:stretch; }

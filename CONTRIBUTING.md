@@ -44,6 +44,8 @@ Screenshots and test data are left in the reported temporary directory.
 Dropdown dismissal, Modal focus/scroll locking and fixed-layout search controls
 at desktop, portrait and landscape sizes, including keyboard and reduced-motion
 operation. It also accepts `VIRELO_TEST_WEB_REPO` and uses isolated app data.
+Set `VIRELO_TEST_SLOW_CPU=4` to repeat the checks with browser CPU throttling,
+including rapid dialog dismissal during entry.
 
 The `media-regressions` CI job installs FFmpeg and a pinned Playwright runtime,
 then runs the full checks plus `audit-scan-repair.mjs`, `audit-accounts.mjs`,

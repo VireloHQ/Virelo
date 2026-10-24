@@ -1,4 +1,4 @@
-import { useId, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { Button, Modal } from '@heroui/react';
 import './ConfirmationDialog.css';
 
@@ -13,10 +13,20 @@ interface ConfirmationDialogProps {
 // Shared app confirmation UI. React Aria handles focus trapping, restoration and scroll locking.
 export function ConfirmationDialog({ triggerLabel, title, children, confirmLabel, onConfirm }: ConfirmationDialogProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [animate, setAnimate] = useState(false);
   const [isPending, setIsPending] = useState(false);
   const [error, setError] = useState('');
   const pending = useRef(false);
   const descriptionId = useId();
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const dismissWithKeyboard = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && !pending.current) setAnimate(false);
+    };
+    document.addEventListener('keydown', dismissWithKeyboard, true);
+    return () => document.removeEventListener('keydown', dismissWithKeyboard, true);
+  }, [isOpen]);
 
   const changeOpen = (open: boolean) => {
     if (pending.current) return;
@@ -41,9 +51,9 @@ export function ConfirmationDialog({ triggerLabel, title, children, confirmLabel
   };
 
   return <Modal isOpen={isOpen} onOpenChange={changeOpen}>
-    <Button variant="secondary">{triggerLabel}</Button>
-    <Modal.Backdrop className="virelo-confirm-backdrop" isDismissable={!isPending} isKeyboardDismissDisabled={isPending}>
-      <Modal.Container className="virelo-confirm-container" placement="center" size="sm" scroll="inside">
+    <Button variant="secondary" onPressStart={event=>setAnimate(event.pointerType === 'mouse' || event.pointerType === 'touch' || event.pointerType === 'pen')}>{triggerLabel}</Button>
+    <Modal.Backdrop className="virelo-confirm-backdrop" data-animate={animate} isDismissable={!isPending} isKeyboardDismissDisabled={isPending}>
+      <Modal.Container className="virelo-confirm-container" data-animate={animate} placement="center" size="sm" scroll="inside">
         <Modal.Dialog className="virelo-confirm-dialog" role="alertdialog" aria-describedby={descriptionId}>
           <Modal.Header className="virelo-confirm-header">
             <Modal.Heading className="virelo-confirm-title">{title}</Modal.Heading>
@@ -54,7 +64,7 @@ export function ConfirmationDialog({ triggerLabel, title, children, confirmLabel
             {error && <p className="virelo-confirm-error" role="alert">{error}</p>}
           </Modal.Body>
           <Modal.Footer className="virelo-confirm-footer">
-            <Button variant="secondary" autoFocus isDisabled={isPending} onPress={()=>changeOpen(false)}>Cancel</Button>
+            <Button variant="secondary" autoFocus isDisabled={isPending} onPressStart={event=>{if(event.pointerType === 'keyboard') setAnimate(false);}} onPress={()=>changeOpen(false)}>Cancel</Button>
             <Button variant="danger" className="virelo-confirm-action" isPending={isPending} isDisabled={isPending} onPress={()=>void submitConfirmation()}>{confirmLabel}</Button>
           </Modal.Footer>
         </Modal.Dialog>
