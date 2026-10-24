@@ -188,6 +188,7 @@ try {
       const settingsButtonAfter = await page.getByRole('button', { name: 'Settings', exact: true }).boundingBox();
       check(Math.abs(settingsButtonBefore.x - settingsButtonAfter.x) < 0.6, label + ' search does not reflow adjacent controls');
     }
+    await focused(search);
     check(await search.evaluate(element => element === document.activeElement), label + ' search remains keyboard accessible');
     await page.screenshot({ path: join(artifacts, mode + '-' + scenario.name + '-search.png') });
     await page.keyboard.press('Escape'); await settled(page.locator('.header-search-toggle'));
