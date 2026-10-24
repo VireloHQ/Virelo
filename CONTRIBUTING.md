@@ -40,9 +40,14 @@ desktop and touch widths using generated media and an isolated server. Set
 `VIRELO_TEST_WEB_REPO` to a browser-only checkout to run the same checks there too.
 Screenshots and test data are left in the reported temporary directory.
 
+`node scripts/audit-motion.mjs` checks stable content positions, Switch timing,
+Dropdown dismissal, Modal focus/scroll locking and fixed-layout search controls
+at desktop, portrait and landscape sizes, including keyboard and reduced-motion
+operation. It also accepts `VIRELO_TEST_WEB_REPO` and uses isolated app data.
+
 The `media-regressions` CI job installs FFmpeg and a pinned Playwright runtime,
 then runs the full checks plus `audit-scan-repair.mjs`, `audit-accounts.mjs`,
-`audit-startup-scan.mjs` and `audit-shorts-playback.mjs`
+`audit-startup-scan.mjs`, `audit-shorts-playback.mjs` and `audit-motion.mjs`
 against synthetic media. It covers damaged/missing thumbnails, changed sources,
 short clips, cache links, historical Windows IDs, account boundaries, deep links,
 failed route/startup downloads, offline recovery and uninterrupted Shorts feeds.

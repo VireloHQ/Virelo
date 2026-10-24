@@ -19,7 +19,7 @@ export function ScanProgress({ status, compact = false }: { status?: ScanStatus;
       aria-valuemax={hasTotal ? status.total : undefined}
       aria-valuenow={hasTotal ? status.scanned : undefined}
     >
-      <span style={hasTotal ? { width: `${progress}%` } : undefined}/>
+      <span style={hasTotal ? { width: '100%', transform: `scaleX(${progress / 100})` } : undefined}/>
     </div>
     <p>{status.message}</p>
   </div>;

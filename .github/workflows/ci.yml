@@ -44,3 +44,4 @@ jobs:
       - run: node scripts/audit-accounts.mjs
       - run: node scripts/audit-startup-scan.mjs
       - run: node scripts/audit-shorts-playback.mjs
+      - run: node scripts/audit-motion.mjs

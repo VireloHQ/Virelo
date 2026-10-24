@@ -1,0 +1,82 @@
+/* App motion: immediate feedback, stable layout, and no staggered content reveals. */
+.app-shell :is(button, input, textarea, select),
+:is(.context-popover, .playback-settings-menu, .virelo-confirm-dialog, .route-recovery-notice) button {
+  transition:background-color var(--dur-short) var(--ease-out),border-color var(--dur-short) var(--ease-out),
+    color var(--dur-short) var(--ease-out),opacity var(--dur-micro) var(--ease-out),scale var(--dur-micro) var(--ease-out);
+}
+.app-shell :is(a, .settings-saved, .favorite-error),
+:is(.context-popover, .playback-settings-menu) :is(button, input) {
+  transition:color var(--dur-short) var(--ease-out),background-color var(--dur-short) var(--ease-out),opacity var(--dur-micro) var(--ease-out);
+}
+.app-shell button:active:not(:disabled):not([aria-disabled="true"]):not(:focus-visible),
+.virelo-confirm-dialog button:active:not(:disabled):not(:focus-visible) { scale:.98; }
+.app-shell :is(button, a, input, textarea, select):focus-visible,
+:is(.context-popover, .playback-settings-menu, .virelo-confirm-dialog) :focus-visible { transition:none; }
+
+/* Selection moves inside a fixed track, without reflowing the label or row. */
+.app-shell .switch { --switch-travel:.875rem; }
+.app-shell .switch--sm { --switch-travel:.71875rem; }
+.app-shell .switch--lg { --switch-travel:1.03125rem; }
+.app-shell .switch__control { transition:background-color var(--dur-short) var(--ease-out); }
+.app-shell .switch .switch__thumb {
+  margin-inline-start:.125rem;
+  transform:translateX(0);
+  transition:transform var(--dur-short) var(--ease-in-out),background-color var(--dur-short) var(--ease-out);
+}
+.app-shell .switch:is([aria-checked="true"],[data-selected="true"]) .switch__thumb {
+  margin-inline-start:.125rem;
+  transform:translateX(var(--switch-travel));
+}
+.app-shell .switch:has([data-focus-visible="true"]) .switch__thumb { transition:none; }
+.app-shell .switch:dir(rtl):is([aria-checked="true"],[data-selected="true"]) .switch__thumb { transform:translateX(calc(-1 * var(--switch-travel))); }
+
+/* CSS display transitions retain a closing picker without keeping it interactive. */
+.app-shell .picker-menu {
+  opacity:1;
+  transform:scale(1);
+  transform-origin:top left;
+  animation:none;
+  transition:opacity var(--dur-short) var(--ease-out),transform var(--dur-short) var(--ease-out),display var(--dur-short) allow-discrete;
+}
+.app-shell .picker[data-align="end"] .picker-menu { transform-origin:top right; }
+.app-shell .picker-menu[hidden] { opacity:0; transform:scale(.97); pointer-events:none; }
+.app-shell .picker[data-animate="false"] .picker-menu { transition:none!important; }
+.app-shell .picker:has(:focus-visible) .picker-trigger svg { transition:none; }
+@starting-style {
+  .app-shell .picker[data-animate="true"] .picker-menu:not([hidden]) { opacity:0; transform:scale(.97); }
+}
+
+/* A route or settings category appears as one surface, already in its final position. */
+@media (prefers-reduced-motion:no-preference) {
+  .app-shell .page-shell > :is(.home-view,.content-view,.detail-view,.watch-view,.shorts-view,.watch-empty),
+  .app-shell .settings-content > .settings-section,
+  .app-shell :is(.settings-saved,.error-copy,.favorite-error),
+  .route-recovery-notice {
+    transition:opacity var(--dur-short) var(--ease-out);
+  }
+  @starting-style {
+    :root:not(:has(:focus-visible)) .app-shell .page-shell > :is(.home-view,.content-view,.detail-view,.watch-view,.shorts-view,.watch-empty),
+    :root:not(:has(:focus-visible)) .app-shell .settings-content > .settings-section,
+    .app-shell :is(.settings-saved,.error-copy,.favorite-error),
+    .route-recovery-notice { opacity:0; }
+  }
+}
+.app-shell .settings-heading-actions > span { min-inline-size:72px; }
+.app-shell .media-card-art > img { transition:opacity var(--dur-short) var(--ease-out); }
+@media (hover:hover) and (pointer:fine) {
+  .app-shell .media-card:hover .media-card-art > img { opacity:.94; }
+  .app-shell .media-card.previewing .media-card-art > img { opacity:1; }
+}
+
+/* Reduced motion keeps color feedback, not travel, zoom, or deferred interaction. */
+@media (prefers-reduced-motion:reduce) {
+  .app-shell :is(button,a,input,textarea,select),
+  :is(.context-popover,.playback-settings-menu,.virelo-confirm-dialog) button {
+    transition-duration:80ms!important;
+    transition-property:background-color,border-color,color,opacity!important;
+    scale:1!important;
+  }
+  .app-shell .switch .switch__thumb { transition-property:background-color!important; transition-duration:80ms!important; }
+  .app-shell .picker-menu { transform:none!important; transition-duration:80ms!important; transition-property:opacity,display!important; }
+  .app-shell .media-card-art > img { transition:none; }
+}

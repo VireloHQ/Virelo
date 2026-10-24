@@ -8,6 +8,7 @@ import { router } from './router';
 import { AccountSession } from './components/AccountSession';
 import './styles.css';
 import './streaming-ui.css';
+import './ui-motion.css';
 
 if (import.meta.env.PROD && 'serviceWorker' in navigator) {
   window.addEventListener('load', () => {

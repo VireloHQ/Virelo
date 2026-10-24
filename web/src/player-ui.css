@@ -14,7 +14,7 @@
 .player-tools .playback-settings>button { border-radius:6px; }
 .player-queue { padding:0; min-width:0; border:0; border-radius:0; color:var(--muted-2); font-weight:500; }
 .player:focus-visible { outline:2px solid var(--color-focus); outline-offset:-2px; }
-.player.controls-visible .player-caption { bottom:var(--player-controls-height,112px); }
+.player.controls-visible .player-caption { translate:0 calc(var(--caption-bottom) - var(--player-controls-height,112px)); }
 
 .player-action-menu { z-index:180; width:224px; }
 .player-action-menu-content>button,.player-action-menu-content>.video-settings>button { width:100%; min-height:44px; display:flex; align-items:center; gap:10px; border:0; border-radius:4px; padding:8px 10px; background:transparent; color:inherit; text-align:left; font-size:13px; cursor:pointer; }
@@ -79,7 +79,7 @@
 .short-actions button:hover,.short-actions button.active { background:transparent; }
 .short-actions button:active { opacity:.75; }
 .short-actions button:focus-visible { outline:2px solid var(--color-focus); outline-offset:2px; }
-.player.short-player .player-caption { bottom:40px; max-width:76%; }
+.player.short-player .player-caption { bottom:40px; translate:0 0; max-width:76%; }
 .player.short-player:fullscreen .short-actions { right:12px; }
 @media (max-width:900px) {
   .player.short-player { border-radius:0; }

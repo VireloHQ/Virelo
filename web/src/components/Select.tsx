@@ -12,6 +12,7 @@ export function Select({ value, options, onChange, label, align = 'start', class
   className?: string;
 }) {
   const [open, setOpen] = useState(false);
+  const [animate, setAnimate] = useState(false);
   const [focusIndex, setFocusIndex] = useState(0);
   const rootRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -40,7 +41,8 @@ export function Select({ value, options, onChange, label, align = 'start', class
     if (restoreFocus) window.requestAnimationFrame(() => triggerRef.current?.focus());
   };
 
-  const openMenu = (direction: 'current' | 'next' | 'previous' = 'current') => {
+  const openMenu = (direction: 'current' | 'next' | 'previous' = 'current', pointer = false) => {
+    setAnimate(pointer);
     const currentIndex = Math.max(0, options.findIndex((o) => o.value === value));
     const nextIndex = direction === 'next'
       ? Math.min(options.length - 1, currentIndex + 1)
@@ -52,6 +54,7 @@ export function Select({ value, options, onChange, label, align = 'start', class
   };
 
   const onTriggerKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>) => {
+    setAnimate(false);
     e.stopPropagation();
     if (e.key === 'Escape' && open) { e.preventDefault(); close(true); }
     else if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open ? close() : openMenu(); }
@@ -61,6 +64,7 @@ export function Select({ value, options, onChange, label, align = 'start', class
 
   const onRootKeyDown = (e: React.KeyboardEvent) => {
     if (!open) return;
+    setAnimate(false);
     if (e.key === 'Escape') { e.preventDefault(); close(true); }
     else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
       e.preventDefault();
@@ -74,13 +78,13 @@ export function Select({ value, options, onChange, label, align = 'start', class
     }
   };
 
-  return <div className={`picker${className ? ` ${className}` : ''}`} ref={rootRef} onKeyDown={onRootKeyDown}>
+  return <div className={`picker${className ? ` ${className}` : ''}`} ref={rootRef} data-align={align} data-animate={animate} onKeyDown={onRootKeyDown}>
     <button type="button" ref={triggerRef} className="picker-trigger" aria-haspopup="listbox" aria-expanded={open} aria-controls={menuId} aria-label={label}
-      onClick={() => open ? close() : openMenu()} onKeyDown={onTriggerKeyDown}>
+      onClick={event => open ? close() : openMenu('current', event.detail > 0)} onKeyDown={onTriggerKeyDown}>
       <span>{current?.label ?? value}</span>
       <CaretDown weight="bold"/>
     </button>
-    {open && <div id={menuId} className="picker-menu" role="listbox" aria-label={label} style={align === 'end' ? { right: 0, left: 'auto' } : undefined}>
+    <div id={menuId} hidden={!open} inert={!open} aria-hidden={!open} className="picker-menu" role="listbox" aria-label={label} style={align === 'end' ? { right: 0, left: 'auto' } : undefined}>
       {options.map((option, i) => (
         <button type="button" role="option" aria-selected={option.value === value} key={option.value}
           id={`${menuId}-option-${option.value}`}
@@ -92,6 +96,6 @@ export function Select({ value, options, onChange, label, align = 'start', class
           {option.value === value && <Check weight="bold"/>}
         </button>
       ))}
-    </div>}
+    </div>
   </div>;
 }

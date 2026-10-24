@@ -29,7 +29,7 @@
 .home-header-category:focus-visible { outline:2px solid var(--color-focus); outline-offset:4px; }
 @media (hover:hover) and (pointer:fine) { .home-header-category:hover { color:var(--text); } }
 .app-shell .header-search-shell.open { border-radius:4px; }
-.app-shell .header-search-shell:focus-within { outline:none; box-shadow:inset 0 0 0 2px var(--color-focus); }
+.app-shell .header-search-motion:focus-within { outline:none; box-shadow:inset 0 0 0 2px var(--color-focus); }
 .app-shell .header-search-toggle:focus-visible { outline:none!important; box-shadow:inset 0 0 0 2px var(--color-focus)!important; }
 .app-shell :is(select, .picker-trigger):focus-visible { outline-offset:-3px; }
 .app-shell .brand { font-size:25px; }
@@ -88,7 +88,7 @@
   position:relative; display:flex; align-items:center; width:100%; min-height:48px; gap:12px;
   padding:12px 16px; border:0; border-radius:0; background:none;
   color:var(--text-muted); font:inherit; text-align:left; cursor:pointer;
-  transition:color 150ms ease,background-color 150ms ease;
+  transition:color var(--dur-short) var(--ease-out),background-color var(--dur-short) var(--ease-out);
 }
 .app-shell .settings-nav-item:hover { background:rgba(255,255,255,.04); color:var(--text); }
 .app-shell .settings-nav-item:active { background:var(--control-pressed); transform:none; }
