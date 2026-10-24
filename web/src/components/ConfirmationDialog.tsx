@@ -17,6 +17,7 @@ export function ConfirmationDialog({ triggerLabel, title, children, confirmLabel
   const [isPending, setIsPending] = useState(false);
   const [error, setError] = useState('');
   const pending = useRef(false);
+  const backdrop = useRef<HTMLDivElement>(null);
   const descriptionId = useId();
 
   useEffect(() => {
@@ -28,10 +29,16 @@ export function ConfirmationDialog({ triggerLabel, title, children, confirmLabel
     return () => document.removeEventListener('keydown', dismissWithKeyboard, true);
   }, [isOpen]);
 
+  const finishClose = () => {
+    // An immediate dismissal must not leave the overlay waiting on a cancelled entry transition.
+    const surface = backdrop.current?.querySelector('.virelo-confirm-container');
+    if (surface?.hasAttribute('data-entering') || surface?.getAnimations().some(animation=>animation.playState === 'running')) setAnimate(false);
+    setIsOpen(false);
+  };
   const changeOpen = (open: boolean) => {
     if (pending.current) return;
     setError('');
-    setIsOpen(open);
+    if (open) setIsOpen(true); else finishClose();
   };
 
   const submitConfirmation = async () => {
@@ -41,7 +48,7 @@ export function ConfirmationDialog({ triggerLabel, title, children, confirmLabel
     setError('');
     try {
       await onConfirm();
-      setIsOpen(false);
+      finishClose();
     } catch (error) {
       setError(error instanceof Error ? error.message : 'Could not complete this action. Please try again.');
     } finally {
@@ -52,7 +59,7 @@ export function ConfirmationDialog({ triggerLabel, title, children, confirmLabel
 
   return <Modal isOpen={isOpen} onOpenChange={changeOpen}>
     <Button variant="secondary" onPressStart={event=>setAnimate(event.pointerType === 'mouse' || event.pointerType === 'touch' || event.pointerType === 'pen')}>{triggerLabel}</Button>
-    <Modal.Backdrop className="virelo-confirm-backdrop" data-animate={animate} isDismissable={!isPending} isKeyboardDismissDisabled={isPending}>
+    <Modal.Backdrop ref={backdrop} className="virelo-confirm-backdrop" data-animate={animate} isDismissable={!isPending} isKeyboardDismissDisabled={isPending}>
       <Modal.Container className="virelo-confirm-container" data-animate={animate} placement="center" size="sm" scroll="inside">
         <Modal.Dialog className="virelo-confirm-dialog" role="alertdialog" aria-describedby={descriptionId}>
           <Modal.Header className="virelo-confirm-header">
