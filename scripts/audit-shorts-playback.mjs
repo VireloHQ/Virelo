@@ -151,6 +151,7 @@ api.mediaSource = async id => {
       check(await active.evaluate(v => v.paused), label + ' returning to Original preserves pause');
       await captions.click();
       await page.getByRole('menuitemradio', { name: 'Off', exact: true }).click();
+      await page.locator('.short-player .player-caption').waitFor({ state: 'hidden' });
       check(await page.locator('.short-player .player-caption').count() === 0, label + ' subtitles can be turned off');
       const seek = page.getByRole('slider', { name: 'Seek video', exact: true });
       await seek.focus(); await page.keyboard.press('Home'); await page.keyboard.press('ArrowRight');
