@@ -34,9 +34,15 @@ FFmpeg/ffprobe must be on PATH for playback audits. Run `npm run build` before
 Some component audits expect a running Vite development server; inspect the script's
 URL/environment options before running it. Never point audit tools at a personal library.
 
+After building, `node scripts/audit-shorts-playback.mjs` checks real Shorts playback,
+quality conversion, embedded subtitles, seeking, favorites and clip transitions at
+desktop and touch widths using generated media and an isolated server. Set
+`VIRELO_TEST_WEB_REPO` to a browser-only checkout to run the same checks there too.
+Screenshots and test data are left in the reported temporary directory.
+
 The `media-regressions` CI job installs FFmpeg and a pinned Playwright runtime,
-then runs the full checks plus `audit-scan-repair.mjs`, `audit-accounts.mjs`
-and `audit-startup-scan.mjs`
+then runs the full checks plus `audit-scan-repair.mjs`, `audit-accounts.mjs`,
+`audit-startup-scan.mjs` and `audit-shorts-playback.mjs`
 against synthetic media. It covers damaged/missing thumbnails, changed sources,
 short clips, cache links, historical Windows IDs, account boundaries, deep links,
 failed route/startup downloads, offline recovery and uninterrupted Shorts feeds.

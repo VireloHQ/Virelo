@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Keep Shorts controls unobtrusive: remove icon discs and the back overlay while preserving accessible touch targets. Share the normal player's quality, audio and subtitle pipeline with Shorts, including account conversion permissions, selected tracks and Original Quality.
+
 ## 0.4.0 — 2026-10-24
 
 ### Upgrade notes

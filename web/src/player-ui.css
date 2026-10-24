@@ -66,3 +66,28 @@
   :is(.player-transport,.player-tools,.repeat-control)>button,.player-tools .playback-settings>button { width:30px; min-width:30px; height:36px; }
   .player-transport .player-time { font-size:10px; }
 }
+
+/* Shorts share playback behavior while keeping transport controls off the picture. */
+.player.short-player { height:100%; max-height:none; aspect-ratio:auto; overflow:visible; border-radius:14px; box-shadow:none; }
+.player.short-player video { border-radius:inherit; object-fit:contain; cursor:pointer; }
+.player.short-player .short-player-controls { inset:0; padding:0; opacity:1; transform:none; pointer-events:none; transition:none; }
+.short-player-controls>input,.short-player-controls .short-actions { pointer-events:auto; }
+.short-actions,.short-actions .playback-settings { gap:10px; }
+.short-actions .playback-settings { flex-direction:column; }
+.short-player .short-actions .playback-settings>button { width:48px; min-width:48px; min-height:56px; height:auto; padding:0; display:flex; flex-direction:column; gap:5px; border:0; background:transparent; text-shadow:0 1px 3px rgba(0,0,0,.8); }
+.short-actions button { text-shadow:0 1px 3px rgba(0,0,0,.8); }
+.short-actions button:hover,.short-actions button.active { background:transparent; }
+.short-actions button:active { opacity:.75; }
+.short-actions button:focus-visible { outline:2px solid var(--color-focus); outline-offset:2px; }
+.player.short-player .player-caption { bottom:40px; max-width:76%; }
+.player.short-player:fullscreen .short-actions { right:12px; }
+@media (max-width:900px) {
+  .player.short-player { border-radius:0; }
+  .player.short-player .player-caption { bottom:calc(var(--mobile-dock-offset) + 44px); max-width:72%; }
+  .short-actions .playback-settings { gap:6px; }
+}
+@media (max-width:900px) and (max-height:500px) {
+  .short-player .short-actions { display:grid; grid-template-columns:repeat(2,48px); gap:4px; }
+  .short-player .short-actions .playback-settings { display:contents; }
+  .short-player .short-actions .playback-settings>button { min-height:44px; }
+}

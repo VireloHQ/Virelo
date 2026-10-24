@@ -232,12 +232,12 @@
   .app-shell .short-video { object-fit:contain; }
   .app-shell .short-actions { gap:6px; bottom:calc(var(--mobile-dock-offset) + 20px); }
   .app-shell .short-actions button { min-height:44px; min-width:44px; justify-content:center; }
-  .app-shell .short-actions button svg { width:36px; height:36px; padding:8px; }
+  .app-shell .short-actions button svg { width:26px; height:26px; padding:0; }
   .app-shell .short-actions button > span:not(.favorite-icon-wrap) { display:none; }
   .app-shell .short-info { padding-top:20px; padding-bottom:22px; }
 }
 
-.app-shell .player-status, .app-shell .short-status:not(.error) { pointer-events:none; }
+.app-shell .player-status { pointer-events:none; }
 
 .app-shell .settings-legal { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:8px 24px; margin-top:40px; padding-top:16px; border-top:1px solid var(--line); color:var(--text-muted); font-size:12px; }
 .settings-legal nav { display:flex; flex-wrap:wrap; gap:8px 24px; }
