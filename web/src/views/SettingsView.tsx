@@ -9,6 +9,7 @@ import { LibrarySettings } from '../components/LibrarySettings';
 import { Select } from '../components/Select';
 import { SettingsNavigation } from '../components/SettingsNavigation';
 import { ConfirmationDialog } from '../components/ConfirmationDialog';
+import { QueueLayoutSetting } from '../components/QueueLayoutSetting';
 import type { QueueBehavior, Settings } from '../types';
 import { useAccount } from '../components/AccountSession';
 import { AccountManager, AccountProfile } from '../components/AccountSettings';
@@ -32,7 +33,7 @@ const QUEUE_OPTIONS = [
 export function SettingsView(){
   const session=useAccount();
   const isAdmin=Boolean(session?.user.isAdmin);
-  const sections=settingsSections.filter(section=>isAdmin||['account','libraries','tools'].includes(section.id));
+  const sections=settingsSections.filter(section=>isAdmin||['account','libraries','playback','tools'].includes(section.id));
   const hash=useLocation({select:location=>location.hash});
   const navigate=useNavigate();
   const selectedSection=sections.find(section=>section.id===hash)?.id;
@@ -83,8 +84,9 @@ export function SettingsView(){
 
         {activeSection==='playback'&&<section id="settings-panel-playback" className="settings-card settings-section" aria-labelledby="settings-title-playback">
           <div className="settings-card-head"><div><h2 id="settings-title-playback" tabIndex={-1}>Playback</h2><p>Choose what happens when a video ends in a folder queue.</p></div></div>
-          <div className="setting-row"><div className="setting-copy"><div><strong>Queue advance</strong><p>Auto-advance, loop, or manually step through the folder.</p></div></div>
-            <Select className="settings-picker" label="Queue advance" value={form.queueBehavior} options={QUEUE_OPTIONS} align="end" onChange={(value)=>setForm({...form,queueBehavior:value as QueueBehavior})}/></div>
+          <QueueLayoutSetting/>
+          {isAdmin&&<div className="setting-row"><div className="setting-copy"><div><strong>Queue advance</strong><p>Auto-advance, loop, or manually step through the folder.</p></div></div>
+            <Select className="settings-picker" label="Queue advance" value={form.queueBehavior} options={QUEUE_OPTIONS} align="end" onChange={(value)=>setForm({...form,queueBehavior:value as QueueBehavior})}/></div>}
         </section>}
 
         {activeSection==='shorts'&&<section id="settings-panel-shorts" className="settings-card settings-section" aria-labelledby="settings-title-shorts">

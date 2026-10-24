@@ -74,4 +74,13 @@
 }
 @media(max-width:900px) { .loading-watch-layout { padding:0 0 100px; } }
 @media(max-width:600px) { .loading-preview-image { aspect-ratio:390/820; } }
+.loading-watch-layout[data-queue-layout="vertical"] { width:min(1740px,100%); }
+.loading-queue { min-width:0; padding:14px 12px; overflow:hidden; border:1px solid var(--line); border-radius:10px; }
+.loading-queue-item { display:grid; grid-template-columns:96px minmax(0,1fr); align-items:center; gap:10px; margin-top:20px; }
+.loading-queue-item .loading-thumbnail { aspect-ratio:16/9; }
+@media(min-width:1200px) {
+  .loading-watch-layout[data-queue-layout="vertical"] { display:grid; grid-template-columns:minmax(0,1fr) clamp(340px,27vw,400px); gap:24px; align-items:start; }
+  .loading-watch-layout[data-queue-layout="vertical"]>.loading-copy { grid-column:1; margin-top:0; }
+  .loading-queue { grid-column:2; grid-row:1 / span 2; height:min(680px,calc((100vw - 520px) * .5625 + 100px)); max-height:calc(100dvh - var(--topbar) - 32px); }
+}
 @media(prefers-reduced-motion:reduce) { .skeleton { animation:none; } }

@@ -1,18 +1,18 @@
 import { useCallback, useEffect, useRef, type RefObject } from 'react';
 
-export function useRowWheel(ref: RefObject<HTMLElement | null>, itemCount=0) {
+export function useRowWheel(ref: RefObject<HTMLElement | null>, itemCount=0, enabled=true) {
   const cancelWheel=useRef<()=>void>(()=>{});
-  const scrollBy=useCallback((left:number)=>{
+  const scrollBy=useCallback((left:number, behavior?:ScrollBehavior)=>{
     cancelWheel.current();
     ref.current?.scrollBy({
       left,
-      behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth'
+      behavior:behavior??(window.matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth')
     });
   },[ref]);
 
   useEffect(() => {
     const el = ref.current;
-    if (!el || !window.matchMedia('(hover: hover) and (pointer: fine)').matches) return;
+    if (!el || !enabled || !window.matchMedia('(hover: hover) and (pointer: fine)').matches) return;
 
     const reducedMotion=window.matchMedia('(prefers-reduced-motion: reduce)');
     let animationFrame = 0;
@@ -85,6 +85,6 @@ export function useRowWheel(ref: RefObject<HTMLElement | null>, itemCount=0) {
       cancel();
       cancelWheel.current=()=>{};
     };
-  },[ref,itemCount]);
+  },[ref,itemCount,enabled]);
   return scrollBy;
 }

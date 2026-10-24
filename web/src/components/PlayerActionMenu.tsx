@@ -23,10 +23,19 @@ export function PlayerActionMenu({position,label,actions,returnFocus,onClose}:{
     const outside=(event:PointerEvent)=>{if(!owns(event.target as Node))close.current();};
     const escape=(event:KeyboardEvent)=>{if(event.key==='Escape'&&!ref.current?.querySelector('[aria-haspopup="dialog"][aria-expanded="true"]')){event.preventDefault();returnFocus?.focus({preventScroll:true});close.current();}};
     const scrollAtOpen={x:window.scrollX,y:window.scrollY};
+    const ancestorScroll=new Map<HTMLElement,{x:number;y:number}>();
+    for(let element=returnFocus?.parentElement;element;element=element.parentElement)
+      ancestorScroll.set(element,{x:element.scrollLeft,y:element.scrollTop});
     const viewport=(event:Event)=>{
       if(event.target instanceof Node&&owns(event.target))return;
-      // A queued layout scroll with no position change must not dismiss a newly opened menu.
-      if(event.type==='scroll'&&event.target===document&&window.scrollX===scrollAtOpen.x&&window.scrollY===scrollAtOpen.y)return;
+      // Ignore already-queued scroll events after focus or scrollIntoView positions the trigger.
+      if(event.type==='scroll'){
+        if(event.target===document){if(window.scrollX===scrollAtOpen.x&&window.scrollY===scrollAtOpen.y)return;}
+        else if(event.target instanceof HTMLElement){
+          const previous=ancestorScroll.get(event.target);
+          if(!previous||(event.target.scrollLeft===previous.x&&event.target.scrollTop===previous.y))return;
+        }
+      }
       close.current();
     };
     document.addEventListener('pointerdown',outside);

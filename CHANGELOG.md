@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add editable horizontal and vertical playback queues, including a desktop side panel, touch/keyboard drag sorting, shuffle, repeat toggling, play-next, queue-only removal, undo and reset. Save layout preferences on each device and keep current playback stable during edits and refreshes. Remove competing scroll snapping and load queues beyond 500 videos.
+
 - Complete confirmation-dialog exits through the overlay lifecycle, including interrupted transitions. Read motion durations in milliseconds or seconds so production CSS minification preserves startup timing.
 
 - Consolidate normal-player quality, audio, subtitles, picture adjustments, repeat and PiP into Settings. Keep mobile transport on one row, remove the redundant Back button and matching loading gap, and label Shorts audio/subtitle controls.

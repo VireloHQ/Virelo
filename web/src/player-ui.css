@@ -1,3 +1,5 @@
+@import './playback-queue.css';
+
 /* A single transport cluster and a single viewing-tools cluster. */
 .player-toolbar { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:8px; }
 .player-transport,.player-tools { display:flex; align-items:center; gap:6px; min-width:0; }
@@ -28,36 +30,10 @@
 .playback-track-list,.player-action-menu { scrollbar-width:none; }
 .playback-track-list::-webkit-scrollbar,.player-action-menu::-webkit-scrollbar { display:none; }
 
-/* The queue is a filmstrip, not a second framed dashboard. */
-.playback-queue { margin-top:24px; border:0; border-radius:0; box-shadow:none; background:transparent; }
-.playback-queue-head { min-height:48px; padding:0 0 12px; }
-.playback-queue-title { gap:8px; }
-.playback-queue-title>svg { display:none; }
-.playback-queue-title>div { display:flex; align-items:baseline; gap:12px; }
-.playback-queue-title h2 { font-size:18px; font-weight:650; }
-.playback-queue-title span { margin:0; color:var(--muted-2); font-size:12px; }
-.playback-queue-nav { gap:4px; }
-.playback-queue-nav button { border-radius:6px; width:38px; height:38px; }
-.playback-queue-list { position:relative; grid-auto-columns:clamp(200px,20vw,260px); gap:14px; padding:0 2px 12px; scrollbar-width:none; }
-.playback-queue-list::-webkit-scrollbar { display:none; }
-.playback-queue-item { display:flex; flex-direction:column; align-items:stretch; gap:10px; padding:0 0 8px; min-height:0; border:0; border-radius:0; background:transparent; }
-.playback-queue-item:hover { background:transparent; }
-.playback-queue-item.active { border:0; background:transparent; box-shadow:none; }
-.playback-queue-item:focus-visible { outline-offset:-2px; }
-.playback-queue-art { border-radius:4px; }
-.playback-queue-item.active .playback-queue-art { box-shadow:inset 0 -3px var(--color-brand); }
-.playback-queue-item.active .playback-queue-art::after { content:''; position:absolute; inset:auto 0 0; height:3px; background:var(--color-brand); }
-.playback-queue-copy { padding:0 2px; }
-.playback-queue-copy small { color:var(--muted-2); font-size:11px; font-weight:500; letter-spacing:0; text-transform:none; margin-bottom:3px; }
-.playback-queue-item.active .playback-queue-copy small { color:var(--color-brand); }
-.playback-queue-copy strong { font-weight:600; font-size:14px; }
-.playback-queue-copy>span { font-size:12px; margin-top:3px; }
 
 @media (max-width:900px) {
   .player-transport,.player-tools,.player-tools .playback-settings { gap:2px; }
   :is(.player-transport,.player-tools,.repeat-control)>button,.player-tools .playback-settings>button { width:40px; min-width:40px; height:44px; }
-  .playback-queue { margin:18px 16px 0; }
-  .playback-queue-list { grid-auto-columns:clamp(170px,45vw,240px); gap:12px; }
 }
 @media (max-width:520px) {
   .player-transport :is(.skip-button,.queue-previous),.player-transport .player-queue { display:none; }

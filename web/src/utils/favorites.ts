@@ -17,15 +17,19 @@ export function updateHomeFavorites(home: HomeData, item: MediaItem, liked: bool
 }
 
 export const FAVORITES_PAGE_SIZE = 100;
-export async function loadFavoriteQueue(fetchPage: (offset: number, limit: number) => Promise<MediaItem[]>): Promise<MediaItem[]> {
+export async function loadMediaQueue(fetchPage: (offset: number, limit: number) => Promise<MediaItem[]>, changedMessage='The queue changed while loading. Please try again.'): Promise<MediaItem[]> {
   const items: MediaItem[] = [], seen = new Set<number>();
   for (let offset = 0; ; offset += FAVORITES_PAGE_SIZE) {
     const page = await fetchPage(offset, FAVORITES_PAGE_SIZE);
     const fresh = page.filter(item => !seen.has(item.id));
     for (const item of fresh) { seen.add(item.id); items.push(item); }
     if (page.length < FAVORITES_PAGE_SIZE) return items;
-    if (!fresh.length) throw new Error('The favorites list changed while loading. Please try again.');
+    if (!fresh.length) throw new Error(changedMessage);
   }
+}
+
+export function loadFavoriteQueue(fetchPage: (offset: number, limit: number) => Promise<MediaItem[]>): Promise<MediaItem[]> {
+  return loadMediaQueue(fetchPage, 'The favorites list changed while loading. Please try again.');
 }
 
 export function nextFavoritesPage(pages: MediaItem[][]): number | undefined {

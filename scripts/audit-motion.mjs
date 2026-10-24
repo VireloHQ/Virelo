@@ -130,7 +130,7 @@ try {
 
     await settings('playback');
     const trigger = page.getByRole('button', { name: 'Queue advance', exact: true });
-    const panel = page.locator('.settings-picker .picker-menu');
+    const panel = page.locator('.settings-picker .picker-menu[aria-label="Queue advance"]');
     const triggerRect = () => trigger.evaluate(element => {
       const rect = element.getBoundingClientRect(); return { x: rect.x + scrollX, y: rect.y + scrollY };
     });

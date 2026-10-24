@@ -112,7 +112,7 @@ try {
   const queueRepeat=page.locator('.playback-queue').getByRole('button',{name:'Repeat queue',exact:true});
   await queueRepeat.click();await queueRepeat.click();
   await openPlaybackSetting(page,'Repeat');
-  check(await page.getByRole('menuitemradio',{name:'Repeat queue',exact:true}).getAttribute('aria-checked')==='true',mode+' queue repeat is idempotent');
+  check(await page.getByRole('menuitemradio',{name:'Repeat off',exact:true}).getAttribute('aria-checked')==='true',mode+' queue repeat toggles off');
   await page.getByRole('menuitemradio',{name:'Repeat off',exact:true}).click();
   await page.locator('.player video').click({button:'right'});
   const actions=page.getByRole('menu',{name:'Video actions'});
@@ -120,10 +120,10 @@ try {
     &&await actions.getByRole('menuitem',{name:'Quality',exact:true}).count()===0,mode+' context only has Repeat video and no Quality');
   check(await actions.getByRole('menuitemradio',{name:'Repeat video',exact:true}).locator('svg').count()===1,mode+' context repeat has an icon');
   await page.keyboard.press('Escape');
-  check(await page.evaluate(()=>['html','body','.playback-queue-list'].every(selector=>getComputedStyle(document.querySelector(selector)).scrollbarWidth==='none')),mode+' horizontal and vertical native scrollbars hidden');
+  check(await page.evaluate(()=>getComputedStyle(document.querySelector('.playback-queue-list')).scrollSnapType==='none'),mode+' queue has no competing snap animation');
   await page.locator('.playback-queue-list').hover();await page.mouse.wheel(0,350);
   await page.waitForFunction(()=>document.querySelector('.playback-queue-list').scrollLeft>10);
-  check(true,mode+' queue wheel remains scrollable without a scrollbar');
+  check(true,mode+' queue wheel remains scrollable');
   await page.getByRole('button',{name:'Scroll queue right',exact:true}).click();
   check(true,mode+' queue arrow remains usable after wheel');
   await page.locator('[aria-label="Volume"]').fill('0.35');

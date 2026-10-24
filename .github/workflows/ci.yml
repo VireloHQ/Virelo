@@ -45,3 +45,4 @@ jobs:
       - run: node scripts/audit-startup-scan.mjs
       - run: node scripts/audit-shorts-playback.mjs
       - run: node scripts/audit-motion.mjs
+      - run: node scripts/audit-queue.mjs
