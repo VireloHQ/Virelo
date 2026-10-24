@@ -17,9 +17,9 @@
 .virelo-confirm-body .virelo-confirm-progress { margin-top:16px; color:#f5f5f7; }
 .virelo-confirm-backdrop, .virelo-confirm-container { opacity:1; transition:opacity var(--dur-long) var(--ease-out),transform var(--dur-long) var(--ease-out); }
 .virelo-confirm-container { transform:scale(1); transform-origin:center; }
-:is(.virelo-confirm-backdrop,.virelo-confirm-container):is([data-entering="true"],[data-exiting="true"]) { animation:none; opacity:0; }
-.virelo-confirm-container:is([data-entering="true"],[data-exiting="true"]) { transform:scale(.97); }
-:is(.virelo-confirm-backdrop,.virelo-confirm-container)[data-exiting="true"] { transition-duration:var(--dur-micro); }
+:is(.virelo-confirm-backdrop,.virelo-confirm-container):is([data-entering="true"],[data-exiting="true"]) { animation:none; }
+:is(.virelo-confirm-backdrop,.virelo-confirm-container)[data-entering="true"] { opacity:0; }
+.virelo-confirm-container[data-entering="true"] { transform:scale(.97); }
 :is(.virelo-confirm-backdrop,.virelo-confirm-container)[data-animate="false"] { transition:none; }
 @media (max-width:600px) {
   .virelo-confirm-dialog { padding:24px; }

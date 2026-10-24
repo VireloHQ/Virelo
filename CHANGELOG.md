@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Complete confirmation-dialog exits through the overlay lifecycle, including interrupted transitions. Read motion durations in milliseconds or seconds so production CSS minification preserves startup timing.
+
 - Consolidate normal-player quality, audio, subtitles, picture adjustments, repeat and PiP into Settings. Keep mobile transport on one row, remove the redundant Back button and matching loading gap, and label Shorts audio/subtitle controls.
 
 - Unify app motion with 160–250ms feedback, restrained fades and small surface scales. Keep page text and search layout stationary, use reversible dialog/dropdown transitions, and preserve immediate keyboard operation and reduced-motion preferences.

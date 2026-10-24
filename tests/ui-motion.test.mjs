@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
+import { stripTypeScriptTypes } from 'node:module';
 
 const source = path => readFile(new URL('../web/src/' + path, import.meta.url), 'utf8');
 
@@ -46,11 +47,10 @@ test('switch motion transforms a fixed thumb and preserves keyboard and reduced-
   assert.match(motion, /:dir\(rtl\)/);
 });
 
-test('modal motion reverses CSS transitions instead of restarting exit keyframes', async () => {
+test('modal exit is owned by the overlay lifecycle rather than cancelled CSS transitions', async () => {
   const css = await source('components/ConfirmationDialog.css');
   assert.match(css, /transition:opacity var\(--dur-long\)/);
   assert.match(css, /transform:scale\(\.97\)/);
-  assert.match(css, /data-exiting="true"[^}]*transition-duration:var\(--dur-micro\)/);
   assert.match(css, /prefers-reduced-motion:reduce/);
   assert.doesNotMatch(css, /@keyframes|translateY/);
   assert.match(css, /data-animate="false"[^}]*transition:none/);
@@ -58,8 +58,17 @@ test('modal motion reverses CSS transitions instead of restarting exit keyframes
   const dialog = await source('components/ConfirmationDialog.tsx');
   assert.match(dialog, /onPressStart=.*pointerType/);
   assert.equal((dialog.match(/data-animate=\{animate\}/g) || []).length, 2);
-  assert.match(dialog, /getAnimations\(\).*playState === 'running'/);
-  assert.match(dialog, /else finishClose\(\)/);
+  assert.match(dialog, /onExit=\{animateExit\}/);
+  assert.match(dialog, /animation\.cancel\(\)/);
+  assert.match(dialog, /await Promise\.all/);
+});
+
+test('motion timing accepts seconds emitted by the production CSS minifier', async () => {
+  const module = stripTypeScriptTypes(await source('utils/motion-time.ts'));
+  const { cssTimeToMilliseconds: milliseconds } = await import('data:text/javascript;base64,' + Buffer.from(module).toString('base64'));
+  for (const [css, expected] of [['160ms',160],['200ms',200],['.25s',250],['0.16s',160],['0s',0],['',0],['unset',0],['-1s',0]]) {
+    assert.equal(milliseconds(css), expected, css);
+  }
 });
 
 test('scan progress animates only the fill transform, without changing layout widths', async () => {

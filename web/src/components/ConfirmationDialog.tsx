@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { Button, Modal } from '@heroui/react';
+import { cssTimeToMilliseconds } from '../utils/motion-time';
 import './ConfirmationDialog.css';
 
 interface ConfirmationDialogProps {
@@ -17,7 +18,6 @@ export function ConfirmationDialog({ triggerLabel, title, children, confirmLabel
   const [isPending, setIsPending] = useState(false);
   const [error, setError] = useState('');
   const pending = useRef(false);
-  const backdrop = useRef<HTMLDivElement>(null);
   const descriptionId = useId();
 
   useEffect(() => {
@@ -29,16 +29,28 @@ export function ConfirmationDialog({ triggerLabel, title, children, confirmLabel
     return () => document.removeEventListener('keydown', dismissWithKeyboard, true);
   }, [isOpen]);
 
-  const finishClose = () => {
-    // An immediate dismissal must not leave the overlay waiting on a cancelled entry transition.
-    const surface = backdrop.current?.querySelector('.virelo-confirm-container');
-    if (surface?.hasAttribute('data-entering') || surface?.getAnimations().some(animation=>animation.playState === 'running')) setAnimate(false);
-    setIsOpen(false);
+  const animateExit = async (backdrop: HTMLElement) => {
+    const surface = backdrop.querySelector<HTMLElement>('.virelo-confirm-container');
+    const targets = [backdrop, ...(surface ? [surface] : [])].map(element => {
+      const style = getComputedStyle(element);
+      return { element, opacity: style.opacity, transform: style.transform };
+    });
+    const tokens = getComputedStyle(document.documentElement);
+    const duration = animate && !window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      ? cssTimeToMilliseconds(tokens.getPropertyValue('--dur-micro')) : 0;
+    // Return the actual exit work so the overlay never waits on a cancelled CSS entry transition.
+    await Promise.all(targets.map(({element,opacity,transform}) => {
+      element.style.transition = 'none';
+      element.getAnimations?.().forEach(animation => animation.cancel());
+      if (!duration || !element.animate) { element.style.opacity = '0'; return; }
+      const frames = element === surface ? [{opacity,transform},{opacity:0,transform:'scale(.97)'}] : [{opacity},{opacity:0}];
+      return element.animate(frames, {duration,easing:tokens.getPropertyValue('--ease-out').trim() || 'ease-out',fill:'forwards'}).finished.catch(()=>{});
+    }));
   };
   const changeOpen = (open: boolean) => {
     if (pending.current) return;
     setError('');
-    if (open) setIsOpen(true); else finishClose();
+    setIsOpen(open);
   };
 
   const submitConfirmation = async () => {
@@ -48,7 +60,7 @@ export function ConfirmationDialog({ triggerLabel, title, children, confirmLabel
     setError('');
     try {
       await onConfirm();
-      finishClose();
+      setIsOpen(false);
     } catch (error) {
       setError(error instanceof Error ? error.message : 'Could not complete this action. Please try again.');
     } finally {
@@ -59,7 +71,7 @@ export function ConfirmationDialog({ triggerLabel, title, children, confirmLabel
 
   return <Modal isOpen={isOpen} onOpenChange={changeOpen}>
     <Button variant="secondary" onPressStart={event=>setAnimate(event.pointerType === 'mouse' || event.pointerType === 'touch' || event.pointerType === 'pen')}>{triggerLabel}</Button>
-    <Modal.Backdrop ref={backdrop} className="virelo-confirm-backdrop" data-animate={animate} isDismissable={!isPending} isKeyboardDismissDisabled={isPending}>
+    <Modal.Backdrop className="virelo-confirm-backdrop" data-animate={animate} onExit={animateExit} isDismissable={!isPending} isKeyboardDismissDisabled={isPending}>
       <Modal.Container className="virelo-confirm-container" data-animate={animate} placement="center" size="sm" scroll="inside">
         <Modal.Dialog className="virelo-confirm-dialog" role="alertdialog" aria-describedby={descriptionId}>
           <Modal.Header className="virelo-confirm-header">

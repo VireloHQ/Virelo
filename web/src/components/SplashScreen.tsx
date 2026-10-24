@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
+import { cssTimeToMilliseconds } from '../utils/motion-time';
 
 export function SplashScreen({ onDone }: { onDone: () => void }) {
   const [leaving, setLeaving] = useState(false);
   useEffect(() => {
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const duration = reduced ? 0 : Number.parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--dur-long')) || 250;
+    const duration = reduced ? 0 : cssTimeToMilliseconds(getComputedStyle(document.documentElement).getPropertyValue('--dur-long'));
     let finishTimer: number | undefined;
     const frame = window.requestAnimationFrame(() => {
       setLeaving(true);
