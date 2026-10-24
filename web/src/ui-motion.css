@@ -31,6 +31,7 @@
 .app-shell .switch:dir(rtl):is([aria-checked="true"],[data-selected="true"]) .switch__thumb { transform:translateX(calc(-1 * var(--switch-travel))); }
 
 /* CSS display transitions retain a closing picker without keeping it interactive. */
+.app-shell .picker[data-open="true"] { z-index:21; }
 .app-shell .picker-menu {
   opacity:1;
   transform:scale(1);

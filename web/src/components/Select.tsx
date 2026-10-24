@@ -78,7 +78,7 @@ export function Select({ value, options, onChange, label, align = 'start', class
     }
   };
 
-  return <div className={`picker${className ? ` ${className}` : ''}`} ref={rootRef} data-align={align} data-animate={animate} onKeyDown={onRootKeyDown}>
+  return <div className={`picker${className ? ` ${className}` : ''}`} ref={rootRef} data-align={align} data-animate={animate} data-open={open} onKeyDown={onRootKeyDown}>
     <button type="button" ref={triggerRef} className="picker-trigger" aria-haspopup="listbox" aria-expanded={open} aria-controls={menuId} aria-label={label}
       onClick={event => open ? close() : openMenu('current', event.detail > 0)} onKeyDown={onTriggerKeyDown}>
       <span>{current?.label ?? value}</span>

@@ -102,4 +102,8 @@ test('queue scroll does not fight CSS snapping; layouts and edits stay client-si
   const queue = await readFile(new URL('../web/src/components/PlaybackQueue.tsx', import.meta.url), 'utf8');
   assert.doesNotMatch(queue, /api\.(remove|delete|save|set)/);
   assert.match(queue, /\[currentId, layout\]/);
+  const motion = await readFile(new URL('../web/src/ui-motion.css', import.meta.url), 'utf8');
+  assert.match(motion, /\.picker\[data-open="true"\] \{ z-index:21/);
+  const select = await readFile(new URL('../web/src/components/Select.tsx', import.meta.url), 'utf8');
+  assert.match(select, /data-open=\{open\}/);
 });

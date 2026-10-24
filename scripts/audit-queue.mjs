@@ -235,7 +235,15 @@ try {
     if (mode === 'web') await page.locator('#settings-nav-playback').click();
     await page.getByRole('button', { name: 'Queue layout', exact: true }).waitFor();
     check(await page.getByRole('button', { name: 'Queue layout', exact: true }).textContent().then(value => value.includes('Vertical')), label + ' settings reflect queue preference');
-    await page.getByRole('button', { name: 'Queue layout', exact: true }).click(); await page.getByRole('option', { name: 'Horizontal', exact: true }).click();
+    await page.getByRole('button', { name: 'Queue layout', exact: true }).click();
+    const layoutOption = page.getByRole('option', { name: 'Horizontal', exact: true });
+    await layoutOption.evaluate(async option => {
+      await Promise.all(option.parentElement.getAnimations().map(animation => animation.finished.catch(() => {})));
+    });
+    check(await layoutOption.evaluate(option => Array.from(option.parentElement.querySelectorAll('[role="option"]')).every(element => {
+      const rect = element.getBoundingClientRect(); return element.contains(document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2));
+    })), label + ' layout menu stays above the next settings picker');
+    await layoutOption.click();
     check(await page.evaluate(() => localStorage.getItem('virelo.queue-layout')) === 'horizontal', label + ' layout preference persists without saving server settings');
     await page.evaluate(prefix => window.__router.navigate({ to: prefix + '/watch/1', search: { queue: true, sort: 'random' } }), prefix);
     await queue.waitFor();

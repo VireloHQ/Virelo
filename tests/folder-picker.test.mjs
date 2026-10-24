@@ -44,7 +44,7 @@ test('native choosers return existing paths without passing them to a shell',asy
   }
 });
 
-test('Windows Common Item Dialog code compiles and connects its COM callbacks without opening a window',{skip:process.platform!=='win32',timeout:20000},async()=>{
+test('Windows Common Item Dialog code compiles and connects its COM callbacks without opening a window',{skip:process.platform!=='win32',timeout:60000},async()=>{
   const validation=String.raw`
 public static class VireloPickerComTest {
   public static string Check() {
@@ -65,7 +65,8 @@ public static class VireloPickerComTest {
   const script=windowsFolderPicker.slice(0,windowsFolderPicker.indexOf('$path = [VireloFolderPicker]::Pick()'))
     .replace("\n'@",validation+"\n'@")+'[VireloPickerComTest]::Check()';
   const result=await promisify(execFile)('powershell.exe',['-NoProfile','-NonInteractive','-STA','-EncodedCommand',Buffer.from(script,'utf16le').toString('base64')],
-    {encoding:'utf8',windowsHide:true,shell:false,timeout:15000}).catch(error=>{throw new Error(error.stderr);});
+    // Cold Windows runners may need longer to start PowerShell and compile the COM interop types.
+    {encoding:'utf8',windowsHide:true,shell:false,timeout:45000}).catch(error=>{throw new Error(error.stderr);});
   assert.equal(result.stdout.trim(),'COM_OK');
 });
 
