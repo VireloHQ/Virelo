@@ -158,8 +158,13 @@ try {
     const beforeModal = await page.evaluate(() => window.__beforeModal);
     check(Math.abs(beforeModal.x - afterModal.x) < 0.6 && Math.abs(beforeModal.y - afterModal.y) < 0.6, label + ' Modal scroll lock does not shift the page');
     const modalEvents = await page.evaluate(() => window.__motion.filter(event => event.className.includes('virelo-confirm-container') && event.type === 'transitionrun'));
-    check(scenario.reduce ? modalEvents.length === 0 : modalEvents.some(event => event.animations.some(animation => animation.duration === 250)),
-      label + ' Modal uses a restrained 250ms entry or reduced motion');
+    const modalDurations = await page.locator('.virelo-confirm-container').evaluate(element => getComputedStyle(element).transitionDuration.split(',').map(value => parseFloat(value) * 1000));
+    // Interrupted CSS transitions can have shortened effect timings; the shared duration stays 250ms.
+    const timedEntry = modalDurations.every(duration => Math.abs(duration - 250) < 1)
+      && modalEvents.some(event => event.animations.some(animation => animation.duration > 0 && animation.duration <= 251));
+    const modalTimingValid = scenario.reduce ? modalEvents.length === 0 : timedEntry;
+    check(modalTimingValid, label + ' Modal uses the shared 250ms timing or reduced motion'
+      + (modalTimingValid ? '' : ': ' + JSON.stringify({ modalDurations, modalEvents })));
     await page.screenshot({ path: join(artifacts, mode + '-' + scenario.name + '-modal.png') });
     await dialog.getByRole('button', { name: 'Cancel', exact: true }).click();
     await dialog.waitFor({ state: 'hidden' });
@@ -201,7 +206,7 @@ try {
   if (lastPage && !lastPage.isClosed()) {
     await lastPage.screenshot({ path: join(artifacts, 'failure.png') }).catch(() => {});
     console.error(await lastPage.locator('body').innerText());
-    console.error(await lastPage.evaluate(() => window.__motion?.slice(-8)));
+    console.error(JSON.stringify(await lastPage.evaluate(() => window.__motion?.slice(-8)), null, 2));
   }
   console.error('Motion artifacts:', artifacts);
   throw error;
