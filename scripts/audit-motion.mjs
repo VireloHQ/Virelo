@@ -54,6 +54,12 @@ try {
     page.on('pageerror', error => errors.push(error.message));
     await page.addInitScript(() => {
       window.__motion = [];
+      window.__modalPresses = [];
+      for (const type of ['pointerdown','pointerup','click']) document.addEventListener(type, event => {
+        if (event.target instanceof Element && event.target.closest('.virelo-confirm-dialog')) {
+          window.__modalPresses.push({ type, target: event.target.closest('button')?.textContent, x: event.clientX, y: event.clientY });
+        }
+      }, true);
       for (const type of ['transitionrun', 'animationstart']) document.addEventListener(type, event => {
         const target = event.target;
         if (!(target instanceof Element)) return;
@@ -180,6 +186,7 @@ try {
     await modalTrigger.focus(); await page.keyboard.press('Enter'); await dialog.waitFor();
     check(await page.locator('.virelo-confirm-container').evaluate(element => element.getAnimations().length === 0), label + ' keyboard Modal does not animate');
     await page.keyboard.press('Escape'); await dialog.waitFor({ state: 'hidden' });
+    await focused(modalTrigger);
 
     for (let attempt = 0; attempt < 3; attempt++) {
       await modalTrigger.click();
@@ -215,6 +222,15 @@ try {
   if (lastPage && !lastPage.isClosed()) {
     await lastPage.screenshot({ path: join(artifacts, 'failure.png') }).catch(() => {});
     console.error(await lastPage.locator('body').innerText());
+    console.error(JSON.stringify(await lastPage.evaluate(() => ({
+      presses: window.__modalPresses,
+      active: document.activeElement?.outerHTML?.slice(0, 500),
+      dialogs: Array.from(document.querySelectorAll('.virelo-confirm-backdrop,.virelo-confirm-container')).map(element => ({
+        attributes: Object.fromEntries(Array.from(element.attributes, attribute => [attribute.name, attribute.value])),
+        opacity: getComputedStyle(element).opacity,
+        animations: element.getAnimations().map(animation => ({ state: animation.playState, timing: animation.effect.getTiming() }))
+      }))
+    })), null, 2));
     console.error(JSON.stringify(await lastPage.evaluate(() => window.__motion?.slice(-8)), null, 2));
   }
   console.error('Motion artifacts:', artifacts);
