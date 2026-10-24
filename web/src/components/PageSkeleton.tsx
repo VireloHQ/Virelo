@@ -20,7 +20,7 @@ export function PageSkeleton({ kind }: { kind: SkeletonKind }) {
       {kind === 'home' || kind === 'landing' ? <>
         <div className="loading-feature"><div className="loading-feature-copy"><Lines title /><div className="loading-actions"><div className="skeleton loading-action" /><div className="skeleton loading-action" /></div></div></div>
         {kind === 'landing' ? <div className="loading-landing-preview"><div className="skeleton loading-label" /><div className="skeleton loading-preview-image" /></div> : <Shelves />}
-      </> : kind === 'watch' ? <div className="loading-watch-layout"><div className="skeleton loading-label" /><div className="loading-video"><div className="loading-video-controls"><div className="skeleton loading-progress" /><div className="skeleton loading-caption" /></div></div><Lines title /><Shelves /></div>
+      </> : kind === 'watch' ? <div className="loading-watch-layout"><div className="loading-video"><div className="loading-video-controls"><div className="skeleton loading-progress" /><div className="skeleton loading-caption" /></div></div><Lines title /><Shelves /></div>
       : kind === 'detail' ? <div className="loading-detail-layout"><div className="skeleton loading-poster" /><div><Lines title /><div className="skeleton loading-action" /></div></div>
       : kind === 'shorts' ? <div className="loading-portrait" />
       : kind === 'library' ? <div className="loading-library-layout"><Lines title /><div className="media-grid">{Array.from({length:12},(_,index)=><div key={index}><div className="skeleton loading-thumbnail" /><div className="skeleton loading-caption" /></div>)}</div></div>

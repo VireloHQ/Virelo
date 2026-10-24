@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Consolidate normal-player quality, audio, subtitles, picture adjustments, repeat and PiP into Settings. Keep mobile transport on one row, remove the redundant Back button and matching loading gap, and label Shorts audio/subtitle controls.
+
 - Unify app motion with 160–250ms feedback, restrained fades and small surface scales. Keep page text and search layout stationary, use reversible dialog/dropdown transitions, and preserve immediate keyboard operation and reduced-motion preferences.
 
 - Keep Shorts controls unobtrusive: remove icon discs and the back overlay while preserving accessible touch targets. Share the normal player's quality, audio and subtitle pipeline with Shorts, including account conversion permissions, selected tracks and Original Quality.

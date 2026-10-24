@@ -1,8 +1,6 @@
 /* Video-only presentation; subtitles and controls remain upright and unfiltered. */
 .player video.video-presentation { position:absolute; left:50%; top:50%; max-width:none; max-height:none; }
-.video-settings-heading { flex:none; display:flex; align-items:center; justify-content:space-between; padding-right:4px; }
 .video-settings-menu button { color:var(--text); background:transparent; border:0; cursor:pointer; }
-.video-settings-heading>button { display:grid; place-items:center; width:30px; height:30px; border-radius:6px; }
 .video-settings-menu button svg { width:18px; height:18px; flex:none; }
 .video-settings-menu button:hover:not(:disabled) { background:rgba(255,255,255,.1); }
 .video-settings-menu button:focus-visible,.video-settings-menu input:focus-visible { outline:2px solid var(--color-focus); outline-offset:2px; }
@@ -27,5 +25,3 @@
 .video-settings-reset { display:flex; align-items:center; justify-content:center; gap:8px; width:100%; min-height:36px; border-radius:6px; font-size:12px; }
 .video-settings-reset:disabled { opacity:.4; cursor:default; }
 .video-settings-content>.video-settings-hint:last-child { margin-bottom:0; }
-.video-settings-submenu { width:100%; }
-.video-settings-menu[data-side="left"],.video-settings-menu[data-side="right"] { z-index:200; }

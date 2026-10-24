@@ -1,3 +1,4 @@
+import { openPlaybackSetting } from './helpers/playback-settings.mjs';
 import { createRequire } from 'node:module';
 import { mkdir, stat, mkdtemp, copyFile } from 'node:fs/promises';
 import { execFileSync } from 'node:child_process';
@@ -44,12 +45,12 @@ try{
   const began=Date.now();
   await page.goto(`http://127.0.0.2:${port}/watch/${ids[0]}?queue=false`);
   await page.waitForFunction(()=>{const v=document.querySelector('.player video');return v&&!v.paused&&v.currentTime>0.3;},{},{timeout:15000});
-  await page.getByRole('button',{name:'Quality',exact:true}).click();
+  await openPlaybackSetting(page, 'Quality');
   assert.equal(await page.getByRole('menuitemradio',{name:/^Auto/}).getAttribute('aria-checked'),'true');
   assert.equal(qualityStarts,0);
   assert.equal(await page.locator('.player-status').count(),0);
   console.log('REMOTE_DIRECT',JSON.stringify({firstPlaybackMs:Date.now()-began,qualityStarts,video:await snapshot()}));
-  await page.getByRole('button',{name:'Quality',exact:true}).click();
+  await openPlaybackSetting(page, 'Quality');
   await page.locator('.player video').evaluate(v=>{Object.defineProperty(v,'readyState',{get:()=>2,configurable:true});v.dispatchEvent(new Event('waiting'));});
   await page.waitForFunction(()=>document.querySelector('.player-status')?.textContent?.includes('Buffering'),{},{timeout:10000});
   await page.locator('.player video').evaluate(v=>{delete v.readyState;v.dispatchEvent(new Event('playing'));});
@@ -57,13 +58,13 @@ try{
   await page.waitForFunction(()=>{const v=document.querySelector('.player video');return v?.currentSrc.startsWith('blob:')&&!v.paused&&v.currentTime>3;},{},{timeout:30000});
   const adaptive=await snapshot();assert.ok(adaptive.time>3&&adaptive.time<25);assert.ok(adaptive.audioDecoded>0);
   console.log('ADAPTIVE_HANDOFF',JSON.stringify({qualityStarts,video:adaptive,overlay:await page.locator('.player-status').count()}));
-  await page.getByRole('button',{name:'Quality',exact:true}).click();
+  await openPlaybackSetting(page, 'Quality');
   await page.getByRole('menuitemradio',{name:/^360p/}).click();
   await page.waitForTimeout(2000);
   assert.ok((await snapshot()).time>=adaptive.time);
   console.log('MANUAL_LEVEL',JSON.stringify(await snapshot()));
   await page.locator('.player video').evaluate(v=>v.pause());
-  await page.getByRole('button',{name:'Quality',exact:true}).click();
+  await openPlaybackSetting(page, 'Quality');
   await page.getByRole('menuitemradio',{name:/^480p/}).click();
   await page.waitForTimeout(500);
   assert.equal((await snapshot()).paused,true);
@@ -92,7 +93,7 @@ try{
   await page.waitForFunction(()=>{const v=document.querySelector('.player video');return v?.currentSrc.startsWith('blob:')&&!v.paused&&v.currentTime>0.3&&v.webkitAudioDecodedByteCount>0;},{},{timeout:30000});
   assert.equal(await page.locator('.player-status').count(),0);
   console.log('FIRST_COMPATIBLE_PLAY',JSON.stringify({firstPlaybackMs:Date.now()-audioBegan,video:await snapshot(),errors}));
-  await page.getByRole('button',{name:'Quality',exact:true}).click();
+  await openPlaybackSetting(page, 'Quality');
   assert.equal(await page.getByRole('menuitemradio',{name:/^Auto/}).count(),0);
   assert.deepEqual(errors,[]);
 }catch(e){console.error('FAILED',e,{qualityStarts,dataDir},await snapshot().catch(()=>null));console.error(JSON.stringify(await page.evaluate(()=>window.__events)));console.error(await page.locator('body').innerText());process.exitCode=1;}

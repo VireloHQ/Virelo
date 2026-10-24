@@ -39,6 +39,8 @@ quality conversion, embedded subtitles, seeking, favorites and clip transitions 
 desktop and touch widths using generated media and an isolated server. Set
 `VIRELO_TEST_WEB_REPO` to a browser-only checkout to run the same checks there too.
 Screenshots and test data are left in the reported temporary directory.
+It also checks the normal player's consolidated Settings menu, single-row mobile
+transport, audio choices, picture adjustments, keyboard navigation and fullscreen.
 
 `node scripts/audit-motion.mjs` checks stable content positions, Switch timing,
 Dropdown dismissal, Modal focus/scroll locking and fixed-layout search controls

@@ -30,8 +30,7 @@
 .loading-landing-preview { width:min(1440px,calc(100% - 2 * var(--loading-gutter))); margin:64px auto 88px; }
 .loading-landing-preview>.loading-label { width:40%; height:64px; margin-bottom:30px; }
 .loading-preview-image { width:100%; aspect-ratio:1440/1050; border-radius:4px; }
-.loading-watch-layout { width:min(1500px,100%); margin:auto; padding:28px clamp(12px,3vw,42px) 90px; }
-.loading-watch-layout>.loading-label { margin-bottom:18px; }
+.loading-watch-layout { width:min(1500px,100%); margin:auto; padding:12px clamp(12px,3vw,42px) 90px; }
 .loading-video { width:100%; aspect-ratio:16/9; background:#050505; position:relative; }
 .loading-video-controls { position:absolute; bottom:24px; left:24px; right:24px; }
 .loading-progress { height:4px; width:100%; border-radius:2px; }
@@ -73,5 +72,6 @@
   .loading-landing .loading-actions { flex-direction:column; }
   .loading-landing .loading-action { width:min(360px,100%); }
 }
+@media(max-width:900px) { .loading-watch-layout { padding:0 0 100px; } }
 @media(max-width:600px) { .loading-preview-image { aspect-ratio:390/820; } }
 @media(prefers-reduced-motion:reduce) { .skeleton { animation:none; } }

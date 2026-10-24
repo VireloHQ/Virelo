@@ -1,3 +1,4 @@
+import { openPlaybackSetting } from './helpers/playback-settings.mjs';
 import {createRequire} from 'node:module';
 import {readFile,mkdtemp} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
@@ -131,7 +132,7 @@ try{
   check(await page.locator('.player-status').count()===0,'no spinner while paused '+mode);
   const range=await page.locator('.player-seek').evaluate(e=>({appearance:getComputedStyle(e).appearance,border:getComputedStyle(e,'::-webkit-slider-runnable-track').borderWidth}));
   check(range.appearance==='none'&&range.border==='0px','flat progress track '+mode);
-  await page.getByRole('button',{name:'Quality',exact:true}).click();
+  await openPlaybackSetting(page, 'Quality');
   check(await page.getByRole('menuitemradio',{name:/^Auto/}).count()===0,'local has no Auto '+mode);
   await page.getByRole('menuitemradio',{name:/^360p/}).click();
   if(mode==='web')await page.waitForFunction(()=>document.querySelector('.player video')?.videoHeight===360,{},{timeout:60000});
@@ -140,11 +141,11 @@ try{
   check(await page.locator('.player-status').count()===0,'paused quality no spinner '+mode);
   await page.getByRole('button',{name:'Play',exact:true}).click();await page.waitForFunction(()=>!document.querySelector('.player video')?.paused);
   if(mode==='web'){
-   await page.getByRole('button',{name:'Audio',exact:true}).click();
+   await openPlaybackSetting(page, 'Audio');
    await page.getByRole('menuitemradio',{name:/Japanese/}).click();
    await page.waitForFunction(()=>{const v=document.querySelector('.player video');return v&&!v.paused&&v.webkitAudioDecodedByteCount>0&&document.querySelector('.player-status')===null;},{},{timeout:60000});
    check(await page.locator('.player video').evaluate(v=>v.webkitAudioDecodedByteCount>0),'web reduced-quality audio switch decodes audio');
-   await page.getByRole('button',{name:'Quality',exact:true}).click();
+   await openPlaybackSetting(page, 'Quality');
    await page.getByRole('menuitemradio',{name:/^720p/}).click();
    await page.waitForFunction(()=>{const v=document.querySelector('.player video'),a=document.querySelector('.player audio');return v?.videoHeight===720&&!v.paused&&a&&!a.paused&&Math.abs(a.currentTime-v.currentTime)<.5;},{},{timeout:60000});
    check(true,'web restore original keeps selected converted audio synchronized');

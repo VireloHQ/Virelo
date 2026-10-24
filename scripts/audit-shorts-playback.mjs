@@ -1,3 +1,5 @@
+import { openPlaybackSetting } from './helpers/playback-settings.mjs';
+import { auditPlayerSettings } from './helpers/player-settings-audit.mjs';
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 import { mkdtemp, mkdir, readFile, writeFile, copyFile, stat } from 'node:fs/promises';
@@ -16,7 +18,8 @@ await writeFile(subtitles, '1\n00:00:00,000 --> 00:00:12,000\nShorts subtitle ch
 const fixture = join(media, 'portrait.mkv');
 execFileSync(process.env.FFMPEG_PATH || 'ffmpeg', ['-y', '-hide_banner', '-loglevel', 'error',
   '-f', 'lavfi', '-i', 'testsrc2=size=540x960:rate=24', '-f', 'lavfi', '-i', 'sine=frequency=440:sample_rate=48000',
-  '-i', subtitles, '-t', '12', '-c:v', 'libx264', '-preset', 'ultrafast', '-pix_fmt', 'yuv420p', '-g', '48',
+  '-f', 'lavfi', '-i', 'sine=frequency=660:sample_rate=48000', '-i', subtitles,
+  '-map', '0:v', '-map', '1:a', '-map', '2:a', '-map', '3:s', '-t', '12', '-c:v', 'libx264', '-preset', 'ultrafast', '-pix_fmt', 'yuv420p', '-g', '48',
   '-c:a', 'aac', '-c:s', 'srt', '-metadata:s:s:0', 'language=eng', '-metadata:s:s:0', 'title=English', fixture],
   { windowsHide: true });
 await copyFile(fixture, join(media, 'portrait-next.mkv'));
@@ -62,7 +65,7 @@ try {
   if (process.env.VIRELO_TEST_WEB_REPO) modes.push(['web', await serveWeb()]);
   for (const [mode, base] of modes) {
     for (const size of [{ name: 'desktop', width: 1440, height: 900, mobile: false },
-      { name: 'mobile', width: 390, height: 844, mobile: true }, { name: 'landscape', width: 844, height: 390, mobile: true }]) {
+      { name: 'mobile', width: 390, height: 844, mobile: true }, { name: 'small', width: 320, height: 780, mobile: true }, { name: 'landscape', width: 844, height: 390, mobile: true }]) {
       const { mobile } = size;
       const label = mode + ' ' + size.name;
       const context = await browser.newContext({ serviceWorkers: 'block', reducedMotion: 'reduce',
@@ -107,6 +110,7 @@ api.mediaSource = async id => {
       await page.waitForFunction(() => { const v = document.querySelector('.short-player video'); return v && !v.paused && v.currentTime > 0.1; });
       await page.getByRole('button', { name: 'Quality', exact: true }).waitFor();
       await page.getByRole('button', { name: 'Subtitles', exact: true }).waitFor();
+      check(await page.getByRole('button', { name: 'Audio', exact: true }).innerText() === 'Audio', label + ' Shorts audio has a visible label');
       check(await active.count() === 1, label + ' only the active clip owns a playback controller');
       check(await page.locator('.shorts-back').count() === 0, label + ' no overlay back button');
       check(await page.locator('.short-player .player-toolbar').count() === 0, label + ' no wide-video toolbar over the Short');
@@ -181,9 +185,7 @@ api.mediaSource = async id => {
       check(await page.getByRole('menu', { name: 'Quality', exact: true }).count() === 0, label + ' switching clips leaves no detached settings menu');
       await page.goto(base + prefix + '/watch/' + items[0].id + '?queue=false');
       await page.locator('.player:not(.short-player) .player-toolbar').waitFor();
-      await page.getByRole('button', { name: 'Quality', exact: true }).click();
-      await page.getByRole('menuitemradio', { name: /^Original Quality/ }).waitFor();
-      check(true, label + ' normal player retains its toolbar and playback settings');
+      await auditPlayerSettings(page, label, check, root);
       check(errors.length === 0, label + ' no browser exceptions: ' + JSON.stringify(errors));
       await context.close();
     }
@@ -193,7 +195,7 @@ api.mediaSource = async id => {
   if (lastPage && !lastPage.isClosed()) {
     await lastPage.screenshot({ path: join(root, 'failure.png') }).catch(() => {});
     console.error(await lastPage.locator('body').innerText());
-    console.error(await lastPage.locator('.short-player video').evaluate(v => ({ time: v.currentTime, paused: v.paused,
+    console.error(await lastPage.locator('.player video').first().evaluate(v => ({ time: v.currentTime, paused: v.paused,
       width: v.videoWidth, height: v.videoHeight, ready: v.readyState, source: v.currentSrc, error: v.error?.message })).catch(() => null));
   }
   console.error('Audit artifacts:', root);

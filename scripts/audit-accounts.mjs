@@ -1,3 +1,4 @@
+import { openPlaybackSetting } from './helpers/playback-settings.mjs';
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 import { execFileSync } from 'node:child_process';
@@ -254,7 +255,7 @@ try {
   await view.evaluate(()=>localStorage.setItem('virelo-playback-quality:v1','90'));
   await view.reload();await signIn(view,'viewer');
   await view.waitForFunction(()=>{const video=document.querySelector('.player video');return video&&!video.paused&&video.currentTime>0;});
-  await view.locator('.player').hover();await view.getByRole('button',{name:'Quality',exact:true}).click();
+  await view.locator('.player').hover();await openPlaybackSetting(view, 'Quality');
   await view.getByText('Video conversion is disabled for this account.',{exact:true}).waitFor();
   assert.equal(await view.getByRole('menu',{name:'Quality',exact:true}).getByRole('menuitemradio').count(),1);
   assert.equal(await view.evaluate(()=>localStorage.getItem('virelo-playback-quality:v1')),'90','policy must not overwrite the saved preference');

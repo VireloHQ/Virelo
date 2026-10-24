@@ -1,3 +1,4 @@
+import { openPlaybackSetting } from './helpers/playback-settings.mjs';
 import {createRequire} from 'node:module';
 import {readFile,writeFile,mkdir,mkdtemp} from 'node:fs/promises';
 import {join,resolve,sep} from 'node:path';
@@ -96,22 +97,23 @@ try {
     catch(reason){console.error('VIDEO',mode,height,await page.locator('.player video').evaluate(v=>({time:v.currentTime,paused:v.paused,height:v.videoHeight,ready:v.readyState,src:v.currentSrc,error:v.error?.message})),await page.locator('body').innerText(),await page.evaluate(()=>({plays:window.__plays,starts:window.__starts,conversions:window.__conversions})));throw reason;}
   };
   const choose=async height=>{
-    await page.getByRole('button',{name:'Quality',exact:true}).click();
+    await openPlaybackSetting(page, 'Quality');
     await page.getByRole('menuitemradio',{name:new RegExp('^'+height+'p')}).click();
   };
   const preference=()=>page.evaluate(()=>localStorage.getItem('virelo-playback-quality:v1'));
   await setup();await mount(1);await waitVideo(1080);
   check(true,mode+' default original playback');
-  const repeatButton=page.getByRole('button',{name:'Repeat',exact:true});
   for(const [label,loop] of [['Repeat video',true],['Repeat queue',false],['Repeat off',false]]) {
-    await repeatButton.click();
-    check((await repeatButton.getAttribute('title')).startsWith(label)&&await page.locator('.player video').evaluate(v=>v.loop)===loop,mode+' direct repeat cycle '+label);
-    check(await page.getByRole('menu',{name:'Repeat',exact:true}).count()===0,mode+' repeat opens no menu');
+    await openPlaybackSetting(page,'Repeat');
+    await page.getByRole('menuitemradio',{name:label,exact:true}).click();
+    check(await page.locator('.player video').evaluate(v=>v.loop)===loop,mode+' repeat preference '+label);
+    check(await page.getByRole('menu',{name:'Repeat',exact:true}).count()===0,mode+' repeat closes after selection');
   }
   const queueRepeat=page.locator('.playback-queue').getByRole('button',{name:'Repeat queue',exact:true});
   await queueRepeat.click();await queueRepeat.click();
-  check((await repeatButton.getAttribute('title')).startsWith('Repeat queue'),mode+' queue repeat selects queue immediately and is idempotent');
-  await repeatButton.click();
+  await openPlaybackSetting(page,'Repeat');
+  check(await page.getByRole('menuitemradio',{name:'Repeat queue',exact:true}).getAttribute('aria-checked')==='true',mode+' queue repeat is idempotent');
+  await page.getByRole('menuitemradio',{name:'Repeat off',exact:true}).click();
   await page.locator('.player video').click({button:'right'});
   const actions=page.getByRole('menu',{name:'Video actions'});
   check(await actions.getByRole('menuitemradio',{name:'Repeat video',exact:true}).count()===1&&await actions.getByRole('menuitemradio').count()===1
@@ -126,11 +128,11 @@ try {
   check(true,mode+' queue arrow remains usable after wheel');
   await page.locator('[aria-label="Volume"]').fill('0.35');
   check(await page.locator('.player video').evaluate(v=>v.volume===.35),mode+' actual volume applied');
-  await page.getByRole('button',{name:'Quality',exact:true}).click();
+  await openPlaybackSetting(page, 'Quality');
   check(await page.getByRole('menuitemradio',{name:/^Auto/}).count()===(mode==='npm-network'?1:0),mode+' Auto is available only on network connections');
   check(await page.getByRole('menuitemradio',{name:/^Original Quality/}).count()===1&&await page.getByRole('menuitemradio',{name:/^1080p/}).count()===1,mode+' Original Quality and 1080p are separate options');
   check(await page.getByRole('menuitemradio',{name:/^Original Quality/}).getAttribute('aria-checked')==='true',mode+' default is Original Quality without preparation');
-  await page.getByRole('button',{name:'Quality',exact:true}).click();
+  await openPlaybackSetting(page, 'Quality');
   await choose(720);await waitVideo(720);
   check(await preference()==='720',mode+' manual quality saved');
   await mount(2);await waitVideo(720);
@@ -159,7 +161,7 @@ try {
   check(await page.locator('.player video').evaluate(v=>v.paused),mode+' changing quality preserves pause');
   await page.getByRole('button',{name:'Play',exact:true}).click();await waitVideo(480);
   await page.evaluate(()=>{window.__failQuality=true;});
-  await page.getByRole('button',{name:'Audio',exact:true}).click();await page.getByRole('menuitemradio',{name:/^Two/}).click();
+  await openPlaybackSetting(page, 'Audio');await page.getByRole('menuitemradio',{name:/^Two/}).click();
   await page.locator('.player-status.error').waitFor();
   check(await page.locator('.player video').evaluate(v=>v.paused)&&await preference()==='480',mode+' audio-switch failure cannot bypass manual ceiling');
   await page.evaluate(()=>{window.__failQuality=false;window.__noLower=true;localStorage.removeItem('virelo-playback-audio:v1');localStorage.setItem('virelo-playback-quality:v1','720');});
@@ -173,7 +175,7 @@ try {
   await page.evaluate(()=>{window.__noLower=false;});
   await mount(1);await waitVideo(1080);
   await choose(720);await waitVideo(720);
-  await page.getByRole('button',{name:'Quality',exact:true}).click();
+  await openPlaybackSetting(page, 'Quality');
   await page.getByRole('menuitemradio',{name:/^Original Quality/}).click();
   await waitVideo(1080);
   check(await preference()==='source',mode+' return from lower quality to Original uses original stream');
