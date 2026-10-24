@@ -86,6 +86,11 @@ try {
       await page.evaluate(() => document.fonts.ready);
     }
     const settled = locator => locator.evaluate(element => Promise.all(element.getAnimations().map(animation => animation.finished.catch(() => {}))));
+    const focused = async locator => {
+      const element = await locator.elementHandle();
+      try { await page.waitForFunction(target => document.activeElement === target, element, { timeout: 1000 }); }
+      finally { await element.dispose(); }
+    };
     const stable = (frames, name) => {
       const spread = field => Math.max(...frames.map(r => r[field])) - Math.min(...frames.map(r => r[field]));
       check(frames.length === 28 && ['x', 'y', 'width', 'height'].every(field => spread(field) < 0.6), label + ' ' + name);
@@ -131,6 +136,7 @@ try {
     await trigger.focus(); await page.keyboard.press('ArrowDown');
     check(await panel.evaluate(element => element.getAnimations().length === 0), label + ' keyboard Dropdown does not animate');
     await page.keyboard.press('Escape');
+    await focused(trigger);
     check(await trigger.evaluate(element => element === document.activeElement), label + ' Dropdown restores focus');
     check(await panel.evaluate(element => getComputedStyle(element).display === 'none'), label + ' keyboard dismissal is immediate');
 
@@ -157,6 +163,7 @@ try {
     await page.screenshot({ path: join(artifacts, mode + '-' + scenario.name + '-modal.png') });
     await dialog.getByRole('button', { name: 'Cancel', exact: true }).click();
     await dialog.waitFor({ state: 'hidden' });
+    await focused(modalTrigger);
     check(await modalTrigger.evaluate(element => element === document.activeElement), label + ' Modal preserves focus restoration');
     await modalTrigger.focus(); await page.keyboard.press('Enter'); await dialog.waitFor();
     check(await page.locator('.virelo-confirm-container').evaluate(element => element.getAnimations().length === 0), label + ' keyboard Modal does not animate');
@@ -166,6 +173,7 @@ try {
     const cancelBox = await dialog.getByRole('button', { name: 'Cancel', exact: true }).boundingBox();
     await page.mouse.click(cancelBox.x + cancelBox.width / 2, cancelBox.y + cancelBox.height / 2);
     await dialog.waitFor({ state: 'hidden' });
+    await focused(modalTrigger);
     check(await modalTrigger.evaluate(element => element === document.activeElement), label + ' Modal can be dismissed during entry without trapping focus');
 
     await settings('playback');
