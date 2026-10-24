@@ -15,6 +15,12 @@ latest patch rather than relying on the runner's cached runtime. Update the
 runtime guard, package/lockfile engines and documentation together when changing
 the supported security baseline.
 
+After building, `npm run audit:package` packs and installs the actual archive with
+production dependencies only, audits that installed tree, and checks CLI output,
+HTTP startup, assets and first-administrator setup. It uses a fresh temporary
+directory, reported in the output, and leaves those isolated fixtures for inspection.
+It never uses a personal media folder or data directory and does not publish.
+
 ## Browser checks
 
 The scripts in `scripts/audit-*.mjs` cover accounts, favorites, playback,

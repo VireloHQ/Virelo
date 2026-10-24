@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.4.0 — 2026-10-23
+## 0.4.0 — 2026-10-24
 
 ### Upgrade notes
 
@@ -10,6 +10,9 @@
 - The project is now AGPL-3.0-only; see LICENSE for the terms and preserved permissions for older MIT releases.
 
 ### Changes
+
+- Update both transitive fast-uri release lines to patched versions (3.1.9 and 4.2.3), addressing URI scheme spoofing, relative-reference normalization and host canonicalization advisories.
+- Verify the packed release in CI with a fresh production-only installation, dependency audit, CLI and HTTP startup checks, and first-administrator setup in isolated temporary storage.
 
 - Enforce the supported Node.js security baseline in package metadata and at runtime, including direct server creation. Keep help/version available on unsupported runtimes, add rejection-before-data tests, and test the latest patches of Node 22, 24 and 26 in cross-platform CI. Bound test-file concurrency to keep parallel server/media checks reliable.
 
