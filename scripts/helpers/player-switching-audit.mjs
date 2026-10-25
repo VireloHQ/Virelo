@@ -2,10 +2,21 @@ import assert from 'node:assert/strict';
 import { openPlaybackSetting } from './playback-settings.mjs';
 
 async function audioFrequency(page) {
+  await page.waitForFunction(() => {
+    const audio = document.querySelector('.player audio'), video = document.querySelector('.player:not(.short-player) video');
+    return !video.paused && !video.seeking && video.readyState >= 2 && (!audio.hasAttribute('src')
+      || (!audio.paused && !audio.seeking && audio.readyState >= 2 && Math.abs(audio.currentTime - video.currentTime) < .5));
+  });
   return page.evaluate(async () => {
     const audio = document.querySelector('.player audio'), video = document.querySelector('.player:not(.short-player) video');
-    const media = audio.hasAttribute('src') || !audio.paused ? audio : video;
-    const context = new AudioContext(), source = context.createMediaStreamSource(media.captureStream()), analyser = context.createAnalyser();
+    const media = audio.hasAttribute('src') ? audio : video, capture = media.captureStream();
+    // captureStream's audio track can arrive after play/seeking resolves, especially with MSE.
+    const deadline = performance.now() + 5000;
+    while (!capture.getAudioTracks().length) {
+      if (performance.now() > deadline) { capture.getTracks().forEach(track => track.stop()); throw new Error('Playing media produced no capturable audio track.'); }
+      await new Promise(resolve => setTimeout(resolve, 20));
+    }
+    const context = new AudioContext(), source = context.createMediaStreamSource(capture), analyser = context.createAnalyser();
     try {
       analyser.fftSize = 4096; source.connect(analyser); await context.resume();
       await new Promise(resolve => setTimeout(resolve, 250));
@@ -14,7 +25,7 @@ async function audioFrequency(page) {
       for (let i = Math.floor(200 * analyser.fftSize / context.sampleRate); i < Math.ceil(1000 * analyser.fftSize / context.sampleRate); i++)
         if (bins[i] > (bins[peak] ?? -Infinity)) peak = i;
       return peak * context.sampleRate / analyser.fftSize;
-    } finally { await context.close(); }
+    } finally { await context.close(); capture.getTracks().forEach(track => track.stop()); }
   });
 }
 
