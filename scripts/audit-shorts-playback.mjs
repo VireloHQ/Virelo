@@ -192,6 +192,10 @@ api.mediaSource = async id => {
       }
       await page.goto(base + prefix + '/watch/' + items[0].id + '?queue=false');
       await page.locator('.player:not(.short-player) .player-toolbar').waitFor();
+      check(await page.locator('.player:not(.short-player)').evaluate(element=>{
+        const rect=element.getBoundingClientRect(),dock=document.querySelector('.mobile-nav')?.getBoundingClientRect();
+        return rect.top>=0&&rect.bottom<=Math.min(innerHeight,dock?.height?dock.top:innerHeight);
+      }),label+' initial normal player fits before any scrolling or menu interaction');
       await auditPlayerSettings(page, label, check, root);
       await auditPlayerTransport(page, label, check, root);
       if (size.name === 'desktop' || size.name === 'mobile') await auditPlayerSwitching(page, label, check);

@@ -104,6 +104,7 @@
   .player:not(.short-player).controls-visible .player-caption { translate:0 calc(var(--caption-bottom) - 58px); }
 }
 @media (max-width:1000px) and (max-height:500px) {
+  .watch-view { padding-top:0; }
   .player:not(.short-player) { max-height:calc(100dvh - var(--topbar) - var(--mobile-dock-offset,0px)); }
   .player:not(.short-player):fullscreen { max-height:none; }
 }
