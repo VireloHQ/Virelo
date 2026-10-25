@@ -8,6 +8,13 @@ import { directLocal } from './auth.js';
 import type { CustomCommand, CustomCommandDefinition } from './custom-command-types.js';
 
 const OUTPUT_LIMIT = 32_768;
+export function finishCommandGroup(pid: number, platform = process.platform, send = process.kill) {
+  try { send(-pid, 'SIGKILL'); } catch (error) {
+    const code = (error as NodeJS.ErrnoException).code;
+    // After SIGTERM and parent exit, Darwin can report EPERM for a zombie-only group.
+    if (code !== 'ESRCH' && !(platform === 'darwin' && code === 'EPERM')) throw error;
+  }
+}
 type Row = { id: number; definition: string };
 type Run = Pick<CustomCommand, 'status' | 'output' | 'activeUrl' | 'exitCode'> & {
   child: ChildProcess;
@@ -140,7 +147,7 @@ export class CustomCommands {
         }, 3000);
       })]);
       // A parent can exit before a child that ignores SIGTERM closes its own pipes.
-      if (process.platform !== 'win32') try { process.kill(-pid, 'SIGKILL'); } catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ESRCH') throw error; }
+      if (process.platform !== 'win32') finishCommandGroup(pid);
     } finally { clearTimeout(timer); clearTimeout(force); }
   }
   async close() {

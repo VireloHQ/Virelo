@@ -5,7 +5,7 @@ import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { commandDefinition, CustomCommands } from '../dist/custom-commands.js';
+import { commandDefinition, CustomCommands, finishCommandGroup } from '../dist/custom-commands.js';
 import { createVireloServer } from '../dist/server.js';
 import { authenticatedInjector } from './auth-helper.mjs';
 
@@ -19,6 +19,18 @@ async function until(read, accept, milliseconds=5000) {
   assert.fail('Expected command state was not reached.');
 }
 const alive = pid => { try { process.kill(pid,0);return true; } catch { return false; } };
+
+test('post-exit group cleanup tolerates Darwin zombie groups without suppressing other permission errors',()=>{
+  const calls=[];
+  finishCommandGroup(12345,'linux',(pid,signal)=>{calls.push([pid,signal]);return true;});
+  assert.deepEqual(calls,[[-12345,'SIGKILL']]);
+  const denied=()=>{throw Object.assign(new Error('denied'),{code:'EPERM'});};
+  const gone=()=>{throw Object.assign(new Error('gone'),{code:'ESRCH'});};
+  assert.doesNotThrow(()=>finishCommandGroup(12345,'darwin',denied));
+  assert.doesNotThrow(()=>finishCommandGroup(12345,'linux',gone));
+  assert.throws(()=>finishCommandGroup(12345,'linux',denied),/denied/);
+  assert.throws(()=>finishCommandGroup(12345,'darwin',()=>{throw Object.assign(new Error('invalid'),{code:'EINVAL'});}),/invalid/);
+});
 
 test('command validation is bounded and public URLs are exact HTTPS origins',()=>{
   assert.equal(commandDefinition({...definition(),publicUrl:'https://media.example/',urlDomain:''}).publicUrl,'https://media.example');
