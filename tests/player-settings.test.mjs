@@ -8,8 +8,9 @@ test('the normal player shares one settings entry instead of a row of preference
   assert.match(player, /unified=\{!shorts\}/);
   assert.match(player, /pictureControls=.*VideoSettingsPanel/);
   assert.doesNotMatch(player, /VideoSettingsMenu|RepeatControl/);
-  assert.match(player, /<PlayerControls title=\{item.title\}/);
+  assert.match(player, /<PlayerControls current=\{current\}/);
   const controls = await source('components/PlayerControls.tsx');
+  assert.doesNotMatch(controls, /player-title|title: string|\{title\}/);
   assert.match(controls, /aria-label=\{props.pip \? 'Exit Picture in Picture' : 'Picture in Picture'\}/);
   const menu = await source('components/PlaybackSettingsMenu.tsx');
   for (const setting of ['quality', 'audio', 'subtitles', 'video', 'repeat', 'speed']) assert.ok(menu.includes("sectionButton('" + setting + "'"));

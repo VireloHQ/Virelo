@@ -771,7 +771,7 @@ export function Player({item,queue,queueIndex,shuffled,onShuffle,onEnded,onNext,
     {shorts?<ShortsPlayerControls item={item} current={current} duration={duration} muted={muted} pip={pip}
       pipSupported={pipSupported} onSeek={seek} onMute={toggleMute} onPip={()=>void togglePip()} onNext={shorts.onNext}>
       {playbackSettings}
-    </ShortsPlayerControls>:<PlayerControls title={item.title} current={current} duration={duration} paused={!pauseAction}
+    </ShortsPlayerControls>:<PlayerControls current={current} duration={duration} paused={!pauseAction}
       busy={audioPreparing||qualityState==='starting'||fallback==='starting'}
       volume={volume} muted={muted} pip={pip} pipSupported={pipSupported}
       canGoPrev={canGoPrev} canGoNext={canGoNext} hasQueue={Boolean(queue?.length)}

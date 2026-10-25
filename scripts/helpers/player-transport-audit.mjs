@@ -10,19 +10,19 @@ export async function auditPlayerTransport(page,label,check,artifacts) {
   const names=await transport.getByRole('button').evaluateAll(buttons=>buttons.map(button=>button.getAttribute('aria-label')));
   check(JSON.stringify(names)===JSON.stringify(compact?['Rewind 10 seconds','Play','Fast-forward 30 seconds']:['Shuffle queue','Previous video','Rewind 10 seconds','Play','Fast-forward 30 seconds','Next video','Repeat']),label+' transport retains the appropriate action order without mobile duplicates');
   check(await transport.getByRole('button').evaluateAll(buttons=>buttons.every(button=>{const box=button.getBoundingClientRect();return box.width>=40&&box.height>=44;})),label+' transport touch targets remain usable');
-  check(await player.locator('.player-title').textContent()===await video.evaluate(element=>element.closest('.player').getAttribute('aria-label').replace(/ player$/,'')),label+' title appears inside the controls');
+  check(await player.locator('.player-title').count()===0,label+' controls do not repeat the video title');
   check(await player.locator('.player-toolbar').evaluate(element=>element.scrollWidth<=element.clientWidth)&&await transport.evaluate(element=>element.scrollWidth<=element.clientWidth),label+' toolbar and transport do not overflow');
   const geometry=await player.locator('.player-controls').boundingBox(),viewport=page.viewportSize();
   if(compact){
     const layout=await player.evaluate(element=>{
       const rect=element.getBoundingClientRect(),timeline=element.querySelector('.player-timeline').getBoundingClientRect(),transport=element.querySelector('.player-transport').getBoundingClientRect(),tools=element.querySelector('.player-tools').getBoundingClientRect(),controls=element.querySelector('.player-controls'),style=getComputedStyle(controls);
       const dock=document.querySelector('.mobile-nav')?.getBoundingClientRect();
-      return {seekHeight:timeline.height,seekBottom:rect.bottom-timeline.bottom,center:Math.abs((transport.top+transport.bottom)/2-(rect.top+rect.bottom)/2),toolsAbove:tools.bottom<=transport.top,seekBelow:timeline.top>=transport.bottom,blur:style.backdropFilter,hitThrough:style.pointerEvents==='none',titleHidden:getComputedStyle(element.querySelector('.player-title-block')).display==='none',fits:rect.top>=0&&rect.bottom<=Math.min(innerHeight,dock?.height?dock.top:innerHeight)};
+      return {seekHeight:timeline.height,seekBottom:rect.bottom-timeline.bottom,center:Math.abs((transport.top+transport.bottom)/2-(rect.top+rect.bottom)/2),toolsAbove:tools.bottom<=transport.top,seekBelow:timeline.top>=transport.bottom,blur:style.backdropFilter,hitThrough:style.pointerEvents==='none',fits:rect.top>=0&&rect.bottom<=Math.min(innerHeight,dock?.height?dock.top:innerHeight)};
     });
     check(layout.seekHeight===44&&Math.abs(layout.seekBottom)<1,label+' only a 44px seek strip remains at the bottom');
     check(layout.center<1&&layout.toolsAbove&&layout.seekBelow,label+' mobile tools, centered playback and seek strip never overlap');
     check(layout.fits,label+' mobile video and seek strip fit above the navigation dock, including landscape');
-    check(layout.blur==='none'&&layout.hitThrough&&layout.titleHidden,label+' mobile video has no thick blurred panel or duplicate title and empty areas stay tappable');
+    check(layout.blur==='none'&&layout.hitThrough,label+' mobile video has no thick blurred panel and empty areas stay tappable');
     check(await player.getByRole('slider',{name:'Seek',exact:true}).evaluate(element=>element.getBoundingClientRect().height>=44),label+' mobile seek retains a 44px touch target');
     check(await player.locator('.player-tools').getByRole('button').evaluateAll(buttons=>buttons.every(button=>{const box=button.getBoundingClientRect();return box.width>=44&&box.height>=44;})),label+' mobile auxiliary tools retain 44px touch targets');
     await openPlaybackSetting(page,'Subtitles');
@@ -33,7 +33,7 @@ export async function auditPlayerTransport(page,label,check,artifacts) {
     await page.getByRole('menuitemradio',{name:'Off',exact:true}).click();
     await player.getByRole('button',{name:'Fullscreen',exact:true}).click();
     await page.waitForFunction(()=>Boolean(document.fullscreenElement));
-    check(await player.locator('.player-title').isVisible(),label+' fullscreen retains a visible title');
+    check(await player.locator('.player-title').count()===0,label+' fullscreen controls also omit the video title');
     await page.evaluate(()=>document.exitFullscreen());
     await page.waitForTimeout(350);
   }else check(geometry.height<=(viewport.width>1000?112:140),label+' desktop control panel keeps a compact height');

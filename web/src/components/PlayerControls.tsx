@@ -6,7 +6,7 @@ import type { RepeatMode } from '../utils/playback-repeat';
 import '../player-transport.css';
 
 interface PlayerControlsProps {
-  title: string; current: number; duration: number; paused: boolean; busy: boolean;
+  current: number; duration: number; paused: boolean; busy: boolean;
   volume: number; muted: boolean; pip: boolean; pipSupported: boolean;
   canGoPrev: boolean; canGoNext: boolean; hasQueue: boolean; queuePosition?: string;
   shuffled?: boolean; onShuffle?: () => void;
@@ -17,7 +17,7 @@ interface PlayerControlsProps {
 }
 
 export function PlayerControls(props: PlayerControlsProps) {
-  const { title, current, duration, paused, busy, repeat, onRepeat, hasQueue } = props;
+  const { current, duration, paused, busy, repeat, onRepeat, hasQueue } = props;
   const progress = duration > 0 ? Math.max(0, Math.min(100, current / duration * 100)) : 0;
   return <div className="player-controls" onDoubleClick={event => event.stopPropagation()}>
     <div className="player-timeline">
@@ -34,7 +34,7 @@ export function PlayerControls(props: PlayerControlsProps) {
       <span className="player-time player-time-remaining" aria-label="Remaining time" title="Remaining time">{playerTime(Math.max(0, duration - current))}</span>
     </div>
     <div className="player-toolbar">
-      <div className="player-title-block"><span className="player-title" title={title}>{title}</span>{props.queuePosition && <small className="player-queue">{props.queuePosition}</small>}</div>
+      <div className="player-queue-position">{props.queuePosition && <small className="player-queue">{props.queuePosition}</small>}</div>
       <div className="player-transport" role="group" aria-label="Playback controls">
         <button type="button" aria-label="Shuffle queue" aria-pressed={Boolean(props.shuffled)} disabled={!props.onShuffle || !hasQueue} onClick={props.onShuffle}><Shuffle/></button>
         <button type="button" className="queue-previous" aria-label="Previous video" disabled={!props.onPrev || !props.canGoPrev} onClick={props.onPrev}><SkipBack weight="fill"/></button>
