@@ -1,0 +1,16 @@
+.loading-spinner {
+  display:inline-block;
+  width:20px;
+  height:20px;
+  flex:none;
+  border-radius:50%;
+  background:conic-gradient(from -90deg,transparent 0deg,currentColor 285deg,transparent 285deg);
+  mask:radial-gradient(farthest-side,transparent calc(100% - 2px),#000 calc(100% - 1.5px));
+  animation:loading-spin .9s linear infinite;
+}
+.scan-progress-head .loading-spinner { width:17px; height:17px; color:var(--text); }
+.player-status .loading-spinner { width:28px; height:28px; color:var(--text); }
+@keyframes loading-spin { to { transform:rotate(360deg); } }
+@media (prefers-reduced-motion:reduce) {
+  .loading-spinner { animation:none; }
+}

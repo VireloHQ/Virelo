@@ -49,10 +49,12 @@ export function AccountSession({ children }: {children:ReactNode}) {
   };
   if (query.data?.user) return <PrivateSession key={query.data.user.id + ':' + query.data.user.revision}
     session={{user:query.data.user,localAccess:query.data.localAccess,refresh,logout}}>{children}</PrivateSession>;
-  return <div className="account-entry app-shell">
+  const connectionError = query.isError || (query.isPending && query.errorUpdatedAt > 0);
+  return <div className={`account-entry app-shell${query.isPending || connectionError ? ' account-connection' : ''}`}>
     <a className="account-brand" href="/" aria-label="Virelo"><img src="/virelo-icon.png" alt=""/>Virelo</a>
-    {query.isPending ? <p role="status">Connecting to your server…</p> : query.isError
-      ? <div className="account-entry-form"><h1>Cannot reach your server</h1><p>Check that Virelo is running, then try again.</p><Button onPress={()=>void query.refetch()}>Try again</Button></div>
+    {connectionError
+      ? <section className="account-status" aria-labelledby="connection-error-title"><h1 id="connection-error-title">Cannot reach your server</h1><p>Check that Virelo is running, then try again.</p><Button isPending={query.isFetching} onPress={()=>void query.refetch()}>{query.isFetching ? 'Connecting…' : 'Try again'}</Button></section>
+      : query.isPending ? <div className="account-status"><p role="status">Connecting to your server…</p></div>
       : query.data && <SignIn key={String(query.data.setupRequired)} status={query.data} onDone={status=>{client.setQueryData(sessionKey,status);notify();}}/>}
   </div>;
 }

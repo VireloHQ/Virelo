@@ -1,4 +1,4 @@
-import { ArrowsClockwise } from '@phosphor-icons/react';
+import { LoadingSpinner } from './LoadingSpinner';
 import type { ScanStatus } from '../types';
 
 export function ScanProgress({ status, compact = false }: { status?: ScanStatus; compact?: boolean }) {
@@ -8,7 +8,7 @@ export function ScanProgress({ status, compact = false }: { status?: ScanStatus;
 
   return <div className={`scan-progress${compact ? ' compact' : ''}`} role="status" aria-live="polite">
     <div className="scan-progress-head">
-      <span><ArrowsClockwise className="spin" aria-hidden="true"/><strong>Scanning</strong></span>
+      <span><LoadingSpinner/><strong>Scanning</strong></span>
       <span>{hasTotal ? `${status.scanned} / ${status.total}` : 'Discovering files…'}</span>
     </div>
     <div

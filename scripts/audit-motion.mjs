@@ -109,6 +109,8 @@ try {
       check(frames.length === 28 && ['x', 'y', 'width', 'height'].every(field => spread(field) < 0.6), label + ' ' + name);
     };
     await settings('shorts');
+    check(await page.locator('.settings-heading-actions button').evaluate(element=>getComputedStyle(element).userSelect)==='none',label+' buttons do not select text');
+    check(await page.locator('.settings-view').evaluate(element=>getComputedStyle(element).userSelect)==='none',label+' settings chrome does not select text');
     stable(await page.evaluate(() => window.__capture('.settings-heading h1')), 'page text stays in its final position after loading');
     const pageEvents = await page.evaluate(() => window.__motion.filter(event => /content-view|settings-section/.test(event.className)));
     check(pageEvents.every(event => event.property === 'opacity' && event.type === 'transitionrun'), label + ' page entry changes opacity only');

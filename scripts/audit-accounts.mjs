@@ -12,6 +12,43 @@ const repo=fileURLToPath(new URL('../',import.meta.url));
 const {chromium}=createRequire(process.env.VIRELO_TEST_NODE_PACKAGE||join(repo,'package.json'))('playwright');
 const root=await mkdtemp(join(tmpdir(),'virelo-account-ui-'));
 const password='1234';
+async function checkEntryScreen(browser,base) {
+  const context=await browser.newContext({serviceWorkers:'block',viewport:{width:574,height:346}});
+  const page=await context.newPage();page.setDefaultTimeout(12000);
+  let receive;
+  const nextRequest=()=>new Promise(resolve=>{receive=resolve;});
+  await context.route('**/api/auth/status',route=>receive(route));
+  const initial=nextRequest();await page.goto(base);
+  const request=await initial;await page.getByRole('status').filter({hasText:'Connecting to your server'}).waitFor();
+  await page.locator('.splash-screen').waitFor({state:'hidden'});
+  await page.evaluate(()=>document.fonts.ready);
+  const brand=page.locator('.account-brand');
+  const initialPosition=await brand.boundingBox();
+  await request.fulfill({status:503,json:{error:'Unavailable'}});
+  const title=page.getByRole('heading',{name:'Cannot reach your server',exact:true});await title.waitFor();
+  assert.ok(Math.abs((await brand.boundingBox()).y-initialPosition.y)<2,'loading and error keep the logo in place');
+  for(const viewport of [{width:574,height:346},{width:390,height:844},{width:320,height:568},{width:844,height:320}]) {
+    await page.setViewportSize(viewport);
+    const layout=await page.evaluate(()=>{
+      const rect=selector=>{const r=document.querySelector(selector).getBoundingClientRect();return {center:r.x+r.width/2,top:r.top,bottom:r.bottom,height:r.height};};
+      return {brand:rect('.account-brand'),title:rect('.account-status h1'),copy:rect('.account-status p'),button:rect('.account-status button'),overflow:document.documentElement.scrollWidth>innerWidth};
+    });
+    for(const item of Object.values(layout).filter(value=>typeof value==='object'))assert.ok(Math.abs(item.center-viewport.width/2)<1,'connection content is centered');
+    assert.ok(layout.copy.top-layout.title.bottom>=15,'description has breathing room');
+    assert.ok(layout.button.top-layout.copy.bottom>=23,'retry is separated from the explanation');
+    assert.ok(layout.button.height>=44,'retry has a touch-friendly target');
+    assert.ok(layout.button.bottom<=viewport.height,'retry stays in view');assert.equal(layout.overflow,false);
+    await page.screenshot({path:join(repo,`node_modules/.cache/account-connection-${viewport.width}.png`)});
+  }
+  const retry=nextRequest();const before=await title.boundingBox();
+  await page.getByRole('button',{name:'Try again',exact:true}).click();const retryRoute=await retry;
+  await page.getByRole('button',{name:'Connecting…',exact:true}).waitFor();
+  assert.deepEqual(await title.boundingBox(),before,'retry keeps the error layout stable');
+  await retryRoute.fulfill({status:503,json:{error:'Unavailable'}});await page.getByRole('button',{name:'Try again',exact:true}).waitFor();
+  const recovered=nextRequest();await page.getByRole('button',{name:'Try again',exact:true}).click();await (await recovered).continue();
+  await page.getByRole('heading',{name:'Create administrator',exact:true}).waitFor();
+  await context.close();console.log('accounts: balanced responsive connection screen, stable retry and successful recovery');
+}
 async function checkFieldFocus(page,label) {
   const input=page.getByLabel(label,{exact:true});
   await input.click();
@@ -47,6 +84,7 @@ try {
   }
   await server.app.listen({host:'127.0.0.1',port:0});const base='http://127.0.0.1:'+server.app.server.address().port;
   browser=await chromium.launch({headless:true,executablePath:process.env.VIRELO_TEST_CHROMIUM,args:['--autoplay-policy=no-user-gesture-required']});
+  await checkEntryScreen(browser,base);
   const owner=await browser.newContext({serviceWorkers:'block',viewport:{width:1440,height:1000},reducedMotion:'reduce'});
   const page=await owner.newPage(), errors=[];
   diagnosticPage=page;page.setDefaultTimeout(12000);
@@ -79,6 +117,25 @@ try {
     await page.goForward();await page.getByRole('heading',{name:'Libraries',exact:true}).waitFor();
   }
   await owner.unroute('**/api/home');await page.setViewportSize({width:1440,height:1000});
+  await owner.route('**/api/scan/status',route=>route.fulfill({json:{running:true,total:10,scanned:4,message:'Restoring thumbnail · Shared.mp4'}}));
+  await page.goto(base+'/settings#libraries');await page.locator('.library-scan .scan-progress').waitFor();
+  assert.equal(await page.locator('.library-scan .loading-spinner').count(),1,'scan uses one loading indicator');
+  assert.equal(await page.locator('.library-scan').getByText('Restoring thumbnail · Shared.mp4',{exact:true}).count(),1,'scan message is not duplicated');
+  for(const [selector,expected] of [['.library-previous summary','none'],['.scan-strip button','none'],['#library-folder-path','text'],['.library-list span','text']]) {
+    assert.equal(await page.locator(selector).first().evaluate(element=>getComputedStyle(element).userSelect),expected,selector+' selection behavior');
+  }
+  assert.equal(await page.locator('.loading-spinner').evaluate(element=>getComputedStyle(element).animationName),'none','reduced motion stops spinner rotation');
+  await page.emulateMedia({reducedMotion:'no-preference'});
+  assert.equal(await page.locator('.loading-spinner').evaluate(element=>getComputedStyle(element).animationName),'loading-spin');
+  assert.match(await page.locator('.loading-spinner').evaluate(element=>getComputedStyle(element).backgroundImage),/conic-gradient/,'spinner has a fading tail');
+  await page.emulateMedia({reducedMotion:'reduce'});
+  await page.screenshot({path:join(repo,'node_modules/.cache/libraries-ui-desktop.png')});
+  await page.locator('.library-scan').screenshot({path:join(repo,'node_modules/.cache/libraries-scan-ui.png')});
+  await page.setViewportSize({width:390,height:844});
+  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
+  await page.screenshot({path:join(repo,'node_modules/.cache/libraries-ui-mobile.png')});
+  await owner.unroute('**/api/scan/status');await page.setViewportSize({width:1440,height:1000});
+  console.log('accounts: single tail spinner, reduced motion, copyable paths and inputs, unselectable controls, responsive library groups');
   await settings(page);await page.locator('#settings-panel-account').waitFor();
   await page.goto(base+'/settings#not-a-section');await page.locator('#settings-panel-account').waitFor();
   console.log('accounts: empty-state Add folder opens Libraries on desktop and mobile, including reload and history navigation');
@@ -162,7 +219,8 @@ try {
         scanPadding:getComputedStyle(scan).paddingTop,savedPadding:getComputedStyle(panel.querySelector('.library-group')).paddingTop,
         overflow:document.documentElement.scrollWidth>innerWidth};
     });
-    assert.equal(spacing.scanPadding,'24px');assert.equal(spacing.savedPadding,'24px');
+    assert.equal(spacing.scanPadding,'24px');assert.equal(spacing.savedPadding,'20px');
+    assert.equal(await libraryLayout.locator('.library-group').first().evaluate(element=>getComputedStyle(element).borderTopStyle),'solid','library groups have a visible outer boundary');
     assert.deepEqual(spacing.fonts,['14px','14px','14px'],'library descriptions have a consistent type scale');
     if(width>900)assert.ok(Math.max(...spacing.widths)-Math.min(...spacing.widths)<1,'library descriptions share one readable width');
     assert.equal(spacing.overflow,false,'library sections fit the viewport at '+width);

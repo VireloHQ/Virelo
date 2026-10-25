@@ -69,6 +69,10 @@ img { display:block; max-width:100%; }
 ::selection { background:var(--color-brand); color:var(--accent-ink); }
 h1,h2,h3,h4 { font-family:var(--font-display); font-style:normal; font-synthesis:none; }
 button, a, input { -webkit-tap-highlight-color:transparent; }
+button,[role="button"],summary,.app-shell :is(header,footer,nav,.settings-view),
+:is(.context-popover,.playback-settings-menu) { user-select:none; -webkit-user-select:none; }
+:is(input,textarea,[contenteditable="true"]),
+.app-shell :is(pre,code,[role="alert"],.error-copy,.account-feedback,.library-list span,.scan-progress p,.command-url a) { user-select:text; -webkit-user-select:text; }
 
 /* HeroUI v3 theme overrides */
 .dark, html {
@@ -295,7 +299,7 @@ button, a, input { -webkit-tap-highlight-color:transparent; }
 .scan-progress-track { height:7px; margin-top:10px; overflow:hidden; border:1px solid rgba(255,255,255,.14); border-radius:999px; background:#1b1b1b; }
 .scan-progress-track>span { display:block; height:100%; border-radius:inherit; background:linear-gradient(90deg,#fff,#a9c7ff); transform-origin:left; transition:transform var(--dur-short) linear; }
 .scan-progress-track.indeterminate>span { width:38%; background:#fff; animation:scanProgress 1.2s ease-in-out infinite; }
-.scan-progress p { margin:8px 0 0; color:#858585; font-size:11px; line-height:1.4; }
+.scan-progress p { margin:8px 0 0; color:var(--text-muted); font-size:12px; line-height:1.5; overflow-wrap:anywhere; }
 .scan-progress.compact { width:100%; margin:0 0 2px; padding:0 2px; }
 @keyframes scanProgress { 0% { transform:translateX(-130%); } 100% { transform:translateX(360%); } }
 
@@ -409,6 +413,7 @@ button, a, input { -webkit-tap-highlight-color:transparent; }
 .scan-strip>div,.settings-actions,.tool-status,.settings-actions>span { display:flex; align-items:center; gap:9px; }
 .scan-strip>div { color:#aaa; font-size:12px; }
 .scan-strip>div svg { width:19px; height:19px; color:#ddd; }
+.app-shell .scan-strip > .scan-progress { display:block; flex:1; min-width:0; margin:0; }
 .setting-row { display:flex; align-items:center; justify-content:space-between; gap:24px; padding:16px 0; border-top:1px solid rgba(255,255,255,.055); }
 .setting-row>.switch { flex:0 0 auto; margin-left:auto; }
 .setting-copy { display:flex; flex:1 1 auto; align-items:center; gap:13px; min-width:0; }
@@ -470,8 +475,6 @@ button, a, input { -webkit-tap-highlight-color:transparent; }
 .settings-section .tool-status span { min-height:34px; }
 .settings-view .switch { --switch-control-bg:#29292c; --switch-control-bg-hover:#353538; --switch-control-bg-pressed:#414145; --switch-control-bg-checked:var(--color-brand-strong); --switch-control-bg-checked-hover:var(--color-brand); -webkit-tap-highlight-color:transparent; }
 
-.spin { animation:spin 1s linear infinite; }
-@keyframes spin { to { transform:rotate(360deg); } }
 @keyframes shimmer { to { transform:translateX(100%); } }
 
 .mobile-nav { display:none; }

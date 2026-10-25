@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button, Input } from '@heroui/react';
-import { ArrowsClockwise, CheckCircle, FolderOpen, FolderPlus, Trash } from '@phosphor-icons/react';
+import { CheckCircle, FolderOpen, FolderPlus, Trash } from '@phosphor-icons/react';
 import { api } from '../api';
 import { useAccount } from './AccountSession';
 import { ScanProgress } from './ScanProgress';
@@ -67,11 +67,10 @@ export function LibrarySettings() {
     </details>}
     <div className="library-scan">
       <p>Scan checks video files, fills in missing technical details and restores missing thumbnails. Missing downloaded artwork is fetched again when online metadata and images are enabled. Original video files are never changed.</p>
-      <div className="scan-strip"><div>{scan.data?.running?<ArrowsClockwise className="spin"/>:<CheckCircle/>}<span><strong>{scan.data?.message||'Idle'}</strong></span></div>
-        {session?.user.permissions.scanLibraries&&<Button variant="secondary" isPending={Boolean(scan.data?.running)||startScan.isPending} onPress={()=>startScan.mutate()}>Scan</Button>}
+      <div className="scan-strip">{scan.data?.running ? <ScanProgress status={scan.data} compact/> : <div><CheckCircle/><span><strong>{scan.data?.message||'Idle'}</strong></span></div>}
+        {session?.user.permissions.scanLibraries&&<Button variant="secondary" isDisabled={Boolean(scan.data?.running)||startScan.isPending} onPress={()=>startScan.mutate()}>Scan</Button>}
       </div>
       {startScan.error&&<p className="error-copy" role="alert">{startScan.error.message}</p>}
-      <ScanProgress status={scan.data} compact/>
     </div>
   </>;
 }
