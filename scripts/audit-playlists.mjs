@@ -99,7 +99,21 @@ api.mediaSource=async id=>{if(!urls.has(id))urls.set(id,URL.createObjectURL(awai
     }
     await page.goto(base+prefix+'/library');
     if(mode==='web') check(await page.evaluate(async()=>{const item=await(await import('/src/local-library.ts')).getStoredMedia(1);return item.liked===1&&item.progress_position===12;}),label+' upgrading browser storage preserves existing favorites and progress');
-    await page.locator('.heading-controls').getByRole('link',{name:'Playlists',exact:true}).click();
+    const playlistEntry=page.locator('.heading-controls').getByRole('link',{name:'Playlists',exact:true});
+    await playlistEntry.waitFor();await page.evaluate(()=>document.fonts.ready);
+    const entryStyle=await playlistEntry.evaluate(element=>{
+      const style=getComputedStyle(element),rect=element.getBoundingClientRect();
+      return {background:style.backgroundColor,border:parseFloat(style.borderTopWidth),width:rect.width,height:rect.height,left:rect.left,right:rect.right,viewport:innerWidth,icons:element.querySelectorAll('svg[aria-hidden="true"]').length};
+    });
+    check(entryStyle.height>=44&&entryStyle.width>=120&&entryStyle.border>=1&&entryStyle.background!=='rgba(0, 0, 0, 0)',label+' playlist entry is a filled button-sized control, not plain text');
+    check(entryStyle.icons===2,label+' playlist entry includes a list icon and navigation arrow');
+    check(entryStyle.left>=0&&entryStyle.right<=entryStyle.viewport&&await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),label+' playlist navigation fits beside sorting on narrow screens');
+    await page.screenshot({path:join(root,mode+'-'+name+'-library-navigation.png')});
+    await playlistEntry.focus();
+    check(await playlistEntry.evaluate(element=>element===document.activeElement&&getComputedStyle(element).outlineStyle!=='none'),label+' playlist navigation has a visible keyboard focus indicator');
+    await page.keyboard.press('Enter');await page.getByRole('heading',{name:'Playlists',exact:true}).waitFor();
+    check(true,label+' playlist navigation works with the keyboard');
+    await page.goBack();await playlistEntry.waitFor();await playlistEntry.click();
     await page.getByRole('heading',{name:'Playlists',exact:true}).waitFor();
     check(true,label+' playlists are reachable from mobile and desktop libraries');
     await auditPlaylistField(page,page.getByRole('textbox',{name:'New playlist name',exact:true}),label+' create',check);

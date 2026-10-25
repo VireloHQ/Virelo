@@ -66,6 +66,11 @@
 .app-shell .content-view { max-width:1680px; padding-inline:var(--app-gutter); }
 .app-shell .content-heading h1 { font-size:clamp(30px,3vw,44px); line-height:1.15; letter-spacing:-.035em; font-weight:600; }
 .app-shell .content-heading p { font-size:14px; }
+.library-actions { flex-wrap:wrap; }
+.library-playlists-link { min-height:44px; padding:10px 12px; gap:8px; border:1px solid var(--line-strong); border-radius:6px; white-space:nowrap; font-size:14px; }
+.library-playlists-link>svg { flex:none; width:20px; height:20px; }
+.library-playlists-link>svg:last-child { width:16px; height:16px; }
+.library-playlists-link:focus-visible { outline:2px solid var(--text-muted); outline-offset:3px; box-shadow:none; }
 .app-shell .button { border-radius:4px; font-weight:600; }
 .app-shell .button:active { transform:none; }
 .app-shell .picker-trigger { border-radius:4px; min-height:44px; font-size:14px; font-weight:500; }

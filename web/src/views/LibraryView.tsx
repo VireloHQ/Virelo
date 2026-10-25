@@ -1,8 +1,8 @@
 import { useRef, useState, type ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
-import { Button } from '@heroui/react';
-import { FolderSimple, MagnifyingGlass, Play } from '@phosphor-icons/react';
+import { Button, buttonVariants } from '@heroui/react';
+import { CaretRight, FolderSimple, MagnifyingGlass, Play, Queue } from '@phosphor-icons/react';
 import { api } from '../api';
 import { useUIStore } from '../store';
 import { MediaCard } from '../components/MediaCard';
@@ -77,8 +77,8 @@ export function LibraryView() {
   return <div className="content-view">
     <header className="content-heading">
       <div><h1>{title}</h1><p>{mediaQ.isLoading ? 'Loading…' : `${media.length} item${media.length === 1 ? '' : 's'}`}</p></div>
-      <div className="heading-controls">
-        <Link to="/playlists">Playlists</Link>
+      <div className="heading-controls library-actions">
+        <Link to="/playlists" className={buttonVariants({variant:'secondary',className:'library-playlists-link'})}><Queue aria-hidden="true"/><span>Playlists</span><CaretRight aria-hidden="true"/></Link>
         <Select label="Sort" value={sort} options={SORT_OPTIONS} onChange={(v)=>setSort(v as SortKey)}/>
         {folder !== null && media.length > 0 && <Button className="play-all-btn" onPress={()=>playAll()}><Play weight="fill"/> Play all</Button>}
       </div>
