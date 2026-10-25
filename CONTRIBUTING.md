@@ -23,6 +23,13 @@ It never uses a personal media folder or data directory and does not publish.
 
 ## Browser checks
 
+`node scripts/audit-playlists.mjs` verifies named-playlist creation, editing,
+reopening, queue saves during playback, conflict recovery and confirmed deletion
+on desktop and mobile using isolated storage and generated media. The Web checks
+also cover the version-1 database upgrade, concurrent writes and temporarily
+unavailable references. Set `VIRELO_TEST_PLAYLIST_SCENARIO` to `desktop`, `mobile`
+or `small` to run one size. The npm checkout also accepts `VIRELO_TEST_WEB_REPO`.
+
 The scripts in `scripts/audit-*.mjs` cover accounts, favorites, playback,
 keyboard controls, responsive layouts and recovery states. They use generated
 media, temporary databases and fresh browser contexts.

@@ -10,7 +10,9 @@ export function useScanRefresh(){
   useEffect(()=>{
     if(!finishedAt||lastFinished.current===finishedAt)return;
     lastFinished.current=finishedAt;
-    void client.invalidateQueries({predicate:query=>['home','media','folders','favorites','shorts','search','watch-queue','queue','related','data-usage'].includes(String(query.queryKey[0]))&&(query.queryKey[0]!=='shorts'||query.queryKey[1]==='row')});
+    void client.invalidateQueries({predicate:query=>['home','media','folders','favorites','shorts','search','watch-queue','queue','related','data-usage','playlists'].includes(String(query.queryKey[0]))&&(query.queryKey[0]!=='shorts'||query.queryKey[1]==='row')});
+    // Reopen with fresh media without replacing an editor's unsaved draft during a scan.
+    void client.invalidateQueries({queryKey:['playlist'],refetchType:'none'});
     // An infinite feed must keep its ordering while its current video is playing.
     void client.invalidateQueries({predicate:query=>query.queryKey[0]==='shorts'&&query.queryKey[1]!=='row',refetchType:'none'});
   },[client,finishedAt]);

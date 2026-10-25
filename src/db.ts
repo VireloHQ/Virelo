@@ -288,6 +288,20 @@ export class VireloDB {
     `).get(...canonical.params,...joins.params, id, ...visible.params) as unknown as MediaRecord | undefined;
   }
 
+  getMediaByIds(ids: number[], scope: CatalogScope): MediaRecord[] {
+    if (!ids.length) return [];
+    const joins = this.personalJoins(scope), visible = this.visibleIdClause(scope);
+    const canonical = process.platform === 'win32'
+      ? { sql: `(SELECT MIN(alias.id) FROM media alias WHERE alias.path=m.path COLLATE NOCASE AND ${visible.sql.replaceAll('m.', 'alias.')})`, params: visible.params }
+      : { sql: 'm.id', params: [] };
+    const rows = this.db.prepare(`SELECT m.*,${canonical.sql} AS canonical_id,
+      p.position AS progress_position,p.duration AS progress_duration,p.completed AS progress_completed,(l.media_id IS NOT NULL) AS liked
+      FROM media m ${joins.sql} WHERE m.id IN (SELECT value FROM json_each(?)) AND ${visible.sql}`)
+      .all(...canonical.params, ...joins.params, JSON.stringify(ids), ...visible.params) as unknown as MediaRecord[];
+    const byId = new Map(rows.map(item => [item.id, item]));
+    return ids.flatMap(id => { const item = byId.get(id); return item ? [item] : []; });
+  }
+
   upsertMedia(input: Omit<MediaRecord, 'id' | 'added_at' | 'updated_at'>): MediaRecord {
     if(process.platform==='win32'){
       const existing=this.getMediaByPath(input.path);

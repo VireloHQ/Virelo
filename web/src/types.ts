@@ -4,6 +4,9 @@ export type SortKey = 'title' | 'newest' | 'oldest' | 'year' | 'duration' | 'ran
 
 export type QueueBehavior = 'auto' | 'loop' | 'manual';
 
+export type { PlaylistSummary, PlaylistWrite } from './utils/playlist-values';
+export type PlaylistDetail = import('./utils/playlist-values').PlaylistSummary & { items: MediaItem[] };
+
 export interface MediaItem {
   id: number;
   canonical_id?: number;

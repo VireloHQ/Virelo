@@ -65,7 +65,7 @@ async function newPage(mode, base, serviceWorkers = 'block') {
       const handle = await root.getFileHandle('clip.mp4',{create:true});
       const writable = await handle.createWritable();
       await writable.write(await (await fetch('/__audit/clip.mp4')).blob()); await writable.close();
-      const db = await new Promise((resolve,reject) => { const request = indexedDB.open('virelo-web',1); request.onsuccess=()=>resolve(request.result); request.onerror=()=>reject(request.error); });
+      const db = await new Promise((resolve,reject) => { const request = indexedDB.open('virelo-web'); request.onsuccess=()=>resolve(request.result); request.onerror=()=>reject(request.error); });
       await new Promise((resolve,reject) => {
         const tx = db.transaction(['libraries','media','settings'],'readwrite');
         tx.objectStore('libraries').put({id:1,label:'Audit',path:'audit',created_at:100,persistent:true,handle:root});

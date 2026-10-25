@@ -1,6 +1,7 @@
 import type { FolderEntry, HomeData, Library, MediaItem, PlaybackInfo, PlaybackQuality, ScanStatus, Settings, ShortsFeed } from './types';
 import type { Account, AuthStatus } from '../../src/auth-types';
 import type { DataUsage } from '../../src/types';
+import type { PlaylistDetail, PlaylistSummary, PlaylistWrite } from './types';
 
 export interface QualityTranscodeState {
   status:string;
@@ -31,6 +32,11 @@ function withQuery(url: string, params: Record<string, string | number | undefin
 }
 
 export const api = {
+  playlists: () => request<PlaylistSummary[]>('/api/playlists'),
+  playlist: (id: number) => request<PlaylistDetail>(`/api/playlists/${id}`),
+  createPlaylist: (body: { name: string; mediaIds: number[] }) => request<PlaylistDetail>('/api/playlists', { method: 'POST', body: JSON.stringify(body) }),
+  updatePlaylist: (id: number, body: PlaylistWrite) => request<PlaylistDetail>(`/api/playlists/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
+  deletePlaylist: (id: number, revision: number) => request<{ok:boolean}>(`/api/playlists/${id}`, { method: 'DELETE', body: JSON.stringify({ revision }) }),
   authStatus: () => request<AuthStatus>('/api/auth/status'),
   signIn: (body: {username:string;password:string}) => request<AuthStatus>('/api/auth/login', {method:'POST',body:JSON.stringify(body)}),
   setupAccount: (body: {username:string;displayName:string;password:string}) => request<AuthStatus>('/api/auth/setup', {method:'POST',body:JSON.stringify(body)}),

@@ -6,6 +6,14 @@ const source = await readFile(new URL('../web/src/utils/playback-queue.ts', impo
 const { createQueue, reconcileQueue, moveQueueItem, playQueueItemNext, removeQueueItem, clearUpcoming, toggleQueueShuffle, resetQueue, undoQueueEdit } =
   await import('data:text/javascript;base64,' + Buffer.from(stripTypeScriptTypes(source)).toString('base64'));
 
+test('playlist editing can remove the final reference while playback queues retain a video', () => {
+  const state = createQueue([1], 1);
+  assert.equal(removeQueueItem(state, 1), state);
+  const empty = removeQueueItem(state, 1, true);
+  assert.deepEqual(empty.ids, []); assert.equal(empty.selectedId, 0);
+  assert.deepEqual(undoQueueEdit(empty).ids, [1]);
+});
+
 test('queue IDs are unique and selection falls back to an available video', () => {
   const state = createQueue([1, 2, 2, 3], 99);
   assert.deepEqual(state.ids, [1, 2, 3]); assert.equal(state.selectedId, 1);

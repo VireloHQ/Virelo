@@ -4,7 +4,7 @@ import type { HomeData, MediaItem } from '../types';
 import { patchFavoriteData, updateHomeFavorites } from '../utils/favorites';
 
 interface FavoriteState { liked: boolean; pending: boolean; error: string }
-const mediaKeys = new Set(['home', 'media', 'shorts', 'related', 'watch-queue', 'queue', 'favorites']);
+const mediaKeys = new Set(['home', 'media', 'shorts', 'related', 'watch-queue', 'queue', 'favorites', 'playlist']);
 
 export function useFavorite(item: MediaItem) {
   item={...item,id:item.canonical_id??item.id};

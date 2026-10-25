@@ -5,6 +5,7 @@ import { Button } from '@heroui/react';
 import { ArrowLeft, ArrowsClockwise, Play } from '@phosphor-icons/react';
 import { api, artwork } from '../api';
 import { FavoriteButton } from '../components/FavoriteButton';
+import { SavePlaylist } from '../components/SavePlaylist';
 import { MediaRow } from '../components/MediaRow';
 import { useAccount } from '../components/AccountSession';
 
@@ -38,6 +39,7 @@ export function DetailView() {
           <p>{item.overview || 'No description available.'}</p>
           {item.genres && <div className="genre-line">{item.genres.split(',').map(g=><span key={g}>{g.trim()}</span>)}</div>}
           <div className="detail-actions"><Button size="lg" isDisabled={account?.permissions.play===false} onPress={()=>void navigate({to:'/watch/$mediaId',params:{mediaId}})}><Play weight="fill"/> {canResume(item) ? `Resume ${formatTime(item.progress_position || 0)}` : 'Play'}</Button><FavoriteButton item={item} />{settings?.externalMetadataEnabled && account?.permissions.manageMetadata && <Button size="lg" variant="secondary" isPending={refresh.isPending} onPress={()=>refresh.mutate()}><ArrowsClockwise/> Fetch metadata</Button>}</div>
+          <div className="playlist-watch-actions"><SavePlaylist mediaIds={[item.id]}/></div>
           {refresh.error && <p className="error-copy">{refresh.error.message}</p>}
           <dl className="tech-meta"><div><dt>File</dt><dd>{item.filename}</dd></div><div><dt>Container</dt><dd>{item.container?.toUpperCase() || 'Unknown'}</dd></div><div><dt>Audio</dt><dd>{item.audio_codec?.toUpperCase() || 'Unknown'}</dd></div></dl>
         </div>

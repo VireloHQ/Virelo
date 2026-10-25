@@ -9,10 +9,12 @@ interface ConfirmationDialogProps {
   children: ReactNode;
   confirmLabel: string;
   onConfirm: () => Promise<unknown>;
+  confirmVariant?: 'danger' | 'primary';
+  onOpen?: () => void;
 }
 
 // Shared app confirmation UI. React Aria handles focus trapping, restoration and scroll locking.
-export function ConfirmationDialog({ triggerLabel, title, children, confirmLabel, onConfirm }: ConfirmationDialogProps) {
+export function ConfirmationDialog({ triggerLabel, title, children, confirmLabel, onConfirm, confirmVariant = 'danger', onOpen }: ConfirmationDialogProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [animate, setAnimate] = useState(false);
   const [isPending, setIsPending] = useState(false);
@@ -49,6 +51,7 @@ export function ConfirmationDialog({ triggerLabel, title, children, confirmLabel
   };
   const changeOpen = (open: boolean) => {
     if (pending.current) return;
+    if (open) onOpen?.();
     setError('');
     setIsOpen(open);
   };
@@ -73,18 +76,18 @@ export function ConfirmationDialog({ triggerLabel, title, children, confirmLabel
     <Button variant="secondary" onPressStart={event=>setAnimate(event.pointerType === 'mouse' || event.pointerType === 'touch' || event.pointerType === 'pen')}>{triggerLabel}</Button>
     <Modal.Backdrop className="virelo-confirm-backdrop" data-animate={animate} onExit={animateExit} isDismissable={!isPending} isKeyboardDismissDisabled={isPending}>
       <Modal.Container className="virelo-confirm-container" data-animate={animate} placement="center" size="sm" scroll="inside">
-        <Modal.Dialog className="virelo-confirm-dialog" role="alertdialog" aria-describedby={descriptionId}>
+        <Modal.Dialog className="virelo-confirm-dialog" role={confirmVariant === 'danger' ? 'alertdialog' : 'dialog'} aria-describedby={descriptionId}>
           <Modal.Header className="virelo-confirm-header">
             <Modal.Heading className="virelo-confirm-title">{title}</Modal.Heading>
           </Modal.Header>
           <Modal.Body className="virelo-confirm-body">
-            <div id={descriptionId} aria-busy={isPending}>{children}</div>
+            <div id={descriptionId} aria-busy={isPending} onKeyDown={event => { if (confirmVariant === 'primary' && event.key === 'Enter' && !event.nativeEvent.isComposing && (event.target as HTMLElement).tagName === 'INPUT') { event.preventDefault(); void submitConfirmation(); } }}>{children}</div>
             {isPending && <p className="virelo-confirm-progress" role="status">Working…</p>}
             {error && <p className="virelo-confirm-error" role="alert">{error}</p>}
           </Modal.Body>
           <Modal.Footer className="virelo-confirm-footer">
-            <Button variant="secondary" autoFocus isDisabled={isPending} onPressStart={event=>{if(event.pointerType === 'keyboard') setAnimate(false);}} onPress={()=>changeOpen(false)}>Cancel</Button>
-            <Button variant="danger" className="virelo-confirm-action" isPending={isPending} isDisabled={isPending} onPress={()=>void submitConfirmation()}>{confirmLabel}</Button>
+            <Button variant="secondary" autoFocus={confirmVariant === 'danger'} isDisabled={isPending} onPressStart={event=>{if(event.pointerType === 'keyboard') setAnimate(false);}} onPress={()=>changeOpen(false)}>Cancel</Button>
+            <Button variant={confirmVariant} className={confirmVariant === 'danger' ? 'virelo-confirm-action' : undefined} isPending={isPending} isDisabled={isPending} onPress={()=>void submitConfirmation()}>{confirmLabel}</Button>
           </Modal.Footer>
         </Modal.Dialog>
       </Modal.Container>

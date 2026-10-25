@@ -7,6 +7,14 @@ const { patchFavoriteData, updateHomeFavorites, nextFavoritesPage, loadFavoriteQ
   'data:text/javascript;base64,' + Buffer.from(stripTypeScriptTypes(source)).toString('base64'));
 const item = (id, liked = 0) => ({ id, title: 'Video ' + id, liked, progress_position: 42 });
 
+test('playlist favorite patches preserve saved names, revisions and custom order', () => {
+  const playlist = { id: 9, name: 'Evening', revision: 3, items: [item(2), item(1)] };
+  const patched = patchFavoriteData(playlist, 1, true);
+  assert.equal(patched.name, 'Evening'); assert.equal(patched.revision, 3);
+  assert.deepEqual(patched.items.map(value => value.id), [2, 1]);
+  assert.equal(patched.items[1].liked, 1); assert.equal(playlist.items[1].liked, 0);
+});
+
 test('Play all loads every favorite beyond the display and 500-item queue limits', async () => {
   const all = Array.from({length:1205}, (_, id) => item(id, 1)), offsets = [];
   const queue = await loadFavoriteQueue(async (offset, limit) => {

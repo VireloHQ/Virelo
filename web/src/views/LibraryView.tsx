@@ -1,6 +1,6 @@
 import { useRef, useState, type ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { useNavigate } from '@tanstack/react-router';
+import { Link, useNavigate } from '@tanstack/react-router';
 import { Button } from '@heroui/react';
 import { FolderSimple, MagnifyingGlass, Play } from '@phosphor-icons/react';
 import { api } from '../api';
@@ -78,6 +78,7 @@ export function LibraryView() {
     <header className="content-heading">
       <div><h1>{title}</h1><p>{mediaQ.isLoading ? 'Loading…' : `${media.length} item${media.length === 1 ? '' : 's'}`}</p></div>
       <div className="heading-controls">
+        <Link to="/playlists">Playlists</Link>
         <Select label="Sort" value={sort} options={SORT_OPTIONS} onChange={(v)=>setSort(v as SortKey)}/>
         {folder !== null && media.length > 0 && <Button className="play-all-btn" onPress={()=>playAll()}><Play weight="fill"/> Play all</Button>}
       </div>

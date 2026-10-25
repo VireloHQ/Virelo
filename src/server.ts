@@ -16,6 +16,7 @@ import { VIRELO_VERSION } from './version.js';
 import { demandManifest, demandSegment, initializeDemandCache, playbackCacheLimit, clearPlaybackCache } from './demand-playback.js';
 import { dataUsage, assertSeparateCache } from './data-management.js';
 import { directLocal, registerAccounts } from './auth.js';
+import { registerPlaylists } from './playlists.js';
 import type { CatalogScope } from './auth-types.js';
 import { pickNativeFolder } from './folder-picker.js';
 import { isMediaFile, isVideoPath, mediaWatchFilter } from './media-files.js';
@@ -98,6 +99,7 @@ export async function createVireloServer(config: RuntimeConfig, pickFolder: (sig
   });
   const webRoot = fileURLToPath(new URL('./web', import.meta.url));
   const { accounts, fresh } = registerAccounts(app, db);
+  registerPlaylists(app, db);
   let activePicker: AbortController | null = null;
   let closing = false;
   const scanAbort = new AbortController();

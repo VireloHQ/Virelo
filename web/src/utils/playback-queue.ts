@@ -52,12 +52,12 @@ export function playQueueItemNext(state: QueueState, id: number): QueueState {
   if (same(ids, state.ids)) return state;
   return edit(state, { ids, manualIds: ids, shuffled: false }, 'Video will play next.');
 }
-export function removeQueueItem(state: QueueState, id: number): QueueState {
+export function removeQueueItem(state: QueueState, id: number, allowEmpty = false): QueueState {
   const index = state.ids.indexOf(id);
-  if (index < 0 || state.ids.length <= 1) return state;
+  if (index < 0 || (!allowEmpty && state.ids.length <= 1)) return state;
   const ids = state.ids.filter(value => value !== id);
   return edit(state, { ids, manualIds: state.manualIds.filter(value => value !== id),
-    selectedId: id === state.selectedId ? ids[Math.min(index, ids.length - 1)] : state.selectedId }, 'Video removed from queue.');
+    selectedId: id === state.selectedId ? ids[Math.min(index, ids.length - 1)] ?? 0 : state.selectedId }, 'Video removed from queue.');
 }
 export function clearUpcoming(state: QueueState): QueueState {
   const index = state.ids.indexOf(state.selectedId);

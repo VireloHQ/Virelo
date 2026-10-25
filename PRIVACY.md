@@ -14,6 +14,12 @@ When online metadata is enabled, Virelo sends the parsed title, media type, rele
 
 ## Video files
 
+Named playlists store titles and ordered media references in the server database,
+separately for each account. Library access rules apply whenever they are opened
+or edited. Deleting a playlist does not change media files, favorites or history.
+Deleting an account also removes its playlists; a server administrator can still
+inspect the database directly.
+
 Temporary startup folders are active only for that server run. Their indexed
 paths and personal viewing state can remain in the local database so that opening
 the same folder later restores its history. Removing a saved library deactivates

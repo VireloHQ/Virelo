@@ -1,0 +1,43 @@
+.playlists-view,.playlist-editor { width:min(1180px,100%); }
+.playlist-create { display:flex; align-items:flex-end; gap:14px; margin:24px 0 32px; max-width:720px; }
+.playlist-field { display:flex; flex:1; min-width:0; flex-direction:column; gap:8px; font-size:.875rem; font-weight:600; }
+.playlist-form { display:grid; gap:20px; }
+.playlist-form .picker { width:100%; }
+.playlist-form .picker-menu { max-height:210px; overflow-y:auto; max-width:100%; }
+.playlist-form .picker-trigger span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.playlist-collection { list-style:none; padding:0; margin:24px 0; border-top:1px solid var(--line); }
+.playlist-collection li { border-bottom:1px solid var(--line); }
+.playlist-collection a { display:flex; align-items:center; gap:24px; padding:24px 16px; border-radius:6px; transition:background-color var(--dur-short) var(--ease-out); }
+.playlist-collection a:hover { background:var(--surface); }
+.playlist-collection a > svg { flex:none; width:36px; height:36px; color:var(--color-brand); }
+.playlist-collection a > div { flex:1; min-width:0; }
+.playlist-collection h2 { margin:0 0 5px; font-size:1.25rem; overflow-wrap:anywhere; }
+.playlist-collection p { margin:0; color:var(--text-muted); font-size:.875rem; }
+.playlist-collection a > span { color:var(--text-muted); font-size:.875rem; }
+.playlist-empty { padding:64px 16px; text-align:center; color:var(--text-muted); }
+.playlist-empty > svg { width:40px; height:40px; color:var(--color-brand); }
+.playlist-empty h2 { color:var(--text); }
+.playlist-empty p { max-width:52ch; margin:12px auto; }
+.playlist-back { display:inline-block; margin-bottom:24px; color:var(--text-muted); }
+.playlist-editor h1 { overflow-wrap:anywhere; }
+.playlist-section-heading { display:flex; gap:16px; justify-content:space-between; align-items:center; margin:36px 0 20px; }
+.playlist-section-heading h2 { font-size:1.25rem; margin:0; }
+.playlist-editor .playback-queue[data-editing] { max-width:none; }
+.playlist-editor .playback-queue[data-editing] .playback-queue-list { max-height:65dvh; }
+.playlist-editor .playback-queue[data-editing] .playback-queue-title { display:none; }
+.playlist-editor .playback-queue[data-editing] .playback-queue-head { justify-content:flex-end; }
+.playlist-empty-copy,.playlist-notice { color:var(--text-muted); font-size:.875rem; line-height:1.6; }
+.playlist-feedback { margin:16px 0; }
+.playlist-feedback p { max-width:75ch; }
+.playlist-management { display:flex; justify-content:space-between; flex-wrap:wrap; align-items:center; gap:20px; padding:28px 0; border-top:1px solid var(--line); margin-top:24px; }
+.playlist-management > div,.playlist-watch-actions { display:flex; flex-wrap:wrap; align-items:center; gap:12px; }
+.playlist-management > span { color:var(--text-muted); font-size:.875rem; }
+.save-playlist { display:flex; flex-wrap:wrap; align-items:center; gap:12px; }
+.playlist-watch-actions { margin-top:20px; }
+@media(max-width:600px) {
+  .playlist-create { flex-direction:column; align-items:stretch; }
+  .playlist-collection a { gap:16px; padding-inline:4px; }
+  .playlist-collection a > span { display:none; }
+  .playlist-section-heading { align-items:flex-start; }
+  .playlist-management > div { flex-wrap:wrap; }
+}

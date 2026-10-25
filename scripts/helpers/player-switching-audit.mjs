@@ -19,11 +19,18 @@ async function audioFrequency(page) {
     const context = new AudioContext(), source = context.createMediaStreamSource(capture), analyser = context.createAnalyser();
     try {
       analyser.fftSize = 4096; source.connect(analyser); await context.resume();
-      await new Promise(resolve => setTimeout(resolve, 250));
+      await new Promise(resolve => setTimeout(resolve, 100));
       const bins = new Float32Array(analyser.frequencyBinCount); analyser.getFloatFrequencyData(bins);
       let peak = 0;
-      for (let i = Math.floor(200 * analyser.fftSize / context.sampleRate); i < Math.ceil(1000 * analyser.fftSize / context.sampleRate); i++)
-        if (bins[i] > (bins[peak] ?? -Infinity)) peak = i;
+      const signalDeadline = performance.now() + 5000;
+      do {
+        analyser.getFloatFrequencyData(bins); peak = 0;
+        for (let i = Math.floor(200 * analyser.fftSize / context.sampleRate); i < Math.ceil(1000 * analyser.fftSize / context.sampleRate); i++)
+          if (bins[i] > (bins[peak] ?? -Infinity)) peak = i;
+        if (bins[peak] > -80) break;
+        if (performance.now() > signalDeadline) throw new Error('Decoded audio never reached the frequency analyser.');
+        await new Promise(resolve => setTimeout(resolve, 20));
+      } while (true);
       return peak * context.sampleRate / analyser.fftSize;
     } finally { await context.close(); capture.getTracks().forEach(track => track.stop()); }
   });
@@ -76,7 +83,8 @@ export async function auditPlayerSwitching(page, label, check) {
   });
   await page.getByRole('button', { name: 'Play', exact: true }).click();
   await page.waitForFunction(() => !document.querySelector('.player:not(.short-player) video').paused);
-  check(Math.abs(await audioFrequency(page) - 660) < 35, label + ' forward seek retains the actual selected alternate audio');
+  const forwardHz = await audioFrequency(page);
+  check(Math.abs(forwardHz - 660) < 35, label + ' forward seek retains the actual selected alternate audio (' + Math.round(forwardHz) + 'Hz)');
   await video.evaluate(element => element.pause());
   await openPlaybackSetting(page, 'Audio');
   await page.getByRole('menu', { name: 'Audio', exact: true }).getByRole('menuitemradio').first().click();
@@ -91,7 +99,8 @@ export async function auditPlayerSwitching(page, label, check) {
   });
   await page.getByRole('button', { name: 'Play', exact: true }).click();
   await page.waitForFunction(() => !document.querySelector('.player:not(.short-player) video').paused);
-  check(Math.abs(await audioFrequency(page) - 440) < 35, label + ' backward seek uses the latest selected audio rather than a stale conversion');
+  const backwardHz = await audioFrequency(page);
+  check(Math.abs(backwardHz - 440) < 35, label + ' backward seek uses the latest selected audio rather than a stale conversion (' + Math.round(backwardHz) + 'Hz)');
   await video.evaluate(element => element.pause());
   await openPlaybackSetting(page, 'Audio');
   await page.getByRole('menu', { name: 'Audio', exact: true }).getByRole('menuitemradio').nth(1).click();

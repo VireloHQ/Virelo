@@ -5,6 +5,8 @@ import { SortableContext, horizontalListSortingStrategy, verticalListSortingStra
 import { CSS } from '@dnd-kit/utilities';
 import { ArrowCounterClockwise, ArrowDown, ArrowUp, CaretLeft, CaretRight, DotsThree, DotsSixVertical, List, Play, Queue as QueueIcon, Rows, Shuffle, SkipForward, X } from '@phosphor-icons/react';
 import { artwork } from '../api';
+import '../player-ui.css';
+import '../playback-queue.css';
 import type { MediaItem } from '../types';
 import { RepeatControl } from './RepeatControl';
 import { PlayerActionMenu, type PlayerAction } from './PlayerActionMenu';
@@ -23,6 +25,7 @@ interface PlaybackQueueProps {
   onSelect: (index: number) => void;
   state: QueueState;
   onEdit: (change: (current: QueueState) => QueueState) => void;
+  editing?: boolean;
 }
 const reducedQuery = () => window.matchMedia('(prefers-reduced-motion: reduce)');
 const subscribeMotion = (notify: () => void) => {
@@ -30,8 +33,9 @@ const subscribeMotion = (notify: () => void) => {
   return () => query.removeEventListener('change', notify);
 };
 
-export function PlaybackQueue({ items, activeIndex, repeatMode, onRepeatChange, onSelect, state, onEdit }: PlaybackQueueProps) {
-  const { layout, setLayout } = useQueueLayout();
+export function PlaybackQueue({ items, activeIndex, repeatMode, onRepeatChange, onSelect, state, onEdit, editing = false }: PlaybackQueueProps) {
+  const { layout: savedLayout, setLayout } = useQueueLayout();
+  const layout = editing ? 'vertical' : savedLayout;
   const vertical = layout === 'vertical';
   const reduced = useSyncExternalStore(subscribeMotion, () => reducedQuery().matches);
   const [motion] = useState(() => {
@@ -81,26 +85,30 @@ export function PlaybackQueue({ items, activeIndex, repeatMode, onRepeatChange, 
   const focusList = () => requestAnimationFrame(() => queueList.current?.focus({ preventScroll: true }));
   const menuIndex = items.findIndex(item => item.id === menu?.id);
   const menuItem = items[menuIndex];
-  const actions: PlayerAction[] = menu?.id == null ? [
+  const actions: PlayerAction[] = menu?.id == null ? editing ? [
+    { label: 'Reset changes', icon: <ArrowCounterClockwise/>, action: () => onEdit(resetQueue) }
+  ] : [
     { label: 'Show now playing', icon: <Play/>, action: () => showCurrent(Boolean(menu?.position.keyboard)) },
     { label: 'Clear upcoming', icon: <X/>, disabled: activeIndex === items.length - 1, action: () => onEdit(clearUpcoming) },
     { label: 'Reset queue', icon: <ArrowCounterClockwise/>, action: () => onEdit(resetQueue) }
   ] : [
     { label: 'Play now', icon: <Play/>, disabled: menuIndex === activeIndex, action: () => onSelect(menuIndex) },
-    { label: 'Play next', icon: <SkipForward/>, disabled: menuIndex === activeIndex || menuIndex === activeIndex + 1, action: () => onEdit(queue => playQueueItemNext(queue, menuItem.id)) },
+    ...(!editing ? [{ label: 'Play next', icon: <SkipForward/>, disabled: menuIndex === activeIndex || menuIndex === activeIndex + 1, action: () => onEdit(queue => playQueueItemNext(queue, menuItem.id)) } satisfies PlayerAction] : []),
     { label: 'Move earlier', icon: <ArrowUp/>, disabled: menuIndex === 0, action: () => onEdit(queue => moveQueueItem(queue, menuItem.id, menuIndex - 1)) },
     { label: 'Move later', icon: <ArrowDown/>, disabled: menuIndex === items.length - 1, action: () => onEdit(queue => moveQueueItem(queue, menuItem.id, menuIndex + 1)) },
-    { label: menuIndex === activeIndex ? (menuIndex < items.length - 1 ? 'Remove and play next' : 'Remove and play previous') : 'Remove from queue', icon: <X/>, disabled: items.length <= 1,
-      action: () => { onEdit(queue => removeQueueItem(queue, menuItem.id)); focusList(); } }
+    { label: editing ? 'Remove from playlist' : menuIndex === activeIndex ? (menuIndex < items.length - 1 ? 'Remove and play next' : 'Remove and play previous') : 'Remove from queue', icon: <X/>, disabled: !editing && items.length <= 1,
+      action: () => { onEdit(queue => removeQueueItem(queue, menuItem.id, editing)); focusList(); } }
   ];
-  return <section className="playback-queue" data-layout={layout} aria-labelledby="playback-queue-title">
+  return <section className="playback-queue" data-layout={layout} data-editing={editing || undefined} aria-labelledby="playback-queue-title">
     <header className="playback-queue-head">
-      <div className="playback-queue-title"><QueueIcon/><div><h2 id="playback-queue-title">Queue</h2><span>{activeIndex + 1} of {items.length}</span></div></div>
+      <div className="playback-queue-title"><QueueIcon/><div><h2 id="playback-queue-title">{editing ? 'Playlist videos' : 'Queue'}</h2><span>{editing ? `${items.length} videos` : `${activeIndex + 1} of ${items.length}`}</span></div></div>
       <div className="playback-queue-nav">
+        {!editing && <>
         <button type="button" aria-label="Shuffle queue" aria-pressed={state.shuffled} title={state.shuffled ? 'Turn shuffle off' : 'Shuffle queue'} disabled={items.length < 2} onClick={() => onEdit(toggleQueueShuffle)}><Shuffle/></button>
         <RepeatControl mode={repeatMode} hasQueue queueOnly onChange={onRepeatChange}/>
         <button type="button" aria-label={vertical ? 'Use horizontal queue' : 'Use vertical queue'} title={vertical ? 'Horizontal queue' : 'Vertical queue'} onClick={() => setLayout(vertical ? 'horizontal' : 'vertical')}>{vertical ? <Rows/> : <List/>}</button>
-        <button type="button" aria-label="Queue options" aria-haspopup="menu" aria-expanded={menu?.id === null} onClick={event => openMenu(null, event.currentTarget, undefined, event.detail === 0)}><DotsThree weight="bold"/></button>
+        </>}
+        <button type="button" aria-label={editing ? 'Playlist options' : 'Queue options'} aria-haspopup="menu" aria-expanded={menu?.id === null} onClick={event => openMenu(null, event.currentTarget, undefined, event.detail === 0)}><DotsThree weight="bold"/></button>
       </div>
     </header>
     <DndContext sensors={sensors} collisionDetection={args => {
@@ -122,7 +130,7 @@ export function PlaybackQueue({ items, activeIndex, repeatMode, onRepeatChange, 
         if (over && active.id !== over.id) onEdit(queue => moveQueueItem(queue, Number(active.id), queue.ids.indexOf(Number(over.id))));
       }}>
       <SortableContext items={items.map(item => item.id)} strategy={vertical ? verticalListSortingStrategy : horizontalListSortingStrategy}>
-        <ol className="playback-queue-list" ref={queueList} tabIndex={0} aria-label="Videos in queue"
+        <ol className="playback-queue-list" ref={queueList} tabIndex={0} aria-label={editing ? 'Videos in playlist' : 'Videos in queue'}
           onKeyDown={event => {
             if (event.target !== event.currentTarget) return;
             const list = event.currentTarget, forward = vertical ? 'ArrowDown' : 'ArrowRight', backward = vertical ? 'ArrowUp' : 'ArrowLeft';
@@ -146,13 +154,13 @@ export function PlaybackQueue({ items, activeIndex, repeatMode, onRepeatChange, 
       </DragOverlay>, document.body)}
     </DndContext>
     <div className="queue-footer">
-      <div className="queue-feedback"><span role="status">{state.notice || 'Drag the handle to reorder.'}</span><button type="button" disabled={!state.undo?.ids.length} onClick={() => onEdit(undoQueueEdit)} aria-label="Undo queue change">Undo</button></div>
+      <div className="queue-feedback"><span role="status">{editing && state.notice ? 'Unsaved playlist changes.' : state.notice || 'Drag the handle to reorder.'}</span><button type="button" disabled={!state.undo?.ids.length} onClick={() => onEdit(undoQueueEdit)} aria-label={editing ? 'Undo playlist change' : 'Undo queue change'}>Undo</button></div>
       {!vertical && <div className="queue-scroll-controls">
         <button type="button" onClick={() => browse(-1)} disabled={!edges.left} aria-label="Scroll queue left"><CaretLeft/></button>
         <button type="button" onClick={() => browse(1)} disabled={!edges.right} aria-label="Scroll queue right"><CaretRight/></button>
       </div>}
     </div>
-    {menu && (menu.id === null || menuItem) && <PlayerActionMenu position={menu.position} label={menuItem ? `${menuItem.title} queue actions` : 'Queue options'} actions={actions} returnFocus={menu.trigger} onClose={() => setMenu(null)}/>}
+    {menu && (menu.id === null || menuItem) && <PlayerActionMenu position={menu.position} label={menuItem ? `${menuItem.title} ${editing ? 'playlist' : 'queue'} actions` : editing ? 'Playlist options' : 'Queue options'} actions={actions} returnFocus={menu.trigger} onClose={() => setMenu(null)}/>}
   </section>;
 }
 
@@ -175,7 +183,7 @@ function QueueTile({ item, index, activeIndex, motion, disabled, onSelect, onMen
     }}>
     <button type="button" className={`playback-queue-item${active ? ' active' : ''}`} onClick={onSelect} aria-current={active ? 'true' : undefined} aria-label={`Play ${item.title}`}>
       <QueueArtwork item={item}/>
-      <span className="playback-queue-copy"><small>{active ? 'Now playing' : index === activeIndex + 1 ? 'Up next' : `Video ${index + 1}`}</small><strong title={item.title}>{item.title}</strong><span>{queueMeta(item)}</span></span>
+      <span className="playback-queue-copy"><small>{active ? 'Now playing' : activeIndex >= 0 && index === activeIndex + 1 ? 'Up next' : `Video ${index + 1}`}</small><strong title={item.title}>{item.title}</strong><span>{queueMeta(item)}</span></span>
     </button>
     <div className="queue-item-actions">
       <button type="button" className="queue-drag-handle" ref={setActivatorNodeRef} {...attributes} {...listeners} disabled={disabled} aria-label={`Reorder ${item.title}`} title="Drag to reorder"><DotsSixVertical/></button>

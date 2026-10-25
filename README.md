@@ -86,10 +86,21 @@ npx virelo --media "C:\Users\You\Videos" --random-port
 | 🎛️ | **Video settings** | Fit or crop to fill, rotate in 90° steps, and adjust brightness, contrast and saturation without modifying files or changing quality. |
 | 📱 | **Shorts** | A vertical feed for portrait videos with swipe-friendly controls. |
 | 💜 | **Favorites** | Save videos and Shorts with the heart; browse every saved item in Favorites. |
+| ☷ | **Playlists** | Save named, ordered collections per account; edit, shuffle and play them across devices connected to the same server. |
 | 🖼️ | **Artwork** | Automatic movie and series metadata, posters, backdrops, and episode images. |
 | 🌐 | **Responsive UI** | Works on desktop, tablet, and mobile screens. |
 | 📦 | **PWA** | Install Virelo as an app when supported by your browser. |
 | 🔒 | **Private by default** | Localhost binding, local accounts, per-user library permissions, no telemetry, and no advertising. |
+
+## Named playlists
+
+Open **Playlists** from Library or the desktop navigation. Add a video from its
+details, or use **Save queue as playlist** during playback. Reorder with the drag
+handle or keyboard, remove references, then select **Save changes**. Queue edits
+stay temporary until explicitly saved. Deleting a playlist never deletes videos,
+favorites or watch history. Playlists are private to their account, and library
+permissions continue to apply. Conflicting saves require a reload instead of
+silently overwriting another edit.
 
 ## 🧭 CLI
 
