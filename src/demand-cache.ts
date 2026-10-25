@@ -33,7 +33,7 @@ export class DemandCache {
       });
       const rootInfo=await inspect(this.root);
       if(rootInfo?.isSymbolicLink())throw Error('Playback cache root must not be a filesystem link.');
-      for(const directory of ['hls','audio','segments-v1']){
+      for(const directory of ['hls','audio','segments-v1','segments-v2']){
         const path=join(this.root,directory),info=await inspect(path);
         if(info?.isSymbolicLink())throw Error('Playback cache must not contain filesystem links.');
         if(info?.isDirectory())await this.scan(path);

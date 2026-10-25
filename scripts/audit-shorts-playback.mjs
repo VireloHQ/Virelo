@@ -1,5 +1,6 @@
 import { openPlaybackSetting } from './helpers/playback-settings.mjs';
 import { auditPlayerSettings } from './helpers/player-settings-audit.mjs';
+import { auditPlayerSwitching } from './helpers/player-switching-audit.mjs';
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 import { mkdtemp, mkdir, readFile, writeFile, copyFile, stat } from 'node:fs/promises';
@@ -14,12 +15,12 @@ const root = await mkdtemp(join(tmpdir(), 'virelo-shorts-playback-'));
 const media = join(root, 'media');
 await mkdir(media);
 const subtitles = join(root, 'captions.srt');
-await writeFile(subtitles, '1\n00:00:00,000 --> 00:00:12,000\nShorts subtitle check\n');
+await writeFile(subtitles, '1\n00:00:00,000 --> 00:00:36,000\nShorts subtitle check\n');
 const fixture = join(media, 'portrait.mkv');
 execFileSync(process.env.FFMPEG_PATH || 'ffmpeg', ['-y', '-hide_banner', '-loglevel', 'error',
   '-f', 'lavfi', '-i', 'testsrc2=size=540x960:rate=24', '-f', 'lavfi', '-i', 'sine=frequency=440:sample_rate=48000',
   '-f', 'lavfi', '-i', 'sine=frequency=660:sample_rate=48000', '-i', subtitles,
-  '-map', '0:v', '-map', '1:a', '-map', '2:a', '-map', '3:s', '-t', '12', '-c:v', 'libx264', '-preset', 'ultrafast', '-pix_fmt', 'yuv420p', '-g', '48',
+  '-map', '0:v', '-map', '1:a', '-map', '2:a', '-map', '3:s', '-t', '36', '-c:v', 'libx264', '-preset', 'ultrafast', '-pix_fmt', 'yuv420p', '-g', '48',
   '-c:a', 'aac', '-c:s', 'srt', '-metadata:s:s:0', 'language=eng', '-metadata:s:s:0', 'title=English', fixture],
   { windowsHide: true });
 await copyFile(fixture, join(media, 'portrait-next.mkv'));
@@ -31,7 +32,7 @@ const items = [];
 for (const filename of ['portrait.mkv', 'portrait-next.mkv']) {
   const path = join(media, filename), file = await stat(path);
   const item = { library_id: library.id, path, filename, title: filename, sort_title: filename,
-    kind: 'movie', series_title: null, season: null, episode: null, year: null, duration: 12, width: 540, height: 960,
+    kind: 'movie', series_title: null, season: null, episode: null, year: null, duration: 36, width: 540, height: 960,
     video_codec: 'h264', audio_codec: 'aac', container: 'mkv', folder: '', size: file.size, mtime: file.mtimeMs,
     thumbnail_path: null, poster_path: null, backdrop_path: null, overview: null, genres: null, external_id: null };
   items.push({ ...item, ...db.upsertMedia(item), liked: 0, progress_position: 0, progress_completed: 0, added_at: 0, updated_at: 0 });
@@ -65,12 +66,13 @@ try {
   if (process.env.VIRELO_TEST_WEB_REPO) modes.push(['web', await serveWeb()]);
   for (const [mode, base] of modes) {
     for (const size of [{ name: 'desktop', width: 1440, height: 900, mobile: false },
-      { name: 'mobile', width: 390, height: 844, mobile: true }, { name: 'small', width: 320, height: 780, mobile: true }, { name: 'landscape', width: 844, height: 390, mobile: true }]) {
+      { name: 'mobile', width: 390, height: 844, mobile: true }, { name: 'small', width: 320, height: 780, mobile: true }, { name: 'landscape', width: 844, height: 390, mobile: true }].filter(size=>!process.env.VIRELO_TEST_PLAYBACK_SCENARIO||size.name===process.env.VIRELO_TEST_PLAYBACK_SCENARIO)) {
       const { mobile } = size;
       const label = mode + ' ' + size.name;
       const context = await browser.newContext({ serviceWorkers: 'block', reducedMotion: 'reduce',
         viewport: { width: size.width, height: size.height }, isMobile: mobile, hasTouch: mobile });
       const page = await context.newPage(), errors = [];
+      await page.addInitScript(()=>{window.__switchRequests=[];const original=fetch;window.fetch=(url,options)=>{if(typeof url==='string'&&(url.includes('/audio/start')||url.includes('/quality/start')))window.__switchRequests.push({url,body:options?.body});return original(url,options);};});
       lastPage = page;
       page.setDefaultTimeout(30000);
       page.on('pageerror', error => errors.push(error.message));
@@ -186,6 +188,7 @@ api.mediaSource = async id => {
       await page.goto(base + prefix + '/watch/' + items[0].id + '?queue=false');
       await page.locator('.player:not(.short-player) .player-toolbar').waitFor();
       await auditPlayerSettings(page, label, check, root);
+      if (size.name === 'desktop' || size.name === 'mobile') await auditPlayerSwitching(page, label, check);
       check(errors.length === 0, label + ' no browser exceptions: ' + JSON.stringify(errors));
       await context.close();
     }

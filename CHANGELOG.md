@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Reduce manual quality/audio switching delays with two-second demand segments, fingerprinted shared playback probes and immediate bounded HLS level changes. Switch only the audio when video conversion is already active, start audio at the current position, and preserve pause and selected tracks. Keep versioned caches and source files separate.
+
 - Add editable horizontal and vertical playback queues, including a desktop side panel, touch/keyboard drag sorting, shuffle, repeat toggling, play-next, queue-only removal, undo and reset. Save layout preferences on each device and keep current playback stable during edits and refreshes. Remove competing scroll snapping and load queues beyond 500 videos.
 
 - Complete confirmation-dialog exits through the overlay lifecycle, including interrupted transitions. Read motion durations in milliseconds or seconds so production CSS minification preserves startup timing.

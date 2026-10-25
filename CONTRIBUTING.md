@@ -41,6 +41,9 @@ desktop and touch widths using generated media and an isolated server. Set
 Screenshots and test data are left in the reported temporary directory.
 It also checks the normal player's consolidated Settings menu, single-row mobile
 transport, audio choices, picture adjustments, keyboard navigation and fullscreen.
+The switching checks use distinct synthetic audio tones to verify selected tracks
+after forward/backward seeks, paused quality changes, audio-only changes without
+video reloads, and returning to Original. Timings describe the test machine only.
 
 `node scripts/audit-motion.mjs` checks stable content positions, Switch timing,
 Dropdown dismissal, Modal focus/scroll locking and fixed-layout search controls

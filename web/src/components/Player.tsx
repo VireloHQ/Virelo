@@ -79,6 +79,7 @@ export function Player({item,queue,queueIndex,onEnded,onNext,onPrev,canGoNext=tr
   const [selectedSubtitle,setSelectedSubtitle] = useState<number|null>(null);
   const [activeCaption,setActiveCaption] = useState('');
   const [externalAudioUrl,setExternalAudioUrl] = useState('');
+  const [externalAudioVersion,setExternalAudioVersion] = useState(0);
   const [audioPreparing,setAudioPreparing] = useState(false);
   const [audioError,setAudioError] = useState('');
   const [playbackReady,setPlaybackReady] = useState(false);
@@ -287,10 +288,12 @@ export function Player({item,queue,queueIndex,onEnded,onNext,onPrev,canGoNext=tr
     void import('hls.js/light').then(({default:Hls})=>{
       if(disposed||sourceToken!==audioSourceToken.current)return;
       if(!Hls.isSupported())throw new Error('This browser cannot play converted audio.');
-      const hls=new Hls({enableWorker:true,lowLatencyMode:false,maxBufferLength:40});
+      const position=audioResumeAt.current??videoRef.current?.currentTime??0;
+      const hls=new Hls({enableWorker:true,lowLatencyMode:false,maxBufferLength:20,startPosition:position,autoStartLoad:false});
       audioHlsRef.current=hls;
       hls.loadSource(externalAudioUrl);
       hls.attachMedia(audio);
+      hls.on(Hls.Events.MANIFEST_PARSED,()=>hls.startLoad(position));
       hls.on(Hls.Events.FRAG_BUFFERED,handleReady);
       hls.on(Hls.Events.ERROR,(_event,data)=>{if(data.fatal)setAudioError('Converted audio playback failed.');});
     }).catch((reason)=>{if(!disposed)setAudioError(reason instanceof Error?reason.message:'Converted audio playback failed.');});
@@ -304,7 +307,7 @@ export function Player({item,queue,queueIndex,onEnded,onNext,onPrev,canGoNext=tr
       audioHlsRef.current?.destroy();
       audioHlsRef.current=null;
     };
-  },[externalAudioUrl]);
+  },[externalAudioUrl,externalAudioVersion]);
 
   useEffect(()=>{
     const video=videoRef.current;
@@ -548,14 +551,14 @@ export function Player({item,queue,queueIndex,onEnded,onNext,onPrev,canGoNext=tr
     const shouldResume=wantsPlayback.current;
     const position=resumeAt??(video&&Number.isFinite(video.currentTime)?video.currentTime:current);
     const track=info.audioTracks.find((candidate)=>candidate.index===stream);
-    const canUseOriginal=stream===info.defaultAudioStream&&Boolean(track&&DIRECT_AUDIO_CODECS.has(track.codec));
+    const canUseOriginal=qualityState!=='active'&&fallback!=='active'&&stream===info.defaultAudioStream&&Boolean(track&&DIRECT_AUDIO_CODECS.has(track.codec));
     setSelectedAudio(stream);
     setAudioError('');
     sourceTransition.current=true;
     video?.pause();
     audioRef.current?.pause();
 
-    if(!skipAdaptive&&info.qualityOptions.length&&(qualityState==='active'||playbackBlocked.current)){
+    if(!skipAdaptive&&info.qualityOptions.length&&playbackBlocked.current&&qualityState!=='active'){
       qualityRequested.current=true;
       resumeAfterAudio.current=false;
       audioResumeAt.current=null;
@@ -568,13 +571,6 @@ export function Player({item,queue,queueIndex,onEnded,onNext,onPrev,canGoNext=tr
       qualityRequested.current=false;
     }
 
-    if(fallback==='active'){
-      resumeAfterAudio.current=false;
-      audioResumeAt.current=null;
-      setExternalAudioUrl('');
-      void startFallback(stream,position,shouldResume);
-      return;
-    }
     if(canUseOriginal){
       resumeAfterAudio.current=false;
       audioResumeAt.current=null;
@@ -598,6 +594,7 @@ export function Player({item,queue,queueIndex,onEnded,onNext,onPrev,canGoNext=tr
       const url=await waitForAudio(item.id,stream,()=>token!==audioToken.current);
       if(token!==audioToken.current)return;
       setExternalAudioUrl(url);
+      setExternalAudioVersion(version=>version+1);
     }catch(reason){
       if(token!==audioToken.current)return;
       setAudioError(reason instanceof Error?reason.message:'The selected audio track could not be prepared.');

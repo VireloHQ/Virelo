@@ -1,18 +1,18 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, mkdir, writeFile, rm, stat, readdir, readFile, utimes } from 'node:fs/promises';
+import { mkdtemp, mkdir, writeFile, rm, stat, readdir, readFile, utimes, symlink } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { extractSubtitleVtt, startAdaptiveTranscode, stopAllTranscodes, transcodeStatus, startHlsTranscode } from '../dist/transcode.js';
-import { mediaPlaylist, demandManifest, demandSegment, clearPlaybackCache } from '../dist/demand-playback.js';
+import { mediaPlaylist, demandManifest, demandSegment, clearPlaybackCache, SEGMENT_SECONDS } from '../dist/demand-playback.js';
 import { DemandCache } from '../dist/demand-cache.js';
 import { hasFfmpeg } from '../dist/ffmpeg.js';
 
 test('VOD playlists address a whole film without generating missing video files',()=>{
   const playlist=mediaPlaylist(7041);
   assert.ok(playlist.includes('#EXT-X-PLAYLIST-TYPE:VOD'));
-  assert.ok(playlist.includes('segment-474.ts'));assert.ok(playlist.includes('#EXTINF:3.000000,\nsegment-1173.ts'));
+  assert.ok(playlist.includes('segment-474.ts'));assert.ok(playlist.includes('#EXTINF:1.000000,\nsegment-3520.ts'));
   assert.ok(playlist.includes('#EXT-X-ENDLIST'));assert.ok(!playlist.includes('GAP'));
   for(const duration of [0,NaN,Infinity,-1,7*86400+1])assert.throws(()=>mediaPlaylist(duration));
 });
@@ -41,7 +41,7 @@ test('LRU enforces the shared budget, preserves pinned segments and never touche
     assert.throws(()=>cache.pin(join(root,'virelo.db')),/Invalid cache path/);
   }finally{await rm(root,{recursive:true,force:true});}
 });
-test('preparation creates no renditions; real conversion generates only requested six-second segments',async t=>{
+test('preparation creates no renditions; real conversion generates only requested short segments',async t=>{
   if(!(await hasFfmpeg()))return t.skip('FFmpeg is unavailable');
   const root=await mkdtemp(join(tmpdir(),'virelo-demand-'));
   try{
@@ -60,7 +60,7 @@ test('preparation creates no renditions; real conversion generates only requeste
     const late=await demandSegment(root,prefix,'90/segment-2.ts',signal);late.release();
     assert.deepEqual((await readdir(directory)).sort(),['segment-0.ts','segment-2.ts']);
     const pts=JSON.parse(execFileSync(process.env.FFPROBE_PATH||'ffprobe',['-v','quiet','-show_format','-of','json',late.path],{encoding:'utf8',windowsHide:true})).format;
-    assert.ok(Math.abs(Number(pts.start_time)-12)<.1);assert.ok(Number(pts.duration)<6.2);
+    assert.ok(Math.abs(Number(pts.start_time)-2*SEGMENT_SECONDS)<.1);assert.ok(Number(pts.duration)<SEGMENT_SECONDS+.2);
     await assert.rejects(demandSegment(root,prefix,'720/segment-0.ts',signal),/rendition/);
     await assert.rejects(demandSegment(root,prefix,'90/segment-999.ts',signal),/segment/);
     const aborted=new AbortController();aborted.abort();await assert.rejects(demandSegment(root,prefix,'90/segment-1.ts',aborted.signal),/cancelled/);
@@ -78,6 +78,20 @@ test('preparation creates no renditions; real conversion generates only requeste
     assert.ok((await stat(regenerated.path)).size>0,'cleared segments regenerate without a new session');regenerated.release();
   }finally{await stopAllTranscodes(root);await rm(root,{recursive:true,force:true});}
 });
+test('a new segment cache never writes through a junction created after cache initialization',async t=>{
+  if(!await hasFfmpeg())return t.skip('FFmpeg is unavailable');
+  const root=await mkdtemp(join(tmpdir(),'virelo-segment-links-'));
+  try{
+    const original=join(root,'originals');await mkdir(original);const source=join(original,'source.mkv');await writeFile(source,'Original data stays untouched');
+    const state=await startAdaptiveTranscode(root,5,source,{hasAudio:false,sourceWidth:160,sourceHeight:90,qualities:[{height:90,label:'90p',bitrate:250000}],duration:1});
+    await mkdir(join(root,'cache'),{recursive:true});
+    try{await symlink(original,join(root,'cache','segments-v2'),process.platform==='win32'?'junction':'dir');}
+    catch(error){if(error.code==='EPERM')return t.skip('Filesystem links unavailable');throw error;}
+    await assert.rejects(demandSegment(root,state.playlist.replace('/master.m3u8',''),'90/segment-0.ts',new AbortController().signal),/filesystem links/);
+    assert.equal(await readFile(source,'utf8'),'Original data stays untouched');assert.deepEqual(await readdir(original),['source.mkv']);
+  }finally{await stopAllTranscodes(root);await rm(root,{recursive:true,force:true});}
+});
+
 test('missing sources report a preparation error without starting endless jobs',async t=>{
   if(!(await hasFfmpeg()))return t.skip('FFmpeg is unavailable');
   const root=await mkdtemp(join(tmpdir(),'virelo-demand-error-'));

@@ -54,8 +54,11 @@ export function useAdaptiveQuality(item:MediaItem,videoRef:RefObject<HTMLVideoEl
     hls.startLevel=level;
     // loadLevel accepts -1 for Auto and retains already buffered playback.
     hls.loadLevel=level;
-    if(level>=0&&hls.currentLevel>=0&&hls.currentLevel!==level)hls.nextLevel=level;
-  },[]);
+    if(level>=0&&hls.currentLevel>=0&&hls.currentLevel!==level){
+      if(sourceTransition)sourceTransition.current=true;
+      hls.currentLevel=level;
+    }
+  },[sourceTransition]);
 
   const attach=useCallback(async(result:QualityTranscodeState,resumeAt:number,shouldPlay:boolean)=>{
     const video=videoRef.current;

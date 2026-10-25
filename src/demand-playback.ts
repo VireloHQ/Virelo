@@ -1,11 +1,12 @@
 import { createHash } from 'node:crypto';
-import { mkdir, stat, rename, rm } from 'node:fs/promises';
+import { stat, rename, rm } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { spawn, type ChildProcess } from 'node:child_process';
 import { hasFfmpeg, probeMedia, type PlaybackQuality } from './ffmpeg.js';
 import { DemandCache, SEGMENT_MAX_BYTES } from './demand-cache.js';
+import { prepareGeneratedFile } from './image-files.js';
 
-export const SEGMENT_SECONDS=6;
+export const SEGMENT_SECONDS=2;
 type Mode='compatible'|'adaptive'|'audio';
 type Options={mode:Mode;audioStream?:number;duration?:number|null;sourceWidth?:number;sourceHeight?:number;qualities?:PlaybackQuality[]};
 type Spec=Options&{source:string;duration:number;id:number;prefix:string;root:string;fingerprint:string};
@@ -36,7 +37,7 @@ export async function startDemand(dataDir:string,id:number,source:string,options
     const info=await stat(source),duration=options.duration??(await probeMedia(source))?.duration;
     if(!duration)throw Error('Video duration could not be inspected.');mediaPlaylist(duration);
     if(options.mode==='adaptive'&&!options.qualities?.length)throw Error('Video resolution could not be detected.');
-    const fingerprint=createHash('sha256').update(`${source}:${info.size}:${info.mtimeMs}:segments-v1`).digest('hex').slice(0,16);
+    const fingerprint=createHash('sha256').update(`${source}:${info.size}:${info.mtimeMs}:segments-v2:${SEGMENT_SECONDS}`).digest('hex').slice(0,16);
     const prefix=`/playback/${id}/${fingerprint}/${options.mode}/${options.audioStream??'default'}`;
     specs.set(key,{...options,source,duration,id,prefix,root:resolve(dataDir),fingerprint});errors.delete(key);
     await managerFor(dataDir).cache.prune();return demandStatus(dataDir,id,options.mode,options.audioStream);
@@ -73,7 +74,7 @@ class Manager {
   constructor(readonly root:string,limit:number){this.cache=new DemandCache(root,limit);}
   private pump(){while(this.running<2&&this.queue.length){this.running++;this.queue.shift()!();}}
   async segment(spec:Spec,index:number,quality:PlaybackQuality|undefined,signal:AbortSignal){
-    const path=join(this.cache.root,'segments-v1',String(spec.id),spec.fingerprint,spec.mode,String(spec.audioStream??'default'),String(quality?.height??'original'),`segment-${index}.ts`);
+    const path=join(this.cache.root,'segments-v2',String(spec.id),spec.fingerprint,spec.mode,String(spec.audioStream??'default'),String(quality?.height??'original'),`segment-${index}.ts`);
     const unpin=this.cache.pin(path);let released=false;
     const release=()=>{if(released)return;released=true;unpin();};
     if(signal.aborted){release();throw Error('Playback request was cancelled.');}
@@ -100,7 +101,8 @@ class Manager {
     const temporary=path+'.part',start=index*SEGMENT_SECONDS;
     try{
       if(job.controller.signal.aborted)throw Error('Playback request was cancelled.');
-      await this.cache.prune(2*SEGMENT_MAX_BYTES);await mkdir(resolve(path,'..'),{recursive:true});
+      await this.cache.prune(2*SEGMENT_MAX_BYTES);
+      await prepareGeneratedFile(temporary,this.cache.root);await prepareGeneratedFile(path,this.cache.root);
       const args=['-hide_banner','-loglevel','error','-ss',String(start),'-i',spec.source,'-t',String(Math.min(SEGMENT_SECONDS,spec.duration-start))];
       if(spec.mode==='audio')args.push('-vn');
       else{

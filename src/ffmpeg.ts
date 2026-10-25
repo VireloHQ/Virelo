@@ -1,5 +1,5 @@
 import { spawn, type ChildProcess } from 'node:child_process';
-import { rename, rm } from 'node:fs/promises';
+import { rename, rm, stat } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
 import { imageFileExists, prepareGeneratedFile } from './image-files.js';
 
@@ -93,7 +93,23 @@ export async function hasFfprobe() {
   return ffprobeAvailable ??= await canRun(process.env.FFPROBE_PATH || 'ffprobe');
 }
 
+const playbackProbes = new Map<string, { fingerprint: string; promise: Promise<any | null> }>();
 async function ffprobeJson(path: string): Promise<any | null> {
+  const info = await stat(path).catch(() => null);
+  if (!info?.isFile()) return null;
+  const fingerprint = `${process.env.FFPROBE_PATH || 'ffprobe'}:${info.dev}:${info.ino}:${info.size}:${info.mtimeMs}:${info.ctimeMs}`;
+  const cached = playbackProbes.get(path);
+  if (cached?.fingerprint === fingerprint) return cached.promise;
+  const promise = runFfprobeJson(path);
+  playbackProbes.delete(path);
+  playbackProbes.set(path, { fingerprint, promise });
+  if (playbackProbes.size > 64) playbackProbes.delete(playbackProbes.keys().next().value!);
+  const result = await promise;
+  if (!result && playbackProbes.get(path)?.promise === promise) playbackProbes.delete(path);
+  return result;
+}
+
+async function runFfprobeJson(path: string): Promise<any | null> {
   if (!(await hasFfprobe())) return null;
   return await new Promise((resolve) => {
     const chunks: Buffer[] = [];
