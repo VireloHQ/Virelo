@@ -75,8 +75,14 @@ export async function auditPlayerTransport(page,label,check,artifacts) {
   check(await menu.getAttribute('data-animate')==='true'&&await menu.evaluate(element=>getComputedStyle(element).transitionProperty.includes('opacity')),label+' pointer Settings animates');
   await menu.getByRole('menuitem',{name:'Repeat',exact:true}).click();
   const repeat=page.getByRole('menu',{name:'Repeat',exact:true});
-  const gap=await repeat.evaluate(element=>element.querySelector('.playback-track-list button').getBoundingClientRect().top-element.querySelector('.playback-menu-heading').getBoundingClientRect().bottom);
-  check(gap>=8,label+' submenu options are separated from the heading divider');
+  await repeat.evaluate(async element=>{
+    await Promise.all(element.getAnimations({subtree:true}).map(animation=>animation.finished.catch(()=>{})));
+  });
+  const spacing=await repeat.evaluate(element=>({
+    gap:element.querySelector('.playback-track-list button').getBoundingClientRect().top-element.querySelector('.playback-menu-heading').getBoundingClientRect().bottom,
+    padding:parseFloat(getComputedStyle(element.querySelector('.playback-track-list')).paddingTop)
+  }));
+  check(spacing.gap>=7.9&&spacing.padding>=8,label+' submenu options are separated from the heading divider');
   check(await repeat.locator('.playback-menu-page').evaluate(element=>getComputedStyle(element).transitionProperty.includes('opacity')),label+' submenu pages have a fade transition');
   await page.keyboard.press('Escape');await page.keyboard.press('Escape');
   await more.focus();await page.keyboard.press('Enter');
