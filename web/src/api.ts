@@ -2,6 +2,7 @@ import type { FolderEntry, HomeData, Library, MediaItem, PlaybackInfo, PlaybackQ
 import type { Account, AuthStatus } from '../../src/auth-types';
 import type { DataUsage } from '../../src/types';
 import type { PlaylistDetail, PlaylistSummary, PlaylistWrite } from './types';
+import type { CustomCommand, CustomCommandDefinition } from '../../src/custom-command-types';
 
 export interface QualityTranscodeState {
   status:string;
@@ -32,6 +33,11 @@ function withQuery(url: string, params: Record<string, string | number | undefin
 }
 
 export const api = {
+  commands: () => request<CustomCommand[]>('/api/commands'),
+  saveCommand: (definition: CustomCommandDefinition, id?: number) => request<CustomCommand>(id === undefined ? '/api/commands' : `/api/commands/${id}`, { method: id === undefined ? 'POST' : 'PUT', body: JSON.stringify(definition) }),
+  removeCommand: (id: number) => request<{ok:boolean}>(`/api/commands/${id}`, { method: 'DELETE' }),
+  startCommand: (id: number) => request<CustomCommand>(`/api/commands/${id}/start`, { method: 'POST' }),
+  stopCommand: (id: number) => request<CustomCommand>(`/api/commands/${id}/stop`, { method: 'POST' }),
   playlists: () => request<PlaylistSummary[]>('/api/playlists'),
   playlist: (id: number) => request<PlaylistDetail>(`/api/playlists/${id}`),
   createPlaylist: (body: { name: string; mediaIds: number[] }) => request<PlaylistDetail>('/api/playlists', { method: 'POST', body: JSON.stringify(body) }),

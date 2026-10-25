@@ -21,15 +21,16 @@ function token(request: FastifyRequest) {
   const matches = (request.headers.cookie || '').split(';').map(part => part.trim()).filter(part => part.startsWith('virelo_session='));
   return matches.length === 1 ? matches[0].slice('virelo_session='.length) : undefined;
 }
-function cookie(reply: FastifyReply, request: FastifyRequest, value = '') {
-  reply.header('Set-Cookie', `virelo_session=${value}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${value ? 604800 : 0}${request.protocol === 'https' || process.env.VIRELO_SECURE_COOKIES === '1' ? '; Secure' : ''}`);
-}
 function object(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new AccountError('A JSON object is required.');
   return value as Record<string, unknown>;
 }
 
-export function registerAccounts(app: FastifyInstance, db: VireloDB) {
+export function registerAccounts(app: FastifyInstance, db: VireloDB, isPublicHost: (host: string) => boolean = () => false) {
+  const cookie = (reply: FastifyReply, request: FastifyRequest, value = '') => {
+    const secure = request.protocol === 'https' || process.env.VIRELO_SECURE_COOKIES === '1' || isPublicHost(request.hostname.toLowerCase());
+    reply.header('Set-Cookie', `virelo_session=${value}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${value ? 604800 : 0}${secure ? '; Secure' : ''}`);
+  };
   const accounts = new Accounts(db.db);
   app.decorateRequest('account', null);
   app.decorateRequest('catalogScope', null);

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add npm-only External tools settings for custom CLI launchers, with explicit start/stop, bounded process output, optional fixed or domain-scoped generated HTTPS addresses, and exact active Host allowlisting. Restrict every command API to direct localhost administrators, keep public cookies Secure, preserve localhost-only administration, and never auto-start tools. Document arbitrary-executable risks and provider-policy responsibilities.
+
 - Keep the first touch on a hidden normal-player overlay reveal-only, without pausing playback, and restart its idle timer. Clear the pending touch intent when a gesture is cancelled.
 
 - Replace the stacked mobile player panel with centered playback controls, top-edge tools and a 44px bottom seek strip over a light edge gradient. Keep title details below the inline video, retain the fullscreen title, fit landscape playback above navigation, and leave repeat in Settings and shuffle in the Queue or fullscreen without duplicating them over the inline picture.

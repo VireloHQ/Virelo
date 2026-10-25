@@ -12,6 +12,23 @@ New installations match filenames against Cinemeta during library scans and cach
 
 When online metadata is enabled, Virelo sends the parsed title, media type, release year when available, and season/episode numbers when applicable to Cinemeta. It downloads matched posters, backdrops, and episode images when artwork is enabled. An existing user-provided TMDB key, or the optional `VIRELO_TMDB_API_KEY` environment variable, makes Virelo use TMDB instead for backward compatibility and localized results. Disabling online metadata stops future provider requests initiated by Virelo.
 
+## Optional external tools
+
+The npm server can store custom CLI launchers configured by a localhost
+administrator. Names, executable paths, arguments and optional public-address
+settings are saved in the local database; recent stdout/stderr is held in memory
+and available only to directly connected localhost administrators. Definitions
+are not included in general settings or viewer responses. No command starts on
+installation, save, page load or server restart.
+
+Starting a command explicitly runs an external program with the server's OS
+permissions and environment. That tool may contact its provider, transmit or
+modify files, and keep its own credentials and logs. A tunnel can carry video,
+metadata and authentication traffic through its operator's infrastructure;
+encryption and retention depend on the chosen tool and provider. Review those
+policies and avoid putting secrets in saved arguments. Virelo cannot promise
+read-only filesystem behavior for user-supplied executables.
+
 ## Video files
 
 Named playlists store titles and ordered media references in the server database,

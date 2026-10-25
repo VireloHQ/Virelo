@@ -14,6 +14,7 @@ import type { QueueBehavior, Settings } from '../types';
 import { useAccount } from '../components/AccountSession';
 import { AccountManager, AccountProfile } from '../components/AccountSettings';
 import { DataManagement } from '../components/DataManagement';
+import { CustomCommandSettings } from '../components/CustomCommandSettings';
 
 const settingsSections = [
   { id:'account', label:'Account', description:'Your name, password and sign-in' },
@@ -23,6 +24,7 @@ const settingsSections = [
   { id:'playback', label:'Playback', description:'What plays next' },
   { id:'shorts', label:'Shorts', description:'Videos in your vertical feed' },
   { id:'data', label:'Data management', description:'Storage usage and playback cache' },
+  { id:'commands', label:'External tools', description:'Custom commands on this PC' },
   { id:'tools', label:'Advanced', description:'Media tool availability' },
 ] as const;
 const QUEUE_OPTIONS = [
@@ -33,7 +35,7 @@ const QUEUE_OPTIONS = [
 export function SettingsView(){
   const session=useAccount();
   const isAdmin=Boolean(session?.user.isAdmin);
-  const sections=settingsSections.filter(section=>isAdmin||['account','libraries','playback','tools'].includes(section.id));
+  const sections=settingsSections.filter(section=>section.id==='commands'?isAdmin&&session?.localAccess:isAdmin||['account','libraries','playback','tools'].includes(section.id));
   const hash=useLocation({select:location=>location.hash});
   const navigate=useNavigate();
   const selectedSection=sections.find(section=>section.id===hash)?.id;
@@ -68,6 +70,7 @@ export function SettingsView(){
         {activeSection==='account'&&<div id="settings-panel-account" className="settings-card settings-section"><AccountProfile/></div>}
         {activeSection==='accounts'&&isAdmin&&<div id="settings-panel-accounts" className="settings-card settings-section"><AccountManager/></div>}
         {activeSection==='data'&&isAdmin&&<DataManagement/>}
+        {activeSection==='commands'&&isAdmin&&session?.localAccess&&<CustomCommandSettings/>}
         {activeSection==='libraries'&&<section id="settings-panel-libraries" className="settings-card settings-section" aria-labelledby="settings-title-libraries">
           <div className="settings-card-head"><div><h2 id="settings-title-libraries" tabIndex={-1}>Libraries</h2><p>Manage the folders Virelo scans for media.</p></div></div>
           <LibrarySettings/>

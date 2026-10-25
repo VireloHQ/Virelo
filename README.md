@@ -266,6 +266,44 @@ Passwords do not encrypt HTTP traffic. Use a trusted LAN, HTTPS reverse proxy or
 
 See [SECURITY.md](SECURITY.md) before exposing Virelo beyond the host computer.
 
+### Custom CLI launchers
+
+In **Settings → External tools**, a directly connected localhost administrator can
+register a CLI tool and start or stop it with a button. This is available in the
+npm server, not the browser-only Web edition. Install the tool and complete any
+provider registration or login on the server PC first; Virelo does not install
+tools, create provider accounts, or start commands automatically.
+
+Enter a button name, an executable name or full path, and one argument per line
+without surrounding quotes. The `{url}` placeholder expands to Virelo's current
+local HTTP address, including its actual port. Arguments are literal: pipes,
+redirection and shell expansion are not interpreted. Windows batch files need an
+explicit interpreter. Tools run in Virelo's data directory, without interactive
+input, and must remain in the foreground.
+
+For a reverse proxy or tunnel, optionally configure either a **fixed public URL**
+(an HTTPS origin without a path or query) or a **generated URL domain**. In the
+latter case, Virelo accepts the first HTTPS origin printed by that command whose
+hostname matches that domain or one of its subdomains. Only the exact active
+hostname is added to the Host allowlist, not a wildcard; it is removed when the
+command stops. Preserve the public Host and overwrite untrusted forwarding
+headers at the proxy. Public-host session cookies are Secure without changing
+localhost cookies. Localhost-only administrator restrictions remain in effect.
+
+The launcher shows process state and recent output, with a Copy URL action when
+an address is available. A running process is not a connectivity or playback
+health check. Eight definitions can be saved and two commands can run at once.
+Virelo stops its launched foreground processes on normal server shutdown; it
+cannot manage separately launched or daemonized services. Login throttling still
+uses the direct connection address, so clients behind one proxy share its limit.
+
+**Commands are not sandboxed.** They run with the server's OS permissions and can
+change files or expose data. Only register tools and arguments you trust. Use the
+tool's credential storage rather than passing secrets as arguments. Provider
+terms, content rights, fees and traffic limits still apply; a custom launcher does
+not create an exemption or endorse a provider for video delivery. See
+[SECURITY.md](SECURITY.md) and [PRIVACY.md](PRIVACY.md).
+
 ## 🛠️ Development
 
 ```bash

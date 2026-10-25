@@ -66,6 +66,37 @@ The optional Account Manager restriction blocks administrator accounts unless th
 
 **A local reverse proxy, SSH tunnel, or port forward can make a remote client appear to be localhost.** No HTTP application can recover an original address that such an intermediary discards. Do not use the localhost-only option as a guarantee against remote access behind a header-stripping loopback proxy or tunnel. Preserve forwarding headers (Virelo treats those connections as non-local), and enforce remote administrative restrictions at the proxy/firewall as well. This setting is not an OS-level sandbox.
 
+## Custom command execution
+
+External tools is an explicit local administrator capability to run arbitrary
+executables with the Virelo process's OS permissions. It is not a sandbox. A
+registered command can modify or delete files, including source media, or expose
+services; the read-only media-player behavior does not constrain external tools.
+Never register untrusted commands, execute Virelo as an OS administrator for this
+feature, or use it with mutually untrusted local administrators.
+
+All command APIs, including configuration, process state and output, require a
+fresh administrator session and a direct loopback peer with a literal loopback
+Host and no forwarding headers. LAN connections, public-host requests and local
+reverse proxies cannot invoke them. State-changing requests also require the
+same-origin Origin check and `X-Virelo-Request: 1`. Do not weaken these checks or
+publish a proxy that strips forwarding headers and rewrites Host to localhost.
+
+Definitions and arguments are stored in the local database, separately from
+public settings. Output is plain text, bounded to the last 32,768 characters per
+command, held in memory and not added to the HTTP request log. Tools can still
+print secrets or write their own logs; protect the data directory and prefer the
+tool's own credential store. Executables receive the server environment, run from
+the data directory without interactive stdin, and are spawned without an
+implicit shell. Explicitly launching a shell still grants that shell full access.
+
+Public hostnames are allowed only while their registered process is running.
+Generated URL discovery is opt-in and scoped to the configured domain; only an
+exact HTTPS origin without credentials, path, query or fragment is accepted.
+Provider login, authorization, content policies and traffic limits remain the
+operator's responsibility. Process state does not guarantee tunnel health or
+that all buffered or previously downloaded data has been revoked after stopping.
+
 ## Local administrator recovery
 
 Stop the server and run `virelo --data <existing-data-directory> --reset-password <administrator-username>` on the server PC. A temporary password is printed to the terminal; change it immediately after signing in on localhost. Recovery requires filesystem access, does not run through an HTTP endpoint, and revokes that administrator's sessions. Treat the terminal output as a secret. Keep the data directory private and avoid capturing recovery output in shared logs.

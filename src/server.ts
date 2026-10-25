@@ -21,6 +21,8 @@ import type { CatalogScope } from './auth-types.js';
 import { pickNativeFolder } from './folder-picker.js';
 import { isMediaFile, isVideoPath, mediaWatchFilter } from './media-files.js';
 import { assertSupportedNode } from './runtime.js';
+import { CustomCommands, registerCustomCommands } from './custom-commands.js';
+import { serverUrl } from './network-urls.js';
 
 const SORT_KEYS: SortKey[] = ['title', 'newest', 'oldest', 'year', 'duration', 'random'];
 
@@ -73,10 +75,15 @@ export async function createVireloServer(config: RuntimeConfig, pickFolder: (sig
   await initializeDemandCache(config.dataDir);
   const db = new VireloDB(config.dataDir);
   const app = Fastify({ logger: { level: process.env.VIRELO_LOG_LEVEL || 'info', redact: ['req.headers.cookie','req.headers.authorization','res.headers.set-cookie'] }, bodyLimit: 1024 * 1024 });
+  const commands = new CustomCommands(db.db, config.dataDir, () => {
+    const address = app.server.address();
+    const host = address && typeof address === 'object' ? address.address : config.host;
+    return serverUrl(host === '0.0.0.0' ? '127.0.0.1' : host === '::' ? '::1' : host, address && typeof address === 'object' ? address.port : config.port);
+  });
   app.addHook('onRequest', async (request, reply) => {
     const hostHeader = request.headers.host || '';
     const hostname = hostWithoutPort(hostHeader);
-    if (!hostname || !isPrivateHost(hostname, config.host)) return reply.code(403).send({ error: 'Untrusted Host header.' });
+    if (!hostname || (!isPrivateHost(hostname, config.host) && !commands.allowsHost(hostname))) return reply.code(403).send({ error: 'Untrusted Host header.' });
     const origin = request.headers.origin;
     if (origin) {
       try {
@@ -98,13 +105,14 @@ export async function createVireloServer(config: RuntimeConfig, pickFolder: (sig
     return payload;
   });
   const webRoot = fileURLToPath(new URL('./web', import.meta.url));
-  const { accounts, fresh } = registerAccounts(app, db);
+  const { accounts, fresh } = registerAccounts(app, db, host => commands.allowsHost(host));
+  registerCustomCommands(app, commands, request => fresh(request, true));
   registerPlaylists(app, db);
   let activePicker: AbortController | null = null;
   let closing = false;
   const scanAbort = new AbortController();
   let scanTask: Promise<void> | null = null;
-  app.addHook('preClose', async () => { closing = true; scanAbort.abort(); activePicker?.abort(); });
+  app.addHook('preClose', async () => { closing = true; scanAbort.abort(); activePicker?.abort(); await commands.close(); });
   let watcher: { close(): void | Promise<unknown> } | null = null;
   let watchDebounce: NodeJS.Timeout | null = null;
 
