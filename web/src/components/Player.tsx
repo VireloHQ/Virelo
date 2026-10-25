@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { ArrowsOut, Gear, FastForward, Pause, PictureInPicture, Play, Repeat, Rewind, SpeakerHigh, SpeakerSlash } from '@phosphor-icons/react';
+import { ArrowsOut, FastForward, Pause, PictureInPicture, Play, Repeat, Rewind, SpeakerHigh, SpeakerSlash } from '@phosphor-icons/react';
 import { LoadingSpinner } from './LoadingSpinner';
 import { api } from '../api';
 import { useHlsFallback } from '../hooks/useHlsFallback';
@@ -688,7 +688,7 @@ export function Player({item,queue,queueIndex,shuffled,onShuffle,onEnded,onNext,
   }
 
   const pauseAction=playing||(playRequested&&(seekingPosition!==null||audioPreparing||qualityState==='starting'||fallback==='starting'));
-  const playbackSettings=<PlaybackSettingsMenu key={item.id}
+  const playbackSettings=(context=false)=><PlaybackSettingsMenu key={item.id} context={context}
     audioTracks={playbackInfo?.audioTracks??[]}
     subtitleTracks={playbackInfo?.subtitleTracks??[]}
     selectedAudio={selectedAudio}
@@ -770,7 +770,7 @@ export function Player({item,queue,queueIndex,shuffled,onShuffle,onEnded,onNext,
     {(qualitySelectionError||fallback==='error'||audioError||(qualityState==='error'&&qualityRequested.current&&!playing)) && <div className="player-status error"><strong>Playback unavailable</strong><span>{qualitySelectionError||audioError||error||qualityError}{playbackBlocked.current&&!qualitySelectionError?' Choose another quality to continue; your quality limit has been kept.':''}</span></div>}
     {shorts?<ShortsPlayerControls item={item} current={current} duration={duration} muted={muted} pip={pip}
       pipSupported={pipSupported} onSeek={seek} onMute={toggleMute} onPip={()=>void togglePip()} onNext={shorts.onNext}>
-      {playbackSettings}
+      {playbackSettings()}
     </ShortsPlayerControls>:<PlayerControls current={current} duration={duration} paused={!pauseAction}
       busy={audioPreparing||qualityState==='starting'||fallback==='starting'}
       volume={volume} muted={muted} pip={pip} pipSupported={pipSupported}
@@ -779,7 +779,7 @@ export function Player({item,queue,queueIndex,shuffled,onShuffle,onEnded,onNext,
       shuffled={shuffled} onShuffle={onShuffle} repeat={repeat} onRepeat={changeRepeat}
       onToggle={toggle} onSeek={seek} onSeekBy={seekBy} onPrev={onPrev} onNext={onNext}
       onVolume={setVol} onMute={toggleMute} onFullscreen={()=>void fullscreen()} onPip={()=>void togglePip()}
-      favorite={<FavoriteButton item={item} iconOnly/>} settings={playbackSettings}/>}
+      favorite={<FavoriteButton item={item} iconOnly/>} settings={playbackSettings()}/>}
     {contextPosition&&shorts&&<ShortsContextMenu item={item} position={contextPosition} returnFocus={videoRef.current}
       onPlay={()=>{wantsPlayback.current=true;setPlayRequested(true);requestVideoPlayback();}}
       onDetails={shorts.onDetails} onClose={()=>setContextPosition(null)} />}
@@ -790,7 +790,7 @@ export function Player({item,queue,queueIndex,shuffled,onShuffle,onEnded,onNext,
         {label:'Fast-forward 30 seconds',icon:<FastForward/>,action:()=>seekBy(30)},
         {label:muted?'Unmute':'Mute',icon:muted?<SpeakerSlash/>:<SpeakerHigh/>,action:toggleMute},
         {label:'Repeat video',icon:<Repeat/>,checked:repeat==='one',action:()=>changeRepeat(repeat==='one'?'off':'one')},
-        {label:'Settings',icon:<Gear/>,action:()=>containerRef.current?.querySelector<HTMLButtonElement>('[data-setting="settings"]')?.dispatchEvent(new MouseEvent('click',{bubbles:true,detail:contextPosition.keyboard?0:1}))},
+        {label:'Settings',content:playbackSettings(true)},
         ...(pipSupported?[{label:pip?'Exit Picture in Picture':'Picture in Picture',icon:<PictureInPicture/>,action:()=>void togglePip()}]:[]),
         {label:'Fullscreen',icon:<ArrowsOut/>,action:()=>void fullscreen()}
       ]}/>}

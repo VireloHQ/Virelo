@@ -7,6 +7,7 @@ import { api } from '../api';
 import { PlaybackQueue } from '../components/PlaybackQueue';
 import { SavePlaylist } from '../components/SavePlaylist';
 import { Player } from '../components/Player';
+import { WatchInfo, WatchRecommendations } from '../components/WatchInfo';
 import { queueDestination, type RepeatMode } from '../utils/playback-repeat';
 import { loadFavoriteQueue, loadMediaQueue } from '../utils/favorites';
 import { toggleQueueShuffle } from '../utils/playback-queue';
@@ -42,7 +43,7 @@ export function WatchView() {
   }
   if (itemQ.isError) return <div className="watch-empty"><h1>Video unavailable</h1><p>{itemQ.error.message}</p><button onClick={() => void itemQ.refetch()}>Try again</button></div>;
   if (itemQ.isLoading || !itemQ.data) return <PageSkeleton kind="watch"/>;
-  return <div className="watch-view"><Player item={itemQ.data} autoPlay/><div className="watch-copy"><h1>{itemQ.data.title}</h1><p>{itemQ.data.overview || itemQ.data.filename}</p><div className="playlist-watch-actions"><SavePlaylist mediaIds={[itemQ.data.id]}/></div></div></div>;
+  return <div className="watch-view"><Player item={itemQ.data} autoPlay/><WatchInfo item={itemQ.data} actions={<SavePlaylist mediaIds={[itemQ.data.id]}/>}/><WatchRecommendations item={itemQ.data}/></div>;
 }
 
 function QueuedWatch({ source, initialId, behavior, shuffle, playlist, refreshError, onRetry }: { source: MediaItem[]; initialId: number; behavior: QueueBehavior; shuffle: boolean; playlist?: PlaylistDetail; refreshError?: string; onRetry: () => void }) {
@@ -63,13 +64,13 @@ function QueuedWatch({ source, initialId, behavior, shuffle, playlist, refreshEr
         onNext={() => advance(1)} onPrev={() => advance(-1)}
         canGoNext={items.length > 1 && (activeIndex < items.length - 1 || wraps)} canGoPrev={items.length > 1 && (activeIndex > 0 || wraps)}
         repeatMode={repeat} onRepeatChange={setRepeatOverride} shuffled={queue.shuffled} onShuffle={()=>update(toggleQueueShuffle)} autoPlay/>
-      <div className="watch-copy"><h1>{current.title}</h1><p className="watch-description">{current.overview || current.filename}</p>
-        <PlaylistQueueActions items={items} playlist={playlist}/>
+      <WatchInfo item={current} actions={<PlaylistQueueActions items={items} playlist={playlist}/>}>
         {refreshError && <p className="error-copy" role="alert">Could not refresh the queue. {refreshError} <button type="button" onClick={onRetry}>Try again</button></p>}
-      </div>
+      </WatchInfo>
     </div>
     <PlaybackQueue items={items} activeIndex={activeIndex} repeatMode={repeat} onRepeatChange={setRepeatOverride}
       onSelect={select} state={queue} onEdit={update}/>
+    <WatchRecommendations item={current}/>
   </div>;
 }
 

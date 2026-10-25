@@ -120,7 +120,9 @@ try {
         id: index + 1, library_id: 1, title: 'Video ' + String(index + 1).padStart(2, '0'), sort_title: String(index),
         filename: 'clip-' + index + '.mp4', path: 'clip-' + index + '.mp4', folder: '', kind: 'movie',
         duration: 90, width: 320, height: 180, liked: 0, size: 1, mtime: 0, added_at: 0, updated_at: 0,
-        thumbnail_path: mode === 'web' ? svg : 'thumbnail-' + index + '.jpg', poster_path: null, backdrop_path: null, overview: null
+        thumbnail_path: mode === 'web' ? svg : 'thumbnail-' + index + '.jpg', poster_path: null, backdrop_path: null,
+        overview: index===0?'An adventure through an open world, brought together in a personal video library.':null,
+        genres:index===0?'Animation, Adventure':null,year:index===0?2024:null,container:'mp4',video_codec:'h264',audio_codec:'aac'
       }));
       window.__items = items; window.__sourceLoads = 0; window.__requests = []; window.__mutations = [];
       api.media = async (params = {}) => { if (window.__failRefetch) throw new Error('Test refresh failure'); window.__requests.push(params); const { offset = 0, limit = 500 } = params; return items.slice(offset, offset + limit).map(item => ({ ...item })); };
@@ -146,6 +148,14 @@ try {
     };
     const reset = async () => { await queue.getByRole('button', { name: 'Queue options', exact: true }).click(); await page.getByRole('menuitem', { name: 'Reset queue', exact: true }).click(); await settle(page); };
     await queue.waitFor(); await page.waitForFunction(() => document.querySelector('.player video')?.readyState >= 2);
+    const watchInfo=page.getByRole('region',{name:'Video information'});
+    check(await watchInfo.locator('.watch-overview').isVisible(),label+' watch layout uses the real synopsis');
+    check(await watchInfo.locator('.watch-genres li').count()===2,label+' watch layout includes the available genres');
+    check(await watchInfo.evaluate(element=>element.scrollWidth<=element.clientWidth),label+' watch information does not overflow');
+    await page.locator('.watch-related .media-card').first().waitFor();
+    check(await page.locator('.watch-view').evaluate(element=>Boolean(element.querySelector('.playback-queue').compareDocumentPosition(element.querySelector('.watch-related'))&Node.DOCUMENT_POSITION_FOLLOWING)),label+' related videos stay after the Queue without pushing it down');
+    await watchInfo.screenshot({path:join(artifacts,mode+'-'+scenario.name+'-watch-info.png')});
+    await page.evaluate(()=>scrollTo(0,0));
     check(await page.locator('.playback-queue-tile').count() === 24, label + ' loads all queue entries');
     check(await list.evaluate(node => getComputedStyle(node).scrollSnapType === 'none'), label + ' no snapping fights wheel or touch');
     await page.evaluate(() => { const video = document.querySelector('.player video'); window.__originalVideo = video; video.currentTime = 10; video.pause(); window.__baselineLoads = window.__sourceLoads; });

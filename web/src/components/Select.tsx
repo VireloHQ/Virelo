@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { CaretDown, Check } from '@phosphor-icons/react';
 
 export interface SelectOption { value: string; label: string }
@@ -16,9 +16,21 @@ export function Select({ value, options, onChange, label, align = 'start', class
   const [focusIndex, setFocusIndex] = useState(0);
   const rootRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
   const optionRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const menuId = useId();
   const current = options.find((o) => o.value === value);
+
+  useLayoutEffect(() => {
+    if (!open) return;
+    const measure = () => {
+      const bottom=triggerRef.current?.getBoundingClientRect().bottom;
+      if(bottom!==undefined)menuRef.current?.style.setProperty('--picker-max-height',Math.max(0,Math.min(320,innerHeight-bottom-12))+'px');
+    };
+    measure();
+    window.addEventListener('resize',measure);window.addEventListener('scroll',measure,true);
+    return () => {window.removeEventListener('resize',measure);window.removeEventListener('scroll',measure,true);};
+  },[open]);
 
   useEffect(() => {
     if (open) {
@@ -84,7 +96,7 @@ export function Select({ value, options, onChange, label, align = 'start', class
       <span>{current?.label ?? value}</span>
       <CaretDown weight="bold"/>
     </button>
-    <div id={menuId} hidden={!open} inert={!open} aria-hidden={!open} className="picker-menu" role="listbox" aria-label={label} style={align === 'end' ? { right: 0, left: 'auto' } : undefined}>
+    <div ref={menuRef} id={menuId} hidden={!open} inert={!open} aria-hidden={!open} className="picker-menu" role="listbox" aria-label={label} style={align === 'end' ? { right: 0, left: 'auto' } : undefined}>
       {options.map((option, i) => (
         <button type="button" role="option" aria-selected={option.value === value} key={option.value}
           id={`${menuId}-option-${option.value}`}

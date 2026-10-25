@@ -8,7 +8,7 @@ test('Shorts use the normal playback pipeline instead of a separate player', asy
   assert.match(shorts, /<Player item=\{item\} autoPlay repeatMode="one" shorts=/);
   assert.match(shorts, /if \(!active\) return <ShortsPreview/);
   assert.doesNotMatch(shorts, /useHlsFallback|startFallback|togglePlay|shorts-back/);
-  assert.match(player, /<ShortsPlayerControls[\s\S]*?\{playbackSettings\}/);
+  assert.match(player, /<ShortsPlayerControls[\s\S]*?\{playbackSettings\(\)\}/);
   assert.equal((player.match(/<PlaybackSettingsMenu\b/g) || []).length, 1);
   assert.match(player, /<HiddenSubtitleTrack/);
 });

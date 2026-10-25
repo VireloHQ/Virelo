@@ -19,7 +19,10 @@ test('the normal player shares one settings entry instead of a row of preference
   for (const setting of ['quality', 'audio', 'subtitles', 'video', 'repeat', 'speed']) assert.ok(menu.includes("sectionButton('" + setting + "'"));
   assert.match(menu, /Playback settings/);
   assert.doesNotMatch(menu, /PictureInPicture|onPip/);
-  assert.match(menu, /'Playback settings',<DotsThree\/>/);
+  assert.match(menu, /context\?'Settings':'Playback settings'/);
+  assert.match(menu, /context-settings-menu/);
+  assert.match(menu, /sidePopoverPlacement/);
+  assert.doesNotMatch(player, /dispatchEvent\(new MouseEvent\('click'/);
   assert.match(menu, /hidden=\{!open\} inert=\{!open\}/);
 });
 

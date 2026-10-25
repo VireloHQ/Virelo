@@ -73,7 +73,17 @@ export async function auditPlayerSettings(page, label, check, artifacts) {
   await player.click({ button: 'right' });
   await page.getByRole('menu', { name: 'Video actions' }).getByRole('menuitem', { name: 'Settings', exact: true }).click();
   await root.waitFor();
-  check(await page.getByRole('menu', { name: 'Video actions' }).count() === 0, label + ' context Settings uses the same anchored menu');
+  const contextMenu=page.getByRole('menu', { name: 'Video actions' });
+  check(await contextMenu.isVisible(),label+' context Settings keeps the parent bubble open');
+  check(await root.evaluate(element=>element.classList.contains('context-settings-menu')&&['left','right'].includes(element.dataset.side)),label+' context Settings opens in a side bubble');
+  check(await gear.getAttribute('aria-expanded')==='false',label+' context Settings never opens the toolbar menu');
+  await root.getByRole('menuitem',{name:'Quality',exact:true}).click();
+  await page.getByRole('menu',{name:'Quality',exact:true}).getByRole('menuitemradio',{name:/^Original Quality/}).click();
+  check(await contextMenu.isVisible(),label+' context selection returns to the parent menu');
+  const contextSettings=contextMenu.getByRole('menuitem',{name:'Settings',exact:true});
+  await contextSettings.focus();await page.keyboard.press('ArrowRight');await root.waitFor();
+  await page.keyboard.press('ArrowLeft');await root.waitFor({state:'hidden'});
+  check(await contextSettings.evaluate(element=>document.activeElement===element),label+' context submenu supports keyboard entry and return');
   await page.keyboard.press('Escape');
   if (viewport.width >= 1000) {
     await player.getByRole('button', { name: 'Fullscreen', exact: true }).click();

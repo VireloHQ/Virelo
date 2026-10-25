@@ -143,6 +143,12 @@ try {
     const panelMotion = await panel.evaluate(element => ({ transform: getComputedStyle(element).transform,
       transition: getComputedStyle(element).transitionProperty, origin: getComputedStyle(element).transformOrigin }));
     check(panelMotion.transition.includes('opacity') && panelMotion.origin.split(' ')[1] === '0px', label + ' Dropdown is anchored and uses opacity');
+    const connection=await panel.evaluate(element=>{
+      const menu=element.getBoundingClientRect(),button=element.parentElement.querySelector('.picker-trigger'),trigger=button.getBoundingClientRect(),style=getComputedStyle(button);
+      return {gap:menu.top-trigger.bottom,width:Math.abs(menu.width-trigger.width),corners:style.borderBottomLeftRadius==='0px'&&style.borderBottomRightRadius==='0px',bottom:menu.bottom};
+    });
+    check(connection.gap>=-2&&connection.gap<=0&&connection.width<1&&connection.corners,label+' Dropdown joins the trigger as one downward surface');
+    check(connection.bottom<=scenario.height-10,label+' Dropdown stays inside the viewport');
     await page.screenshot({ path: join(artifacts, mode + '-' + scenario.name + '-dropdown.png') });
     await page.getByRole('option', { name: 'Manual next only', exact: true }).click();
     check(await panel.evaluate(element => element.hidden && element.inert && element.getAttribute('aria-hidden') === 'true'), label + ' closing Dropdown is immediately inert');

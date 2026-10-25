@@ -15,6 +15,15 @@
 .player-action-menu-content>button:disabled { opacity:.4; cursor:not-allowed; }
 .player-action-menu-content button>span { flex:1; }
 .player-action-menu svg { flex:none; width:18px; height:18px; }
+.player-action-menu .context-playback-settings { width:100%; }
+.player-action-menu .context-playback-settings > button { display:flex; align-items:center; width:100%; min-height:44px; height:auto; padding:8px 10px; gap:10px; border-radius:4px; font-size:13px; text-align:left; }
+.player-action-menu .context-playback-settings > button > span { flex:1; }
+.context-settings-menu { z-index:190; }
+.context-settings-menu[data-side="right"] { transform-origin:left var(--popover-anchor-y); }
+.context-settings-menu[data-side="left"] { transform-origin:right var(--popover-anchor-y); }
+.context-settings-menu::after { top:calc(var(--popover-anchor-y) - 11px); bottom:auto; width:11px; height:22px; }
+.context-settings-menu[data-side="right"]::after { left:-10px; right:auto; clip-path:polygon(100% 0,100% 100%,0 50%); }
+.context-settings-menu[data-side="left"]::after { right:-10px; left:auto; clip-path:polygon(0 0,100% 50%,0 100%); }
 .player-action-menu-content>button[aria-checked="true"] svg:last-child { color:var(--color-brand); }
 .playback-track-list,.player-action-menu { scrollbar-width:none; }
 .playback-track-list::-webkit-scrollbar,.player-action-menu::-webkit-scrollbar { display:none; }

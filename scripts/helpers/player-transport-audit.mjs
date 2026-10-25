@@ -14,6 +14,11 @@ export async function auditPlayerTransport(page,label,check,artifacts) {
   check(await player.locator('.skip-button .player-seek-icon').evaluateAll(icons=>icons.length===2&&icons.every(icon=>{const style=getComputedStyle(icon);return style.maskImage!=='none'&&style.backgroundColor!=='rgba(0, 0, 0, 0)'&&icon.getBoundingClientRect().width===27;})),label+' bundled seek icons render at the intended size');
   check(await player.locator('.player-toolbar').evaluate(element=>element.scrollWidth<=element.clientWidth)&&await transport.evaluate(element=>element.scrollWidth<=element.clientWidth),label+' toolbar and transport do not overflow');
   const geometry=await player.locator('.player-controls').boundingBox(),viewport=page.viewportSize();
+  const info=page.getByRole('region',{name:'Video information'});
+  check(await info.getByRole('heading',{level:1}).textContent()===await player.getAttribute('aria-label').then(value=>value.replace(/ player$/,'')),label+' watch information identifies the current video');
+  check(await info.locator('.watch-facts li').count()>0,label+' watch information presents real duration and resolution');
+  check(await info.locator('.watch-source-file dd').textContent()==='portrait.mkv',label+' source filename stays in file details');
+  check(await info.evaluate(element=>element.scrollWidth<=element.clientWidth),label+' watch information fits the viewport');
   if(compact){
     const layout=await player.evaluate(element=>{
       const rect=element.getBoundingClientRect(),timeline=element.querySelector('.player-timeline').getBoundingClientRect(),transport=element.querySelector('.player-transport').getBoundingClientRect(),tools=element.querySelector('.player-tools').getBoundingClientRect(),controls=element.querySelector('.player-controls'),style=getComputedStyle(controls);
@@ -138,4 +143,5 @@ export async function auditPlayerTransport(page,label,check,artifacts) {
   await player.focus();await video.evaluate(element=>element.pause());
   await page.emulateMedia({reducedMotion:'reduce'});
   await page.screenshot({path:join(artifacts,label.replace(/ /g,'-')+'-transport.png')});
+  await info.screenshot({path:join(artifacts,label.replace(/ /g,'-')+'-watch-info.png')});
 }

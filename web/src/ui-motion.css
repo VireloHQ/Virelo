@@ -35,16 +35,16 @@
 .app-shell .picker-menu {
   opacity:1;
   transform:scale(1);
-  transform-origin:top left;
+  transform-origin:top;
   animation:none;
   transition:opacity var(--dur-short) var(--ease-out),transform var(--dur-short) var(--ease-out),display var(--dur-short) allow-discrete;
 }
-.app-shell .picker[data-align="end"] .picker-menu { transform-origin:top right; }
-.app-shell .picker-menu[hidden] { opacity:0; transform:scale(.97); pointer-events:none; }
+.app-shell .picker[data-align="end"] .picker-menu { transform-origin:top; }
+.app-shell .picker-menu[hidden] { opacity:0; transform:scaleY(.97); pointer-events:none; }
 .app-shell .picker[data-animate="false"] .picker-menu { transition:none!important; }
 .app-shell .picker:has(:focus-visible) .picker-trigger svg { transition:none; }
 @starting-style {
-  .app-shell .picker[data-animate="true"] .picker-menu:not([hidden]) { opacity:0; transform:scale(.97); }
+  .app-shell .picker[data-animate="true"] .picker-menu:not([hidden]) { opacity:0; transform:scaleY(.97); }
 }
 
 /* A route or settings category appears as one surface, already in its final position. */

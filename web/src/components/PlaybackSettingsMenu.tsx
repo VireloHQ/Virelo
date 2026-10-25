@@ -5,6 +5,7 @@ import { PLAYBACK_SPEEDS, speedLabel } from '../utils/playback-speed';
 import type { PlaybackQuality, PlaybackTrack } from '../types';
 import type { QualityPreference } from '../utils/playback-quality';
 import { repeatLabels, type RepeatMode } from '../utils/playback-repeat';
+import { sidePopoverPlacement } from '../utils/context-menu';
 
 type Setting = 'settings'|'quality'|'audio'|'subtitles'|'video'|'repeat'|'speed';
 type FocusRequest = 'first'|'last'|'selected'|Setting;
@@ -22,6 +23,7 @@ interface PlaybackSettingsMenuProps {
   allowAutoQuality?: boolean;
   allowConversion?: boolean;
   unified?: boolean;
+  context?: boolean;
   pictureControls?: ReactNode;
   repeatMode?: RepeatMode;
   hasQueue?: boolean;
@@ -38,7 +40,7 @@ const titles: Record<Setting,string> = { settings:'Settings', quality:'Quality',
 export function PlaybackSettingsMenu({
   audioTracks, subtitleTracks, selectedAudio, selectedSubtitle, busy=false,
   qualityOptions, selectedQuality, qualityPreference, activeQuality=null, allowAutoQuality=false, allowConversion=true,
-  unified=false, pictureControls, repeatMode='off', hasQueue=false, onRepeatChange, speed=1, onSpeedChange,
+  unified=false, context=false, pictureControls, repeatMode='off', hasQueue=false, onRepeatChange, speed=1, onSpeedChange,
   onSelectAudio, onSelectSubtitle, onSelectQuality
 }: PlaybackSettingsMenuProps) {
   const [menu,setMenu] = useState<{section:Setting;open:boolean}>({section:'settings',open:false});
@@ -94,18 +96,24 @@ export function PlaybackSettingsMenu({
 
   useLayoutEffect(()=>{
     if(!open)return;
-    const controls=rootRef.current?.closest<HTMLElement>('.player-controls');
-    const player=rootRef.current?.closest<HTMLElement>('.player');
+    const controls=rootRef.current?.closest<HTMLElement>(context?'.player-action-menu':'.player-controls');
+    const player=context?controls:rootRef.current?.closest<HTMLElement>('.player');
     if(!controls||!player)return;
     const position=()=>{
       const bounds=controls.getBoundingClientRect(), button=trigger(open)?.getBoundingClientRect();
       if(!button)return;
       const limit=open==='video'?440:320;
-      const width=Math.min(open==='video'?300:280,bounds.width-16,window.innerWidth-16);
+      const width=Math.min(open==='video'?300:280,context?window.innerWidth-32:bounds.width-16,window.innerWidth-16);
       const above=Math.max(0,button.top-22), below=Math.max(0,window.innerHeight-button.bottom-22);
       const content=menuRef.current?.querySelector<HTMLElement>('.video-settings-content,.playback-track-list');
       const desiredHeight=Math.min(limit,(content?.scrollHeight||0)
         +(menuRef.current?.querySelector<HTMLElement>('.playback-menu-heading')?.offsetHeight||36)+16);
+      if(context) {
+        const side=sidePopoverPlacement(button,{width,height:desiredHeight},{width:innerWidth,height:innerHeight});
+        const next={...side,maxHeight:Math.min(limit,side.maxHeight)};
+        setPlacement(previous=>Object.keys(next).every(key=>previous[key as keyof typeof previous]===next[key as keyof typeof next])?previous:next);
+        return;
+      }
       const placeAbove=above>=desiredHeight||above>=below;
       const maxHeight=Math.min(limit,placeAbove?above:below);
       const height=Math.min(desiredHeight,maxHeight);
@@ -130,7 +138,7 @@ export function PlaybackSettingsMenu({
       window.removeEventListener('scroll',position,true);
       document.removeEventListener('fullscreenchange',position);
     };
-  },[open,unified]);
+  },[open,unified,context]);
 
   function toggleMenu(setting:Setting,pointer:boolean) {
     focusRequest.current='selected';
@@ -140,14 +148,14 @@ export function PlaybackSettingsMenu({
   function select(action:()=>void) { closeMenu(true); action(); }
   function settingButton(setting:Setting,label:string,icon:ReactNode,detail?:string) {
     const expanded=unified?Boolean(open):open===setting;
-    return <button type="button" data-setting={setting} className={expanded?'active':''}
+    return <button type="button" role={context?'menuitem':undefined} data-setting={setting} className={expanded?'active':''}
       aria-label={label} title={detail?label+': '+detail:label} aria-haspopup="menu"
       aria-expanded={expanded} aria-controls={expanded?menuId:undefined}
       onClick={event=>toggleMenu(setting,event.detail>0)}
       onKeyDownCapture={()=>setAnimateOpen(false)}
       onKeyDown={event=>{
         if(event.key==='Escape'&&open){event.preventDefault();event.stopPropagation();closeMenu(true);return;}
-        if(event.key==='ArrowDown'||event.key==='ArrowUp'){
+        if((context&&event.key==='ArrowRight')||(!context&&(event.key==='ArrowDown'||event.key==='ArrowUp'))){
           event.preventDefault();event.stopPropagation();
           setAnimateOpen(false);
           focusRequest.current=event.key==='ArrowUp'?'last':'first';
@@ -172,23 +180,24 @@ export function PlaybackSettingsMenu({
   const audioLabel=selectedAudioTrack?trackLabel(selectedAudioTrack,'Audio',selectedAudioTrack.typeIndex+1):'Default';
   const subtitleLabel=selectedSubtitleTrack?trackLabel(selectedSubtitleTrack,'Subtitle',selectedSubtitleTrack.typeIndex+1):'Off';
 
-  return <div className="playback-settings" ref={rootRef} onDoubleClick={event=>event.stopPropagation()}>
-    {unified?settingButton('settings','Playback settings',<DotsThree/>):<>
+  return <div className={'playback-settings'+(context?' context-playback-settings':'')} ref={rootRef} onDoubleClick={event=>event.stopPropagation()}>
+    {unified?settingButton('settings',context?'Settings':'Playback settings',context?<><Gear/><span>Settings</span><CaretRight/></>:<DotsThree/>):<>
       {qualityOptions.length>0&&settingButton('quality','Quality',<><MonitorPlay/><span className="playback-quality-label">{displayedQuality}</span></>,displayedQuality)}
       {allowConversion&&audioTracks.length>1&&settingButton('audio','Audio',<Waveform/>,audioLabel)}
       {subtitleTracks.length>0&&settingButton('subtitles','Subtitles',<Subtitles weight={selectedSubtitle===null?'regular':'fill'}/>,subtitleLabel)}
     </>}
-    {createPortal(<div ref={menuRef} id={menuId} className={'playback-settings-menu'+(shown==='video'?' video-settings-menu':'')}
+    {createPortal(<div ref={menuRef} id={menuId} className={'playback-settings-menu'+(shown==='video'?' video-settings-menu':'')+(context?' context-popover context-settings-menu':'')}
       hidden={!open} inert={!open} aria-hidden={!open} role={shown==='video'?'dialog':'menu'} aria-label={label} tabIndex={-1}
       data-side={placement.side} data-animate={animateOpen}
       style={{left:placement.left,top:placement.top,width:placement.width,maxHeight:placement.maxHeight,
-        '--popover-anchor-x':placement.anchor+'px'} as CSSProperties}
+        '--popover-anchor-x':placement.anchor+'px','--popover-anchor-y':placement.anchor+'px'} as CSSProperties}
       onClick={event=>event.stopPropagation()} onDoubleClick={event=>event.stopPropagation()} onContextMenu={event=>event.preventDefault()}
       onKeyDownCapture={()=>setAnimateOpen(false)}
       onKeyDown={event=>{
         event.stopPropagation();
         if(event.key==='Escape'){event.preventDefault();setAnimateOpen(false);unified&&open!=='settings'?goBack():closeMenu(true);return;}
         if(event.key==='ArrowLeft'&&unified&&open!=='settings'&&!(event.target instanceof HTMLInputElement)){event.preventDefault();setAnimateOpen(false);goBack();return;}
+        if(context&&event.key==='ArrowLeft'&&open==='settings'){event.preventDefault();setAnimateOpen(false);closeMenu(true);return;}
         if(event.key==='Tab'){
           if(open==='video'){
             const inputs=Array.from(menuRef.current?.querySelectorAll<HTMLElement>('button:not(:disabled),input')||[]);
@@ -206,7 +215,7 @@ export function PlaybackSettingsMenu({
       }}>
       <div key={shown} className="playback-menu-page">
       <div className="playback-menu-heading">
-        {unified&&shown!=='settings'?<><button type="button" className="playback-menu-back" aria-label="Back to playback settings" onClick={event=>{setAnimateOpen(event.detail>0);goBack();}}><CaretLeft/></button><h3>{label}</h3></>
+        {unified&&(shown!=='settings'||context)?<><button type="button" className="playback-menu-back" aria-label={context&&shown==='settings'?'Back to video actions':'Back to playback settings'} onClick={event=>{setAnimateOpen(event.detail>0);context&&shown==='settings'?closeMenu(true):goBack();}}><CaretLeft/></button><h3>{label}</h3></>
           :<h3>{shown==='settings'?<Gear/>:shown==='quality'?<MonitorPlay/>:shown==='audio'?<SpeakerHigh/>:shown==='speed'?<Gauge/>:<Subtitles/>}{label}</h3>}
       </div>
       {shown==='video'?pictureControls:<div className="playback-track-list">
