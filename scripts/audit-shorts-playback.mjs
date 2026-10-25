@@ -67,7 +67,8 @@ try {
   if (process.env.VIRELO_TEST_WEB_REPO) modes.push(['web', await serveWeb()]);
   for (const [mode, base] of modes) {
     for (const size of [{ name: 'desktop', width: 1440, height: 900, mobile: false },
-      { name: 'mobile', width: 390, height: 844, mobile: true }, { name: 'small', width: 320, height: 780, mobile: true }, { name: 'landscape', width: 844, height: 390, mobile: true }].filter(size=>!process.env.VIRELO_TEST_PLAYBACK_SCENARIO||size.name===process.env.VIRELO_TEST_PLAYBACK_SCENARIO)) {
+      { name: 'mobile', width: 390, height: 844, mobile: true }, { name: 'small', width: 320, height: 780, mobile: true },
+      { name: 'landscape', width: 844, height: 390, mobile: true }, { name: 'wide-landscape', width: 932, height: 430, mobile: true }].filter(size=>!process.env.VIRELO_TEST_PLAYBACK_SCENARIO||size.name===process.env.VIRELO_TEST_PLAYBACK_SCENARIO)) {
       const { mobile } = size;
       const label = mode + ' ' + size.name;
       const context = await browser.newContext({ serviceWorkers: 'block', reducedMotion: 'reduce',
@@ -108,6 +109,7 @@ api.mediaSource = async id => {
         }, items);
       }
       const prefix = mode === 'web' ? '/app' : '';
+      if(size.name!=='wide-landscape') {
       await page.goto(base + prefix + '/shorts?startId=' + items[0].id);
       await page.locator('.splash-screen').waitFor({ state: 'hidden' });
       const active = page.locator('.short-player video');
@@ -187,6 +189,7 @@ api.mediaSource = async id => {
       await page.waitForFunction(() => { const v = document.querySelector('.short-player video'); return v && !v.paused && v.currentTime > 0.1; });
       check(await page.evaluate(() => window.__previousShort.paused && !window.__previousShort.isConnected), label + ' swiping stops and releases the previous player');
       check(await page.getByRole('menu', { name: 'Quality', exact: true }).count() === 0, label + ' switching clips leaves no detached settings menu');
+      }
       await page.goto(base + prefix + '/watch/' + items[0].id + '?queue=false');
       await page.locator('.player:not(.short-player) .player-toolbar').waitFor();
       await auditPlayerSettings(page, label, check, root);

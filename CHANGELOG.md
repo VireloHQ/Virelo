@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Replace the stacked mobile player panel with centered playback controls, top-edge tools and a 44px bottom seek strip over a light edge gradient. Keep title details below the inline video, retain the fullscreen title, fit landscape playback above navigation, and leave repeat in Settings and shuffle in the Queue or fullscreen without duplicating them over the inline picture.
+
 - Make the Library's Playlists entry a filled, bordered navigation button with a list icon, direction arrow and 44px touch target. Keep it visible and usable beside sorting controls on mobile, with keyboard focus and normal link behavior.
 
 - Use the full detail-page text column for titles, with natural wrapping and matching loading placeholders. Keep compact queue drag previews aligned with the pointer in both layouts. Reveal header search beside a fixed toggle, preserve immediate keyboard operation, and replace purple playlist-field frames with a neutral keyboard-focus underline.

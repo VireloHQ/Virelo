@@ -554,7 +554,6 @@ button, a, input { -webkit-tap-highlight-color:transparent; }
   .media-card-copy strong { font-size:12px; }
   .detail-actions { display:grid; grid-template-columns:1fr; }
   .detail-actions .button { width:100%; }
-  .player.has-queue .skip-button,.player.has-queue .player-queue { display:none; }
   .setting-copy { align-items:flex-start; }
   .setting-row { align-items:flex-start; gap:16px; }
   .setting-row>.switch { margin-top:1px; }
