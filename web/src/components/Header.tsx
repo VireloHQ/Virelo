@@ -47,7 +47,13 @@ export function Header() {
           <Link to="/playlists" activeProps={{className:'active'}}>Playlists</Link>
         </nav>
         <div className="topbar-actions">
-          <div className={`header-search-shell ${searchOpen ? 'open' : ''}`} data-animate={animateSearch}>
+          <div className={`header-search-shell ${searchOpen ? 'open' : ''}`} data-animate={animateSearch}
+            onKeyDownCapture={event=>{
+              if(event.key==='Escape'&&searchOpen){
+                event.preventDefault();event.stopPropagation();setAnimateSearch(false);setMobileSearchOpen(false);
+                searchToggleRef.current?.focus({preventScroll:true});
+              }
+            }}>
             <div className="header-search-motion">
               <MagnifyingGlass className="header-search-icon" aria-hidden="true"/>
               <Button
@@ -74,7 +80,6 @@ export function Header() {
                 onChange={(e)=>setSearch(e.target.value)}
                 onKeyDown={(e)=>{
                   if (e.key === 'Enter') void navigate({to:searchDestination});
-                  if (e.key === 'Escape') { setAnimateSearch(false);setMobileSearchOpen(false);searchToggleRef.current?.focus({preventScroll:true}); }
                 }}
               />
             </div>

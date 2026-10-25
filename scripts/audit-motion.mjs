@@ -231,7 +231,8 @@ try {
     await page.keyboard.press('Enter');await search.waitFor();
     check(await page.locator('.header-search-shell').getAttribute('data-animate')==='false'
       &&await page.locator('.header-search-motion').evaluate(element=>getComputedStyle(element,'::before').transitionDuration.split(',').every(time=>parseFloat(time)===0)),label+' keyboard search opens immediately');
-    await page.keyboard.press('Escape');
+    await page.locator('.header-search-toggle').focus();await page.keyboard.press('Escape');
+    check(await page.getByRole('button',{name:'Search',exact:true}).getAttribute('aria-expanded')==='false',label+' Escape closes search even before input focus transfers');
     for(let attempt=0;attempt<3;attempt++) {
       await page.getByRole('button',{name:'Search',exact:true}).click();
       await page.getByRole('button',{name:'Close search',exact:true}).click();
