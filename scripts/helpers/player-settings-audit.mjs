@@ -6,11 +6,11 @@ export async function auditPlayerSettings(page, label, check, artifacts) {
   const video = player.locator('video');
   await player.focus();
   const toolbar = player.locator('.player-toolbar');
-  const geometry = await toolbar.boundingBox();
-  check(geometry.height <= 48, label + ' normal transport stays on one row');
+  const geometry = await toolbar.locator('.player-transport').boundingBox();
+  check(geometry.height <= 52, label + ' normal transport stays on one row');
   check(await page.locator('.watch-back').count() === 0, label + ' no redundant video back button');
   check(await toolbar.locator('[data-setting="quality"],[data-setting="audio"],[data-setting="subtitles"],[data-setting="video"]').count() === 0,
-    label + ' playback preferences share one gear button');
+    label + ' playback preferences share one More button');
   const root = page.getByRole('menu', { name: 'Settings', exact: true });
   const gear = page.getByRole('button', { name: 'Playback settings', exact: true });
   await openPlaybackSetting(page, 'Quality');

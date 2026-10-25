@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Replace the normal player's toolbar with a translucent media-control panel, title and remaining-time display, circular play/pause, 10-second rewind and 30-second forward. Keep shuffle, previous, next and repeat in a stable order, synchronize queue controls, and expose volume and Picture in Picture outside the ellipsis Settings menu.
+- Add device-local 0.25–2× playback speeds with pitch preservation and matching converted-audio rates. Animate pointer-driven Settings and submenu changes, separate options from header dividers, fade idle controls downward, and keep keyboard/reduced-motion operation immediate. Correct recovery-message text contrast in the Web app.
+
 - Add persistent named playlists with creation, renaming, ordered playback, shuffle, queue saving, video additions, drag/keyboard sorting, removal, undo and confirmed deletion. Keep playlists private to each npm account or local to the Web browser, preserve unavailable references and reject conflicting edits without modifying source files.
 
 - Reduce manual quality/audio switching delays with two-second demand segments, fingerprinted shared playback probes and immediate bounded HLS level changes. Switch only the audio when video conversion is already active, start audio at the current position, and preserve pause and selected tracks. Keep versioned caches and source files separate.
@@ -10,7 +13,7 @@
 
 - Complete confirmation-dialog exits through the overlay lifecycle, including interrupted transitions. Read motion durations in milliseconds or seconds so production CSS minification preserves startup timing.
 
-- Consolidate normal-player quality, audio, subtitles, picture adjustments, repeat and PiP into Settings. Keep mobile transport on one row, remove the redundant Back button and matching loading gap, and label Shorts audio/subtitle controls.
+- Consolidate normal-player quality, audio, subtitles, picture adjustments and repeat into Settings. Keep the mobile transport together, remove the redundant Back button and matching loading gap, and label Shorts audio/subtitle controls.
 
 - Unify app motion with 160–250ms feedback, restrained fades and small surface scales. Keep page text and search layout stationary, use reversible dialog/dropdown transitions, and preserve immediate keyboard operation and reduced-motion preferences.
 

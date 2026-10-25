@@ -1,21 +1,10 @@
 @import './playback-queue.css';
 
-/* A single transport cluster and a single viewing-tools cluster. */
-.player-toolbar { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:8px; }
-.player-transport,.player-tools { display:flex; align-items:center; gap:6px; min-width:0; }
-.player-tools { margin-left:auto; flex:none; }
-.player-transport { flex-wrap:nowrap; }
-.player-transport .player-time { flex:0 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-variant-numeric:tabular-nums; }
-:is(.player-transport,.player-tools,.repeat-control)>button { flex:none; width:38px; height:38px; display:grid; place-items:center; padding:0; border:0; border-radius:6px; background:transparent; color:#f4f2f6; cursor:pointer; }
-:is(.player-transport,.player-tools,.repeat-control)>button>svg { width:22px; height:22px; }
-:is(.player-transport,.player-tools,.repeat-control)>button:hover:not(:disabled) { background:rgba(255,255,255,.1); }
-:is(.player-transport,.player-tools,.repeat-control)>button:disabled { opacity:.3; cursor:not-allowed; }
-:is(.player-transport,.player-tools,.repeat-control)>button.active { color:var(--color-brand); background:rgba(255,255,255,.1); }
-:is(.player-transport,.player-tools,.repeat-control)>button:focus-visible { outline:2px solid var(--color-focus); outline-offset:-2px; }
 .repeat-control { flex:none; }
-.player-tools .playback-settings { gap:6px; margin-left:0; }
-.player-tools .playback-settings>button { border-radius:6px; }
-.player-queue { padding:0; min-width:0; border:0; border-radius:0; color:var(--muted-2); font-weight:500; }
+.repeat-control>button { width:40px; min-height:44px; display:grid; place-items:center; border:0; border-radius:6px; padding:0; background:transparent; color:#f4f2f6; cursor:pointer; }
+.repeat-control>button>svg { width:22px; height:22px; }
+.repeat-control>button.active { color:var(--color-brand); }
+.repeat-control>button:focus-visible { outline:2px solid var(--color-focus); outline-offset:-2px; }
 .player:focus-visible { outline:2px solid var(--color-focus); outline-offset:-2px; }
 .player.controls-visible .player-caption { translate:0 calc(var(--caption-bottom) - var(--player-controls-height,112px)); }
 
@@ -30,19 +19,6 @@
 .playback-track-list,.player-action-menu { scrollbar-width:none; }
 .playback-track-list::-webkit-scrollbar,.player-action-menu::-webkit-scrollbar { display:none; }
 
-
-@media (max-width:900px) {
-  .player-transport,.player-tools,.player-tools .playback-settings { gap:2px; }
-  :is(.player-transport,.player-tools,.repeat-control)>button,.player-tools .playback-settings>button { width:40px; min-width:40px; height:44px; }
-}
-@media (max-width:520px) {
-  .player-transport :is(.skip-button,.queue-previous),.player-transport .player-queue { display:none; }
-  .player-transport { gap:0; }
-  .player-toolbar { gap:6px; }
-  .player-tools,.player-tools .playback-settings { gap:0; }
-  :is(.player-transport,.player-tools,.repeat-control)>button,.player-tools .playback-settings>button { width:36px; min-width:36px; height:44px; }
-  .player-transport .player-time { font-size:11px; }
-}
 
 /* Shorts share playback behavior while keeping transport controls off the picture. */
 .player.short-player { height:100%; max-height:none; aspect-ratio:auto; overflow:visible; border-radius:14px; box-shadow:none; }
@@ -70,7 +46,6 @@
   .app-shell .short-player .short-actions button { gap:3px; }
   .app-shell .short-player .short-actions button>span:not(.favorite-icon-wrap) { display:block; font-size:9px; line-height:11px; }
 }
-@media (max-width:360px) { .player-transport .queue-next { display:none; } }
 .playback-menu-heading { flex:none; display:flex; align-items:center; border-bottom:1px solid var(--line); }
 .playback-menu-heading>h3 { flex:1; min-width:0; }
 .playback-menu-back { flex:none; width:40px; min-height:44px; display:grid; place-items:center; padding:8px; border:0; color:var(--text); background:transparent; font:inherit; font-size:14px; font-weight:600; cursor:pointer; }
@@ -83,3 +58,21 @@
 .playback-setting-row small { min-width:0; margin:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; text-align:right; }
 .playback-track-list .playback-setting-row>svg { color:var(--text-muted); }
 .short-player .short-actions .playback-setting-label { display:block; font-size:10px; font-weight:600; line-height:1.2; }
+/* Keep inactive pages inert while the surface finishes its exit. */
+.playback-settings-menu { opacity:1; transform:scale(1); }
+.playback-settings-menu[data-animate="true"] { transition:opacity var(--dur-short) var(--ease-out),transform var(--dur-short) var(--ease-out),display var(--dur-short) allow-discrete; }
+.playback-settings-menu[hidden] { display:none; opacity:0; transform:scale(.97); pointer-events:none; }
+.playback-settings-menu[data-animate="false"] { transition:none; }
+.playback-menu-page { display:flex; flex-direction:column; min-height:0; flex:1; opacity:1; }
+.playback-settings-menu .playback-track-list { padding:8px 2px 2px; }
+.playback-settings-menu[data-animate="true"] .playback-menu-page { transition:opacity var(--dur-micro) var(--ease-out); }
+@starting-style {
+  .playback-settings-menu[data-animate="true"]:not([hidden]) { opacity:0; transform:scale(.97); }
+  .playback-settings-menu[data-animate="true"] .playback-menu-page { opacity:0; }
+}
+@media (prefers-reduced-motion:reduce) {
+  .playback-settings-menu[data-animate="true"] { transition:opacity 80ms linear,display 80ms allow-discrete; transform:none; }
+  .playback-settings-menu[hidden] { transform:none; }
+  .playback-settings-menu .playback-menu-page { transition:none!important; }
+  @starting-style { .playback-settings-menu[data-animate="true"]:not([hidden]) { transform:none; } }
+}

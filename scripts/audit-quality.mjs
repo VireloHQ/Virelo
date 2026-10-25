@@ -126,7 +126,9 @@ try {
   check(true,mode+' queue wheel remains scrollable');
   await page.getByRole('button',{name:'Scroll queue right',exact:true}).click();
   check(true,mode+' queue arrow remains usable after wheel');
-  await page.locator('[aria-label="Volume"]').fill('0.35');
+  await page.getByRole('button',{name:'Volume',exact:true}).click();
+  await page.getByRole('slider',{name:'Volume',exact:true}).fill('0.35');
+  await page.keyboard.press('Escape');
   check(await page.locator('.player video').evaluate(v=>v.volume===.35),mode+' actual volume applied');
   await openPlaybackSetting(page, 'Quality');
   check(await page.getByRole('menuitemradio',{name:/^Auto/}).count()===(mode==='npm-network'?1:0),mode+' Auto is available only on network connections');
@@ -183,7 +185,9 @@ try {
   await mount(3);await waitVideo(480);
   await mount(1);await waitVideo(1080);
   check(await preference()==='source'&&await page.evaluate(()=>window.__starts.length+window.__conversions.length)===preparations,mode+' Original follows each source without quality preparation');
-  await page.getByRole('button',{name:'Mute',exact:true}).click();
+  await page.getByRole('button',{name:'Volume',exact:true}).click();
+ await page.getByRole('button',{name:'Mute',exact:true}).click();
+ await page.keyboard.press('Escape');
   await mount(2);await waitVideo(1080);
   check(await page.locator('.player video').evaluate(v=>v.muted&&v.volume===.35),mode+' mute and saved volume both follow next video');
   check(errors.length===0,mode+' no runtime errors: '+errors.join('|'));

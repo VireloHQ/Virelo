@@ -170,11 +170,14 @@ try {
     const originalOrder = await ids();
     await queue.getByRole('button', { name: 'Shuffle queue', exact: true }).click();
     check(await queue.getByRole('button', { name: 'Shuffle queue', exact: true }).getAttribute('aria-pressed') === 'true', label + ' shuffle is enabled');
+    const transportShuffle=page.locator('.player-transport').getByRole('button',{name:'Shuffle queue',exact:true});
+    check(await transportShuffle.getAttribute('aria-pressed')==='true',label+' player shuffle mirrors the queue');
     check((await ids())[0] === 1 && new Set(await ids()).size === 24, label + ' shuffle preserves playing item and membership');
-    await queue.getByRole('button', { name: 'Shuffle queue', exact: true }).click();
-    check(JSON.stringify(await ids()) === JSON.stringify(originalOrder), label + ' shuffle off restores custom order');
+    await transportShuffle.click();
+    check(JSON.stringify(await ids()) === JSON.stringify(originalOrder)&&await queue.getByRole('button',{name:'Shuffle queue',exact:true}).getAttribute('aria-pressed')==='false', label + ' player shuffle off restores custom order and syncs the queue');
     await queue.getByRole('button', { name: 'Repeat queue', exact: true }).click();
     check(await queue.getByRole('button', { name: 'Repeat queue', exact: true }).getAttribute('aria-pressed') === 'true', label + ' repeat enables');
+    check(await page.locator('.player-transport').getByRole('button',{name:'Repeat',exact:true}).getAttribute('aria-pressed')==='true',label+' player repeat mirrors the queue');
     await queue.getByRole('button', { name: 'Repeat queue', exact: true }).click();
     check(await queue.getByRole('button', { name: 'Repeat queue', exact: true }).getAttribute('aria-pressed') === 'false', label + ' repeat disables');
     await action(4, 'Play next'); check((await ids())[1] === 4, label + ' play next changes order');
@@ -247,7 +250,7 @@ try {
     check(await page.evaluate(() => localStorage.getItem('virelo.queue-layout')) === 'horizontal', label + ' layout preference persists without saving server settings');
     await page.evaluate(prefix => window.__router.navigate({ to: prefix + '/watch/1', search: { queue: true, sort: 'random' } }), prefix);
     await queue.waitFor();
-    check(await page.getByRole('button', { name: 'Shuffle queue', exact: true }).getAttribute('aria-pressed') === 'true', label + ' random queue starts in shuffle mode');
+    check(await queue.getByRole('button', { name: 'Shuffle queue', exact: true }).getAttribute('aria-pressed') === 'true', label + ' random queue starts in shuffle mode');
     check(await page.evaluate(() => window.__requests.filter(params => params.sort).every(params => params.sort === 'title')), label + ' random pagination uses stable source order');
     check(await page.evaluate(() => window.__mutations.length === 0 && window.__items.length === 24) && writes.length === 0, label + ' no library or source mutations');
     check(errors.length === 0, label + ' no uncaught browser errors: ' + errors.join('; '));

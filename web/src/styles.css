@@ -318,10 +318,8 @@ button, a, input { -webkit-tap-highlight-color:transparent; }
 .player { position:relative; width:100%; aspect-ratio:16/9; max-height:calc(100vh - 138px); border-radius:15px; overflow:hidden; background:#000; box-shadow:0 20px 60px rgba(0,0,0,.42); }
 .player:fullscreen,.player:-webkit-full-screen { width:100%; height:100%; max-height:none; aspect-ratio:auto; border-radius:0; }
 .player video { width:100%; height:100%; object-fit:contain; background:#000; cursor:pointer; }
-.player-gradient { position:absolute; pointer-events:none; inset:auto 0 0; height:32%; background:linear-gradient(transparent,rgba(0,0,0,.86)); transition:opacity var(--dur-short) var(--ease-out); }
 .player-controls { position:absolute; z-index:8; left:0; right:0; bottom:0; padding:0 18px 15px; opacity:0; pointer-events:none; transition:opacity var(--dur-short) var(--ease-out); }
 .player.controls-visible .player-controls { opacity:1; transform:none; pointer-events:auto; }
-.player:not(.controls-visible) .player-gradient { opacity:0; }
 .player:not(.controls-visible) video { cursor:none; }
 .player-seek { width:100%; height:18px; accent-color:var(--color-brand); cursor:pointer; }
 .player-toolbar { display:flex; flex-wrap:wrap; align-items:center; gap:12px; min-width:0; }
@@ -332,7 +330,6 @@ button, a, input { -webkit-tap-highlight-color:transparent; }
 .player-toolbar>button.active,.playback-settings>button.active { background:rgba(255,255,255,.14); color:var(--color-brand); }
 .player-toolbar>button svg,.playback-settings>button svg { width:22px; height:22px; }
 .player-toolbar .skip-button { color:#ddd; }
-.volume-slider { width:78px; accent-color:#fff; }
 .player-time { font-size:12px; color:#ddd; white-space:nowrap; }
 .playback-settings { display:flex; align-items:center; gap:4px; flex:none; }
 .playback-settings>button[data-setting="quality"] { display:flex; align-items:center; justify-content:center; gap:6px; width:auto; min-width:38px; padding:0 9px; border-radius:6px; }
@@ -519,7 +516,6 @@ button, a, input { -webkit-tap-highlight-color:transparent; }
   .playback-settings { gap:0; }
   .playback-settings>button[data-setting="quality"] { width:32px; min-width:32px; padding:0; }
   .playback-quality-label { display:none; }
-  .volume-slider { display:none; }
   .player-time { font-size:10px; }
   .watch-copy { padding:18px 16px; }
   .settings-grid { grid-template-columns:1fr; }

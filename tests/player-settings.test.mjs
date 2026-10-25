@@ -8,12 +8,15 @@ test('the normal player shares one settings entry instead of a row of preference
   assert.match(player, /unified=\{!shorts\}/);
   assert.match(player, /pictureControls=.*VideoSettingsPanel/);
   assert.doesNotMatch(player, /VideoSettingsMenu|RepeatControl/);
-  const tools = player.slice(player.indexOf('<div className="player-tools">'), player.indexOf('{contextPosition'));
-  assert.doesNotMatch(tools, /PictureInPicture/);
+  assert.match(player, /<PlayerControls title=\{item.title\}/);
+  const controls = await source('components/PlayerControls.tsx');
+  assert.match(controls, /aria-label=\{props.pip \? 'Exit Picture in Picture' : 'Picture in Picture'\}/);
   const menu = await source('components/PlaybackSettingsMenu.tsx');
-  for (const setting of ['quality', 'audio', 'subtitles', 'video', 'repeat']) assert.ok(menu.includes("sectionButton('" + setting + "'"));
+  for (const setting of ['quality', 'audio', 'subtitles', 'video', 'repeat', 'speed']) assert.ok(menu.includes("sectionButton('" + setting + "'"));
   assert.match(menu, /Playback settings/);
-  assert.match(menu, /Picture in Picture/);
+  assert.doesNotMatch(menu, /PictureInPicture|onPip/);
+  assert.match(menu, /'Playback settings',<DotsThree\/>/);
+  assert.match(menu, /hidden=\{!open\} inert=\{!open\}/);
 });
 
 test('Shorts audio and subtitle controls retain visible names', async () => {
@@ -38,7 +41,11 @@ test('menu navigation preserves range controls and picture changes have no separ
   const panel = await source('components/VideoSettingsPanel.tsx');
   assert.doesNotMatch(panel, /createPortal|useEffect|setOpen/);
   assert.match(panel, /Reset adjustments/);
-  const css = await source('player-ui.css');
+  const css = await source('player-transport.css');
   assert.match(css, /grid-template-columns:minmax\(0,1fr\) auto/);
   assert.match(css, /player-transport \{ flex-wrap:nowrap/);
+  assert.match(css, /translateY\(12px\)/);
+  const menuCss = await source('player-ui.css');
+  assert.match(menuCss, /playback-track-list \{ padding:8px/);
+  assert.match(menuCss, /playback-menu-page.*transition:opacity/);
 });

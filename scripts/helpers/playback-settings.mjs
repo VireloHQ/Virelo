@@ -1,6 +1,6 @@
 // Open a player preference in either the toolbar Settings menu or the direct Shorts controls.
 export async function openPlaybackSetting(page, label) {
-  const direct = page.getByRole('button', { name: label, exact: true });
+  const direct = page.locator('.playback-settings').getByRole('button', { name: label, exact: true });
   if (await direct.count()) { await direct.click(); return; }
   const root = page.getByRole('menu', { name: 'Settings', exact: true });
   if (!(await root.isVisible())) {

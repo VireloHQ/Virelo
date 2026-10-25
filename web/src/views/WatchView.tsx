@@ -9,6 +9,7 @@ import { SavePlaylist } from '../components/SavePlaylist';
 import { Player } from '../components/Player';
 import { queueDestination, type RepeatMode } from '../utils/playback-repeat';
 import { loadFavoriteQueue, loadMediaQueue } from '../utils/favorites';
+import { toggleQueueShuffle } from '../utils/playback-queue';
 import { usePlaybackQueue } from '../hooks/usePlaybackQueue';
 import { useQueueLayout } from '../hooks/useQueueLayout';
 import type { MediaItem, PlaylistDetail, QueueBehavior } from '../types';
@@ -61,7 +62,7 @@ function QueuedWatch({ source, initialId, behavior, shuffle, playlist, refreshEr
       <Player item={current} queue={items} queueIndex={activeIndex} onEnded={() => advance(1, true)}
         onNext={() => advance(1)} onPrev={() => advance(-1)}
         canGoNext={items.length > 1 && (activeIndex < items.length - 1 || wraps)} canGoPrev={items.length > 1 && (activeIndex > 0 || wraps)}
-        repeatMode={repeat} onRepeatChange={setRepeatOverride} autoPlay/>
+        repeatMode={repeat} onRepeatChange={setRepeatOverride} shuffled={queue.shuffled} onShuffle={()=>update(toggleQueueShuffle)} autoPlay/>
       <div className="watch-copy"><h1>{current.title}</h1><p className="watch-description">{current.overview || current.filename}</p>
         <PlaylistQueueActions items={items} playlist={playlist}/>
         {refreshError && <p className="error-copy" role="alert">Could not refresh the queue. {refreshError} <button type="button" onClick={onRetry}>Try again</button></p>}

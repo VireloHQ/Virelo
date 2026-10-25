@@ -1,11 +1,12 @@
-import { useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode, type SetStateAction } from 'react';
 import { createPortal } from 'react-dom';
-import { CaretLeft, CaretRight, Check, Gear, MonitorPlay, PictureInPicture, Repeat, SlidersHorizontal, SpeakerHigh, Subtitles, Waveform } from '@phosphor-icons/react';
+import { CaretLeft, CaretRight, Check, DotsThree, Gauge, Gear, MonitorPlay, Repeat, SlidersHorizontal, SpeakerHigh, Subtitles, Waveform } from '@phosphor-icons/react';
+import { PLAYBACK_SPEEDS, speedLabel } from '../utils/playback-speed';
 import type { PlaybackQuality, PlaybackTrack } from '../types';
 import type { QualityPreference } from '../utils/playback-quality';
 import { repeatLabels, type RepeatMode } from '../utils/playback-repeat';
 
-type Setting = 'settings'|'quality'|'audio'|'subtitles'|'video'|'repeat';
+type Setting = 'settings'|'quality'|'audio'|'subtitles'|'video'|'repeat'|'speed';
 type FocusRequest = 'first'|'last'|'selected'|Setting;
 
 interface PlaybackSettingsMenuProps {
@@ -25,22 +26,30 @@ interface PlaybackSettingsMenuProps {
   repeatMode?: RepeatMode;
   hasQueue?: boolean;
   onRepeatChange?: (mode: RepeatMode) => void;
-  pip?: boolean;
-  onPip?: () => void;
+  speed?: number;
+  onSpeedChange?: (speed: number) => void;
   onSelectAudio: (stream: number) => void;
   onSelectSubtitle: (stream: number|null) => void;
   onSelectQuality: (preference: QualityPreference) => void;
 }
 
-const titles: Record<Setting,string> = { settings:'Settings', quality:'Quality', audio:'Audio', subtitles:'Subtitles', video:'Picture', repeat:'Repeat' };
+const titles: Record<Setting,string> = { settings:'Settings', quality:'Quality', audio:'Audio', subtitles:'Subtitles', video:'Picture', repeat:'Repeat', speed:'Playback speed' };
 
 export function PlaybackSettingsMenu({
   audioTracks, subtitleTracks, selectedAudio, selectedSubtitle, busy=false,
   qualityOptions, selectedQuality, qualityPreference, activeQuality=null, allowAutoQuality=false, allowConversion=true,
-  unified=false, pictureControls, repeatMode='off', hasQueue=false, onRepeatChange, pip=false, onPip,
+  unified=false, pictureControls, repeatMode='off', hasQueue=false, onRepeatChange, speed=1, onSpeedChange,
   onSelectAudio, onSelectSubtitle, onSelectQuality
 }: PlaybackSettingsMenuProps) {
-  const [open,setOpen] = useState<Setting|null>(null);
+  const [menu,setMenu] = useState<{section:Setting;open:boolean}>({section:'settings',open:false});
+  const open=menu.open?menu.section:null;
+  const shown=menu.section;
+  function setOpen(action:SetStateAction<Setting|null>) {
+    setMenu(previous=>{
+      const next=typeof action==='function'?action(previous.open?previous.section:null):action;
+      return next?{section:next,open:true}:{...previous,open:false};
+    });
+  }
   const [animateOpen,setAnimateOpen] = useState(false);
   const [placement,setPlacement] = useState({left:0,top:0,width:280,maxHeight:320,anchor:140,side:'above'});
   const rootRef = useRef<HTMLDivElement>(null);
@@ -135,6 +144,7 @@ export function PlaybackSettingsMenu({
       aria-label={label} title={detail?label+': '+detail:label} aria-haspopup="menu"
       aria-expanded={expanded} aria-controls={expanded?menuId:undefined}
       onClick={event=>toggleMenu(setting,event.detail>0)}
+      onKeyDownCapture={()=>setAnimateOpen(false)}
       onKeyDown={event=>{
         if(event.key==='Escape'&&open){event.preventDefault();event.stopPropagation();closeMenu(true);return;}
         if(event.key==='ArrowDown'||event.key==='ArrowUp'){
@@ -155,7 +165,7 @@ export function PlaybackSettingsMenu({
     </button>;
   }
 
-  const label=open?titles[open]:'Settings';
+  const label=titles[shown];
   const displayedQuality=qualityPreference==='source'?'Original':qualityPreference==='auto'&&allowAutoQuality?'Auto':qualityLabel(selectedQuality??activeQuality??qualityOptions[0]?.height);
   const selectedAudioTrack=audioTracks.find(track=>track.index===selectedAudio);
   const selectedSubtitleTrack=subtitleTracks.find(track=>track.index===selectedSubtitle);
@@ -163,17 +173,18 @@ export function PlaybackSettingsMenu({
   const subtitleLabel=selectedSubtitleTrack?trackLabel(selectedSubtitleTrack,'Subtitle',selectedSubtitleTrack.typeIndex+1):'Off';
 
   return <div className="playback-settings" ref={rootRef} onDoubleClick={event=>event.stopPropagation()}>
-    {unified?settingButton('settings','Playback settings',<Gear/>):<>
+    {unified?settingButton('settings','Playback settings',<DotsThree/>):<>
       {qualityOptions.length>0&&settingButton('quality','Quality',<><MonitorPlay/><span className="playback-quality-label">{displayedQuality}</span></>,displayedQuality)}
       {allowConversion&&audioTracks.length>1&&settingButton('audio','Audio',<Waveform/>,audioLabel)}
       {subtitleTracks.length>0&&settingButton('subtitles','Subtitles',<Subtitles weight={selectedSubtitle===null?'regular':'fill'}/>,subtitleLabel)}
     </>}
-    {open&&createPortal(<div ref={menuRef} id={menuId} className={'playback-settings-menu'+(open==='video'?' video-settings-menu':'')}
-      role={open==='video'?'dialog':'menu'} aria-label={label} tabIndex={-1}
+    {createPortal(<div ref={menuRef} id={menuId} className={'playback-settings-menu'+(shown==='video'?' video-settings-menu':'')}
+      hidden={!open} inert={!open} aria-hidden={!open} role={shown==='video'?'dialog':'menu'} aria-label={label} tabIndex={-1}
       data-side={placement.side} data-animate={animateOpen}
       style={{left:placement.left,top:placement.top,width:placement.width,maxHeight:placement.maxHeight,
         '--popover-anchor-x':placement.anchor+'px'} as CSSProperties}
       onClick={event=>event.stopPropagation()} onDoubleClick={event=>event.stopPropagation()} onContextMenu={event=>event.preventDefault()}
+      onKeyDownCapture={()=>setAnimateOpen(false)}
       onKeyDown={event=>{
         event.stopPropagation();
         if(event.key==='Escape'){event.preventDefault();setAnimateOpen(false);unified&&open!=='settings'?goBack():closeMenu(true);return;}
@@ -193,49 +204,54 @@ export function PlaybackSettingsMenu({
         const next=event.key==='Home'?0:event.key==='End'?options.length-1:(current+(event.key==='ArrowDown'?1:-1)+options.length)%options.length;
         options[next].focus({preventScroll:true});
       }}>
+      <div key={shown} className="playback-menu-page">
       <div className="playback-menu-heading">
-        {unified&&open!=='settings'?<><button type="button" className="playback-menu-back" aria-label="Back to playback settings" onClick={goBack}><CaretLeft/></button><h3>{label}</h3></>
-          :<h3>{open==='settings'?<Gear/>:open==='quality'?<MonitorPlay/>:open==='audio'?<SpeakerHigh/>:<Subtitles/>}{label}</h3>}
+        {unified&&shown!=='settings'?<><button type="button" className="playback-menu-back" aria-label="Back to playback settings" onClick={event=>{setAnimateOpen(event.detail>0);goBack();}}><CaretLeft/></button><h3>{label}</h3></>
+          :<h3>{shown==='settings'?<Gear/>:shown==='quality'?<MonitorPlay/>:shown==='audio'?<SpeakerHigh/>:shown==='speed'?<Gauge/>:<Subtitles/>}{label}</h3>}
       </div>
-      {open==='video'?pictureControls:<div className="playback-track-list">
-        {open==='settings'&&<>
+      {shown==='video'?pictureControls:<div className="playback-track-list">
+        {shown==='settings'&&<>
           {qualityOptions.length>0&&sectionButton('quality',<MonitorPlay/>,displayedQuality)}
           {allowConversion&&audioTracks.length>1&&sectionButton('audio',<Waveform/>,audioLabel)}
           {subtitleTracks.length>0&&sectionButton('subtitles',<Subtitles/>,subtitleLabel)}
           {pictureControls&&sectionButton('video',<SlidersHorizontal/>,'Fit, rotation and color')}
           {onRepeatChange&&sectionButton('repeat',<Repeat/>,repeatLabels[repeatMode])}
-          {onPip&&<button type="button" role="menuitem" className="playback-setting-row" onClick={()=>select(onPip)}><PictureInPicture/><span>{pip?'Exit Picture in Picture':'Picture in Picture'}</span></button>}
+          {onSpeedChange&&sectionButton('speed',<Gauge/>,speed===1?'1×':speedLabel(speed))}
         </>}
-        {open==='repeat'&&(['off','one',...(hasQueue?['queue']:[])] as RepeatMode[]).map(mode=><button key={mode} type="button" role="menuitemradio" tabIndex={-1}
+        {shown==='speed'&&PLAYBACK_SPEEDS.map(value=><button key={value} type="button" role="menuitemradio" tabIndex={-1}
+          aria-checked={speed===value} className={speed===value?'selected':''} onClick={()=>select(()=>onSpeedChange?.(value))}>
+          <span><strong>{speedLabel(value)}</strong></span>{speed===value&&<Check weight="bold"/>}
+        </button>)}
+        {shown==='repeat'&&(['off','one',...(hasQueue?['queue']:[])] as RepeatMode[]).map(mode=><button key={mode} type="button" role="menuitemradio" tabIndex={-1}
           aria-checked={repeatMode===mode} className={repeatMode===mode?'selected':''} onClick={()=>select(()=>onRepeatChange?.(mode))}>
           <span><strong>{repeatLabels[mode]}</strong></span>{repeatMode===mode&&<Check weight="bold"/>}
         </button>)}
-        {open==='quality'&&<button type="button" role="menuitemradio" tabIndex={-1}
+        {shown==='quality'&&<button type="button" role="menuitemradio" tabIndex={-1}
           aria-checked={qualityPreference==='source'} className={qualityPreference==='source'?'selected':''}
           disabled={busy} onClick={()=>select(()=>onSelectQuality('source'))}>
           <span><strong>Original Quality</strong><small>Uses each video's original resolution</small></span>
           {qualityPreference==='source'&&<Check weight="bold"/>}
         </button>}
-        {open==='quality'&&!allowConversion&&<p className="account-notice">Video conversion is disabled for this account.</p>}
-        {open==='quality'&&allowAutoQuality&&allowConversion&&<button type="button" role="menuitemradio" tabIndex={-1}
+        {shown==='quality'&&!allowConversion&&<p className="account-notice">Video conversion is disabled for this account.</p>}
+        {shown==='quality'&&allowAutoQuality&&allowConversion&&<button type="button" role="menuitemradio" tabIndex={-1}
           aria-checked={qualityPreference==='auto'} className={qualityPreference==='auto'?'selected':''}
           disabled={busy} onClick={()=>select(()=>onSelectQuality('auto'))}>
           <span><strong>Auto</strong><small>{activeQuality?`Playing at ${qualityLabel(activeQuality)}`:'Adjusts to your network'}</small></span>
           {qualityPreference==='auto'&&<Check weight="bold"/>}
         </button>}
-        {open==='quality'&&allowConversion&&qualityOptions.map((quality,index)=><button type="button" role="menuitemradio" tabIndex={-1}
+        {shown==='quality'&&allowConversion&&qualityOptions.map((quality,index)=><button type="button" role="menuitemradio" tabIndex={-1}
           aria-checked={typeof qualityPreference==='number'&&selectedQuality===quality.height} className={typeof qualityPreference==='number'&&selectedQuality===quality.height?'selected':''}
           disabled={busy} key={quality.height} onClick={()=>select(()=>onSelectQuality(quality.height))}>
           <span><strong>{quality.label}</strong><small>{index===0?'Highest available':formatBitrate(quality.bitrate)}</small></span>
           {typeof qualityPreference==='number'&&selectedQuality===quality.height&&<Check weight="bold"/>}
         </button>)}
-        {open==='audio'&&audioTracks.map(track=><button type="button" role="menuitemradio" tabIndex={-1}
+        {shown==='audio'&&audioTracks.map(track=><button type="button" role="menuitemradio" tabIndex={-1}
           aria-checked={selectedAudio===track.index} className={selectedAudio===track.index?'selected':''}
           disabled={busy||!track.supported} key={track.index} onClick={()=>select(()=>onSelectAudio(track.index))}>
           <span><strong>{trackLabel(track,'Audio',track.typeIndex+1)}</strong><small>{track.supported?trackMeta(track):`${track.codec.toUpperCase()} · Unavailable`}</small></span>
           {selectedAudio===track.index&&<Check weight="bold"/>}
         </button>)}
-        {open==='subtitles'&&<>
+        {shown==='subtitles'&&<>
           <button type="button" role="menuitemradio" tabIndex={-1} aria-checked={selectedSubtitle===null}
             className={selectedSubtitle===null?'selected':''} disabled={busy} onClick={()=>select(()=>onSelectSubtitle(null))}>
             <span><strong>Off</strong></span>{selectedSubtitle===null&&<Check weight="bold"/>}
@@ -248,6 +264,7 @@ export function PlaybackSettingsMenu({
           </button>)}
         </>}
       </div>}
+      </div>
     </div>,document.fullscreenElement||document.body)}
   </div>;
 }

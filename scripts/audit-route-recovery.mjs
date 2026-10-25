@@ -30,7 +30,8 @@ async function serve(root) {
     if (url.pathname === '/__audit/clip.mp4' || url.pathname === '/api/media/1/stream') { response.setHeader('Content-Type','video/mp4'); response.end(clip); return; }
     if (url.pathname.startsWith('/api/')) {
       let value = {};
-      if (url.pathname === '/api/settings') value = settings;
+      if (url.pathname === '/api/auth/status') value = {setupRequired:false,localAccess:true,user:{id:1,revision:1,username:'audit',displayName:'Audit',enabled:true,isAdmin:true,allLibraries:true,libraryIds:[],permissions:{play:true,transcode:true,manageLibraries:true,scanLibraries:true,manageMetadata:true}}};
+      else if (url.pathname === '/api/settings') value = settings;
       else if (url.pathname === '/api/home') value = {recent:[item],featured:[item],continueWatching:[],liked:[],favorites:[],series:[],shorts:[],movies:[item],nextEpisodes:[],unwatched:[],shortMovies:[],quickWatches:[],genres:[],total:1};
       else if (url.pathname === '/api/media/1') value = item;
       else if (url.pathname === '/api/media') value = [item];
@@ -114,6 +115,16 @@ try {
     const before = await page.evaluate(() => ({time:window.__playingVideo.currentTime,doc:window.__documentId,url:location.href}));
     await clickLibrary(page);
     await page.locator('.route-recovery-notice').waitFor();
+    const contrast=await page.locator('.route-recovery-notice p').evaluate(element=>{
+      const luminance=color=>{
+        const context=document.createElement('canvas').getContext('2d');context.fillStyle=color;context.fillRect(0,0,1,1);
+        const rgb=Array.from(context.getImageData(0,0,1,1).data).slice(0,3).map(value=>value/255).map(value=>value<=.04045?value/12.92:((value+.055)/1.055)**2.4);
+        return rgb[0]*.2126+rgb[1]*.7152+rgb[2]*.0722;
+      };
+      const text=luminance(getComputedStyle(element).color),background=luminance(getComputedStyle(element.closest('.route-recovery-notice')).backgroundColor);
+      return (Math.max(text,background)+.05)/(Math.min(text,background)+.05);
+    });
+    check(contrast>=4.5,mode+' recovery description meets text contrast requirements');
     check(page.url() === before.url, mode + ' failed navigation leaves the URL and current screen unchanged');
     check(requests.length === 3 && requests.some(url => url.includes('virelo-retry=')), mode + ' bounded cache-busting retries');
     await continuity(page,before,mode + ' persistent chunk failure');

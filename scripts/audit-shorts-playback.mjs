@@ -1,5 +1,6 @@
 import { openPlaybackSetting } from './helpers/playback-settings.mjs';
 import { auditPlayerSettings } from './helpers/player-settings-audit.mjs';
+import { auditPlayerTransport } from './helpers/player-transport-audit.mjs';
 import { auditPlayerSwitching } from './helpers/player-switching-audit.mjs';
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
@@ -189,6 +190,7 @@ api.mediaSource = async id => {
       await page.goto(base + prefix + '/watch/' + items[0].id + '?queue=false');
       await page.locator('.player:not(.short-player) .player-toolbar').waitFor();
       await auditPlayerSettings(page, label, check, root);
+      await auditPlayerTransport(page, label, check, root);
       if (size.name === 'desktop' || size.name === 'mobile') await auditPlayerSwitching(page, label, check);
       check(errors.length === 0, label + ' no browser exceptions: ' + JSON.stringify(errors));
       await context.close();

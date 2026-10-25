@@ -65,7 +65,9 @@ try {
  const show=()=>page.evaluate(()=>{window.__hidden=false;document.dispatchEvent(new Event('visibilitychange'));window.dispatchEvent(new Event('focus'));});
  const snapshot=()=>page.locator('.player').evaluate(e=>{const v=e.querySelector('video'),a=e.querySelector('audio');return {videoPaused:v.paused,videoTime:v.currentTime,audioPaused:a.paused,audioTime:a.currentTime,videoSource:v.currentSrc,audioSource:a.currentSrc};});
  await mount(2);await page.waitForFunction(()=>document.querySelector('.player video')?.currentTime>.2);
- await page.locator('[aria-label="Volume"]').fill('0.25');
+ await page.getByRole('button',{name:'Volume',exact:true}).click();
+ await page.getByRole('slider',{name:'Volume',exact:true}).fill('0.25');
+ await page.keyboard.press('Escape');
  await openPlaybackSetting(page, 'Audio');await page.getByRole('menuitemradio',{name:/^Alternate/}).click();
  await page.waitForFunction(()=>{const v=document.querySelector('.player video'),a=document.querySelector('.player audio');return v&&!v.paused&&a&&!a.paused&&a.currentTime>.3&&Math.abs(v.currentTime-a.currentTime)<.5;});
  check(await page.locator('.player').evaluate(e=>e.querySelector('video').volume===.25&&e.querySelector('audio').volume===.25),mode+' saved volume applies to separate converted soundtrack');
@@ -99,7 +101,9 @@ try {
  await page.getByRole('button',{name:'Play',exact:true}).click();await hide();await page.locator('.player video').evaluate(v=>v.pause());await show();
  await page.waitForFunction(()=>!document.querySelector('.player video').paused);
  check(true,mode+' browser-imposed native pause recovers on foreground');
+ await page.getByRole('button',{name:'Volume',exact:true}).click();
  await page.getByRole('button',{name:'Mute',exact:true}).click();
+ await page.keyboard.press('Escape');
  await page.evaluate(async mode=>{
    window.__demoRoot.unmount();document.body.replaceChildren(window.__appRoot);
    const {api}=await import('/src/api.ts');
