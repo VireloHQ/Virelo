@@ -123,6 +123,15 @@ export async function auditPlayerTransport(page,label,check,artifacts) {
   await page.waitForFunction(()=>!document.querySelector('.player').classList.contains('controls-visible'));
   const movement=await player.locator('.player-controls').evaluate(element=>({transform:getComputedStyle(element).transform,transition:getComputedStyle(element).transitionProperty}));
   check(movement.transition.includes('transform')&&movement.transform!=='none',label+' inactive controls fade downwards');
+  if(compact){
+    const rect=await player.boundingBox();
+    await page.touchscreen.tap(rect.x+16,rect.y+rect.height*.4);
+    await page.waitForFunction(()=>document.querySelector('.player').classList.contains('controls-visible'));
+    check(await video.evaluate(element=>!element.paused),label+' first touch reveals hidden controls without pausing');
+    await page.touchscreen.tap(rect.x+16,rect.y+rect.height*.4);
+    await page.waitForFunction(()=>document.querySelector('.player video').paused);
+    check(true,label+' a second touch on the picture pauses playback');
+  }
   await player.focus();await video.evaluate(element=>element.pause());
   await page.emulateMedia({reducedMotion:'reduce'});
   await page.screenshot({path:join(artifacts,label.replace(/ /g,'-')+'-transport.png')});
