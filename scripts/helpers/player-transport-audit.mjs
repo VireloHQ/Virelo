@@ -61,6 +61,7 @@ export async function auditPlayerTransport(page,label,check,artifacts) {
   await dialog.getByRole('button',{name:'Unmute',exact:true}).click();
   await page.keyboard.press('Escape');
   await dialog.waitFor({state:'hidden'});
+  await page.waitForFunction(()=>document.activeElement===document.querySelector('.player .player-volume-trigger'));
   check(await volume.evaluate(element=>document.activeElement===element),label+' closing volume restores trigger focus');
   await openPlaybackSetting(page,'Playback speed');
   await page.getByRole('menuitemradio',{name:'1.5×',exact:true}).click();
@@ -128,6 +129,7 @@ export async function auditPlayerTransport(page,label,check,artifacts) {
     await page.touchscreen.tap(rect.x+16,rect.y+rect.height*.4);
     await page.waitForFunction(()=>document.querySelector('.player').classList.contains('controls-visible'));
     check(await video.evaluate(element=>!element.paused),label+' first touch reveals hidden controls without pausing');
+    await page.waitForTimeout(400); // Separate taps must not invoke the existing double-click fullscreen shortcut.
     await page.touchscreen.tap(rect.x+16,rect.y+rect.height*.4);
     await page.waitForFunction(()=>document.querySelector('.player video').paused);
     check(true,label+' a second touch on the picture pauses playback');
