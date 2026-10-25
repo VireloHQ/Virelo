@@ -30,7 +30,7 @@
 }
 .player:not(.short-player) .player-play-button>svg { width:25px; height:25px; }
 .player:not(.short-player) .skip-button>.player-seek-icon { width:27px; height:27px; }
-.player-seek-icon>text { font-family:var(--font-body); font-size:9px; font-weight:500; }
+.player-seek-icon { display:block; background:currentColor; mask-size:contain; mask-position:center; mask-repeat:no-repeat; }
 .player-tools .playback-settings { gap:0; margin:0; }
 .player:not(.short-player) :is(.player-transport,.player-tools,.repeat-control,.playback-settings,.player-volume)>button:focus-visible,
 .player-volume-dialog :is(button,input):focus-visible { outline:2px solid var(--color-focus); outline-offset:-2px; }
@@ -89,7 +89,7 @@
   .player:not(.short-player) .player-tools :is(button,.playback-settings>button),
   .player:not(.short-player) .player-transport>button { width:44px; min-width:44px; }
   .player:not(.short-player) .player-transport { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:max-content; max-width:calc(100% - 16px); gap:2px; }
-  .player:not(.short-player) .player-transport button>svg { filter:drop-shadow(0 1px 2px #000b); }
+  .player:not(.short-player) .player-transport button>:is(svg,.player-seek-icon) { filter:drop-shadow(0 1px 2px #000b); }
   .player:not(.short-player) .player-transport>.player-play-button { background:#0004; }
   .player:not(.short-player) .player-transport>button[aria-label="Shuffle queue"],
   .player:not(.short-player) .player-transport>.repeat-control,

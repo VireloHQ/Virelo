@@ -3,6 +3,8 @@ import { Button, Popover } from '@heroui/react';
 import { ArrowsOut, Pause, PictureInPicture, Play, Shuffle, SkipBack, SkipForward, SpeakerHigh, SpeakerSlash } from '@phosphor-icons/react';
 import { RepeatControl } from './RepeatControl';
 import type { RepeatMode } from '../utils/playback-repeat';
+import replay10 from '../assets/icons/replay-10.svg';
+import forward30 from '../assets/icons/forward-30.svg';
 import '../player-transport.css';
 
 interface PlayerControlsProps {
@@ -38,9 +40,9 @@ export function PlayerControls(props: PlayerControlsProps) {
       <div className="player-transport" role="group" aria-label="Playback controls">
         <button type="button" aria-label="Shuffle queue" aria-pressed={Boolean(props.shuffled)} disabled={!props.onShuffle || !hasQueue} onClick={props.onShuffle}><Shuffle/></button>
         <button type="button" className="queue-previous" aria-label="Previous video" disabled={!props.onPrev || !props.canGoPrev} onClick={props.onPrev}><SkipBack weight="fill"/></button>
-        <button type="button" className="skip-button" aria-label="Rewind 10 seconds" onClick={() => props.onSeekBy(-10)}><SeekIcon seconds={10}/></button>
+        <button type="button" className="skip-button" aria-label="Rewind 10 seconds" onClick={() => props.onSeekBy(-10)}><span className="player-seek-icon" style={{maskImage:`url("${replay10}")`}} aria-hidden="true"/></button>
         <button type="button" className="player-play-button" aria-label={paused ? 'Play' : 'Pause'} aria-busy={busy} onClick={props.onToggle}>{paused ? <Play weight="fill"/> : <Pause weight="fill"/>}</button>
-        <button type="button" className="skip-button" aria-label="Fast-forward 30 seconds" onClick={() => props.onSeekBy(30)}><SeekIcon seconds={30} forward/></button>
+        <button type="button" className="skip-button" aria-label="Fast-forward 30 seconds" onClick={() => props.onSeekBy(30)}><span className="player-seek-icon" style={{maskImage:`url("${forward30}")`}} aria-hidden="true"/></button>
         <button type="button" className="queue-next" aria-label="Next video" disabled={!props.onNext || !props.canGoNext} onClick={props.onNext}><SkipForward weight="fill"/></button>
         <RepeatControl mode={repeat} hasQueue={hasQueue} onChange={onRepeat}/>
       </div>
@@ -53,13 +55,6 @@ export function PlayerControls(props: PlayerControlsProps) {
       </div>
     </div>
   </div>;
-}
-
-function SeekIcon({ seconds, forward = false }: { seconds: number; forward?: boolean }) {
-  return <svg className="player-seek-icon" viewBox="0 0 28 28" aria-hidden="true">
-    <path d="M6 14a8 8 0 1 1 16 0M2 10l4 4 4-4" transform={forward?'translate(28 0) scale(-1 1)':undefined} fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-    <text x="14" y="23" textAnchor="middle" fill="currentColor">{seconds}</text>
-  </svg>;
 }
 
 function PlayerVolume({ volume, muted, onVolume, onMute }: { volume: number; muted: boolean; onVolume: (value: number) => void; onMute: () => void }) {

@@ -1,9 +1,10 @@
-import { CaretRight } from '@phosphor-icons/react';
+import { CaretRight, type Icon } from '@phosphor-icons/react';
 
 interface SettingsSection {
   id: string;
   label: string;
   description: string;
+  icon: Icon;
 }
 
 export function SettingsNavigation({ sections, activeSection, onSelect }: {
@@ -22,6 +23,7 @@ export function SettingsNavigation({ sections, activeSection, onSelect }: {
       aria-controls={activeSection === section.id ? `settings-panel-${section.id}` : undefined}
       onClick={() => onSelect(section.id)}
     >
+      <section.icon className="settings-nav-icon" aria-hidden="true"/>
       <span className="settings-nav-copy"><strong>{section.label}</strong><small>{section.description}</small></span>
       <CaretRight className="settings-nav-chevron" aria-hidden="true"/>
     </button>)}

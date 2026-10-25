@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useLocation, useNavigate } from '@tanstack/react-router';
 import { Button, Switch } from '@heroui/react';
-import { ArrowLeft, CheckCircle, WarningCircle } from '@phosphor-icons/react';
+import { ArrowLeft, CheckCircle, Database, DeviceMobile, Folders, ImageSquare, PlayCircle, SlidersHorizontal, TerminalWindow, UserCircle, UsersThree, WarningCircle } from '@phosphor-icons/react';
 import { api } from '../api';
 import { LibrarySettings } from '../components/LibrarySettings';
 import { Select } from '../components/Select';
@@ -17,15 +17,15 @@ import { DataManagement } from '../components/DataManagement';
 import { CustomCommandSettings } from '../components/CustomCommandSettings';
 
 const settingsSections = [
-  { id:'account', label:'Account', description:'Your name, password and sign-in' },
-  { id:'accounts', label:'Account Manager', description:'Users, library access and permissions' },
-  { id:'libraries', label:'Libraries', description:'Folders and automatic scanning' },
-  { id:'network', label:'Metadata', description:'Titles, posters and artwork' },
-  { id:'playback', label:'Playback', description:'What plays next' },
-  { id:'shorts', label:'Shorts', description:'Videos in your vertical feed' },
-  { id:'data', label:'Data management', description:'Storage usage and playback cache' },
-  { id:'commands', label:'External tools', description:'Custom commands on this PC' },
-  { id:'tools', label:'Advanced', description:'Media tool availability' },
+  { id:'account', label:'Account', description:'Your name, password and sign-in', icon:UserCircle },
+  { id:'accounts', label:'Account Manager', description:'Users, library access and permissions', icon:UsersThree },
+  { id:'libraries', label:'Libraries', description:'Folders and automatic scanning', icon:Folders },
+  { id:'network', label:'Metadata', description:'Titles, posters and artwork', icon:ImageSquare },
+  { id:'playback', label:'Playback', description:'What plays next', icon:PlayCircle },
+  { id:'shorts', label:'Shorts', description:'Videos in your vertical feed', icon:DeviceMobile },
+  { id:'data', label:'Data management', description:'Storage usage and playback cache', icon:Database },
+  { id:'commands', label:'External tools', description:'Custom commands on this PC', icon:TerminalWindow },
+  { id:'tools', label:'Advanced', description:'Media tool availability', icon:SlidersHorizontal },
 ] as const;
 const QUEUE_OPTIONS = [
   { value: 'auto', label: 'Auto next, stop at end' },

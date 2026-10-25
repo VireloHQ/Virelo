@@ -11,6 +11,7 @@ export async function auditPlayerTransport(page,label,check,artifacts) {
   check(JSON.stringify(names)===JSON.stringify(compact?['Rewind 10 seconds','Play','Fast-forward 30 seconds']:['Shuffle queue','Previous video','Rewind 10 seconds','Play','Fast-forward 30 seconds','Next video','Repeat']),label+' transport retains the appropriate action order without mobile duplicates');
   check(await transport.getByRole('button').evaluateAll(buttons=>buttons.every(button=>{const box=button.getBoundingClientRect();return box.width>=40&&box.height>=44;})),label+' transport touch targets remain usable');
   check(await player.locator('.player-title').count()===0,label+' controls do not repeat the video title');
+  check(await player.locator('.skip-button .player-seek-icon').evaluateAll(icons=>icons.length===2&&icons.every(icon=>{const style=getComputedStyle(icon);return style.maskImage!=='none'&&style.backgroundColor!=='rgba(0, 0, 0, 0)'&&icon.getBoundingClientRect().width===27;})),label+' bundled seek icons render at the intended size');
   check(await player.locator('.player-toolbar').evaluate(element=>element.scrollWidth<=element.clientWidth)&&await transport.evaluate(element=>element.scrollWidth<=element.clientWidth),label+' toolbar and transport do not overflow');
   const geometry=await player.locator('.player-controls').boundingBox(),viewport=page.viewportSize();
   if(compact){
