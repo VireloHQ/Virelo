@@ -36,7 +36,7 @@
 .loading-progress { height:4px; width:100%; border-radius:2px; }
 .loading-watch-layout>.loading-copy { margin-top:28px; }
 .loading-watch-layout>.loading-shelves { padding:36px 0 0; }
-.loading-detail-layout { min-height:570px; padding:58px var(--loading-gutter) 64px; display:grid; grid-template-columns:minmax(210px,310px) minmax(0,720px); align-items:end; gap:clamp(28px,4vw,62px); }
+.loading-detail-layout { min-height:570px; padding:58px var(--loading-gutter) 64px; display:grid; grid-template-columns:minmax(210px,310px) minmax(0,1fr); align-items:end; gap:clamp(28px,4vw,62px); }
 .loading-poster { aspect-ratio:2/3; border-radius:4px; }
 .loading-detail-layout .loading-action { margin-top:26px; }
 .loading-portrait { margin:20px auto; width:min(100%,calc((100svh - var(--topbar,82px) - 100px)*9/16)); aspect-ratio:9/16; background:#101013; }

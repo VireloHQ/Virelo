@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { auditPlaylistField } from './helpers/playlist-field-audit.mjs';
 import { createRequire } from 'node:module';
 import { existsSync } from 'node:fs';
 import { mkdtemp, mkdir, readFile, writeFile } from 'node:fs/promises';
@@ -37,8 +38,14 @@ async function call(page, mode, method, ...args) {
     if(!response.ok)throw new Error(await response.text());return response.json();
   },{mode,method,args});
 }
-async function addFromDetails(page, base, prefix, title, id) {
+async function addFromDetails(page, base, prefix, title, id, label) {
   await page.goto(base+prefix+'/title/'+id);
+  const detail=page.locator('.detail-main');await detail.waitFor();
+  check(await detail.evaluate(element=>{
+    const copy=element.querySelector('.detail-copy');
+    return innerWidth<=900||Math.abs(element.getBoundingClientRect().right-copy.getBoundingClientRect().right)<1;
+  }),label+' detail copy uses the available horizontal space');
+  check(await detail.locator('h1').evaluate(element=>getComputedStyle(element).textWrapStyle!=='balance'),label+' title wraps naturally instead of balancing into short lines');
   await page.getByRole('button',{name:'Add to playlist',exact:true}).click();
   const dialog=page.getByRole('dialog',{name:'Save to playlist'});
   await dialog.getByRole('button',{name:'Playlist',exact:true}).click();
@@ -95,17 +102,19 @@ api.mediaSource=async id=>{if(!urls.has(id))urls.set(id,URL.createObjectURL(awai
     await page.locator('.heading-controls').getByRole('link',{name:'Playlists',exact:true}).click();
     await page.getByRole('heading',{name:'Playlists',exact:true}).waitFor();
     check(true,label+' playlists are reachable from mobile and desktop libraries');
+    await auditPlaylistField(page,page.getByRole('textbox',{name:'New playlist name',exact:true}),label+' create',check);
     await page.getByRole('textbox',{name:'New playlist name',exact:true}).fill('Weekend');
     await page.getByRole('button',{name:'Create playlist',exact:true}).click();
     await page.getByRole('heading',{name:'Weekend',exact:true}).waitFor();
     await page.waitForURL(/\/playlists\/\d+$/);
     const id=Number(new URL(page.url()).pathname.split('/').pop());
     check((await call(page,mode,'playlist',id)).itemCount===0,label+' creates an empty named playlist');
+    await auditPlaylistField(page,page.getByRole('textbox',{name:'Playlist name',exact:true}),label+' rename',check);
     await page.getByRole('textbox',{name:'Playlist name',exact:true}).fill(title);
     await page.getByRole('button',{name:'Save changes',exact:true}).click();
     await page.getByRole('heading',{name:title,exact:true}).waitFor();
     check((await call(page,mode,'playlist',id)).name===title,label+' renames a saved playlist');
-    await addFromDetails(page,base,prefix,title,1);
+    await addFromDetails(page,base,prefix,title,1,label);
     let stored=await call(page,mode,'playlist',id);
     check(stored.itemCount===1,label+' adds a video through the real save dialog');
     stored=await call(page,mode,'updatePlaylist',id,{revision:stored.revision,append:true,mediaIds:[1,2,3]});
@@ -144,6 +153,7 @@ api.mediaSource=async id=>{if(!urls.has(id))urls.set(id,URL.createObjectURL(awai
     check((await call(page,mode,'playlist',id)).itemCount===2,label+' saving queue edits updates only this playlist');
     await page.getByRole('button',{name:'Save queue as playlist',exact:true}).click();
     const copyDialog=page.getByRole('dialog',{name:'Save to playlist'});
+    await auditPlaylistField(page,copyDialog.getByRole('textbox',{name:'Playlist name',exact:true}),label+' save dialog',check);
     await copyDialog.getByRole('textbox',{name:'Playlist name',exact:true}).fill('Travel');
     await copyDialog.getByRole('textbox',{name:'Playlist name',exact:true}).press('Enter');await copyDialog.waitFor({state:'hidden'});
     const copy=(await call(page,mode,'playlists')).find(row=>row.name==='Travel');

@@ -1,7 +1,7 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from '@tanstack/react-router';
 import { Button, Input } from '@heroui/react';
-import { MagnifyingGlass, Gear } from '@phosphor-icons/react';
+import { MagnifyingGlass, Gear, X } from '@phosphor-icons/react';
 import { useUIStore } from '../store';
 
 export function Header() {
@@ -17,6 +17,8 @@ export function Header() {
   const searchOpen = useUIStore((s)=>s.mobileSearchOpen);
   const setMobileSearchOpen = useUIStore((s)=>s.setMobileSearchOpen);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const searchToggleRef = useRef<HTMLButtonElement>(null);
+  const [animateSearch,setAnimateSearch] = useState(false);
 
   useEffect(() => {
     if (!searchOpen) return;
@@ -45,17 +47,20 @@ export function Header() {
           <Link to="/playlists" activeProps={{className:'active'}}>Playlists</Link>
         </nav>
         <div className="topbar-actions">
-          <div className={`header-search-shell ${searchOpen ? 'open' : ''}`}>
+          <div className={`header-search-shell ${searchOpen ? 'open' : ''}`} data-animate={animateSearch}>
             <div className="header-search-motion">
+              <MagnifyingGlass className="header-search-icon" aria-hidden="true"/>
               <Button
+                ref={searchToggleRef}
                 className="header-search-toggle"
                 isIconOnly
                 variant="ghost"
                 aria-label={searchOpen ? 'Close search' : 'Search'}
                 aria-expanded={searchOpen}
+                onPressStart={event=>setAnimateSearch(event.pointerType==='mouse'||event.pointerType==='touch'||event.pointerType==='pen')}
                 onPress={toggleSearch}
               >
-                <MagnifyingGlass size={20}/>
+                {searchOpen?<X size={20}/>:<MagnifyingGlass size={20}/>}
               </Button>
               <Input
                 className="header-search-input"
@@ -64,10 +69,12 @@ export function Header() {
                 value={search}
                 ref={searchInputRef}
                 tabIndex={searchOpen ? 0 : -1}
+                inert={!searchOpen}
+                aria-hidden={!searchOpen}
                 onChange={(e)=>setSearch(e.target.value)}
                 onKeyDown={(e)=>{
                   if (e.key === 'Enter') void navigate({to:searchDestination});
-                  if (e.key === 'Escape') setMobileSearchOpen(false);
+                  if (e.key === 'Escape') { setAnimateSearch(false);setMobileSearchOpen(false);searchToggleRef.current?.focus({preventScroll:true}); }
                 }}
               />
             </div>

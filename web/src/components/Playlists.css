@@ -1,6 +1,9 @@
 .playlists-view,.playlist-editor { width:min(1180px,100%); }
 .playlist-create { display:flex; align-items:flex-end; gap:14px; margin:24px 0 32px; max-width:720px; }
 .playlist-field { display:flex; flex:1; min-width:0; flex-direction:column; gap:8px; font-size:.875rem; font-weight:600; }
+.playlist-field>.input { min-height:44px; border:0; border-radius:6px; box-shadow:none; }
+.playlist-field>.input:is(:focus,[data-focused="true"]) { outline:none; box-shadow:none; background:var(--surface-3); }
+.playlist-field>.input:is(:focus-visible,[data-focus-visible="true"]) { outline:none; box-shadow:inset 0 -2px 0 var(--text-muted); }
 .playlist-form { display:grid; gap:20px; }
 .playlist-form .picker { width:100%; }
 .playlist-form .picker-menu { max-height:210px; overflow-y:auto; max-width:100%; }

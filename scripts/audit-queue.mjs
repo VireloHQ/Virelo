@@ -45,11 +45,26 @@ const scenarios = [
   { name: 'small', width: 320, height: 780, touch: true, reduced: false },
   { name: 'reduced', width: 1440, height: 1000, touch: false, reduced: true }
 ].filter(scenario => !process.env.VIRELO_TEST_QUEUE_SCENARIO || scenario.name === process.env.VIRELO_TEST_QUEUE_SCENARIO);
-async function drag(page, from, to, touch) {
+async function drag(page, from, to, touch, preview=false) {
+  const aligned=async point=>{
+    const grip=page.locator('.queue-drag-preview>svg');await grip.waitFor();
+    await settle(page);
+    const rect=await grip.boundingBox();
+    const error={x:rect.x+rect.width/2-point.x,y:rect.y+rect.height/2-point.y};
+    const layout=await page.locator('.playback-queue').getAttribute('data-layout'),valid=Math.abs(error.x)<3&&Math.abs(error.y)<3;
+    check(valid,'drag preview grip stays under the pointer in '+layout+(valid?'':' '+JSON.stringify({error,point,rect,preview:await page.locator('.queue-drag-preview').getAttribute('style')})));
+    await page.screenshot({path:join(artifacts,(new URL(page.url()).pathname.startsWith('/app')?'web':'npm')+'-'+page.viewportSize().width+'-'+layout+'-drag.png')});
+  };
   if (!touch) {
     await page.mouse.move(from.x, from.y); await page.mouse.down();
     await page.mouse.move(from.x + 8, from.y, { steps: 3 });
-    await page.mouse.move(to.x, to.y, { steps: 16 }); await page.mouse.up();
+    if(preview){
+      await page.locator('.queue-drag-preview').waitFor();await settle(page);
+      await page.mouse.move(from.x+12,from.y);await aligned({x:from.x+12,y:from.y});
+    }
+    await page.mouse.move(to.x, to.y, { steps: 16 });
+    if(preview)await aligned(to);
+    await page.mouse.up();
   } else {
     const cdp = await page.context().newCDPSession(page);
     await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: from.x, y: from.y }] });
@@ -57,6 +72,7 @@ async function drag(page, from, to, touch) {
       await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: from.x + (to.x - from.x) * i / 16, y: from.y + (to.y - from.y) * i / 16 }] });
       await page.waitForTimeout(12);
     }
+    if(preview)await aligned(to);
     await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] }); await cdp.detach();
   }
   // dnd-kit's pointer sensor suppresses the synthetic click following release for 50ms.
@@ -158,7 +174,7 @@ try {
     const firstHandle = page.getByRole('button', { name: 'Reorder Video 01', exact: true });
     const secondHandle = page.getByRole('button', { name: 'Reorder Video 02', exact: true });
     const a = await firstHandle.boundingBox(), b = await secondHandle.boundingBox();
-    await drag(page, { x: a.x + a.width / 2, y: a.y + a.height / 2 }, { x: b.x + b.width / 2 + 8, y: b.y + b.height / 2 }, scenario.touch);
+    await drag(page, { x: a.x + a.width / 2, y: a.y + a.height / 2 }, { x: b.x + b.width / 2 + 8, y: b.y + b.height / 2 }, scenario.touch,true);
     await page.waitForFunction(() => document.querySelector('.playback-queue-tile')?.dataset.queueId === '2');
     check((await ids())[1] === 1, label + ' horizontal pointer drag reorders');
     check(await page.locator('.watch-copy h1').textContent() === 'Video 01', label + ' moving current video preserves selection');
@@ -211,7 +227,7 @@ try {
     check(true, label + ' vertical list scrolls natively');
     await list.focus(); await page.keyboard.press('Home'); await settle(page);
     const va = await firstHandle.boundingBox(), vb = await secondHandle.boundingBox();
-    await drag(page, { x: va.x + va.width / 2, y: va.y + va.height / 2 }, { x: vb.x + vb.width / 2, y: vb.y + vb.height / 2 + 8 }, scenario.touch);
+    await drag(page, { x: va.x + va.width / 2, y: va.y + va.height / 2 }, { x: vb.x + vb.width / 2, y: vb.y + vb.height / 2 + 8 }, scenario.touch,true);
     await page.waitForFunction(() => document.querySelector('.playback-queue-tile')?.dataset.queueId === '2');
     check(true, label + ' vertical pointer drag reorders');
     await reset(); await firstHandle.focus(); await page.keyboard.press('Space'); await settle(page); await page.keyboard.press('ArrowDown'); await settle(page); await page.keyboard.press('Space'); await settle(page);

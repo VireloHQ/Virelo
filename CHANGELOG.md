@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Use the full detail-page text column for titles, with natural wrapping and matching loading placeholders. Keep compact queue drag previews aligned with the pointer in both layouts. Reveal header search beside a fixed toggle, preserve immediate keyboard operation, and replace purple playlist-field frames with a neutral keyboard-focus underline.
+
 - Replace the normal player's toolbar with a translucent media-control panel, title and remaining-time display, circular play/pause, 10-second rewind and 30-second forward. Keep shuffle, previous, next and repeat in a stable order, synchronize queue controls, and expose volume and Picture in Picture outside the ellipsis Settings menu.
 - Add device-local 0.25–2× playback speeds with pitch preservation and matching converted-audio rates. Animate pointer-driven Settings and submenu changes, separate options from header dividers, fade idle controls downward, and keep keyboard/reduced-motion operation immediate. Correct recovery-message text contrast in the Web app.
 

@@ -28,9 +28,9 @@
 .home-header-category[aria-pressed="true"] { color:var(--text); font-weight:650; }
 .home-header-category:focus-visible { outline:2px solid var(--color-focus); outline-offset:4px; }
 @media (hover:hover) and (pointer:fine) { .home-header-category:hover { color:var(--text); } }
-.app-shell .header-search-shell.open { border-radius:4px; }
-.app-shell .header-search-motion:focus-within { outline:none; box-shadow:inset 0 0 0 2px var(--color-focus); }
-.app-shell .header-search-toggle:focus-visible { outline:none!important; box-shadow:inset 0 0 0 2px var(--color-focus)!important; }
+.app-shell .header-search-motion:focus-within { outline:none; box-shadow:none; }
+.app-shell .header-search-motion:has(.header-search-input:focus-visible)::before { box-shadow:inset 0 -2px 0 var(--text-muted); }
+.app-shell .header-search-toggle:focus-visible { outline:2px solid var(--text-muted)!important; outline-offset:-2px; box-shadow:none!important; }
 .app-shell :is(select, .picker-trigger):focus-visible { outline-offset:-3px; }
 .app-shell .brand { font-size:25px; }
 .app-shell .brand-mark { width:38px; height:38px; }

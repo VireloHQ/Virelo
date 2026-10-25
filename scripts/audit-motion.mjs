@@ -97,7 +97,7 @@ try {
     }
     const settled = locator => locator.evaluate(async element => {
       await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-      await Promise.all(element.getAnimations().map(animation => animation.finished.catch(() => {})));
+      await Promise.all(element.getAnimations({subtree:true}).map(animation => animation.finished.catch(() => {})));
     });
     const focused = async locator => {
       const element = await locator.elementHandle();
@@ -199,10 +199,22 @@ try {
 
     await settings('playback');
     const brandBefore = await page.locator('.brand').boundingBox();
+    const searchToggleBefore = await page.locator('.header-search-toggle').boundingBox();
     const settingsButtonBefore = scenario.touch ? null : await page.getByRole('button', { name: 'Settings', exact: true }).boundingBox();
     await page.getByRole('button', { name: 'Search', exact: true }).click();
     const search = page.getByRole('textbox', { name: /Search library/ });
-    await search.waitFor(); await settled(page.locator('.header-search-toggle'));
+    await search.waitFor(); await settled(page.locator('.header-search-shell'));
+    const searchToggleAfter=await page.locator('.header-search-toggle').boundingBox();
+    check(Math.abs(searchToggleBefore.x-searchToggleAfter.x)<.6&&Math.abs(searchToggleBefore.y-searchToggleAfter.y)<.6,label+' search toggle stays under the pointer');
+    const searchSurface=await page.locator('.header-search-motion').evaluate(element=>({
+      shadow:getComputedStyle(element).boxShadow,
+      outline:getComputedStyle(element).outlineStyle,
+      inputOutline:getComputedStyle(element.querySelector('input')).outlineStyle,
+      fill:getComputedStyle(element,'::before').clipPath,
+      transition:getComputedStyle(element,'::before').transitionProperty
+    }));
+    check(searchSurface.shadow==='none'&&searchSurface.outline==='none'&&searchSurface.inputOutline==='none',label+' search has no purple focus frame');
+    check(scenario.reduce||searchSurface.transition.includes('clip-path'),label+' pointer search reveals one stable surface with shared motion');
     const brandAfter = await page.locator('.brand').boundingBox();
     check(Math.abs(brandBefore.x - brandAfter.x) < 0.6 && Math.abs(brandBefore.width - brandAfter.width) < 0.6, label + ' search opens without moving the brand');
     if (settingsButtonBefore) {
@@ -214,6 +226,17 @@ try {
     await page.screenshot({ path: join(artifacts, mode + '-' + scenario.name + '-search.png') });
     await page.keyboard.press('Escape'); await settled(page.locator('.header-search-toggle'));
     check(await page.getByRole('button', { name: 'Search', exact: true }).getAttribute('aria-expanded') === 'false', label + ' search closes with Escape');
+    check(await page.getByRole('button',{name:'Search',exact:true}).evaluate(element=>element===document.activeElement),label+' search dismissal restores focus');
+    check(await page.getByRole('textbox',{name:/Search library/}).count()===0,label+' closed search input is hidden from keyboard and assistive tech');
+    await page.keyboard.press('Enter');await search.waitFor();
+    check(await page.locator('.header-search-shell').getAttribute('data-animate')==='false'
+      &&await page.locator('.header-search-motion').evaluate(element=>getComputedStyle(element,'::before').transitionDuration.split(',').every(time=>parseFloat(time)===0)),label+' keyboard search opens immediately');
+    await page.keyboard.press('Escape');
+    for(let attempt=0;attempt<3;attempt++) {
+      await page.getByRole('button',{name:'Search',exact:true}).click();
+      await page.getByRole('button',{name:'Close search',exact:true}).click();
+    }
+    check(await page.getByRole('button',{name:'Search',exact:true}).getAttribute('aria-expanded')==='false',label+' rapid search toggling is reversible');
     check(errors.length === 0, label + ' no browser exceptions: ' + JSON.stringify(errors));
     await context.close();
   }

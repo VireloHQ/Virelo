@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { createPortal } from 'react-dom';
 import { DndContext, DragOverlay, KeyboardSensor, PointerSensor, closestCenter, useSensor, useSensors } from '@dnd-kit/core';
 import { SortableContext, horizontalListSortingStrategy, verticalListSortingStrategy, sortableKeyboardCoordinates, useSortable } from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
+import { CSS, getEventCoordinates } from '@dnd-kit/utilities';
 import { ArrowCounterClockwise, ArrowDown, ArrowUp, CaretLeft, CaretRight, DotsThree, DotsSixVertical, List, Play, Queue as QueueIcon, Rows, Shuffle, SkipForward, X } from '@phosphor-icons/react';
 import { artwork } from '../api';
 import '../player-ui.css';
@@ -46,6 +46,7 @@ export function PlaybackQueue({ items, activeIndex, repeatMode, onRepeatChange, 
   const scroll = useRowWheel(queueList, items.length, !vertical);
   const [edges, setEdges] = useState({ left: false, right: false });
   const [dragId, setDragId] = useState<number | null>(null);
+  const [dragAnchor,setDragAnchor] = useState<{ x: number; y: number } | null>(null);
   const [keyboardDrag, setKeyboardDrag] = useState(false);
   const [menu, setMenu] = useState<{ id: number | null; position: ContextMenuPosition; trigger: HTMLElement } | null>(null);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -123,7 +124,12 @@ export function PlaybackQueue({ items, activeIndex, repeatMode, onRepeatChange, 
           onDragEnd: ({ over }) => over ? `Dropped at position ${items.findIndex(item => item.id === over.id) + 1}.` : 'Reordering cancelled.',
           onDragCancel: () => 'Reordering cancelled.'
         } }}
-      onDragStart={({ active, activatorEvent }) => { setMenu(null); setKeyboardDrag(activatorEvent instanceof KeyboardEvent); setDragId(Number(active.id)); }}
+      onDragStart={({ active, activatorEvent }) => {
+        const point=getEventCoordinates(activatorEvent);
+        const rect=queueList.current?.querySelector<HTMLElement>('[data-queue-id="'+Number(active.id)+'"]')?.getBoundingClientRect();
+        setDragAnchor(point&&rect?{x:point.x-rect.left,y:point.y-rect.top}:null);
+        setMenu(null); setKeyboardDrag(activatorEvent instanceof KeyboardEvent); setDragId(Number(active.id));
+      }}
       onDragCancel={() => setDragId(null)}
       onDragEnd={({ active, over }) => {
         setDragId(null);
@@ -149,8 +155,10 @@ export function PlaybackQueue({ items, activeIndex, repeatMode, onRepeatChange, 
             menuOpen={menu?.id === item.id}/>)}
         </ol>
       </SortableContext>
-      {createPortal(<DragOverlay dropAnimation={null}>
-        {dragItem ? <div className="queue-drag-preview" data-layout={layout}><DotsSixVertical/><QueueArtwork item={dragItem}/><strong>{dragItem.title}</strong></div> : null}
+      {createPortal(<DragOverlay dropAnimation={null} transition="none">
+        {dragItem ? <div className="queue-drag-preview" data-layout={layout}
+          style={dragAnchor?{transform:`translate(${dragAnchor.x-21}px, calc(${dragAnchor.y}px - 50%))`}:undefined}>
+          <DotsSixVertical/><QueueArtwork item={dragItem}/><strong>{dragItem.title}</strong></div> : null}
       </DragOverlay>, document.body)}
     </DndContext>
     <div className="queue-footer">
