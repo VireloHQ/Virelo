@@ -77,7 +77,8 @@ try {
       page.setDefaultTimeout(30000);
       page.on('pageerror', error => errors.push(error.message));
       if (mode === 'npm') {
-        const response = await page.request.post(base + (mobile ? '/api/auth/login' : '/api/auth/setup'),
+        const { setupRequired } = await (await page.request.get(base + '/api/auth/status')).json();
+        const response = await page.request.post(base + (setupRequired ? '/api/auth/setup' : '/api/auth/login'),
           { headers: { 'X-Virelo-Request': '1' }, data: { username: 'audit', displayName: 'Audit', password: '1' } });
         assert.equal(response.status(), 200, await response.text());
       } else {
