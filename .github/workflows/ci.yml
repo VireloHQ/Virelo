@@ -40,6 +40,7 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - run: npm run check
       - run: npm run audit:package
+      - run: node scripts/audit-multiuser.mjs
       - run: node scripts/audit-scan-repair.mjs
       - run: node scripts/audit-accounts.mjs
       - run: node scripts/audit-account-administration.mjs

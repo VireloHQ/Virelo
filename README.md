@@ -199,7 +199,9 @@ New playback sessions default to **Original Quality** on both local and network
 connections. Explicit quality choices are remembered. Favorites has **Play all**
 to queue the entire matching collection, including items beyond the first page.
 
-Converted playback uses **two-second segments generated only when the browser requests them**, at the requested resolution/audio track. Choosing Auto does not pre-convert every rendition or the whole movie. Directly playable files still use HTTP Range playback without conversion. At most two segment encoders run concurrently; abandoned requests are cancelled.
+Converted playback uses **two-second segments generated only when the browser requests them**, at the requested resolution/audio track. Choosing Auto does not pre-convert every rendition or the whole movie. Directly playable files still use HTTP Range playback without conversion. Compatible H.264 can avoid video re-encoding when each requested segment has verified keyframe boundaries and no reordered frames; other sources safely fall back to encoding.
+
+Media tools share **two heavy-work slots and one reserved audio/remux slot** per server process. Probing and subtitle extraction share the heavy slots with video conversion; scanning runs at most one background tool at a time. Bounded, per-account round-robin queues keep a single viewer from filling the waiting list. Abandoned segment requests are cancelled; overload returns a retryable `503` with `Retry-After`. These limits protect the host, not guarantee a viewer count: actual capacity depends on codecs, resolution, CPU, storage and network bandwidth. Original-quality Range playback does not consume a conversion slot.
 
 Playback cache is limited to **512 MiB by default** across video and audio. Unused least-recently-used files are removed automatically; currently served segments are protected. Legacy whole-film caches are included in the budget and pruned on normal server startup. Originals, the library database, artwork and thumbnails are outside this playback-cache budget. Deleted converted segments can be regenerated from the originals when needed.
 

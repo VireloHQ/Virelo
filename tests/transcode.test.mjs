@@ -4,6 +4,8 @@ import { mkdtemp, mkdir, writeFile, rm, stat, readdir, readFile, utimes, symlink
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
+import childProcess from 'node:child_process';
+import { syncBuiltinESMExports } from 'node:module';
 import { extractSubtitleVtt, startAdaptiveTranscode, stopAllTranscodes, transcodeStatus, startHlsTranscode } from '../dist/transcode.js';
 import { mediaPlaylist, demandManifest, demandSegment, clearPlaybackCache, SEGMENT_SECONDS } from '../dist/demand-playback.js';
 import { DemandCache } from '../dist/demand-cache.js';
@@ -97,6 +99,38 @@ test('missing sources report a preparation error without starting endless jobs',
   const root=await mkdtemp(join(tmpdir(),'virelo-demand-error-'));
   try{assert.equal((await startHlsTranscode(root,3,join(root,'missing.mp4'))).status,'error');assert.equal(transcodeStatus(root,3).status,'error');}
   finally{await stopAllTranscodes(root);await rm(root,{recursive:true,force:true});}
+});
+
+test('compatible segments copy aligned H264 GOPs exactly, and safely encode other boundaries',{timeout:30000},async t=>{
+  if(!await hasFfmpeg())return t.skip('FFmpeg is unavailable');
+  const root=await mkdtemp(join(tmpdir(),'virelo-copy-video-')),spawn=childProcess.spawn,encoders=[];
+  const generate=(name,gop,bframes=0)=>{
+    const path=join(root,name);
+    execFileSync(process.env.FFMPEG_PATH||'ffmpeg',['-y','-hide_banner','-loglevel','error','-f','lavfi','-i','testsrc2=s=320x180:r=24','-f','lavfi','-i','sine=frequency=440:sample_rate=48000','-t','6','-c:v','libx264','-preset','ultrafast','-threads','2','-g',String(gop),'-keyint_min',String(gop),'-sc_threshold','0','-bf',String(bframes),'-c:a','aac',path],{windowsHide:true});
+    return path;
+  };
+  const hashes=(path,start=0)=>execFileSync(process.env.FFMPEG_PATH||'ffmpeg',['-v','error','-threads','2','-ss',String(start),'-i',path,'-t','2','-map','0:v:0','-an','-f','framemd5','pipe:1'],{encoding:'utf8',windowsHide:true}).split(/\r?\n/).filter(line=>line&&!line.startsWith('#')).map(line=>line.split(',').at(-1).trim());
+  childProcess.spawn=function(command,args,...rest){if(args?.includes('-output_ts_offset'))encoders.push(args[args.indexOf('-c:v')+1]);return spawn.call(this,command,args,...rest);};syncBuiltinESMExports();
+  try{
+    const aligned=generate('aligned.mp4',48),original=await readFile(aligned),signal=new AbortController().signal;
+    const state=await startHlsTranscode(root,41,aligned,{copyVideo:true,duration:6});assert.equal(state.status,'ready');
+    const prefix=state.playlist.replace('/index.m3u8','');
+    for(const index of [0,1,2]){
+      const segment=await demandSegment(root,prefix,`segment-${index}.ts`,signal);
+      assert.equal(encoders.at(-1),'copy','aligned segments retain their encoded video');
+      assert.deepEqual(hashes(segment.path),hashes(aligned,index*2),'copied decoded frames match the original exactly');
+      const probe=JSON.parse(execFileSync(process.env.FFPROBE_PATH||'ffprobe',['-v','quiet','-show_format','-of','json',segment.path],{encoding:'utf8',windowsHide:true}));
+      assert.ok(Math.abs(Number(probe.format.start_time)-index*2)<.1);assert.ok(Number(probe.format.duration)<=2.2);segment.release();
+    }
+    assert.ok((await readFile(aligned)).equals(original));
+    const forced=await startHlsTranscode(root,41,aligned,{copyVideo:false,duration:6});assert.notEqual(forced.playlist,state.playlist);
+    const encoded=await demandSegment(root,forced.playlist.replace('/index.m3u8',''),'segment-0.ts',signal);assert.equal(encoders.at(-1),'libx264');encoded.release();
+    for(const [name,gop,bframes] of [['long-gop.mp4',240,0],['reordered.mp4',48,2]]){
+      const source=generate(name,gop,bframes),state=await startHlsTranscode(root,42,source,{copyVideo:true,duration:6});
+      const segment=await demandSegment(root,state.playlist.replace('/index.m3u8',''),'segment-1.ts',signal);
+      assert.equal(encoders.at(-1),'libx264','unsafe copied boundaries use a real independent encode');assert.ok(hashes(segment.path).length>40);segment.release();
+    }
+  }finally{childProcess.spawn=spawn;syncBuiltinESMExports();await stopAllTranscodes(root);await rm(root,{recursive:true,force:true});}
 });
 
 test('subtitle extraction shares complete atomic results and changes its cache key with the source',async t=>{

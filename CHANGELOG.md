@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Share bounded media-tool scheduling across video conversion, audio, probing, subtitles and scanning. Reserve an audio/remux slot, fairly rotate waiting accounts, cancel abandoned work promptly and return retry information on overload. Limit decoder/encoder threads and background work, and verify multi-user behavior with isolated synthetic-media regressions.
+- Honor compatible-video copying only for verified independent H.264 boundaries without reordered frames; safely re-encode other cases. Include source identity, duration and copy mode in segment cache fingerprints, preserving original files.
+
 - Reuse existing library registrations when a folder is selected through a symlink or Windows junction, as well as normalized path spellings. Preserve stored paths, library/media IDs, permissions and personal state; keep distinct same-named directories separate.
 
 - Rebuild the npm Account Manager around a searchable, compact user table and Profile/Libraries/Permissions/Data/Activity tabs. Group server administration separately, add confirmed per-user database-only data clears and session revocation, and keep original videos untouched.

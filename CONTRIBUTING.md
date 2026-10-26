@@ -21,6 +21,13 @@ HTTP startup, assets and first-administrator setup. It uses a fresh temporary
 directory, reported in the output, and leaves those isolated fixtures for inspection.
 It never uses a personal media folder or data directory and does not publish.
 
+After building, `node scripts/audit-multiuser.mjs` checks simultaneous Range
+requests from 16 accounts, shared cold/warm conversions, audio during a video
+backlog, a 20-segment burst and shared native-process limits. It needs FFmpeg
+and ffprobe, starts a separate server on an ephemeral localhost port, and removes
+its generated media and isolated account data afterward. Reported timings are
+local regression measurements, not a supported viewer count or network benchmark.
+
 ## Browser checks
 
 `node scripts/audit-playlists.mjs` verifies named-playlist creation, editing,

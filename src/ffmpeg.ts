@@ -1,7 +1,8 @@
-import { spawn, type ChildProcess } from 'node:child_process';
 import { rename, rm, stat } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
 import { imageFileExists, prepareGeneratedFile } from './image-files.js';
+import { runMediaProcess } from './media-process.js';
+import { MediaBusyError, mediaScheduler, type MediaWorkOptions } from './media-work.js';
 
 export interface PlaybackTrack {
   index: number;
@@ -48,13 +49,6 @@ const QUALITY_BITRATES: Record<number, number> = {
   360: 800_000
 };
 
-export function limitMediaProcess(child:ChildProcess,milliseconds:number){
-  const timer=setTimeout(()=>child.kill('SIGKILL'),milliseconds);timer.unref();
-  const clear=()=>clearTimeout(timer);
-  child.once('error',clear);child.once('close',clear);
-  return child;
-}
-
 export function playbackQualities(width: number | null, height: number | null): PlaybackQuality[] {
   if (!width || !height) return [];
   const sourceHeight = Math.max(144, Math.round(Math.min(width, height) / 2) * 2);
@@ -69,68 +63,78 @@ export function playbackQualities(width: number | null, height: number | null): 
 }
 
 async function canRun(command: string): Promise<boolean> {
-  return await new Promise((resolve) => {
-    let child;
-    try {
-      child = limitMediaProcess(spawn(command, ['-version'], { stdio: 'ignore', windowsHide: true }),5000);
-    } catch {
-      resolve(false);
-      return;
-    }
-    child.once('error', () => resolve(false));
-    child.once('exit', (code) => resolve(code === 0));
-  });
+  try{await runMediaProcess(command,['-version'],{kind:'probe',owner:'capability',timeout:5000});return true;}
+  catch(error){if(error instanceof MediaBusyError)throw error;return false;}
 }
 
-let ffmpegAvailable: boolean | undefined;
-let ffprobeAvailable: boolean | undefined;
+let ffmpegAvailable: Promise<boolean> | undefined;
+let ffprobeAvailable: Promise<boolean> | undefined;
 
 export async function hasFfmpeg() {
-  return ffmpegAvailable ??= await canRun(process.env.FFMPEG_PATH || 'ffmpeg');
+  return ffmpegAvailable ??= canRun(process.env.FFMPEG_PATH || 'ffmpeg').catch(error=>{ffmpegAvailable=undefined;throw error;});
 }
 
 export async function hasFfprobe() {
-  return ffprobeAvailable ??= await canRun(process.env.FFPROBE_PATH || 'ffprobe');
+  return ffprobeAvailable ??= canRun(process.env.FFPROBE_PATH || 'ffprobe').catch(error=>{ffprobeAvailable=undefined;throw error;});
 }
 
-const playbackProbes = new Map<string, { fingerprint: string; promise: Promise<any | null> }>();
-async function ffprobeJson(path: string): Promise<any | null> {
+const playbackProbes = new Map<string, { fingerprint: string; promise: Promise<any | null>;context:MediaWorkOptions }>();
+async function ffprobeJson(path: string,work:Partial<MediaWorkOptions>={}): Promise<any | null> {
   const info = await stat(path).catch(() => null);
   if (!info?.isFile()) return null;
   const fingerprint = `${process.env.FFPROBE_PATH || 'ffprobe'}:${info.dev}:${info.ino}:${info.size}:${info.mtimeMs}:${info.ctimeMs}`;
   const cached = playbackProbes.get(path);
-  if (cached?.fingerprint === fingerprint) return cached.promise;
-  const promise = runFfprobeJson(path);
-  playbackProbes.delete(path);
-  playbackProbes.set(path, { fingerprint, promise });
-  if (playbackProbes.size > 64) playbackProbes.delete(playbackProbes.keys().next().value!);
-  const result = await promise;
-  if (!result && playbackProbes.get(path)?.promise === promise) playbackProbes.delete(path);
-  return result;
-}
-
-async function runFfprobeJson(path: string): Promise<any | null> {
-  if (!(await hasFfprobe())) return null;
-  return await new Promise((resolve) => {
-    const chunks: Buffer[] = [];
-    let child;
-    try {
-      child = limitMediaProcess(spawn(process.env.FFPROBE_PATH || 'ffprobe', ['-v','quiet','-print_format','json','-show_format','-show_streams',path], { windowsHide: true }),30000);
-    } catch {
-      resolve(null);
-      return;
+  if (cached?.fingerprint === fingerprint) {
+    if(cached.context.kind==='background'&&work.kind!=='background'){
+      cached.context.kind='probe';cached.context.owner=work.owner??'system';mediaScheduler.promote(cached.context.key!,cached.context.owner);
     }
-    child.stdout?.on('data', (chunk) => chunks.push(Buffer.from(chunk)));
-    child.once('error', () => resolve(null));
-    child.once('close', (code) => {
-      if (code !== 0) return resolve(null);
-      try { resolve(JSON.parse(Buffer.concat(chunks).toString('utf8'))); }
-      catch { resolve(null); }
-    });
-  });
+    return cached.promise;
+  }
+  const context:MediaWorkOptions={...work,kind:work.kind??'probe',key:`probe:${path}:${fingerprint}`};
+  const promise = runFfprobeJson(path,context);
+  playbackProbes.delete(path);
+  playbackProbes.set(path, { fingerprint, promise,context });
+  if (playbackProbes.size > 64) playbackProbes.delete(playbackProbes.keys().next().value!);
+  try{
+    const result = await promise;
+    if (!result && playbackProbes.get(path)?.promise === promise) playbackProbes.delete(path);
+    return result;
+  }catch(error){if(playbackProbes.get(path)?.promise===promise)playbackProbes.delete(path);throw error;}
 }
 
-export async function probeMedia(path: string): Promise<{
+async function runFfprobeJson(path: string,context:MediaWorkOptions): Promise<any | null> {
+  if (!(await hasFfprobe())) return null;
+  try{
+    const result=await runMediaProcess(process.env.FFPROBE_PATH||'ffprobe',['-v','quiet','-threads','2','-print_format','json','-show_format','-show_streams',path],{...context,timeout:30000});
+    return JSON.parse(result.stdout.toString('utf8'));
+  }catch(error){if(error instanceof MediaBusyError)throw error;return null;}
+}
+
+const copyProbes=new Map<string,Promise<boolean>>();
+export async function canCopyVideoSegment(path:string,start:number,length:number,duration:number,version:string,work:Partial<MediaWorkOptions>={}) {
+  const data=await ffprobeJson(path,work),video=data?.streams?.find((stream:any)=>stream.codec_type==='video');
+  // Fixed-duration independent segments cannot safely copy open or reordered GOPs.
+  if(video?.codec_name!=='h264'||Number(video.has_b_frames)!==0)return false;
+  const base=Number(video.start_time??0),formatStart=Number(data.format?.start_time??0);
+  if(!Number.isFinite(base)||!Number.isFinite(formatStart)||Math.abs(formatStart)>.001||base<0||base>.1)return false;
+  const end=start+length,key=`${path}:${version}:${start}:${length}:${duration}`;
+  const cached=copyProbes.get(key);if(cached)return cached;
+  const probe=(async()=>{
+    try{
+      const boundaries=end<duration-.001?[start,end]:[start];
+      const result=await runMediaProcess(process.env.FFPROBE_PATH||'ffprobe',[
+        '-v','error','-threads','2','-select_streams','v:0','-read_intervals',boundaries.map(time=>`${time+base+.001}%+#1`).join(','),
+        '-show_packets','-show_entries','packet=pts_time,flags','-of','json',path
+      ],{...work,kind:'probe',timeout:5000,maxOutput:32768});
+      const packets=JSON.parse(result.stdout.toString('utf8')).packets;
+      return Array.isArray(packets)&&packets.length===boundaries.length&&packets.every((packet:any,index:number)=>String(packet.flags).includes('K')&&Math.abs(Number(packet.pts_time)-base-boundaries[index])<.001);
+    }catch(error){if(error instanceof MediaBusyError||work.signal?.aborted)throw error;return false;}
+  })();
+  copyProbes.set(key,probe);if(copyProbes.size>128)copyProbes.delete(copyProbes.keys().next().value!);
+  try{return await probe;}catch(error){if(copyProbes.get(key)===probe)copyProbes.delete(key);throw error;}
+}
+
+export async function probeMedia(path: string,work:Partial<MediaWorkOptions>={}): Promise<{
   duration: number | null;
   width: number | null;
   height: number | null;
@@ -138,7 +142,7 @@ export async function probeMedia(path: string): Promise<{
   audioCodec: string | null;
   container: string | null;
 } | null> {
-  const data = await ffprobeJson(path);
+  const data = await ffprobeJson(path,work);
   if (!data) return null;
   const video = Array.isArray(data.streams) ? data.streams.find((s: any) => s.codec_type === 'video') : null;
   const audio = Array.isArray(data.streams) ? data.streams.find((s: any) => s.codec_type === 'audio') : null;
@@ -152,8 +156,8 @@ export async function probeMedia(path: string): Promise<{
   };
 }
 
-export async function probePlaybackInfo(path: string): Promise<PlaybackInfo | null> {
-  const data = await ffprobeJson(path);
+export async function probePlaybackInfo(path: string,work:Partial<MediaWorkOptions>={}): Promise<PlaybackInfo | null> {
+  const data = await ffprobeJson(path,work);
   if (!data || !Array.isArray(data.streams)) return null;
   const video = data.streams.find((stream: any) => stream.codec_type === 'video');
   let audioTypeIndex = 0;
@@ -197,7 +201,7 @@ export async function probePlaybackInfo(path: string): Promise<PlaybackInfo | nu
   };
 }
 
-export async function makeThumbnail(source: string, target: string, duration?: number | null, replace=false): Promise<boolean> {
+export async function makeThumbnail(source: string, target: string, duration?: number | null, replace=false,work:Partial<MediaWorkOptions>={}): Promise<boolean> {
   if(!replace&&await imageFileExists(target))return true;
   if (!(await hasFfmpeg())) return false;
   await prepareGeneratedFile(target);
@@ -205,19 +209,9 @@ export async function makeThumbnail(source: string, target: string, duration?: n
   const seek = duration && duration >= 1 ? Math.min(duration * 0.12, 60) : 0;
   try {
     for(const position of seek>0?[seek,0]:[0]){
-      const generated=await new Promise<boolean>((resolve) => {
-        let child;
-        try {
-          child = limitMediaProcess(spawn(process.env.FFMPEG_PATH || 'ffmpeg', [
-            '-hide_banner','-loglevel','error','-ss',String(position),'-i',source,'-frames:v','1','-vf','scale=min(960\\,iw):-2','-q:v','3','-y',temporary
-          ], { stdio: 'ignore', windowsHide: true }),60000);
-        } catch {
-          resolve(false);
-          return;
-        }
-        child.once('error', () => resolve(false));
-        child.once('close', (code) => resolve(code === 0));
-      });
+      const generated=await runMediaProcess(process.env.FFMPEG_PATH||'ffmpeg',[
+        '-hide_banner','-loglevel','error','-filter_threads','1','-threads','2','-ss',String(position),'-i',source,'-frames:v','1','-vf','scale=min(960\\,iw):-2','-threads','2','-q:v','3','-y',temporary
+      ],{...work,kind:'background',timeout:60000}).then(()=>true,()=>false);
       if(!generated||!await imageFileExists(temporary))continue;
       await prepareGeneratedFile(target);
       await rename(temporary,target);

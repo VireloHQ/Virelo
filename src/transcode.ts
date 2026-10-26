@@ -1,8 +1,8 @@
 import { readFile, rename, rm, stat } from 'node:fs/promises';
 import { createHash, randomUUID } from 'node:crypto';
-import { join } from 'node:path';
-import { spawn, type ChildProcess } from 'node:child_process';
-import { hasFfmpeg, limitMediaProcess, type PlaybackQuality } from './ffmpeg.js';
+import { join,resolve } from 'node:path';
+import { hasFfmpeg, type PlaybackQuality } from './ffmpeg.js';
+import { runMediaProcess } from './media-process.js';
 import { demandStatus, startDemand, stopDemandPlayback } from './demand-playback.js';
 import { prepareGeneratedFile } from './image-files.js';
 
@@ -23,7 +23,7 @@ export function startAudioTranscode(dataDir:string,id:number,source:string,audio
 
 // Text subtitles are small, independent of the short video segment cache.
 const subtitleJobs=new Map<string,Promise<void>>();
-export async function extractSubtitleVtt(dataDir:string,id:number,source:string,subtitleStream:number) {
+export async function extractSubtitleVtt(dataDir:string,id:number,source:string,subtitleStream:number,owner='system') {
   const info=await stat(source),stamp=createHash('sha256').update(`${source}:${info.size}:${info.mtimeMs}`).digest('hex').slice(0,16);
   const target=join(hlsDir(dataDir,id),'subtitles',stamp,`${subtitleStream}.vtt`);
   let job=subtitleJobs.get(target);
@@ -34,15 +34,8 @@ export async function extractSubtitleVtt(dataDir:string,id:number,source:string,
       if(!(await hasFfmpeg()))throw Error('FFmpeg is not installed or not available in PATH.');
       const temporary=`${target}.${randomUUID()}.tmp`;
       try{
-        const result=await new Promise<{ok:boolean;error:string}>(resolve=>{
-          let stderr='';let child:ChildProcess;
-          try{child=limitMediaProcess(spawn(process.env.FFMPEG_PATH||'ffmpeg',['-hide_banner','-loglevel','warning','-i',source,'-map',`0:${subtitleStream}`,'-c:s','webvtt','-f','webvtt','-y',temporary],{windowsHide:true}),60000);}
-          catch(error){resolve({ok:false,error:error instanceof Error?error.message:'FFmpeg could not start.'});return;}
-          child.stderr?.on('data',chunk=>{stderr=(stderr+String(chunk)).slice(-1000);});
-          child.once('error',error=>resolve({ok:false,error:error.message}));
-          child.once('close',code=>resolve({ok:code===0,error:stderr.trim()||`FFmpeg exited with code ${code}`}));
-        });
-        if(!result.ok||!(await readFile(temporary,'utf8')).startsWith('WEBVTT'))throw Error(result.error||'Subtitle conversion failed.');
+        await runMediaProcess(process.env.FFMPEG_PATH||'ffmpeg',['-hide_banner','-loglevel','warning','-threads','2','-i',source,'-map',`0:${subtitleStream}`,'-c:s','webvtt','-f','webvtt','-y',temporary],{kind:'video',owner,scope:resolve(dataDir),timeout:60000});
+        if(!(await readFile(temporary,'utf8')).startsWith('WEBVTT'))throw Error('Subtitle conversion failed.');
         await prepareGeneratedFile(target,join(dataDir,'cache'));await rename(temporary,target);
       }finally{await rm(temporary,{force:true}).catch(()=>{});}
     })();
@@ -51,4 +44,4 @@ export async function extractSubtitleVtt(dataDir:string,id:number,source:string,
   try{await job;}finally{if(subtitleJobs.get(target)===job)subtitleJobs.delete(target);}
   return {path:target,url:`/hls/${id}/subtitles/${stamp}/${subtitleStream}.vtt`};
 }
-export function stopAllTranscodes(dataDir?:string){stopDemandPlayback(dataDir);}
+export function stopAllTranscodes(dataDir?:string){return stopDemandPlayback(dataDir);}

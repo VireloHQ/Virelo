@@ -77,7 +77,7 @@ async function mapLimit<T>(items: T[], limit: number, worker: (item:T)=>Promise<
   await Promise.all(Array.from({ length: Math.min(limit, Math.max(items.length,1)) }, run));
 }
 
-async function repairImages(db:VireloDB,record:MediaRecord,dataDir:string,status:ScanStatus,sourceChanged=false){
+async function repairImages(db:VireloDB,record:MediaRecord,dataDir:string,status:ScanStatus,sourceChanged=false,signal?:AbortSignal){
   const [thumbnail,poster,backdrop]=await Promise.all([
     imageFileExists(record.thumbnail_path),imageFileExists(record.poster_path),imageFileExists(record.backdrop_path)
   ]);
@@ -92,7 +92,7 @@ async function repairImages(db:VireloDB,record:MediaRecord,dataDir:string,status
   status.message=`${restoring?'Restoring':'Generating'} thumbnail · ${record.filename}`;
   if(sourceChanged)db.shareThumbnail(record.path,null,true);
   const target=join(dataDir,'thumbnails',`${record.id}.jpg`);
-  if(await makeThumbnail(record.path,target,record.duration,sourceChanged||!record.thumbnail_path)){
+  if(await makeThumbnail(record.path,target,record.duration,sourceChanged||!record.thumbnail_path,{kind:'background',owner:'scan',scope:resolve(dataDir),signal})){
     db.shareThumbnail(record.path,target,true);
     const counter=restoring?'thumbnailsRepaired':'thumbnailsGenerated';
     status[counter]=(status[counter]??0)+1;
@@ -120,20 +120,20 @@ export async function scanLibrary(db: VireloDB, library: Library, dataDir: strin
       if (previous && previous.library_id === library.id && previous.mtime === Math.trunc(info.mtimeMs) && previous.size === info.size) {
         let updated=false;
         if(previous.duration==null||previous.width==null||previous.height==null||previous.video_codec==null){
-          const probe=await probeMedia(path);
+          const probe=await probeMedia(path,{kind:'background',owner:'scan',scope:resolve(dataDir),signal});
           if(probe){
             db.updateTechnicalMetadata(previous.id,{duration:probe.duration,width:probe.width,height:probe.height,video_codec:probe.videoCodec,audio_codec:probe.audioCodec,container:probe.container});
             Object.assign(previous,db.getMedia(previous.id));updated=true;
           }
         }
-        const images=await repairImages(db,previous,dataDir,status);
+        const images=await repairImages(db,previous,dataDir,status,false,signal);
         if(images==='updated'||updated)status.updated++;
         else if(images==='unchanged')status.skipped++;
         return;
       }
       const parsed = parseMediaName(path);
       const sourceChanged=Boolean(previous&&(previous.mtime!==Math.trunc(info.mtimeMs)||previous.size!==info.size));
-      const probe = await probeMedia(path);
+      const probe = await probeMedia(path,{kind:'background',owner:'scan',scope:resolve(dataDir),signal});
       const parent = dirname(path);
       let folder = '';
       try {
@@ -167,7 +167,7 @@ export async function scanLibrary(db: VireloDB, library: Library, dataDir: strin
         genres: previous?.genres ?? null,
         external_id: previous?.external_id ?? null
       });
-      await repairImages(db,record,dataDir,status,sourceChanged);
+      await repairImages(db,record,dataDir,status,sourceChanged,signal);
       if (previous) status.updated++; else status.added++;
     } catch {
       status.errors++;

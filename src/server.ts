@@ -23,6 +23,7 @@ import { isMediaFile, isVideoPath, mediaWatchFilter } from './media-files.js';
 import { assertSupportedNode } from './runtime.js';
 import { CustomCommands, registerCustomCommands } from './custom-commands.js';
 import { serverUrl } from './network-urls.js';
+import { mediaScheduler,MediaBusyError } from './media-work.js';
 
 const SORT_KEYS: SortKey[] = ['title', 'newest', 'oldest', 'year', 'duration', 'random'];
 
@@ -71,6 +72,7 @@ function isTermuxRuntime() {
 
 export async function createVireloServer(config: RuntimeConfig, pickFolder: (signal: AbortSignal) => Promise<string | null> = pickNativeFolder) {
   assertSupportedNode();
+  mediaScheduler.openScope(resolve(config.dataDir));
   ensureDataDirs(config.dataDir);
   await initializeDemandCache(config.dataDir);
   const db = new VireloDB(config.dataDir);
@@ -112,7 +114,7 @@ export async function createVireloServer(config: RuntimeConfig, pickFolder: (sig
   let closing = false;
   const scanAbort = new AbortController();
   let scanTask: Promise<void> | null = null;
-  app.addHook('preClose', async () => { closing = true; scanAbort.abort(); activePicker?.abort(); await commands.close(); });
+  app.addHook('preClose', async () => { closing = true; scanAbort.abort(); activePicker?.abort(); await Promise.all([commands.close(),mediaScheduler.closeScope(resolve(config.dataDir))]); });
   let watcher: { close(): void | Promise<unknown> } | null = null;
   let watchDebounce: NodeJS.Timeout | null = null;
 
@@ -320,7 +322,7 @@ export async function createVireloServer(config: RuntimeConfig, pickFolder: (sig
   app.get<{ Params: { id: string } }>('/api/media/:id/playback', async (request, reply) => {
     const media = db.getMedia(Number(request.params.id), request.catalogScope!);
     if (!media || !existsSync(media.path)) return reply.code(404).send({ error: 'Media file not found' });
-    const info = await probePlaybackInfo(media.path);
+    const info = await probePlaybackInfo(media.path,{owner:String(request.account!.id),scope:resolve(config.dataDir)});
     if (!info) return reply.code(503).send({ error: 'ffprobe is required to inspect audio and subtitle tracks.' });
     return info;
   });
@@ -330,7 +332,7 @@ export async function createVireloServer(config: RuntimeConfig, pickFolder: (sig
     const audioStream = request.body?.audioStream;
     const startTime=request.body?.startTime;
     if(startTime!==undefined&&(!Number.isFinite(startTime)||startTime<0||(media.duration&&startTime>=media.duration)))return reply.code(400).send({error:'Invalid seek position.'});
-    const info=await probePlaybackInfo(media.path);
+    const info=await probePlaybackInfo(media.path,{owner:String(request.account!.id),scope:resolve(config.dataDir)});
     if (audioStream !== undefined) {
       if (!Number.isInteger(audioStream) || audioStream < 0) return reply.code(400).send({ error: 'Invalid audio stream.' });
       if (!info?.audioTracks.some((track) => track.index === audioStream)) return reply.code(400).send({ error: 'Audio stream not found.' });
@@ -349,7 +351,7 @@ export async function createVireloServer(config: RuntimeConfig, pickFolder: (sig
     if(!media||!existsSync(media.path))return reply.code(404).send({error:'Media file not found'});
     const startTime=request.body?.startTime;
     if(startTime!==undefined&&(!Number.isFinite(startTime)||startTime<0||(media.duration&&startTime>=media.duration)))return reply.code(400).send({error:'Invalid seek position.'});
-    const info=await probePlaybackInfo(media.path);
+    const info=await probePlaybackInfo(media.path,{owner:String(request.account!.id),scope:resolve(config.dataDir)});
     if(!info||!info.width||!info.height)return reply.code(503).send({error:'Video resolution could not be inspected.'});
     const audioStream=request.body?.audioStream;
     if(audioStream!==undefined&&(!Number.isInteger(audioStream)||!info.audioTracks.some((track)=>track.index===audioStream)))return reply.code(400).send({error:'Audio stream not found.'});
@@ -369,7 +371,7 @@ export async function createVireloServer(config: RuntimeConfig, pickFolder: (sig
     if (!media || !existsSync(media.path)) return reply.code(404).send({ error: 'Media file not found' });
     const audioStream = request.body?.audioStream;
     if (!Number.isInteger(audioStream) || Number(audioStream) < 0) return reply.code(400).send({ error: 'Invalid audio stream.' });
-    const info = await probePlaybackInfo(media.path);
+    const info = await probePlaybackInfo(media.path,{owner:String(request.account!.id),scope:resolve(config.dataDir)});
     if (!info?.audioTracks.some((track) => track.index === audioStream)) return reply.code(400).send({ error: 'Audio stream not found.' });
     return startAudioTranscode(config.dataDir, media.id, media.path, Number(audioStream),media.duration);
   });
@@ -385,14 +387,15 @@ export async function createVireloServer(config: RuntimeConfig, pickFolder: (sig
     if (!media || !existsSync(media.path)) return reply.code(404).send({ error: 'Media file not found' });
     const subtitleStream = Number(request.params.stream);
     if (!Number.isInteger(subtitleStream) || subtitleStream < 0) return reply.code(400).send({ error: 'Invalid subtitle stream.' });
-    const info = await probePlaybackInfo(media.path);
+    const info = await probePlaybackInfo(media.path,{owner:String(request.account!.id),scope:resolve(config.dataDir)});
     const track = info?.subtitleTracks.find((candidate) => candidate.index === subtitleStream);
     if (!track) return reply.code(404).send({ error: 'Subtitle stream not found.' });
     if (!track.supported) return reply.code(415).send({ error: 'This subtitle format cannot be converted to WebVTT.' });
     try {
-      const subtitle = await extractSubtitleVtt(config.dataDir, media.id, media.path, subtitleStream);
+      const subtitle = await extractSubtitleVtt(config.dataDir, media.id, media.path, subtitleStream,String(request.account!.id));
       return reply.type('text/vtt; charset=utf-8').header('Cache-Control','private, max-age=86400').send(createReadStream(subtitle.path));
     } catch (error) {
+      if(error instanceof MediaBusyError)return reply.code(503).header('Retry-After','1').send({error:error.message});
       return reply.code(500).send({ error: error instanceof Error ? error.message : 'Subtitle conversion failed.' });
     }
   });
@@ -483,11 +486,11 @@ export async function createVireloServer(config: RuntimeConfig, pickFolder: (sig
     const controller=new AbortController();
     const abort=()=>{if(!reply.raw.writableFinished)controller.abort();};reply.raw.once('close',abort);
     try{
-      const segment=await demandSegment(config.dataDir,prefix,resource,controller.signal);
+      const segment=await demandSegment(config.dataDir,prefix,resource,controller.signal,String(request.account!.id));
       if(controller.signal.aborted){segment.release();return reply;}
       reply.raw.once('close',segment.release);
       return reply.type('video/mp2t').header('Cache-Control','private, max-age=3600').send(createReadStream(segment.path));
-    }catch(reason){if(controller.signal.aborted)return reply;return reply.code(503).send({error:reason instanceof Error?reason.message:'Playback segment is unavailable.'});}
+    }catch(reason){if(controller.signal.aborted)return reply;if(reason instanceof MediaBusyError)reply.header('Retry-After','1');return reply.code(503).send({error:reason instanceof Error?reason.message:'Playback segment is unavailable.'});}
   });
   await app.register(fastifyStatic, { root: resolve(config.dataDir, 'cache', 'hls'), prefix: '/hls/', wildcard: true, decorateReply: false, cacheControl: false });
   await app.register(fastifyStatic, { root: resolve(config.dataDir, 'cache', 'audio'), prefix: '/audio/', wildcard: true, decorateReply: false, cacheControl: false });
