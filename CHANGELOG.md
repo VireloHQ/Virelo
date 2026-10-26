@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Reuse existing library registrations when a folder is selected through a symlink or Windows junction, as well as normalized path spellings. Preserve stored paths, library/media IDs, permissions and personal state; keep distinct same-named directories separate.
+
 - Rebuild the npm Account Manager around a searchable, compact user table and Profile/Libraries/Permissions/Data/Activity tabs. Group server administration separately, add confirmed per-user database-only data clears and session revocation, and keep original videos untouched.
 - Add optional, visibly disclosed live activity and retained operation/playback logs. Default monitoring to off; require the current notice acknowledgement, scope titles to administrator library access, offer 7/30/90-day retention with a 10,000-event limit, and support filtered log review and deletion. Keep passwords, session tokens, IP addresses and file paths out of activity events.
 

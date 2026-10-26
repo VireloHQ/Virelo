@@ -1,5 +1,6 @@
 import { DatabaseSync, type SQLInputValue } from 'node:sqlite';
 import { dirname, isAbsolute, relative, resolve, sep } from 'node:path';
+import { realpathSync } from 'node:fs';
 import { parseMediaName } from './scanner.js';
 import { buildHome } from './home.js';
 import type { CatalogScope } from './auth-types.js';
@@ -113,6 +114,11 @@ export class VireloDB {
   private pathKey(path: string) {
     const absolute = resolve(path);
     return process.platform === 'win32' ? absolute.toLowerCase() : absolute;
+  }
+
+  private directoryKey(path:string) {
+    try { return this.pathKey(realpathSync.native(path)); }
+    catch { return this.pathKey(path); }
   }
 
   private mergeLibraryAliases() {
@@ -235,7 +241,10 @@ export class VireloDB {
   addLibrary(path: string, label: string, persistent = true): Library {
     path = resolve(path);
     const now = Date.now();
-    const existing = this.listLibraries().find(library => this.pathKey(library.path) === this.pathKey(path));
+    const libraries=this.listLibraries();
+    const pathMatch=libraries.find(library=>this.pathKey(library.path)===this.pathKey(path));
+    const directory=pathMatch?null:this.directoryKey(path);
+    const existing=pathMatch??libraries.find(library=>this.directoryKey(library.path)===directory);
     if (existing) {
       if (persistent) this.db.prepare('UPDATE libraries SET persistent=1 WHERE id=?').run(existing.id);
     } else {

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {mkdtemp,mkdir,rm,writeFile} from 'node:fs/promises';
+import {mkdtemp,mkdir,rm,writeFile,readFile,symlink} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join,relative,resolve} from 'node:path';
 import {VireloDB} from '../dist/db.js';
@@ -24,6 +24,44 @@ const media=(library,id=1)=>({
   container:'mp4',folder:'',size:1,mtime:1,thumbnail_path:null,poster_path:null,backdrop_path:null,overview:null,genres:null,external_id:null
 });
 const idle=async server=>{while(server.scanStatus.running)await new Promise(resolve=>setTimeout(resolve,5));};
+
+test('registration reuses physical folders, preserving IDs and personal state through aliases',async t=>{
+  const root=await fixture(t),folder=join(root,'Media'),alias=join(root,'Alias'),other=join(root,'Other','Media');
+  await mkdir(folder);await mkdir(other,{recursive:true});
+  await symlink(folder,alias,process.platform==='win32'?'junction':'dir');
+  let db=new VireloDB(root);
+  const first=db.addLibrary(alias,'Media',false),item=db.upsertMedia(media(first));
+  await writeFile(item.path,'source bytes');
+  db.setLike(item.id,true);db.setProgress(item.id,23,60);
+  let accounts=new Accounts(db.db),user=accounts.save({username:'owner',libraryIds:[first.id]},await hashPassword('1'),undefined,true);
+  accounts.grantLibrary(user.id,first.id);db.setLike(item.id,true,user.id);db.setProgress(item.id,31,60,user.id);
+  for(const path of [folder,alias,join(folder,'.'),folder+'/',...(process.platform==='win32'?[folder.toUpperCase(),folder.replaceAll('\\','/')]:[])]) {
+    const saved=db.addLibrary(path,'Again');assert.equal(saved.id,first.id);assert.equal(saved.path,first.path);assert.equal(saved.persistent,1);
+  }
+  assert.equal(db.listLibraries().length,1);
+  assert.notEqual(db.addLibrary(other,'Media').id,first.id,'a same-named different directory is not merged');
+  assert.equal(db.getMedia(item.id).progress_position,23);assert.equal(db.getMedia(item.id).liked,1);
+  assert.equal(db.getMedia(item.id,accounts.scope(user)).progress_position,31);assert.equal(db.getMedia(item.id,accounts.scope(user)).liked,1);
+  db.close();db=new VireloDB(root);accounts=new Accounts(db.db);
+  try {
+    assert.equal(db.addLibrary(folder,'After restart').id,first.id);assert.equal(db.listLibraries().length,2);
+    assert.deepEqual(accounts.get(user.id).libraryIds,[first.id]);assert.equal(await readFile(item.path,'utf8'),'source bytes');
+  } finally {db.close();}
+});
+
+test('HTTP and startup registration share alias deduplication, including concurrent requests',async t=>{
+  const root=await fixture(t),data=join(root,'data'),folder=join(root,'Media'),alias=join(root,'Alias');
+  await mkdir(data);await mkdir(folder);await symlink(folder,alias,process.platform==='win32'?'junction':'dir');
+  const initial=new VireloDB(data);initial.updateSettings({libraryWatchEnabled:false,externalMetadataEnabled:false});initial.close();
+  const server=await createVireloServer({dataDir:data,mediaPaths:[alias,folder],host:'127.0.0.1',port:0});
+  try {
+    const setup=await server.app.inject({method:'POST',url:'/api/auth/setup',payload:{username:'owner',password:'1'},remoteAddress:'127.0.0.1',headers:{'x-virelo-request':'1'}});
+    const cookie=setup.headers['set-cookie'].split(';')[0],before=server.db.listLibraries();assert.equal(before.length,1);
+    const results=await Promise.all([alias,folder,folder+'/'].map(path=>server.app.inject({method:'POST',url:'/api/libraries',payload:{path},remoteAddress:'127.0.0.1',headers:{cookie,'x-virelo-request':'1'}})));
+    for(const result of results){assert.equal(result.statusCode,200,result.body);assert.equal(result.json().id,before[0].id);assert.equal(result.json().persistent,1);}
+    assert.equal(server.db.listLibraries().length,1);
+  }finally{await idle(server);await server.app.close();}
+});
 
 test('startup folders are temporary; UI additions and promoted folders survive another startup path',async t=>{
   const root=await fixture(t), data=join(root,'data'), first=join(root,'first'), next=join(root,'next'), saved=join(root,'elsewhere');
