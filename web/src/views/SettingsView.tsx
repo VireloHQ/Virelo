@@ -53,7 +53,7 @@ export function SettingsView(){
   const mobileDetail=Boolean(selectedSection);
   const client=useQueryClient();
   const settingsQuery=useQuery({queryKey:['settings'],queryFn:api.settings});
-  const health=useQuery({queryKey:['health'],queryFn:async()=>{const r=await fetch('/api/health');return r.json() as Promise<{ffmpeg:boolean;ffprobe:boolean}>;}});
+  const health=useQuery({queryKey:['health'],queryFn:async()=>{const r=await fetch('/api/health');if(!r.ok)throw new Error('Could not check media tools');return r.json() as Promise<{ffmpeg:boolean;ffprobe:boolean}>;}});
   const [form,setForm]=useState<Settings|null>(null);
   const openSection=(id:string)=>{
     void navigate({to:'/settings',hash:id});
@@ -114,7 +114,15 @@ export function SettingsView(){
 
         {activeSection==='tools'&&<section id="settings-panel-tools" className="settings-card settings-section compact-card" aria-labelledby="settings-title-tools">
           <div className="settings-card-head"><div><h2 id="settings-title-tools" tabIndex={-1}>Advanced</h2><p>Tools used for thumbnails and video compatibility.</p></div></div>
-          <div className="tool-status"><span className={health.data?.ffmpeg?'ok':'warn'}>{health.data?.ffmpeg?<CheckCircle/>:<WarningCircle/>} FFmpeg {health.data?.ffmpeg?'available':'not found'}</span><span className={health.data?.ffprobe?'ok':'warn'}>{health.data?.ffprobe?<CheckCircle/>:<WarningCircle/>} ffprobe {health.data?.ffprobe?'available':'not found'}</span></div>
+          <dl className="tool-status admin-setting-group" aria-label="Media tools" aria-live="polite">
+            {(['ffmpeg','ffprobe'] as const).map(tool=>{
+              const available=health.data?.[tool];
+              return <div key={tool}><dt>{tool==='ffmpeg'?'FFmpeg':'ffprobe'}</dt><dd>
+                {available!==undefined&&(available?<CheckCircle aria-hidden="true"/>:<WarningCircle aria-hidden="true"/>)}
+                {available===undefined?(health.isError?'Could not check':'Checking…'):available?'Available':'Not found'}
+              </dd></div>;
+            })}
+          </dl>
         </section>}
       </div>
     </div>

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Present media-tool availability in a neutral settings group with aligned names and statuses; distinguish checks in progress and failed requests from missing tools.
+
 - Tighten vertical Queue rows by removing stacked padding and reducing the row gap, preserving horizontal layout and action target sizes.
 
 - Curve context-menu bubble tails at both the tip and the join, sharing the same shape with nested side settings while preserving placement and behavior.

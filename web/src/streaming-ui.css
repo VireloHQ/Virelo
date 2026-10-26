@@ -136,8 +136,12 @@
 .app-shell .library-list span { font-size:13px; color:var(--text-muted); }
 .app-shell .scan-strip { padding:20px 0; margin-top:0; }
 .app-shell .scan-strip>div { font-size:14px; color:var(--text-muted); }
-.app-shell .tool-status { display:grid; gap:0; }
-.app-shell .tool-status span { min-height:56px; padding:16px 0; border:0; border-top:1px solid var(--line); border-radius:0; font-size:15px; }
+.app-shell .tool-status { display:grid; gap:0; margin:0; }
+.app-shell .tool-status>div { display:flex; align-items:center; justify-content:space-between; gap:20px; min-height:44px; }
+.app-shell .tool-status>div+div { margin-top:12px; padding-top:12px; border-top:1px solid var(--line); }
+.app-shell .tool-status dt { font-size:15px; font-weight:500; }
+.app-shell .tool-status dd { display:flex; align-items:center; gap:8px; margin:0; color:var(--text-muted); font-size:14px; }
+.app-shell .tool-status dd svg { flex:none; font-size:18px; }
 .app-shell .privacy-facts { gap:0; border:0; border-radius:0; background:none; }
 .app-shell .privacy-facts>div { padding:20px 0; border-top:1px solid var(--line); background:none; }
 .app-shell .privacy-facts strong { font-size:16px; font-weight:500; }

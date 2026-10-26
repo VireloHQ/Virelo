@@ -411,7 +411,7 @@ button,[role="button"],summary,.app-shell :is(header,footer,nav,.settings-view),
 .library-list strong { font-size:13px; }
 .library-list span { color:#666; font-size:11px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:2px; }
 .scan-strip { display:flex; align-items:center; justify-content:space-between; gap:12px; border-top:1px solid var(--line); margin-top:18px; padding-top:18px; }
-.scan-strip>div,.settings-actions,.tool-status,.settings-actions>span { display:flex; align-items:center; gap:9px; }
+.scan-strip>div,.settings-actions,.settings-actions>span { display:flex; align-items:center; gap:9px; }
 .scan-strip>div { color:#aaa; font-size:12px; }
 .scan-strip>div svg { width:19px; height:19px; color:#ddd; }
 .app-shell .scan-strip > .scan-progress { display:block; flex:1; min-width:0; margin:0; }
@@ -430,10 +430,6 @@ button,[role="button"],summary,.app-shell :is(header,footer,nav,.settings-view),
 .privacy-note p { margin:0; font-size:12px; line-height:1.5; }
 .settings-actions { margin-top:18px; justify-content:flex-end; flex-wrap:wrap; }
 .settings-actions>span { color:var(--safe); font-size:12px; }
-.tool-status { flex-wrap:wrap; }
-.tool-status span { display:flex; align-items:center; gap:6px; border:1px solid var(--line); padding:7px 9px; border-radius:9px; font-size:12px; color:#aaa; }
-.tool-status .ok { color:var(--safe); border-color:color-mix(in oklch,var(--safe) 15%,transparent); }
-.tool-status .warn { color:var(--warning); border-color:color-mix(in oklch,var(--warning) 15%,transparent); }
 .compact-card .settings-card-head { padding-bottom:14px; }
 .error-copy { color:var(--danger)!important; font-size:12px!important; }
 
@@ -472,8 +468,6 @@ button,[role="button"],summary,.app-shell :is(header,footer,nav,.settings-view),
 .settings-section .setting-row:first-of-type { border-top:1px solid rgba(255,255,255,.07); }
 .settings-section .settings-grid { margin-top:2px; }
 .settings-section .settings-actions { display:none; }
-.settings-section .tool-status { padding-top:2px; }
-.settings-section .tool-status span { min-height:34px; }
 .settings-view .switch { --switch-control-bg:#29292c; --switch-control-bg-hover:#353538; --switch-control-bg-pressed:#414145; --switch-control-bg-checked:var(--color-brand-strong); --switch-control-bg-checked-hover:var(--color-brand); -webkit-tap-highlight-color:transparent; }
 
 @keyframes shimmer { to { transform:translateX(100%); } }
