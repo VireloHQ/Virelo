@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Narrow the desktop vertical Queue to 300–340px and pin it inside the viewport. Scroll only its video list, retain space beside the player and recommendations, and preserve horizontal/mobile layouts.
+
 - Apply volume leveling before audible output with a 30ms native-audio lookahead and an audio-rate detector, including startup and seeks. Bind processing before playback effects, preserve manual volume and mute, and remove the delayed main-thread polling loop without modifying source files.
 
 - Animate pointer-driven settings selection with a shared moving highlight and a short, position-stable panel fade; keep keyboard and reduced-motion navigation immediate. Add share/playlist action icons, align video action heights, and shorten nonessential helper copy.

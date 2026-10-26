@@ -238,6 +238,26 @@ try {
     const geometry = await page.evaluate(() => { const p = document.querySelector('.player').getBoundingClientRect(), q = document.querySelector('.playback-queue').getBoundingClientRect(); return { side: q.left >= p.right, below: q.top >= p.bottom, width: document.documentElement.scrollWidth, viewport: innerWidth }; });
     check(scenario.width >= 1200 ? geometry.side : geometry.below, label + ' vertical layout adapts beside or below the video');
     check(geometry.width <= geometry.viewport + 1, label + ' no page horizontal overflow');
+    if(scenario.width>=1200){
+      for(const width of [1200,1440,1920]){
+        await page.setViewportSize({width,height:scenario.height});await settle(page);
+        check(await queue.evaluate(element=>{
+          const queue=element.getBoundingClientRect(),watch=element.closest('.watch-view'),box=watch.getBoundingClientRect();
+          return queue.width>=299&&queue.width<=341&&queue.bottom<=innerHeight-15&&Math.abs(queue.right-(box.right-parseFloat(getComputedStyle(watch).paddingRight)))<1;
+        }),label+' compact fixed Queue fits and stays aligned at '+width+'px');
+      }
+      await page.setViewportSize({width:scenario.width,height:scenario.height});await page.evaluate(()=>scrollTo(0,0));await settle(page);
+      const top=await queue.evaluate(element=>element.getBoundingClientRect().top);
+      await page.evaluate(()=>scrollTo(0,350));await settle(page);
+      check(await queue.evaluate((element,top)=>scrollY>0&&Math.abs(element.getBoundingClientRect().top-top)<1,top),label+' vertical Queue remains fixed while the page scrolls');
+      check(await page.locator('.watch-related').evaluate(element=>element.getBoundingClientRect().right<=document.querySelector('.playback-queue').getBoundingClientRect().left-19),label+' recommendations never run underneath the fixed Queue');
+      await page.setViewportSize({width:scenario.width,height:500});await settle(page);
+      check(await queue.evaluate(element=>element.getBoundingClientRect().bottom<=innerHeight-15),label+' fixed Queue fits shorter desktop windows');
+      await page.evaluate(()=>document.querySelector('.app-shell').style.setProperty('--activity-notice-height','80px'));await settle(page);
+      check(await queue.evaluate(element=>{const box=element.getBoundingClientRect();return box.top>=168&&box.bottom<=innerHeight-15;}),label+' fixed Queue leaves room for activity-monitoring disclosure');
+      await page.evaluate(()=>document.querySelector('.app-shell').style.removeProperty('--activity-notice-height'));
+      await page.setViewportSize({width:scenario.width,height:scenario.height});await page.evaluate(()=>scrollTo(0,0));await settle(page);
+    }
     await list.scrollIntoViewIfNeeded(); await list.evaluate(node => node.scrollTop = 0);
     if (scenario.touch) {
       const rect = await list.boundingBox();
