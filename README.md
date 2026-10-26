@@ -241,7 +241,26 @@ Local-only startup explains how to enable network access. Displayed addresses do
 
 The npm server requires a local Virelo account. On first use (including upgrades), open the server's localhost address **on the PC running Virelo** to create the first administrator. Remote devices cannot claim an unconfigured server. Existing favorites and watch history are copied to this first account; video files and libraries are preserved.
 
-In **Settings → Account Manager**, administrators can add, disable or delete users, reset passwords, promote other administrators, and choose each account's allowed libraries. New users see no libraries until granted access. You can select all libraries (including future additions), or an explicit list. Library access applies to search, Home, Shorts, playback, subtitles and artwork, not just navigation. Favorites and watch history are separate for every account.
+In **Settings → Account Manager**, administrators can search the user table and
+edit each account through Profile, Libraries, Permissions, Data and Activity tabs.
+They can add, disable or delete users, reset passwords, promote administrators,
+and choose allowed libraries. New users see no libraries until granted access.
+Select all libraries (including future additions), or an explicit list. Access
+applies to search, Home, Shorts, playback, subtitles and artwork, not just
+navigation. Favorites, watch history and playlists are separate for every account.
+
+The **Data** tab shows personal-data counts and confirmed controls to clear that
+user's history, favorites, playlists or activity events, or revoke their sessions.
+Original videos and shared library data are never deleted by these controls.
+
+Under the **Admin** settings group, **Admin → Monitor activity** optionally enables
+online/playback status and retained sign-in, playback and operation logs. It is
+off by default. Users receive a notice before sign-in and in the application;
+sessions are recorded only after acknowledging the current notice. **Activity**
+shows current sessions and past events, with user filtering and log deletion.
+Retention defaults to 30 days (7/30/90 selectable), with at most 10,000 events.
+Playback state is client-reported, not a tamper-proof audit. See [PRIVACY.md](PRIVACY.md)
+for the exact collection and deletion behavior.
 
 Passwords may be short PINs; no minimum length or complexity rule is imposed.
 Use a stronger password or localhost-only administration on untrusted networks.
@@ -252,7 +271,7 @@ Accounts without conversion permission play the original quality and default aud
 
 Use **Settings → Account** to change your display name, username or password (with the current password), or sign out. Account and permission changes invalidate existing sessions. Do not share administrator credentials.
 
-Account Manager also offers **Administrators can only access from localhost**. Change this option on the server PC. It blocks all administrator access from non-loopback connections, including normal browsing, while regular users can still connect over the network. Forwarding headers cannot turn a remote request into a local request. A local reverse proxy or tunnel that hides the client address is an exception: see [SECURITY.md](SECURITY.md) before using this option behind a proxy.
+**Settings → Admin** also offers **Administrators can only access from localhost**. Change this option on the server PC. It blocks all administrator access from non-loopback connections, including normal browsing, while regular users can still connect over the network. Forwarding headers cannot turn a remote request into a local request. A local reverse proxy or tunnel that hides the client address is an exception: see [SECURITY.md](SECURITY.md) before using this option behind a proxy.
 
 If you forget an administrator password, stop Virelo, then run this **locally on the server PC**, using the same data directory:
 

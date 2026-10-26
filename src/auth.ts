@@ -3,9 +3,11 @@ import { AccountError, Accounts, hashPassword, verifyPassword } from './accounts
 import type { Account, AuthStatus, CatalogScope } from './auth-types.js';
 import type { VireloDB } from './db.js';
 import { isIP } from 'node:net';
+import { AccountActivity } from './account-activity.js';
+import type { AccountDataCategory, ActivityHeartbeat } from './auth-types.js';
 
 declare module 'fastify' {
-  interface FastifyRequest { account: Account | null; catalogScope: CatalogScope | null }
+  interface FastifyRequest { account: Account | null; catalogScope: CatalogScope | null; activityAcknowledged:number }
 }
 
 export function directLocal(request: FastifyRequest) {
@@ -32,8 +34,12 @@ export function registerAccounts(app: FastifyInstance, db: VireloDB, isPublicHos
     reply.header('Set-Cookie', `virelo_session=${value}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${value ? 604800 : 0}${secure ? '; Secure' : ''}`);
   };
   const accounts = new Accounts(db.db);
+  const activity=new AccountActivity(db,accounts);
+  const pruneActivity=setInterval(()=>activity.prune(),60_000);pruneActivity.unref();
+  app.addHook('onClose',async()=>{clearInterval(pruneActivity);});
   app.decorateRequest('account', null);
   app.decorateRequest('catalogScope', null);
+  app.decorateRequest('activityAcknowledged',0);
   const attempts = new Map<string, { count: number; until: number }>();
   const streams = new Map<number, Set<{reply:FastifyReply;token:string|undefined}>>();
   const disconnect = (id: number, session?:string) => {
@@ -54,10 +60,13 @@ export function registerAccounts(app: FastifyInstance, db: VireloDB, isPublicHos
     if (admin && !user.isAdmin) throw new AccountError('Administrator access is required.', 403);
     return user;
   };
-  const status = (request: FastifyRequest): AuthStatus => ({ setupRequired: !accounts.hasAccounts(), localAccess: directLocal(request), user: request.account });
+  const status = (request: FastifyRequest): AuthStatus => ({ setupRequired: !accounts.hasAccounts(), localAccess: directLocal(request), user: request.account, monitoring:activity.policy() });
   const beginSession = (request: FastifyRequest, reply: FastifyReply, user: Account) => {
-    cookie(reply, request, accounts.createSession(user));
+    const value=accounts.createSession(user);
+    cookie(reply, request, value);
     request.account = user;
+    request.activityAcknowledged=activity.acknowledge(value,user.id,(request.body as Record<string,unknown>|undefined)?.noticeVersion)?activity.policy().revision:0;
+    activity.record(user.id,'auth.login',null,null,request.activityAcknowledged);
     return status(request);
   };
 
@@ -71,6 +80,7 @@ export function registerAccounts(app: FastifyInstance, db: VireloDB, isPublicHos
     const candidate = accounts.session(token(request));
     const blocked = candidate?.isAdmin && accounts.adminLocalOnly() && !directLocal(request);
     request.account = blocked ? null : candidate ?? null;
+    request.activityAcknowledged=request.account&&activity.acknowledged(token(request))?activity.policy().revision:0;
     request.catalogScope = request.account ? accounts.scope(request.account) : null;
     if (['/api/auth/status','/api/auth/setup','/api/auth/login','/api/auth/logout'].includes(path)) return;
     const user = request.account;
@@ -113,6 +123,18 @@ export function registerAccounts(app: FastifyInstance, db: VireloDB, isPublicHos
     }
     return payload;
   });
+  app.addHook('onResponse',async(request,reply)=>{
+    if(!request.account||!request.activityAcknowledged||reply.statusCode>=400)return;
+    const route=request.routeOptions.url??'',key=request.method+' '+route;
+    const actions:Record<string,string>={
+      'POST /api/libraries':'library.added','DELETE /api/libraries/:id':'library.removed','POST /api/scan':'library.scanned',
+      'POST /api/settings':'server.settings_updated','DELETE /api/data/cache':'server.cache_cleared',
+      'DELETE /api/metadata':'metadata.cleared_all','DELETE /api/media/:id/metadata':'metadata.cleared','POST /api/media/:id/metadata/refresh':'metadata.refreshed',
+      'POST /api/media/:id/like':'favorites.updated','POST /api/playlists':'playlist.created','PATCH /api/playlists/:id':'playlist.updated','DELETE /api/playlists/:id':'playlist.deleted'
+    };
+    const action=actions[key];
+    if(action)activity.record(request.account.id,action,null,route.startsWith('/api/media/:id')?Number((request.params as {id:string}).id):null,request.activityAcknowledged);
+  });
 
   app.get('/api/auth/status', async request => status(request));
   app.post('/api/auth/setup', async (request, reply) => {
@@ -135,6 +157,7 @@ export function registerAccounts(app: FastifyInstance, db: VireloDB, isPublicHos
   });
   app.post('/api/auth/logout', async (request, reply) => {
     const value = token(request); if (value) { accounts.logout(value); if (request.account) disconnect(request.account.id,value); }
+    if(request.account)activity.record(request.account.id,'auth.logout',null,null,request.activityAcknowledged);
     cookie(reply, request);
     return { ok: true };
   });
@@ -146,6 +169,7 @@ export function registerAccounts(app: FastifyInstance, db: VireloDB, isPublicHos
     fresh(request);
     const updated = accounts.save({ username: body.username, displayName: body.displayName }, password, user.id);
     disconnect(user.id);
+    activity.record(user.id,'account.profile_updated',user.id,null,request.activityAcknowledged);
     return beginSession(request, reply, updated);
   });
   app.get('/api/accounts', async () => accounts.list());
@@ -154,19 +178,24 @@ export function registerAccounts(app: FastifyInstance, db: VireloDB, isPublicHos
   app.post('/api/accounts', async (request, reply) => {
     const body = object(request.body), password = await hashPassword(body.password);
     fresh(request, true);
-    return reply.code(201).send(accounts.save(body, password));
+    const user=accounts.save(body,password);
+    activity.record(request.account!.id,'account.created',user.id,null,request.activityAcknowledged);
+    return reply.code(201).send(user);
   });
   app.patch<{Params: {id: string}}>('/api/accounts/:id', async request => {
     const body = object(request.body), password = body.password === undefined ? undefined : await hashPassword(body.password);
     fresh(request, true);
     const user = accounts.save(body, password, Number(request.params.id));
     disconnect(user.id);
+    activity.forget(user.id);
+    activity.record(request.account!.id,'account.updated',user.id,null,request.activityAcknowledged);
     return user;
   });
   app.delete<{Params: {id: string}}>('/api/accounts/:id', async request => {
     const id = Number(request.params.id);
     if (id === request.account!.id) throw new AccountError('Sign in as another administrator to delete this account.', 409);
-    accounts.remove(id); disconnect(id);
+    activity.clear(id,'activity');accounts.remove(id);disconnect(id);activity.forget(id);
+    activity.record(request.account!.id,'account.deleted',id,null,request.activityAcknowledged);
     return { ok: true };
   });
   app.get('/api/accounts/security', async request => ({ adminLocalOnly: accounts.adminLocalOnly(), localAccess: directLocal(request) }));
@@ -177,7 +206,47 @@ export function registerAccounts(app: FastifyInstance, db: VireloDB, isPublicHos
     accounts.setAdminLocalOnly(body.adminLocalOnly);
     for (const user of accounts.list()) if (user.isAdmin) disconnect(user.id);
     cookie(reply, request, accounts.createSession(request.account!));
+    activity.record(request.account!.id,'server.admin_access_updated',null,null,request.activityAcknowledged);
     return { adminLocalOnly: body.adminLocalOnly, localAccess: true };
+  });
+  const positive=(value:unknown,label:string)=>{
+    const number=Number(value);
+    if(!Number.isSafeInteger(number)||number<=0)throw new AccountError('Invalid '+label+'.');
+    return number;
+  };
+  app.post('/api/auth/activity',async request=>{
+    const user=fresh(request),body=object(request.body),policy=activity.policy();
+    if(!policy.enabled)return {accepted:false};
+    if(typeof body.tabId!=='string'||!/^[a-zA-Z0-9-]{16,80}$/.test(body.tabId)||typeof body.state!=='string'||!['idle','playing','paused'].includes(body.state)
+      ||typeof body.position!=='number'||!Number.isFinite(body.position)||body.position<0||body.position>1e9
+      ||!Number.isSafeInteger(body.noticeVersion))throw new AccountError('Invalid activity report.');
+    let mediaId:number|null=null;
+    if(body.state!=='idle') {
+      if(typeof body.mediaId!=='number')throw new AccountError('Invalid activity report.');
+      mediaId=positive(body.mediaId,'video ID');
+      if(!user.permissions.play||!db.getMedia(mediaId,accounts.scope(user)))throw new AccountError('Video unavailable.',404);
+    }else if(body.mediaId!==null)throw new AccountError('Invalid activity report.');
+    return activity.heartbeat(user,token(request)!,{tabId:body.tabId,noticeVersion:body.noticeVersion,state:body.state,mediaId,position:body.position} as ActivityHeartbeat);
+  });
+  app.get('/api/accounts/monitoring',async()=>activity.policy());
+  app.post('/api/accounts/monitoring',async request=>activity.configure(object(request.body),fresh(request,true).id));
+  app.get('/api/accounts/activity',async request=>{
+    fresh(request,true);
+    const query=request.query as {userId?:string;before?:string};
+    return {policy:activity.policy(),active:activity.active(request.catalogScope!),...activity.events(request.catalogScope!,query.userId===undefined?undefined:positive(query.userId,'user ID'),query.before===undefined?undefined:positive(query.before,'cursor'))};
+  });
+  app.delete('/api/accounts/activity',async request=>{
+    const user=fresh(request,true);activity.clearEvents();activity.record(user.id,'activity.cleared',null,null,request.activityAcknowledged);return {ok:true};
+  });
+  app.get<{Params:{id:string}}>('/api/accounts/:id/data',async request=>{
+    fresh(request,true);return activity.summary(positive(request.params.id,'account ID'));
+  });
+  app.delete<{Params:{id:string}}>('/api/accounts/:id/data',async request=>{
+    const user=fresh(request,true),id=positive(request.params.id,'account ID'),body=object(request.body),category=body.category as AccountDataCategory;
+    activity.clear(id,category);
+    if(category==='sessions')disconnect(id);
+    activity.record(user.id,'data.'+category+'_cleared',id,null,request.activityAcknowledged);
+    return activity.summary(id);
   });
   return { accounts, fresh };
 }

@@ -5,8 +5,9 @@ import { api } from '../api';
 import { useUIStore } from '../store';
 import type { Account, AuthStatus } from '../../../src/auth-types';
 import '../accounts.css';
+import { ActivityDisclosure, ActivityReporter } from './ActivityDisclosure';
 
-interface SessionContext { user: Account; localAccess: boolean; refresh: () => Promise<void>; logout: () => Promise<void> }
+interface SessionContext { user: Account; localAccess: boolean; monitoring?:AuthStatus['monitoring']; refresh: () => Promise<void>; logout: () => Promise<void> }
 const Context = createContext<SessionContext | null>(null);
 export const useAccount = () => useContext(Context);
 export function PlaybackAccess({children}:{children:ReactNode}) {
@@ -19,7 +20,7 @@ function PrivateSession({ session, children }: { session: SessionContext; childr
   // Never reuse another account's query cache, including in-flight optimistic saves.
   const [client] = useState(() => new QueryClient({ defaultOptions: { queries: { staleTime:20_000, refetchOnWindowFocus:false, retry:1 } } }));
   useEffect(() => () => { void client.cancelQueries(); client.clear(); useUIStore.setState({search:'',mobileSearchOpen:false,homeFilter:'all'}); }, [client]);
-  return <Context.Provider value={session}><QueryClientProvider client={client}>{children}</QueryClientProvider></Context.Provider>;
+  return <Context.Provider value={session}><QueryClientProvider client={client}><ActivityReporter policy={session.monitoring}/>{children}</QueryClientProvider></Context.Provider>;
 }
 
 export function AccountSession({ children }: {children:ReactNode}) {
@@ -48,7 +49,7 @@ export function AccountSession({ children }: {children:ReactNode}) {
     notify();
   };
   if (query.data?.user) return <PrivateSession key={query.data.user.id + ':' + query.data.user.revision}
-    session={{user:query.data.user,localAccess:query.data.localAccess,refresh,logout}}>{children}</PrivateSession>;
+    session={{user:query.data.user,localAccess:query.data.localAccess,monitoring:query.data.monitoring,refresh,logout}}>{children}</PrivateSession>;
   const connectionError = query.isError || (query.isPending && query.errorUpdatedAt > 0);
   return <div className={`account-entry app-shell${query.isPending || connectionError ? ' account-connection' : ''}`}>
     <a className="account-brand" href="/" aria-label="Virelo"><img src="/virelo-icon.png" alt=""/>Virelo</a>
@@ -75,13 +76,14 @@ function SignIn({ status, onDone }: {status:AuthStatus;onDone:(status:AuthStatus
     if (!username.trim() || !password) { setError('Enter your username and password.'); return; }
     if (setup && password !== confirmation) { setError('The passwords do not match.'); return; }
     busy.current = true; setPending(true);
-    try { onDone(await (setup ? api.setupAccount({username,displayName:displayName.trim() || username,password}) : api.signIn({username,password}))); }
+    try { onDone(await (setup ? api.setupAccount({username,displayName:displayName.trim() || username,password}) : api.signIn({username,password,noticeVersion:status.monitoring?.revision}))); }
     catch (error) { setError(error instanceof Error ? error.message : 'Could not sign in. Try again.'); }
     finally { busy.current = false; setPending(false); }
   };
   return <form className="account-entry-form account-form" noValidate onSubmit={event=>{event.preventDefault();void submit();}}>
     <h1>{setup?'Create administrator':'Welcome back'}</h1>
     <p>{setup?'Create the administrator who manages accounts and library access. Existing favorites and watch history will belong to this account.':'Sign in to your Virelo server. Accounts are stored on this PC, not in the cloud.'}</p>
+    <ActivityDisclosure policy={status.monitoring}/>
     <label htmlFor="sign-in-username">Username</label><Input id="sign-in-username" autoComplete="username" autoCapitalize="none" spellCheck={false} maxLength={64} value={username} onChange={event=>setUsername(event.target.value)} disabled={pending} autoFocus/>
     {setup && <><label htmlFor="sign-in-name">Display name</label><Input id="sign-in-name" autoComplete="nickname" maxLength={80} value={displayName} onChange={event=>setDisplayName(event.target.value)} disabled={pending}/></>}
     <label htmlFor="sign-in-password">Password</label><Input id="sign-in-password" type="password" autoComplete={setup?'new-password':'current-password'} maxLength={256} value={password} onChange={event=>setPassword(event.target.value)} disabled={pending}/>

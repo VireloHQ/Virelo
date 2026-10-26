@@ -55,6 +55,29 @@ Changes to passwords, names, roles, permissions or enabled state revoke that use
 
 Administrators have full administrative trust even if their browsing is restricted to selected libraries: they can grant themselves access. This feature does not isolate mutually untrusted administrators or protect against someone who can read or modify the data directory. Protect OS permissions and backups accordingly.
 
+## Activity monitoring and user data
+
+Activity configuration, live sessions, retained events and per-user data controls
+are administrator-only APIs. Monitoring is disabled initially and records only
+sessions acknowledging the current, visibly disclosed policy. Policy revisions
+invalidate previous acknowledgements. The enable/disable policy operation itself
+can be recorded for the administrator changing it. This is notice delivery, not
+a compliance or consent mechanism. Existing clients without the notice are not
+monitored. Successful operations use an explicit event allowlist; request bodies,
+passwords, tokens, IP addresses and filesystem paths are not copied into activity
+events. Titles are resolved through the viewing administrator's library scope.
+
+Playback state and positions are client-reported and can be omitted or falsified;
+these logs are not a tamper-proof security audit. Live reports are bounded and
+expire after 90 seconds. Events are retained for the configured 7/30/90 days,
+bounded to 10,000 records, and periodically pruned. Disabling monitoring stops
+collection without deleting retained events. User-data clears require the same
+authentication and same-origin protections as other administrative mutations,
+and operate on account-owned database rows only. Session revocation also closes
+active media responses; deleting history, favorites or playlists never changes
+original files or shared libraries. See [PRIVACY.md](PRIVACY.md) for retention,
+notice and deletion details.
+
 ## Localhost-only administrators
 
 Passwords and PINs have no minimum length or complexity requirement; an empty
@@ -62,7 +85,7 @@ password is not accepted. A 1024-byte limit bounds hashing input. Passwords are
 salted and hashed with scrypt, and sign-in attempts are rate limited. Short PINs
 are intended for trusted local use, not exposure to the public Internet.
 
-The optional Account Manager restriction blocks administrator accounts unless the direct socket peer is loopback and there are no forwarding headers. It applies to login and existing sessions, not just management endpoints. Regular users remain accessible over the network. Change the restriction only from a direct localhost connection on the server PC; changing it revokes other administrator sessions.
+The optional **Settings → Admin** restriction blocks administrator accounts unless the direct socket peer is loopback and there are no forwarding headers. It applies to login and existing sessions, not just management endpoints. Regular users remain accessible over the network. Change the restriction only from a direct localhost connection on the server PC; changing it revokes other administrator sessions.
 
 **A local reverse proxy, SSH tunnel, or port forward can make a remote client appear to be localhost.** No HTTP application can recover an original address that such an intermediary discards. Do not use the localhost-only option as a guarantee against remote access behind a header-stripping loopback proxy or tunnel. Preserve forwarding headers (Virelo treats those connections as non-local), and enforce remote administrative restrictions at the proxy/firewall as well. This setting is not an OS-level sandbox.
 

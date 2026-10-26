@@ -50,7 +50,7 @@ test('accounts enforce authentication, catalog privacy and administrative bounda
   let ownerCookie, viewerCookie, viewerId;
 
   await t.test('only a direct localhost client can initialize; setup is atomic',async()=>{
-    assert.deepEqual((await call('GET','/api/auth/status')).json(),{setupRequired:true,localAccess:true,user:null});
+    assert.deepEqual((await call('GET','/api/auth/status')).json(),{setupRequired:true,localAccess:true,user:null,monitoring:{enabled:false,retentionDays:30,revision:0,maxEvents:10000}});
     for (const extra of [{remoteAddress:'192.168.1.2',headers:{'x-forwarded-for':'127.0.0.1'}},{headers:{forwarded:'for=127.0.0.1'}},{headers:{'x-forwarded-for':'127.0.0.1'}},{headers:{host:'attacker.local',origin:'http://attacker.local'}}])
       assert.equal((await call('POST','/api/auth/setup',{username:'owner',password},undefined,extra)).statusCode,403);
     const results=await Promise.all([1,2].map(()=>call('POST','/api/auth/setup',{username:'owner',password})));
@@ -62,7 +62,7 @@ test('accounts enforce authentication, catalog privacy and administrative bounda
     const stored=accounts.db.prepare('SELECT digest FROM account_sessions').get().digest;
     assert.notEqual(stored,ownerCookie.split('=')[1]);assert.equal(stored,sessionDigest(ownerCookie.split('=')[1]));
     assert.equal((await call('POST','/api/auth/setup',{username:'again',password})).statusCode,409);
-    assert.deepEqual((await call('GET','/api/auth/status',undefined,undefined,{remoteAddress:'10.0.0.2'})).json(),{setupRequired:false,localAccess:false,user:null});
+    assert.deepEqual((await call('GET','/api/auth/status',undefined,undefined,{remoteAddress:'10.0.0.2'})).json(),{setupRequired:false,localAccess:false,user:null,monitoring:{enabled:false,retentionDays:30,revision:0,maxEvents:10000}});
   });
   await t.test('anonymous clients cannot fetch catalogs, video ranges, artwork, subtitles or cached playback',async()=>{
     for(const url of ['/api/health','/api/settings','/api/home','/api/libraries','/api/folders','/api/media','/api/shorts',`/api/media/${items[0].id}/stream`,

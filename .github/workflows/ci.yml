@@ -42,6 +42,7 @@ jobs:
       - run: npm run audit:package
       - run: node scripts/audit-scan-repair.mjs
       - run: node scripts/audit-accounts.mjs
+      - run: node scripts/audit-account-administration.mjs
       - run: node scripts/audit-custom-commands.mjs
       - run: node scripts/audit-startup-scan.mjs
       - run: node scripts/audit-shorts-playback.mjs

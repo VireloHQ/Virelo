@@ -1,5 +1,5 @@
 import type { FolderEntry, HomeData, Library, MediaItem, PlaybackInfo, PlaybackQuality, ScanStatus, Settings, ShortsFeed } from './types';
-import type { Account, AuthStatus } from '../../src/auth-types';
+import type { Account, AuthStatus, ActivityPolicy, ActivityHeartbeat, ActivityPage, LiveActivity, AccountDataSummary, AccountDataCategory } from '../../src/auth-types';
 import type { DataUsage } from '../../src/types';
 import type { PlaylistDetail, PlaylistSummary, PlaylistWrite } from './types';
 import type { CustomCommand, CustomCommandDefinition } from '../../src/custom-command-types';
@@ -44,11 +44,18 @@ export const api = {
   updatePlaylist: (id: number, body: PlaylistWrite) => request<PlaylistDetail>(`/api/playlists/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
   deletePlaylist: (id: number, revision: number) => request<{ok:boolean}>(`/api/playlists/${id}`, { method: 'DELETE', body: JSON.stringify({ revision }) }),
   authStatus: () => request<AuthStatus>('/api/auth/status'),
-  signIn: (body: {username:string;password:string}) => request<AuthStatus>('/api/auth/login', {method:'POST',body:JSON.stringify(body)}),
+  signIn: (body: {username:string;password:string;noticeVersion?:number}) => request<AuthStatus>('/api/auth/login', {method:'POST',body:JSON.stringify(body)}),
   setupAccount: (body: {username:string;displayName:string;password:string}) => request<AuthStatus>('/api/auth/setup', {method:'POST',body:JSON.stringify(body)}),
   signOut: () => request('/api/auth/logout', {method:'POST'}),
   updateAccount: (body: {username:string;displayName:string;currentPassword:string;password?:string}) => request<AuthStatus>('/api/auth/me', {method:'PATCH',body:JSON.stringify(body)}),
   accounts: () => request<Account[]>('/api/accounts'),
+  monitoring: () => request<ActivityPolicy>('/api/accounts/monitoring'),
+  saveMonitoring: (policy:ActivityPolicy) => request<ActivityPolicy>('/api/accounts/monitoring',{method:'POST',body:JSON.stringify(policy)}),
+  reportActivity: (body:ActivityHeartbeat) => request<{accepted:boolean}>('/api/auth/activity',{method:'POST',body:JSON.stringify(body)}),
+  activity: (params:{userId?:number;before?:number}={}) => request<ActivityPage & {active:LiveActivity[];policy:ActivityPolicy}>(withQuery('/api/accounts/activity',params)),
+  clearActivity: () => request('/api/accounts/activity',{method:'DELETE'}),
+  accountData: (id:number) => request<AccountDataSummary>(`/api/accounts/${id}/data`),
+  clearAccountData: (id:number,category:AccountDataCategory) => request<AccountDataSummary>(`/api/accounts/${id}/data`,{method:'DELETE',body:JSON.stringify({category})}),
   accountLibraries: () => request<Library[]>('/api/accounts/libraries'),
   previousLibraries: () => request<Library[]>('/api/accounts/previous-libraries'),
   saveAccount: (body: object, id?:number) => request<Account>(id === undefined ? '/api/accounts' : `/api/accounts/${id}`, {method:id === undefined?'POST':'PATCH',body:JSON.stringify(body)}),

@@ -1,10 +1,12 @@
 import { CaretRight, type Icon } from '@phosphor-icons/react';
+import { Fragment } from 'react';
 
 interface SettingsSection {
   id: string;
   label: string;
   description: string;
   icon: Icon;
+  group?: string;
 }
 
 export function SettingsNavigation({ sections, activeSection, onSelect }: {
@@ -13,7 +15,8 @@ export function SettingsNavigation({ sections, activeSection, onSelect }: {
   onSelect: (id: string) => void;
 }) {
   return <nav className="settings-sidebar" aria-label="Settings sections">
-    {sections.map((section) => <button
+    {sections.map((section,index) => <Fragment key={section.id}>
+    {section.group&&sections[index-1]?.group!==section.group&&<h2 className="settings-nav-group">{section.group}</h2>}<button
       key={section.id}
       id={`settings-nav-${section.id}`}
       type="button"
@@ -26,7 +29,7 @@ export function SettingsNavigation({ sections, activeSection, onSelect }: {
       <section.icon className="settings-nav-icon" aria-hidden="true"/>
       <span className="settings-nav-copy"><strong>{section.label}</strong><small>{section.description}</small></span>
       <CaretRight className="settings-nav-chevron" aria-hidden="true"/>
-    </button>)}
+    </button></Fragment>)}
   </nav>;
 }
 

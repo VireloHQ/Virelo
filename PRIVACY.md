@@ -8,6 +8,38 @@ Virelo does not include telemetry, analytics, advertising, cloud account registr
 
 New installations match filenames against Cinemeta during library scans and cache the returned metadata and artwork locally. Online matching and artwork downloads can be disabled independently by an administrator in Settings. Network access to the server requires an account, but HTTP does not encrypt traffic: use HTTPS or a trusted VPN on untrusted networks.
 
+## Optional activity monitoring
+
+The npm server's **Settings → Admin → Monitor activity** is off by default.
+When enabled, a notice appears before sign-in and in the signed-in application.
+Only sessions that acknowledge the current notice are recorded; a policy change
+requires a new acknowledgement, and older clients without the notice are not
+monitored. This acknowledgement confirms notice delivery, not a separate consent
+or a guarantee that a person read it.
+
+Administrators can see recently active sessions, the current video, playback
+state and position. Live presence expires after 90 seconds without an update and
+is not saved across server restarts. The database stores successful sign-ins and
+sign-outs, playback starts/pauses/resumes/stops, account and library operations,
+metadata/server changes, and favorite/playlist changes. These activity records
+contain timestamps, account references, an action and optionally a media ID, not
+passwords, session tokens, IP addresses, full file paths, searches or page views.
+Video titles are resolved using the viewing administrator's current library
+permissions. Playback reports come from the client and are not tamper-proof.
+
+Logs are kept for 30 days by default, with 7-, 30- and 90-day choices and a
+10,000-event limit across the server. Expired events are pruned at startup, during
+use and once per minute while running. Increasing retention applies only to new
+events; existing events never outlive the limit in their original notice.
+Reducing retention also shortens the lifetime of existing events.
+Disabling monitoring stops new collection
+but retains existing logs until expiry or explicit deletion. Administrators can
+clear all logs or one user's events. Account deletion removes events involving
+that account; a separate administrator action may record its deletion by ID.
+These controls do not erase backups or separate HTTP/process logs maintained by
+the host or a proxy. Operators are responsible for appropriate privacy notices
+and use of monitoring on their server.
+
 ## Optional external requests
 
 When online metadata is enabled, Virelo sends the parsed title, media type, release year when available, and season/episode numbers when applicable to Cinemeta. It downloads matched posters, backdrops, and episode images when artwork is enabled. An existing user-provided TMDB key, or the optional `VIRELO_TMDB_API_KEY` environment variable, makes Virelo use TMDB instead for backward compatibility and localized results. Disabling online metadata stops future provider requests initiated by Virelo.
@@ -47,6 +79,14 @@ account removes its favorites and watch history, not the shared video files.
 Virelo streams source videos only to clients connected to the Virelo server. Metadata matching never uploads video files to a third party.
 
 ## Data management
+
+In **Account Manager → select a user → Data**, administrators can view counts
+and separately clear that user's watch history, favorites, playlists or activity
+log, or sign the user out on all devices. Each action requires confirmation.
+These actions only change Virelo's database. They do not modify original videos,
+shared libraries, metadata, thumbnails, artwork or another user's personal data.
+Activity entries are shared server records: clearing a user's activity also
+removes matching entries from the global activity log.
 
 Administrators can view storage usage and clear unused playback cache in Settings.
 This operates only on Virelo-generated playback files, not source videos or their

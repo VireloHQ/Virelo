@@ -1,0 +1,72 @@
+.settings-nav-group { margin:20px 16px 6px; padding-top:18px; border-top:1px solid var(--line-strong); color:var(--text-muted); font-size:12px; font-weight:600; letter-spacing:.06em; text-transform:uppercase; }
+.settings-nav-group:first-child { margin-top:0; padding-top:0; border:0; }
+.account-list-tools,.admin-section-heading { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:16px; margin:20px 0 16px; }
+.account-list-tools>span { font-size:13px; color:var(--text-muted); }
+.account-search { display:flex; align-items:center; gap:8px; max-width:300px; }
+.account-search>svg { flex:none; color:var(--text-muted); }
+.admin-table-scroll { overflow:auto; border:1px solid var(--line-strong); border-radius:10px; max-width:100%; }
+.admin-table { width:100%; border-collapse:collapse; text-align:left; font-size:13px; }
+.admin-table th,.admin-table td { padding:14px 16px; border-bottom:1px solid var(--line); vertical-align:middle; }
+.admin-table thead th { color:var(--text-muted); font-weight:500; background:rgba(255,255,255,.025); white-space:nowrap; }
+.admin-table tbody th { font-weight:500; }
+.admin-table tbody tr:last-child>* { border-bottom:0; }
+.admin-table small { display:block; color:var(--text-muted); font-size:12px; font-weight:400; margin-top:4px; overflow-wrap:anywhere; }
+.admin-table tbody tr:hover { background:rgba(255,255,255,.025); }
+.account-users { min-width:620px; }
+.account-users .button { min-height:40px; }
+.account-users th strong { display:flex; align-items:center; gap:8px; }
+.admin-table .account-mobile-summary { display:none; }
+.account-role-badge { display:inline-flex; align-items:center; gap:6px; white-space:nowrap; }
+.account-role-badge svg { font-size:17px; color:var(--text-muted); }
+.account-you { padding:2px 6px; font-size:10px; font-weight:500; color:var(--text-muted); border:1px solid var(--line-strong); border-radius:4px; }
+.account-enabled-status { color:var(--text-muted); white-space:nowrap; }
+.account-enabled-status.enabled { color:var(--text); }
+.account-enabled-status:before { content:''; display:inline-block; width:6px; height:6px; border-radius:50%; margin-right:7px; background:#686870; }
+.account-enabled-status.enabled:before { background:#b3a2e9; }
+.account-manager .account-editor { padding:20px 0 0; border:0; background:none; }
+.account-editor-tabs { display:flex; gap:6px; overflow:auto; border-bottom:1px solid var(--line-strong); margin:20px 0 24px; }
+.account-editor-tabs button { display:flex; align-items:center; gap:8px; white-space:nowrap; padding:12px 14px; min-height:44px; font-size:13px; color:var(--text-muted); border-bottom:2px solid transparent; transition:color var(--dur-micro) var(--ease-out),background-color var(--dur-micro) var(--ease-out); }
+.account-editor-tabs button[aria-selected=true] { color:var(--text); border-bottom-color:#b5a0f5; background:rgba(255,255,255,.035); }
+.account-editor-tabs button:hover { color:var(--text); background:rgba(255,255,255,.04); }
+.account-editor-tabs button:focus-visible { outline:2px solid #b5a0f5; outline-offset:-3px; }
+.account-editor-tabs svg { font-size:18px; flex:none; }
+.account-editor .account-permissions { margin-top:0; padding-top:16px; }
+.account-editor .account-identity { margin-bottom:28px; }
+.account-editor .account-form { max-width:680px; }
+.account-editor .account-toggle { padding:14px 0; }
+.account-editor-actions { padding-top:20px; border-top:1px solid var(--line); }
+.admin-setting-group { margin-top:28px; padding:20px; border:1px solid var(--line-strong); border-radius:10px; }
+.admin-setting-group h3,.admin-section-heading h3,.managed-user-data h3 { display:flex; align-items:center; gap:10px; font-size:16px; font-weight:600; }
+.admin-setting-group h3 svg,.admin-section-heading h3 svg,.managed-user-data h3 svg { font-size:20px; color:var(--text-muted); }
+.admin-retention { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:16px; padding:20px 0; border-bottom:1px solid var(--line); }
+.admin-retention strong { font-size:14px; }
+.admin-retention p,.admin-information { font-size:13px; line-height:1.65; color:var(--text-muted); }
+.admin-information { margin:14px 0 22px; }
+.admin-information a { color:#c6b5ff; text-decoration:underline; text-underline-offset:3px; }
+.account-activity h4 { font-size:14px; font-weight:600; margin:20px 0 12px; }
+.admin-section-heading h4 { margin:0; }
+.activity-events { min-width:600px; }
+.activity-events td { line-height:1.5; overflow-wrap:anywhere; max-width:250px; }
+.admin-pagination { display:flex; justify-content:flex-end; gap:8px; margin-top:16px; }
+.admin-destructive { border-top:1px solid var(--line-strong); padding-top:24px; margin-top:28px; }
+.managed-data-list { border:1px solid var(--line-strong); border-radius:10px; overflow:hidden; }
+.managed-data-list>div { display:grid; grid-template-columns:20px minmax(0,1fr) auto auto; gap:16px; align-items:center; padding:18px; border-bottom:1px solid var(--line); }
+.managed-data-list>div:last-child { border:0; }
+.managed-data-list>div>svg { font-size:20px; color:var(--text-muted); }
+.managed-data-list strong { font-size:14px; }
+.managed-data-list p { color:var(--text-muted); font-size:12px; line-height:1.5; margin-top:4px; }
+.managed-data-count { font-variant-numeric:tabular-nums; font-size:14px; }
+@media(max-width:700px) {
+  .account-users { min-width:0; }
+  .account-users tr>:nth-child(2),.account-users tr>:nth-child(3),.account-users tr>:nth-child(4) { display:none; }
+  .account-users tr>:last-child { width:76px; padding-left:4px; }
+  .account-users th { overflow-wrap:anywhere; }
+  .admin-table .account-mobile-summary { display:block; line-height:1.6; }
+  .admin-setting-group { padding:16px; }
+  .account-editor-tabs { gap:0; }
+  .account-editor-tabs button { padding:12px 10px; }
+  .managed-data-list>div { grid-template-columns:20px minmax(0,1fr) auto; padding:16px; gap:12px; }
+  .managed-data-list>div>.button { grid-column:2/4; justify-self:start; }
+  .account-search { max-width:none; width:100%; }
+}
+@media(prefers-reduced-motion:reduce) { .account-editor-tabs button { transition:none; } }

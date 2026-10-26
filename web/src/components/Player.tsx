@@ -19,6 +19,7 @@ import { useBackgroundPlayback } from '../hooks/useBackgroundPlayback';
 import { usePlaybackVolume } from '../hooks/usePlaybackVolume';
 import { usePlaybackSpeed } from '../hooks/usePlaybackSpeed';
 import { PlayerControls } from './PlayerControls';
+import { usePlaybackActivity } from '../hooks/usePlaybackActivity';
 import { useVideoPresentation } from '../hooks/useVideoPresentation';
 import { VideoSettingsPanel } from './VideoSettingsPanel';
 import type { MediaItem, PlaybackInfo } from '../types';
@@ -90,6 +91,7 @@ export function Player({item,queue,queueIndex,shuffled,onShuffle,onEnded,onNext,
   const [audioError,setAudioError] = useState('');
   const [playbackReady,setPlaybackReady] = useState(false);
   const [playing,setPlaying] = useState(false);
+  usePlaybackActivity(item.id,playing,videoRef);
   const [buffering,setBuffering] = useState(false);
   const [current,setCurrent] = useState(0);
   const [duration,setDuration] = useState(item.duration || 0);

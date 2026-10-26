@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Rebuild the npm Account Manager around a searchable, compact user table and Profile/Libraries/Permissions/Data/Activity tabs. Group server administration separately, add confirmed per-user database-only data clears and session revocation, and keep original videos untouched.
+- Add optional, visibly disclosed live activity and retained operation/playback logs. Default monitoring to off; require the current notice acknowledgement, scope titles to administrator library access, offer 7/30/90-day retention with a 10,000-event limit, and support filtered log review and deletion. Keep passwords, session tokens, IP addresses and file paths out of activity events.
+
 - Add npm-only External tools settings for custom CLI launchers, with explicit start/stop, bounded process output, optional fixed or domain-scoped generated HTTPS addresses, and exact active Host allowlisting. Restrict every command API to direct localhost administrators, keep public cookies Secure, preserve localhost-only administration, and never auto-start tools. Document arbitrary-executable risks and provider-policy responsibilities.
 
 - Keep the first touch on a hidden normal-player overlay reveal-only, without pausing playback, and restart its idle timer. Clear the pending touch intent when a gesture is cancelled.

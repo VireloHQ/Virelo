@@ -82,6 +82,8 @@ export class Accounts {
         created_at INTEGER NOT NULL, PRIMARY KEY(user_id,media_id)
       );
     `);
+    if (!(db.prepare('PRAGMA table_info(account_sessions)').all() as {name:string}[]).some(column=>column.name==='activity_notice_revision'))
+      db.exec('ALTER TABLE account_sessions ADD COLUMN activity_notice_revision INTEGER NOT NULL DEFAULT 0');
   }
   private transaction<T>(operation: () => T): T {
     this.db.exec('BEGIN IMMEDIATE');
@@ -167,7 +169,7 @@ export class Accounts {
   createSession(user: Account) {
     const now = Date.now(), token = randomBytes(32).toString('base64url');
     this.db.prepare('DELETE FROM account_sessions WHERE expires_at<=? OR last_seen<=?').run(now, now - idleTime);
-    this.db.prepare('INSERT INTO account_sessions VALUES(?,?,?,?,?)').run(sessionDigest(token), user.id, user.revision, now + lifetime, now);
+    this.db.prepare('INSERT INTO account_sessions(digest,user_id,revision,expires_at,last_seen) VALUES(?,?,?,?,?)').run(sessionDigest(token), user.id, user.revision, now + lifetime, now);
     this.db.prepare('DELETE FROM account_sessions WHERE user_id=? AND digest NOT IN (SELECT digest FROM account_sessions WHERE user_id=? ORDER BY last_seen DESC,rowid DESC LIMIT 32)').run(user.id,user.id);
     return token;
   }

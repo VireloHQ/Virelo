@@ -5,7 +5,8 @@ import { MobileNav } from './components/MobileNav';
 import { NotFoundView } from './views/NotFoundView';
 import type { SortKey } from './types';
 import { validateShortsSearch } from './utils/shorts-navigation';
-import { PlaybackAccess } from './components/AccountSession';
+import { PlaybackAccess, useAccount } from './components/AccountSession';
+import { ActivityDisclosure } from './components/ActivityDisclosure';
 import { useScanRefresh } from './hooks/useScanRefresh';
 
 const HomeRouteView = createRouteView(() => import('./views/HomeView'), 'HomeView', 'home');
@@ -55,7 +56,8 @@ function validateWatchSearch(input: Record<string, unknown>): WatchRouteSearch {
 
 function Shell() {
   useScanRefresh();
-  return <div className="app-shell"><RouteNavigationGuard viewForPath={viewForPath} /><Header /><main className="page-shell"><Outlet /></main><MobileNav /></div>;
+  const policy=useAccount()?.monitoring;
+  return <div className={'app-shell'+(policy?.enabled?' activity-monitored':'')}><RouteNavigationGuard viewForPath={viewForPath} /><Header /><main className="page-shell"><ActivityDisclosure policy={policy} compact/><Outlet /></main><MobileNav /></div>;
 }
 
 const rootRoute = createRootRoute({ component: Shell, notFoundComponent: NotFoundView, errorComponent: RouteErrorView });

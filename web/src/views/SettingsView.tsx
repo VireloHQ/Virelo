@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useLocation, useNavigate } from '@tanstack/react-router';
 import { Button, Switch } from '@heroui/react';
-import { ArrowLeft, CheckCircle, Database, DeviceMobile, Folders, ImageSquare, PlayCircle, SlidersHorizontal, TerminalWindow, UserCircle, UsersThree, WarningCircle } from '@phosphor-icons/react';
+import { ArrowLeft, CheckCircle, Database, DeviceMobile, Eye, Folders, ImageSquare, PlayCircle, ShieldCheck, SlidersHorizontal, TerminalWindow, UserCircle, UsersThree, WarningCircle } from '@phosphor-icons/react';
 import { api } from '../api';
 import { LibrarySettings } from '../components/LibrarySettings';
 import { Select } from '../components/Select';
@@ -13,19 +13,22 @@ import { QueueLayoutSetting } from '../components/QueueLayoutSetting';
 import type { QueueBehavior, Settings } from '../types';
 import { useAccount } from '../components/AccountSession';
 import { AccountManager, AccountProfile } from '../components/AccountSettings';
+import { ActivityView, AdminSettings } from '../components/AccountAdministration';
 import { DataManagement } from '../components/DataManagement';
 import { CustomCommandSettings } from '../components/CustomCommandSettings';
 
 const settingsSections = [
-  { id:'account', label:'Account', description:'Your name, password and sign-in', icon:UserCircle },
-  { id:'accounts', label:'Account Manager', description:'Users, library access and permissions', icon:UsersThree },
-  { id:'libraries', label:'Libraries', description:'Folders and automatic scanning', icon:Folders },
-  { id:'network', label:'Metadata', description:'Titles, posters and artwork', icon:ImageSquare },
-  { id:'playback', label:'Playback', description:'What plays next', icon:PlayCircle },
-  { id:'shorts', label:'Shorts', description:'Videos in your vertical feed', icon:DeviceMobile },
-  { id:'data', label:'Data management', description:'Storage usage and playback cache', icon:Database },
-  { id:'commands', label:'External tools', description:'Custom commands on this PC', icon:TerminalWindow },
-  { id:'tools', label:'Advanced', description:'Media tool availability', icon:SlidersHorizontal },
+  { id:'account', label:'Account', description:'Your name, password and sign-in', icon:UserCircle, group:'General' },
+  { id:'libraries', label:'Libraries', description:'Folders and automatic scanning', icon:Folders, group:'General' },
+  { id:'playback', label:'Playback', description:'What plays next', icon:PlayCircle, group:'General' },
+  { id:'tools', label:'Advanced', description:'Media tool availability', icon:SlidersHorizontal, group:'General' },
+  { id:'accounts', label:'Account Manager', description:'Users, access and personal data', icon:UsersThree, group:'Admin' },
+  { id:'activity', label:'Activity', description:'Online sessions and activity logs', icon:Eye, group:'Admin' },
+  { id:'admin', label:'Admin', description:'Network access and monitoring', icon:ShieldCheck, group:'Admin' },
+  { id:'network', label:'Metadata', description:'Titles, posters and artwork', icon:ImageSquare, group:'Admin' },
+  { id:'shorts', label:'Shorts', description:'Videos in your vertical feed', icon:DeviceMobile, group:'Admin' },
+  { id:'data', label:'Data management', description:'Storage usage and playback cache', icon:Database, group:'Admin' },
+  { id:'commands', label:'External tools', description:'Custom commands on this PC', icon:TerminalWindow, group:'Admin' },
 ] as const;
 const QUEUE_OPTIONS = [
   { value: 'auto', label: 'Auto next, stop at end' },
@@ -69,6 +72,8 @@ export function SettingsView(){
         <button type="button" className="settings-back" onClick={closeSection}><ArrowLeft aria-hidden="true"/> All settings</button>
         {activeSection==='account'&&<div id="settings-panel-account" className="settings-card settings-section"><AccountProfile/></div>}
         {activeSection==='accounts'&&isAdmin&&<div id="settings-panel-accounts" className="settings-card settings-section"><AccountManager/></div>}
+        {activeSection==='admin'&&isAdmin&&<AdminSettings/>}
+        {activeSection==='activity'&&isAdmin&&<section id="settings-panel-activity" className="settings-card settings-section" aria-labelledby="settings-title-activity"><h2 id="settings-title-activity" tabIndex={-1}>Activity</h2><ActivityView/></section>}
         {activeSection==='data'&&isAdmin&&<DataManagement/>}
         {activeSection==='commands'&&isAdmin&&session?.localAccess&&<CustomCommandSettings/>}
         {activeSection==='libraries'&&<section id="settings-panel-libraries" className="settings-card settings-section" aria-labelledby="settings-title-libraries">

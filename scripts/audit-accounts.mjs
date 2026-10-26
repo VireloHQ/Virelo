@@ -189,6 +189,7 @@ try {
   await checkFieldFocus(page,'Username');await checkFieldFocus(page,'Password');
   await page.getByLabel('Username',{exact:true}).fill('viewer');await page.getByLabel('Display name',{exact:true}).fill('Viewer');
   await page.getByLabel('Password',{exact:true}).fill(password);await page.getByLabel('Confirm password',{exact:true}).fill(password);
+  await page.getByRole('tab',{name:'Libraries',exact:true}).click();
   await page.getByRole('switch',{name:'Shared',exact:true}).focus();await page.keyboard.press('Space');
   await page.getByRole('button',{name:'Create user',exact:true}).click();
   await page.getByRole('button',{name:'Save user',exact:true}).waitFor();
@@ -197,7 +198,7 @@ try {
   await page.evaluate(()=>window.scrollTo(0,0));
   await page.screenshot({path:join(repo,'node_modules/.cache/accounts-desktop.png')});
   assert.equal(await page.getByRole('switch',{name:'Previous',exact:true}).count(),0,'Account Manager excludes previous folders');
-  assert.equal(await page.getByRole('group',{name:'Profile',exact:true}).count(),1);
+  assert.equal(await page.getByRole('tab',{name:'Profile',exact:true}).count(),1);
   assert.equal(await page.getByRole('group',{name:'Library access',exact:true}).count(),1);
   await page.setViewportSize({width:390,height:844});
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
@@ -278,7 +279,8 @@ try {
   assert.equal(server.db.visibleLibraries().find(l=>l.path===previous).persistent,1);
   await page.screenshot({path:join(repo,'node_modules/.cache/accounts-libraries.png')});
   await section(page,'Account Manager');
-  await page.locator('.account-manager-list').getByRole('button',{name:/Viewer/}).click();
+  await page.getByRole('button',{name:'Edit Viewer',exact:true}).click();
+  await page.getByRole('tab',{name:'Permissions',exact:true}).click();
   console.log('accounts: production bootstrap and Account Manager create a restricted viewer');
 
   const viewer=await browser.newContext({serviceWorkers:'block',viewport:{width:1440,height:1000},reducedMotion:'reduce'});
@@ -319,6 +321,7 @@ try {
   assert.equal(await view.evaluate(()=>localStorage.getItem('virelo-playback-quality:v1')),'90','policy must not overwrite the saved preference');
   await view.keyboard.press('Escape');await view.evaluate(()=>localStorage.removeItem('virelo-playback-quality:v1'));
   console.log('accounts: conversion-disabled viewers play the original despite a saved lower quality');
+  await page.getByRole('tab',{name:'Profile',exact:true}).click();
   await page.getByRole('switch',{name:'Administrator',exact:true}).locator('xpath=ancestor::label').click();await page.getByRole('button',{name:'Save user',exact:true}).click();
   await page.waitForFunction(()=>document.querySelector('.account-editor button[type="submit"]')?.getAttribute('aria-busy')!=='true');
   await view.reload();await signIn(view,'viewer');await settings(view);await section(view,'Account Manager');
@@ -326,6 +329,7 @@ try {
   assert.equal((await viewer.request.get(base+'/api/media/'+ids[1])).status(),404);
   console.log('accounts: a promoted administrator keeps their restricted library browsing');
 
+  await section(page,'Admin');
   await page.getByRole('switch',{name:'Administrators can only access from localhost',exact:true}).locator('xpath=ancestor::label').click();
   await page.getByText('Network access updated. Other administrator sessions have been signed out.',{exact:true}).waitFor();
   assert.equal((await viewer.request.get(base+'/api/home')).status(),401);
@@ -338,7 +342,7 @@ try {
   const other=await owner.newPage();await settings(other);await section(page,'Account');
   await page.getByRole('button',{name:'Sign out',exact:true}).click();
   await page.getByRole('heading',{name:'Welcome back',exact:true}).waitFor();await other.getByRole('heading',{name:'Welcome back',exact:true}).waitFor();
-  assert.equal(await other.locator('.media-card,.account-manager-list').count(),0);
+  assert.equal(await other.locator('.media-card,.account-users').count(),0);
   await signIn(page,'viewer');await other.locator('.desktop-nav').getByRole('link',{name:'Home',exact:true}).waitFor();
   assert.equal((await owner.request.get(base+'/api/auth/status')).ok(),true);
   assert.equal((await owner.request.get(base+'/api/media/'+ids[1])).status(),404);
