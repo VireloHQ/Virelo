@@ -8,7 +8,7 @@
 .watch-info-actions { display:flex; align-items:center; justify-content:flex-end; flex-wrap:wrap; gap:10px; flex-shrink:0; max-width:48%; }
 .watch-info-actions .playlist-watch-actions { min-width:0; margin:0; }
 .watch-info-actions .playlist-watch-actions > a { overflow-wrap:anywhere; }
-.watch-info-actions .favorite-button { min-height:40px; }
+.watch-info-actions :is(.button,.favorite-button) { height:48px; min-height:48px; }
 .watch-info-body { margin-top:22px; display:grid; grid-template-columns:minmax(0,1fr); gap:24px; padding-top:20px; border-top:1px solid var(--line); }
 .watch-info-body:has(.watch-editorial) { grid-template-columns:minmax(0,1.6fr) minmax(240px,1fr); gap:32px; }
 .watch-info .watch-overview { max-width:70ch; color:var(--text-muted); font-size:15px; line-height:1.75; white-space:pre-line; overflow-wrap:anywhere; }

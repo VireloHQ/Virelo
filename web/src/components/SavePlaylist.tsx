@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Input } from '@heroui/react';
+import { ListPlus } from '@phosphor-icons/react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../api';
 import { ConfirmationDialog } from './ConfirmationDialog';
@@ -13,7 +14,7 @@ export function SavePlaylist({ mediaIds, label = 'Add to playlist' }: { mediaIds
   const [notice, setNotice] = useState('');
   const playlists = useQuery({ queryKey: ['playlists'], queryFn: api.playlists, enabled });
   return <div className="save-playlist">
-    <ConfirmationDialog triggerLabel={label} title="Save to playlist" confirmLabel="Save" confirmVariant="primary"
+    <ConfirmationDialog triggerLabel={label} triggerIcon={<ListPlus aria-hidden="true"/>} title="Save to playlist" confirmLabel="Save" confirmVariant="primary"
       onOpen={() => { setEnabled(true); void playlists.refetch({ cancelRefetch: false }); setName(''); setTarget('new'); setNotice(''); }}
       onConfirm={async () => {
         if (!mediaIds.length) throw new Error('Choose at least one video.');
@@ -29,7 +30,7 @@ export function SavePlaylist({ mediaIds, label = 'Add to playlist' }: { mediaIds
         <Select label="Playlist" value={target} options={[{ value: 'new', label: 'New playlist' },
           ...(playlists.data ?? []).map(item => ({ value: String(item.id), label: item.name }))]} onChange={setTarget}/>
         {target === 'new' && <label className="playlist-field"><span>Playlist name</span><Input autoFocus aria-label="Playlist name" maxLength={100} value={name} onChange={event => setName(event.target.value)}/></label>}
-        <p>{mediaIds.length} video{mediaIds.length === 1 ? '' : 's'}.{target !== 'new' ? ' Added after existing videos; duplicates are skipped.' : ''} Original files stay unchanged.</p>
+        <p>{mediaIds.length} video{mediaIds.length === 1 ? '' : 's'}</p>
         {target !== 'new' && <button type="button" onClick={() => void playlists.refetch()}>Refresh playlists</button>}
         {playlists.isError && <p className="error-copy" role="alert">Could not load existing playlists. <button type="button" onClick={() => void playlists.refetch()}>Try again</button></p>}
       </div>

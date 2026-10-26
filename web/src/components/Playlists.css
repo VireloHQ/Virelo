@@ -36,6 +36,9 @@
 .playlist-management > div,.playlist-watch-actions { display:flex; flex-wrap:wrap; align-items:center; gap:12px; }
 .playlist-management > span { color:var(--text-muted); font-size:.875rem; }
 .save-playlist { display:flex; flex-wrap:wrap; align-items:center; gap:12px; }
+.save-playlist>.button { min-height:44px; }
+.save-playlist>.button svg { width:20px; height:20px; flex:none; }
+.playlist-watch-actions .button { height:48px; min-height:48px; }
 .playlist-watch-actions { margin-top:20px; }
 @media(max-width:600px) {
   .playlist-create { flex-direction:column; align-items:stretch; }

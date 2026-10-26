@@ -5,6 +5,7 @@ import './ConfirmationDialog.css';
 
 interface ConfirmationDialogProps {
   triggerLabel: string;
+  triggerIcon?: ReactNode;
   title: string;
   children: ReactNode;
   confirmLabel: string;
@@ -14,7 +15,7 @@ interface ConfirmationDialogProps {
 }
 
 // Shared app confirmation UI. React Aria handles focus trapping, restoration and scroll locking.
-export function ConfirmationDialog({ triggerLabel, title, children, confirmLabel, onConfirm, confirmVariant = 'danger', onOpen }: ConfirmationDialogProps) {
+export function ConfirmationDialog({ triggerLabel, triggerIcon, title, children, confirmLabel, onConfirm, confirmVariant = 'danger', onOpen }: ConfirmationDialogProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [animate, setAnimate] = useState(false);
   const [isPending, setIsPending] = useState(false);
@@ -73,7 +74,7 @@ export function ConfirmationDialog({ triggerLabel, title, children, confirmLabel
   };
 
   return <Modal isOpen={isOpen} onOpenChange={changeOpen}>
-    <Button variant="secondary" onPressStart={event=>setAnimate(event.pointerType === 'mouse' || event.pointerType === 'touch' || event.pointerType === 'pen')}>{triggerLabel}</Button>
+    <Button variant="secondary" onPressStart={event=>setAnimate(event.pointerType === 'mouse' || event.pointerType === 'touch' || event.pointerType === 'pen')}>{triggerIcon}{triggerLabel}</Button>
     <Modal.Backdrop className="virelo-confirm-backdrop" data-animate={animate} onExit={animateExit} isDismissable={!isPending} isKeyboardDismissDisabled={isPending}>
       <Modal.Container className="virelo-confirm-container" data-animate={animate} placement="center" size="sm" scroll="inside">
         <Modal.Dialog className="virelo-confirm-dialog" role={confirmVariant === 'danger' ? 'alertdialog' : 'dialog'} aria-describedby={descriptionId}>

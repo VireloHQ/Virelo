@@ -1,5 +1,5 @@
 .settings-nav-group { margin:20px 16px 6px; padding-top:18px; border-top:1px solid var(--line-strong); color:var(--text-muted); font-size:12px; font-weight:600; letter-spacing:.06em; text-transform:uppercase; }
-.settings-nav-group:first-child { margin-top:0; padding-top:0; border:0; }
+.settings-nav-group:first-of-type { margin-top:0; padding-top:0; border:0; }
 .account-list-tools,.admin-section-heading { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:16px; margin:20px 0 16px; }
 .account-list-tools>span { font-size:13px; color:var(--text-muted); }
 .account-search { display:flex; align-items:center; gap:8px; max-width:300px; }

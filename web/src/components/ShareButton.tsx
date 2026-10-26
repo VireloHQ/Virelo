@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Button, Input, Modal } from '@heroui/react';
-import { Check, Copy, X } from '@phosphor-icons/react';
+import { Check, Copy, ShareNetwork, X } from '@phosphor-icons/react';
 import { Select } from './Select';
 import { shareLink, shareQr } from '../utils/share';
 import './ConfirmationDialog.css';
@@ -30,17 +30,17 @@ export function ShareButton({webOnly=false,addresses,label='Share Virelo',path}:
   },[open,url]);
   const local=origin&&['localhost','127.0.0.1','[::1]'].includes(new URL(origin).hostname);
   return <Modal isOpen={open} onOpenChange={setOpen}>
-    <Button className="share-trigger" variant="secondary" onPress={()=>setOpen(true)}>{label}</Button>
+    <Button className="share-trigger" variant="secondary" onPress={()=>setOpen(true)}><ShareNetwork aria-hidden="true"/>{label}</Button>
     <Modal.Backdrop className="virelo-confirm-backdrop" isDismissable>
       <Modal.Container className="virelo-confirm-container" placement="center" size="sm" scroll="inside">
         <Modal.Dialog className="virelo-confirm-dialog" aria-label={label}>
           <Modal.Header className="virelo-confirm-header communication-heading"><Modal.Heading className="virelo-confirm-title">{label}</Modal.Heading><Button isIconOnly variant="ghost" aria-label="Close share" onPress={()=>setOpen(false)}><X/></Button></Modal.Header>
           <Modal.Body className="virelo-confirm-body communication-body">
-            <p>{webOnly?'Open Virelo on another device. Local videos, playlists and folders are not transferred.':path?'Scan to open this video. Sign-in and library permissions still apply; this link does not grant access.':'Scan to open this server. Sign-in and library permissions still apply; this link does not grant access.'}</p>
+            <p>{webOnly?'Share the app. Your videos stay on this device.':'Sign-in and library access are required.'}</p>
             {options.length>1&&<Select label="Server address" value={origin} options={options} onChange={value=>{setOrigin(value);setCopied(false);}}/>}
             <div className="share-qr">{qr?<img src={qr} alt="QR code for the share link" width={256} height={256}/>:<p role="status">Creating QR code…</p>}</div>
             <Input aria-label="Share link" value={url} readOnly onFocus={event=>event.currentTarget.select()}/>
-            {!webOnly&&<p className="communication-help">{local?'This localhost address works only on this PC. Start Virelo with --host 0.0.0.0 to allow LAN access.':'The other device must be able to reach this address. A QR code does not open ports or publish your server.'}</p>}
+            {!webOnly&&<p className="communication-help">{local?'This address only works on this PC. Use --host 0.0.0.0 for LAN access.':'The other device must be able to reach this server.'}</p>}
             {error&&<p className="error-copy" role="alert">{error}</p>}
           </Modal.Body>
           <Modal.Footer className="virelo-confirm-footer">

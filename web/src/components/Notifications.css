@@ -9,7 +9,7 @@
 .notification-toolbar { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:0 24px 12px; min-height:44px; }
 .notification-unread-count { font-size:13px; color:#aaa; }
 .notification-dialog .notification-bulk-action { min-width:0; min-height:44px; padding:8px; margin-right:-8px; color:#ddd; background:transparent; font-size:13px; font-weight:500; }
-.notification-dialog .notification-body { display:block; padding:0 24px; overscroll-behavior:contain; }
+.notification-dialog .notification-body { display:block; padding:0 24px 12px; overscroll-behavior:contain; }
 .notification-body>.error-copy { margin:0 0 16px; color:#ffb4b9; }
 .notification-list { display:grid; border-top:1px solid #343434; }
 .notification-list:empty { display:none; }
@@ -29,8 +29,6 @@
 .notification-read-status { min-height:44px; }
 .notification-item .notification-read-action { min-width:0; min-height:44px; padding:8px; margin-right:-8px; background:transparent; color:#ddd; font-size:13px; font-weight:500; }
 .notification-read-action svg { width:17px; height:17px; }
-.notification-dialog .notification-footer { padding:14px 24px; border-top:1px solid #343434; flex-direction:row; justify-content:flex-start; }
-.notification-footer p { color:#aaa; font-size:12px; line-height:1.6; margin:0; }
 .notification-pagination { display:flex; justify-content:space-between; gap:12px; padding:12px 0 20px; }
 .notification-empty { display:grid; justify-items:center; gap:10px; text-align:center; padding:36px 16px; color:#aaa; }
 .notification-empty>svg { width:32px; height:32px; color:#aaa; }
@@ -48,12 +46,8 @@
 .announcement-recipients legend { padding:0 4px; font-size:13px; color:#aaa; }
 .announcement-recipients label { display:flex; align-items:center; gap:10px; font-weight:400; min-height:44px; font-size:14px; overflow-wrap:anywhere; }
 .announcement-recipients input { accent-color:#ddd; }
-.announcement-compose-footer { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:14px; padding-top:4px; }
-.announcement-compose-footer>span { font-size:12px; color:#aaa; }
+.announcement-compose-footer { display:flex; align-items:center; justify-content:flex-end; flex-wrap:wrap; gap:14px; padding-top:4px; }
 .announcement-compose-footer .button { min-height:44px; }
-.announcement-delivery { border-top:1px solid #343434; padding-top:6px; }
-.announcement-delivery summary { cursor:pointer; padding:12px 0; font-size:12px; color:#bdbdbd; min-height:44px; }
-.announcement-delivery p { color:#aaa; font-size:12px; line-height:1.7; margin:4px 0 0; max-width:76ch; }
 .announcement-history-heading { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:16px; }
 .announcement-history-heading>span { font-size:12px; color:#aaa; white-space:nowrap; }
 .announcement-recipient-count { margin-right:auto; }
@@ -65,12 +59,11 @@
   .notification-dialog .notification-heading { padding:16px 16px 8px; gap:8px; }
   .notification-heading-title .virelo-confirm-title { font-size:21px; }
   .notification-toolbar { padding:0 16px 12px; }
-  .notification-dialog .notification-body { padding:0 16px; }
+  .notification-dialog .notification-body { padding:0 16px 8px; }
   .notification-item { padding-top:16px; }
   .notification-item-heading { grid-template-columns:minmax(0,1fr); gap:4px; }
   .notification-item-title { justify-content:space-between; }
   .notification-item-footer { gap:6px 12px; }
-  .notification-dialog .notification-footer { padding:12px 16px; }
   .announcement-compose-footer { align-items:stretch; flex-direction:column; }
   .announcement-compose-footer .button { width:100%; }
 }

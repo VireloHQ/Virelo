@@ -15,13 +15,35 @@ const root=await mkdtemp(join(tmpdir(),'virelo-communication-')),media=join(root
 let server,browser,vite;const errors=[],results=[];
 const check=(value,label)=>{assert.ok(value,label);console.log('PASS',label);};
 const auditSettingsNavigation=async(page,mode)=>{
+  if(await page.locator('.settings-nav-group').count())check(await page.locator('.settings-nav-group').first().evaluate(element=>getComputedStyle(element).borderTopWidth==='0px'),'the first settings group retains its original spacing without a leading divider');
   for(const button of await page.locator('.settings-nav-item').all()){
     await button.click();
+    await page.waitForFunction(id=>document.getElementById(id)?.getAttribute('aria-current')==='page',await button.getAttribute('id'));
+    await page.locator('.settings-selection').evaluate(async element=>{await Promise.all(element.getAnimations().map(animation=>animation.finished.catch(()=>{})));});
     check(await button.evaluate(element=>{
-      const marker=getComputedStyle(element,'::before'),height=element.getBoundingClientRect().height;
-      return element.getAttribute('aria-current')==='page'&&marker.top==='0px'&&marker.bottom==='0px'&&Math.abs(parseFloat(marker.height)-height)<1;
+      const marker=element.parentElement.querySelector('.settings-selection').getBoundingClientRect(),row=element.getBoundingClientRect();
+      return element.getAttribute('aria-current')==='page'&&Math.abs(marker.top-row.top)<1&&Math.abs(marker.height-row.height)<1;
     }),mode+' settings selection marker matches the full highlighted row: '+await button.getAttribute('id'));
   }
+  const motion=await page.evaluate(()=>window.__settingsMotion);
+  check(motion.some(item=>item.selection&&item.duration===200)&&motion.some(item=>!item.selection&&item.duration===200),mode+' pointer settings changes animate the shared selection and panel');
+  const before=motion.length;
+  const first=page.locator('.settings-nav-item').first();await first.focus();await page.keyboard.press('Enter');
+  await page.waitForFunction(id=>document.getElementById(id)?.getAttribute('aria-current')==='page',await first.getAttribute('id'));
+  check(await page.evaluate(count=>window.__settingsMotion.length===count,before),mode+' keyboard settings navigation remains immediate');
+  await page.emulateMedia({reducedMotion:'reduce'});await page.locator('.settings-nav-item').last().click();
+  await page.waitForFunction(id=>document.getElementById(id)?.getAttribute('aria-current')==='page',await page.locator('.settings-nav-item').last().getAttribute('id'));
+  check(await page.evaluate(count=>window.__settingsMotion.length===count,before),mode+' reduced-motion settings navigation remains immediate');
+  await page.emulateMedia({reducedMotion:'no-preference'});
+  await page.setViewportSize({width:390,height:844});
+  for(const attempt of [1,2]){
+    await page.getByRole('button',{name:'All settings',exact:true}).click();await first.waitFor({state:'visible'});
+    const count=await page.evaluate(()=>window.__settingsMotion.length);
+    await first.click();
+    await page.waitForFunction(count=>window.__settingsMotion.length>count,count);
+    check(await page.evaluate(()=>window.__settingsMotion.at(-1).selection===false),mode+' mobile settings panel fades on entry '+attempt);
+  }
+  await page.setViewportSize({width:1440,height:1000});
   await page.screenshot({path:join(root,'settings-navigation-'+mode+'.png'),fullPage:true});
 };
 try{
@@ -46,6 +68,12 @@ try{
     await context.addInitScript({path:fileURLToPath(new URL('../node_modules/jsqr/dist/jsQR.js',import.meta.url))});
     return context.addInitScript(()=>{
     window.__contexts=[];
+    window.__settingsMotion=[];
+    const animate=Element.prototype.animate;
+    Element.prototype.animate=function(frames,options){
+      if(this.matches('.settings-selection,.settings-content > .settings-section'))window.__settingsMotion.push({selection:this.matches('.settings-selection'),duration:options.duration,frames});
+      return animate.call(this,frames,options);
+    };
     const Native=window.AudioContext;
     window.AudioContext=class extends Native{
       constructor(...args){super(...args);this.__limiters=[];this.__sources=[];window.__contexts.push(this);}
@@ -107,6 +135,7 @@ try{
   const viewer=await guest.newPage();viewer.on('pageerror',error=>errors.push(error.message));await viewer.goto(npmBase+'/settings#playback');
   await viewer.getByRole('button',{name:'Notifications, 1 unread',exact:true}).click();
   await viewer.getByRole('heading',{name:'Server update',exact:true}).waitFor();
+  check(await viewer.getByText("Read status is saved to your account.",{exact:false}).count()===0,'the inbox contains no implementation-details footer');
   check(await viewer.locator('.notification-message').innerText()==='A message from your administrator. <img onerror=alert(1)>','notifications render administrator content as plain text');
   await viewer.waitForFunction(()=>getComputedStyle(document.querySelector('.notification-container')).opacity==='1');
   const readable=()=>viewer.locator('.notification-item').first().evaluate(element=>{
@@ -232,6 +261,18 @@ api.mediaSource=async id=>{if(!auditUrls.has(id))auditUrls.set(id,URL.createObje
     await current.goto(base+prefix+'/watch/'+items[0].id+'?queue=false');
     await current.waitForFunction(()=>{const v=document.querySelector('.player video');return v&&!v.paused&&v.currentTime>.2;});
     const shareLabel=mode==='npm'?'Share video':'Share Virelo';
+    await current.locator('.watch-info-actions').waitFor();
+    for(const width of [1440,390]){
+      await current.setViewportSize({width,height:1000});
+      check(await current.locator('.watch-info-actions button').evaluateAll(buttons=>buttons.length>=3&&buttons.every(button=>Math.abs(button.getBoundingClientRect().height-48)<1)),mode+' video actions share a 48px height at '+width+'px');
+    }
+    check(await current.getByRole('button',{name:shareLabel,exact:true}).locator('svg[aria-hidden="true"]').count()===1,mode+' Share action has a decorative share icon');
+    check(await current.getByRole('button',{name:'Add to playlist',exact:true}).locator('svg[aria-hidden="true"]').count()===1,mode+' playlist action has a decorative list-add icon');
+    await current.locator('.watch-info-actions').screenshot({path:join(root,mode+'-video-actions.png')});
+    await current.getByRole('button',{name:'Add to playlist',exact:true}).click();
+    const save=current.getByRole('dialog',{name:'Save to playlist',exact:true});await save.waitFor();
+    check(await save.getByText('Original files stay unchanged.',{exact:false}).count()===0,mode+' playlist form omits implementation details');
+    await save.getByRole('button',{name:'Cancel',exact:true}).click();await save.waitFor({state:'hidden'});
     await current.getByRole('button',{name:shareLabel,exact:true}).click();await current.locator('.share-qr img').waitFor();
     check(await current.locator('.share-qr img').getAttribute('src').then(value=>value.startsWith('data:image/png;base64,')),mode+' branded PNG QR is generated locally');
     const link=await current.getByLabel('Share link',{exact:true}).inputValue();check(link===base+(mode==='web'?'/app':'/watch/'+items[0].id),mode+' share link has the correct scope');

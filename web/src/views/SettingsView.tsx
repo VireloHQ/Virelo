@@ -73,7 +73,7 @@ export function SettingsView(){
     {save.error&&<p className="error-copy settings-save-error">{save.error.message}</p>}
 
     <div className="settings-layout">
-      <SettingsNavigation sections={sections} activeSection={activeSection} onSelect={openSection}/>
+      <SettingsNavigation sections={sections} activeSection={activeSection} detailOpen={mobileDetail} onSelect={openSection}/>
 
       <div className="settings-content">
         <button type="button" className="settings-back" onClick={closeSection}><ArrowLeft aria-hidden="true"/> All settings</button>

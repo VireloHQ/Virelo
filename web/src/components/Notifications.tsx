@@ -49,7 +49,6 @@ export function NotificationBell(){
             {inbox.data?.items?.length===0&&<div className="notification-empty"><Bell aria-hidden="true"/><h3>No notifications yet</h3><p>Messages from your server administrator will appear here.</p></div>}
             {(cursors.length>0||inbox.data?.nextBefore)&&<div className="notification-pagination"><Button variant="secondary" isDisabled={!cursors.length} onPress={()=>setCursors(values=>values.slice(0,-1))}>Newer</Button><Button variant="secondary" isDisabled={!inbox.data?.nextBefore} onPress={()=>setCursors(values=>[...values,inbox.data!.nextBefore!])}>Older</Button></div>}
           </Modal.Body>
-          <Modal.Footer className="virelo-confirm-footer notification-footer"><p>From this server's administrators. Read status is saved to your account.</p></Modal.Footer>
         </Modal.Dialog>
       </Modal.Container>
     </Modal.Backdrop>
@@ -74,10 +73,9 @@ export function AnnouncementSettings(){
       <Select label="Announcement recipients" value={audience} options={[{value:'all',label:'All current enabled users'},{value:'selected',label:'Selected users'}]} onChange={setAudience}/>
       {audience==='selected'&&<fieldset className="announcement-recipients"><legend>Recipients</legend>{users.data?.filter(user=>user.enabled).map(user=><label key={user.id}><input type="checkbox" checked={selected.includes(user.id)} disabled={send.isPending} onChange={event=>setSelected(values=>event.target.checked?[...values,user.id]:values.filter(id=>id!==user.id))}/>{user.displayName} (@{user.username})</label>)}</fieldset>}
       {users.error&&audience==='selected'&&<p className="error-copy" role="alert">Could not load users. <button type="button" onClick={()=>void users.refetch()}>Try again</button></p>}
-      <div className="announcement-compose-footer"><span>{audience==='all'?'All current enabled users':`${selected.length} selected ${selected.length===1?'user':'users'}`}</span><Button type="submit" isPending={send.isPending} isDisabled={!title.trim()||!body.trim()||send.isPending||audience==='selected'&&!selected.length}><PaperPlaneTilt/> Send announcement</Button></div>
+      <div className="announcement-compose-footer"><Button type="submit" isPending={send.isPending} isDisabled={!title.trim()||!body.trim()||send.isPending||audience==='selected'&&!selected.length}><PaperPlaneTilt/> Send announcement</Button></div>
       {send.error&&<p className="error-copy" role="alert">{send.error.message}</p>}
       {feedback&&<p className="account-feedback" role="status">{feedback}</p>}
-      <details className="announcement-delivery"><summary>Delivery details</summary><p>Messages appear in Virelo, usually within 30 seconds. No email or OS push is sent. They expire after 90 days, with up to 200 retained. New accounts do not receive earlier messages. Per-user read receipts are not shown to administrators.</p></details>
     </form>
     <div className="announcement-sent admin-setting-group"><div className="announcement-history-heading"><h3><Megaphone aria-hidden="true"/> Sent announcements</h3>{sent.data&&<span>{sent.data.length} sent</span>}</div>
       {sent.isPending&&<p role="status">Loading announcements…</p>}

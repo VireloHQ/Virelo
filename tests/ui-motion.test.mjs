@@ -18,15 +18,33 @@ test('the app loads one shared, restrained motion system after its base styles',
   assert.match(motion, /@media \(hover:hover\) and \(pointer:fine\)/);
 });
 
-test('the splash uses static branding and a single short fade, not delayed text or a slide', async () => {
+test('the splash remains visible before a short fade and waits for visible, styled startup', async () => {
   const splash = await source('components/SplashScreen.tsx');
   assert.match(splash, /--dur-long/);
   assert.match(splash, /prefers-reduced-motion/);
   assert.doesNotMatch(splash, /setPhase|phase ===|1400|translate|scale/);
   assert.match(splash, /clearTimeout\(finishTimer\)/);
+  assert.match(splash, /new IntersectionObserver/);
+  assert.match(splash, /entry\.isIntersecting/);
+  assert.match(splash, /logo\.addEventListener\('load', begin/);
+  assert.match(splash, /setTimeout\(begin, 1500\)/);
+  assert.match(splash, /clearTimeout\(leaveTimer\)/);
+  assert.match(splash, /logo\.removeEventListener/);
   const css = await source('styles.css');
   assert.match(css, /html \{[^}]*scroll-behavior: auto/);
   assert.doesNotMatch(css, /splashSlideUp|splashNameReveal|@keyframes picker-in|transition:width/);
+  assert.match(css, /prefers-reduced-motion:reduce\) \{\s*\.splash-screen \{ transition:none/);
+});
+
+test('settings pointer navigation moves a shared selection and fades the panel without layout travel', async () => {
+  const navigation = await source('components/SettingsNavigation.tsx');
+  assert.match(navigation, /event.detail > 0/);
+  assert.match(navigation, /prefers-reduced-motion/);
+  assert.match(navigation, /marker.animate/);
+  assert.match(navigation, /panel.animate\(\[\{ opacity: 0 \}, \{ opacity: 1 \}\]/);
+  assert.match(navigation, /getComputedStyle\(marker\).transform/);
+  assert.match(navigation, /new ResizeObserver/);
+  assert.match(navigation, /finished.catch/);
 });
 
 test('closing dropdowns stay visually present but become inert and hidden to assistive tech', async () => {
