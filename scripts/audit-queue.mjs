@@ -238,6 +238,15 @@ try {
     const geometry = await page.evaluate(() => { const p = document.querySelector('.player').getBoundingClientRect(), q = document.querySelector('.playback-queue').getBoundingClientRect(); return { side: q.left >= p.right, below: q.top >= p.bottom, width: document.documentElement.scrollWidth, viewport: innerWidth }; });
     check(scenario.width >= 1200 ? geometry.side : geometry.below, label + ' vertical layout adapts beside or below the video');
     check(geometry.width <= geometry.viewport + 1, label + ' no page horizontal overflow');
+    check(await list.evaluate(element => {
+      const rows = [...element.querySelectorAll('.playback-queue-tile')].slice(0, 2);
+      const gap = rows[1].getBoundingClientRect().top - rows[0].getBoundingClientRect().bottom;
+      return gap >= 0 && gap <= 2.5 && rows.every(row => {
+        const contentHeight = Math.max(...['.playback-queue-art', '.playback-queue-copy'].map(selector => row.querySelector(selector).getBoundingClientRect().height));
+        return row.getBoundingClientRect().height - contentHeight <= 4.5
+          && [...row.querySelectorAll('.queue-item-actions button')].every(button => button.getBoundingClientRect().height >= 44);
+      });
+    }), label + ' vertical rows stay compact without shrinking action targets');
     if(scenario.width>=1200){
       for(const width of [1200,1440,1920]){
         await page.setViewportSize({width,height:scenario.height});await settle(page);

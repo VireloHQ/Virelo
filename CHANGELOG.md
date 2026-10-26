@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Tighten vertical Queue rows by removing stacked padding and reducing the row gap, preserving horizontal layout and action target sizes.
+
 - Curve context-menu bubble tails at both the tip and the join, sharing the same shape with nested side settings while preserving placement and behavior.
 
 - Narrow the desktop vertical Queue to 300–340px and pin it inside the viewport. Scroll only its video list, retain space beside the player and recommendations, and preserve horizontal/mobile layouts.
