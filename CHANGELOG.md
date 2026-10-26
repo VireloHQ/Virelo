@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Reserve a clear central area around share-QR logos, including their transparent parts, without a separate badge. Verify the empty margin and decoding in both the displayed and downloadable image.
+
 - Brand share QR codes with a centered Virelo logo, rounded modules/finder corners, high error correction and a PNG export with the logo embedded. Verify decoding independently at native, 256px and 192px sizes, including LAN/IPv6/long addresses.
 - Replace the header share icon with labelled video actions and a Sharing settings section. Enlarge header search, notifications and settings icons to 28px with 48px touch targets.
 

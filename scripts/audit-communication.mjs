@@ -49,17 +49,25 @@ try{
     await current.locator('.share-qr img').evaluate(image=>image.decode());
     const result=await current.locator('.share-qr img').evaluate((image,expected)=>{
       const canvas=document.createElement('canvas'),sizes=[image.naturalWidth,256,192],decoded=[];
-      let colored=0;
+      let colored=0,overlap=0;
       for(const size of sizes){
         canvas.width=canvas.height=size;const ctx=canvas.getContext('2d');ctx.drawImage(image,0,0,size,size);
         const pixels=ctx.getImageData(0,0,size,size);
+        if(size===image.naturalWidth){
+          const count=size/12-8,space=Math.round(count*.3)|1,start=((count-space)/2+4)*12,end=start+space*12;
+          const logoSize=Math.round(count*.26)*12,logoStart=(size-logoSize)/2,logoEnd=logoStart+logoSize;
+          for(let y=start+1;y<end-1;y++)for(let x=start+1;x<end-1;x++)if(x<logoStart-1||x>logoEnd+1||y<logoStart-1||y>logoEnd+1){
+            const at=(y*size+x)*4;if(pixels.data[at]<250||pixels.data[at+1]<250||pixels.data[at+2]<250)overlap++;
+          }
+        }
         if(size===256)for(let i=0;i<pixels.data.length;i+=4)if(Math.max(...pixels.data.subarray(i,i+3))-Math.min(...pixels.data.subarray(i,i+3))>40)colored++;
         decoded.push(window.jsQR(pixels.data,size,size)?.data===expected);
       }
-      return {decoded,colored};
+      return {decoded,colored,overlap};
     },expected);
     assert.deepEqual(result.decoded,[true,true,true],'rounded, branded QR decodes at native, 256px and 192px sizes');
     assert.ok(result.colored>30,'the downloaded image contains the color logo, not a separate DOM overlay');
+    assert.equal(result.overlap,0,'the reserved space around the logo contains no QR pattern');
     assert.equal(await current.getByRole('link',{name:'Save QR',exact:true}).getAttribute('href'),await current.locator('.share-qr img').getAttribute('src'));
     assert.equal(await current.getByRole('link',{name:'Save QR',exact:true}).getAttribute('download'),'virelo-qr.png');
   };
