@@ -22,13 +22,7 @@ export function subscribeLeveling(listener:()=>void){
   return()=>{listeners.delete(listener);if(!listeners.size)window.removeEventListener('storage',storage);};
 }
 // shortcut: live stereo estimation; use full-file EBU R128 analysis when exact integrated LUFS is needed.
-export function levelingGainDb(level:number,peak:number):number|null {
-  if(!Number.isFinite(level)||!Number.isFinite(peak)||level < -55)return null;
-  return Math.max(-24,Math.min(12,-18-level,-3-peak));
-}
-export function signalLevel(channels:Float32Array[],volume=1) {
-  let energy=0,peak=0;
-  for(const samples of channels){let sum=0;for(const sample of samples){sum+=sample*sample;peak=Math.max(peak,Math.abs(sample));}energy+=sum/Math.max(1,samples.length);}
-  const manual=Math.max(.001,volume);
-  return {level:-.691+10*Math.log10(energy/(manual*manual)),peak:20*Math.log10(peak/manual)};
+export function levelingGainDb(level:number,peak?:number):number|null {
+  if(!Number.isFinite(level)||peak!==undefined&&!Number.isFinite(peak)||level < -55)return null;
+  return Math.max(-24,Math.min(12,-18-level,peak===undefined?Infinity:-3-peak));
 }

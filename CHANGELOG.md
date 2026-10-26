@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Apply volume leveling before audible output with a 30ms native-audio lookahead and an audio-rate detector, including startup and seeks. Bind processing before playback effects, preserve manual volume and mute, and remove the delayed main-thread polling loop without modifying source files.
+
 - Animate pointer-driven settings selection with a shared moving highlight and a short, position-stable panel fade; keep keyboard and reduced-motion navigation immediate. Add share/playlist action icons, align video action heights, and shorten nonessential helper copy.
 
 - Restore the startup splash with a brief visible logo/wordmark hold before the shared fade. Start timing only when the screen is visible, wait briefly for the logo without blocking startup indefinitely, and honor reduced motion.

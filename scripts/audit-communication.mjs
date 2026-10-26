@@ -258,8 +258,19 @@ api.mediaSource=async id=>{if(!auditUrls.has(id))auditUrls.set(id,URL.createObje
   });
   for(const [mode,base,ctx,current] of modes){
     const prefix=mode==='web'?'/app':'';
+    await ctx.addInitScript(()=>{
+      localStorage.setItem('virelo-volume-leveling:v1','true');
+      window.__levelingBeforePlay=[];
+      const play=HTMLMediaElement.prototype.play;
+      HTMLMediaElement.prototype.play=function(){
+        if(this.matches('.player video'))window.__levelingBeforePlay.push(window.__contexts.some(context=>context.__sources.includes(this)));
+        return play.call(this);
+      };
+    });
     await current.goto(base+prefix+'/watch/'+items[0].id+'?queue=false');
     await current.waitForFunction(()=>{const v=document.querySelector('.player video');return v&&!v.paused&&v.currentTime>.2;});
+    check(await current.evaluate(()=>window.__levelingBeforePlay.length>0&&window.__levelingBeforePlay.every(Boolean)),mode+' saved leveling is bound before the first video play call');
+    check(await current.evaluate(()=>window.__contexts.some(context=>context.__sources.includes(document.querySelector('.player audio')))),mode+' selected/external audio is already routed through the same protected graph');
     const shareLabel=mode==='npm'?'Share video':'Share Virelo';
     await current.locator('.watch-info-actions').waitFor();
     for(const width of [1440,390]){
@@ -279,7 +290,9 @@ api.mediaSource=async id=>{if(!auditUrls.has(id))auditUrls.set(id,URL.createObje
     await verifyQr(current,link);check(true,mode+' rounded QR and embedded logo decode at three image sizes');
     await current.getByRole('button',{name:'Copy link',exact:true}).click();check(await current.evaluate(()=>window.__copied)===link,mode+' copy action uses the displayed URL');
     await current.keyboard.press('Escape');await current.getByRole('dialog',{name:shareLabel,exact:true}).waitFor({state:'hidden'});
-    await openPlaybackSetting(current,'Audio');await current.getByRole('menuitemcheckbox',{name:/Volume leveling/}).click();
+    await openPlaybackSetting(current,'Audio');
+    if(await current.getByRole('menuitemcheckbox',{name:/Volume leveling/}).getAttribute('aria-checked')==='true')await current.getByRole('menuitemcheckbox',{name:/Volume leveling/}).click();
+    await current.getByRole('menuitemcheckbox',{name:/Volume leveling/}).click();
     await current.waitForFunction(()=>window.__contexts.some(context=>context.__limiters.length>0));
     await current.getByRole('menuitemcheckbox',{name:/Volume leveling/}).click();await current.waitForTimeout(700);
     const before=await sample(current);check(before.rms>0,mode+' disabling leveling leaves audio audible');
@@ -294,6 +307,7 @@ api.mediaSource=async id=>{if(!auditUrls.has(id))auditUrls.set(id,URL.createObje
     const loud=await sample(current);const difference=20*Math.log10(loud.rms/quiet.rms);
     check(Math.abs(difference)<3,mode+' differently mastered clips converge within 3 dB');
     await current.goto(base+prefix+'/shorts?startId='+items[2].id);await current.waitForFunction(()=>{const v=document.querySelector('.short-player video');return v&&!v.paused&&v.currentTime>1;});
+    check(await current.evaluate(()=>window.__levelingBeforePlay.length>0&&window.__levelingBeforePlay.every(Boolean)),mode+' Shorts binds leveling before playback too');
     await current.getByRole('button',{name:'Audio',exact:true}).click();check(await current.getByRole('menuitemcheckbox',{name:/Volume leveling/}).getAttribute('aria-checked')==='true',mode+' Shorts shares the saved leveling preference');
     await current.getByRole('menuitemcheckbox',{name:/Volume leveling/}).click();await current.keyboard.press('Escape');check((await sample(current)).rms>0,mode+' Shorts stays audible after disabling leveling');
     await current.screenshot({path:join(root,mode+'-leveling.png')});results.push({mode,before:before.rms,quiet:quiet.rms,loud:loud.rms,differenceDb:difference});
