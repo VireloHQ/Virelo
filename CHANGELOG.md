@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Rework received and sent announcements with a wider reading panel, separated message cards, readable body/metadata contrast, restrained read controls, clear recipient/withdrawal rows, and a grouped composer. Preserve read-state isolation, publishing permissions and plain-text rendering; test mobile widths, long messages, bulk reads and withdrawal.
+
 - Reserve a clear central area around share-QR logos, including their transparent parts, without a separate badge. Verify the empty margin and decoding in both the displayed and downloadable image.
 
 - Brand share QR codes with a centered Virelo logo, rounded modules/finder corners, high error correction and a PNG export with the logo embedded. Verify decoding independently at native, 256px and 192px sizes, including LAN/IPv6/long addresses.

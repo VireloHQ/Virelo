@@ -1,0 +1,77 @@
+.notification-badge { position:absolute; right:1px; top:1px; min-width:18px; padding:0 4px; line-height:18px; border-radius:10px; background:var(--color-brand,#ae93ff); color:#120e1a; font-size:11px; font-weight:700; }
+.notification-container.virelo-confirm-container { width:min(620px,calc(100vw - 32px)); max-width:620px; padding:0; }
+.notification-dialog.virelo-confirm-dialog { width:100%; min-width:0; max-width:none; padding:0; gap:0; border-radius:16px; }
+.notification-dialog .notification-heading { display:flex; flex-direction:row; align-items:center; justify-content:space-between; gap:16px; padding:20px 24px 12px; }
+.notification-heading-title { display:flex; align-items:center; gap:12px; min-width:0; }
+.notification-heading-title>svg { width:24px; height:24px; color:#c6b5ef; flex-shrink:0; }
+.notification-heading-title .virelo-confirm-title { font-size:23px; }
+.notification-dialog .notification-close { min-width:44px; width:44px; height:44px; flex-shrink:0; color:#d4d0da; }
+.notification-toolbar { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:0 24px 16px; min-height:44px; }
+.notification-unread-count { font-size:13px; color:#c8c2d1; }
+.notification-dialog .notification-bulk-action { min-width:0; min-height:44px; padding:8px; color:#d3c3f5; background:transparent; font-size:13px; }
+.notification-dialog .notification-body { display:block; padding:0 24px 24px; }
+.notification-body>.error-copy { margin:0 0 16px; color:#ffb4b9; }
+.notification-list { display:grid; gap:12px; }
+.notification-item { position:relative; min-width:0; padding:20px; border:1px solid #3b3741; border-radius:12px; background:#1c1b20; }
+.notification-item[data-unread=true] { background:#24202d; border-color:#51445f; }
+.notification-item[data-unread=true]::before { content:''; position:absolute; left:0; top:18px; bottom:18px; width:3px; border-radius:3px; background:#b79aee; }
+.notification-item-heading { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; }
+.notification-item h3 { color:#f6f4fa; font-size:17px; font-weight:600; line-height:1.45; letter-spacing:-.01em; margin:0; overflow-wrap:anywhere; }
+.notification-new { flex-shrink:0; font-size:11px; line-height:1.6; padding:1px 7px; border-radius:5px; color:#e1d4fc; background:#3e3252; }
+.notification-item .notification-message { white-space:pre-wrap; overflow-wrap:anywhere; color:#e8e4ee; font-size:15px; line-height:1.7; margin:12px 0 16px; max-width:76ch; user-select:text; }
+.notification-item-footer { display:flex; align-items:center; flex-wrap:wrap; gap:10px 16px; padding-top:12px; border-top:1px solid #3b3545; min-height:44px; }
+.notification-item time { margin-right:auto; color:#bcb5c6; font-size:12px; line-height:1.5; }
+.notification-read-status,.announcement-recipient-count { display:inline-flex; align-items:center; gap:6px; color:#bcb5c6; font-size:12px; white-space:nowrap; }
+.notification-read-status svg,.announcement-recipient-count svg { width:16px; height:16px; flex-shrink:0; }
+.notification-read-status { min-height:44px; margin-left:auto; }
+.notification-item .notification-read-action { min-width:0; min-height:44px; padding:8px; margin-right:-8px; background:transparent; color:#e0d3f6; font-size:13px; }
+.notification-read-action svg { width:17px; height:17px; }
+.notification-dialog .notification-footer { padding:14px 24px; border-top:1px solid #36313c; flex-direction:row; justify-content:flex-start; background:#151418; }
+.notification-footer p { color:#aaa3b3; font-size:12px; line-height:1.6; margin:0; }
+.notification-pagination { display:flex; justify-content:space-between; gap:12px; margin-top:16px; }
+.notification-empty { display:grid; justify-items:center; gap:10px; text-align:center; padding:36px 24px; border:1px dashed #46404e; border-radius:12px; color:#bcb5c6; }
+.notification-empty>svg { width:32px; height:32px; color:#a697bc; }
+.notification-empty h3 { font-size:16px; color:#eeebf3; margin:0; font-weight:500; }
+.notification-empty p { font-size:13px; line-height:1.6; max-width:36ch; margin:0; }
+#settings-panel-announcements { max-width:940px; }
+.announcement-form { display:grid; gap:20px; padding:24px; border:1px solid #3b3741; border-radius:12px; background:#151418; }
+.announcement-compose-title,.announcement-history-heading h3 { display:flex; align-items:center; gap:10px; font-size:17px; font-weight:600; color:#f6f4fa; margin:0; }
+.announcement-compose-title svg,.announcement-history-heading svg { width:20px; height:20px; flex-shrink:0; color:#c0b1d7; }
+.announcement-form>label { display:grid; gap:9px; font-size:13px; font-weight:500; color:#e3dfe9; }
+.announcement-form .input,.announcement-form textarea { width:100%; min-width:0; background:#202023; border:1px solid #4b4653; border-radius:8px; color:#f5f5f7; font:inherit; font-weight:400; padding:12px; }
+.announcement-form .input { min-height:44px; }
+.announcement-form textarea { min-height:140px; resize:vertical; line-height:1.65; user-select:text; }
+.announcement-form :is(input,textarea):focus { outline:none; box-shadow:inset 0 -2px 0 #c5b6df; }
+.announcement-recipients { max-height:220px; overflow:auto; border:1px solid #4b4653; border-radius:8px; padding:12px; display:grid; gap:4px; }
+.announcement-recipients legend { padding:0 4px; font-size:13px; color:#bcb5c6; }
+.announcement-recipients label { display:flex; align-items:center; gap:10px; font-weight:400; min-height:44px; font-size:14px; overflow-wrap:anywhere; }
+.announcement-compose-footer { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:14px; padding-top:4px; }
+.announcement-compose-footer>span { font-size:12px; color:#bcb5c6; }
+.announcement-compose-footer .button { min-height:44px; }
+.announcement-delivery { border-top:1px solid #37323e; padding-top:6px; }
+.announcement-delivery summary { cursor:pointer; padding:12px 0; font-size:12px; color:#c7bed1; min-height:44px; }
+.announcement-delivery p { color:#aaa3b3; font-size:12px; line-height:1.7; margin:4px 0 0; max-width:76ch; }
+.announcement-sent { margin-top:32px; }
+.announcement-history-heading { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:16px; }
+.announcement-history-heading>span { font-size:12px; color:#bcb5c6; white-space:nowrap; }
+.announcement-withdraw .button { min-height:44px; padding:8px 12px; border:1px solid #60505a; background:transparent; color:#f0bec7; font-size:12px; }
+.announcement-withdraw .button:hover { background:#35242a; border-color:#956d79; }
+@media(max-width:600px) {
+  .notification-container.virelo-confirm-container { width:calc(100vw - 24px); max-height:calc(100dvh - 24px); }
+  .notification-dialog .notification-heading { padding:16px 16px 8px; gap:8px; }
+  .notification-heading-title { gap:10px; }
+  .notification-heading-title .virelo-confirm-title { font-size:21px; }
+  .notification-toolbar { padding:0 16px 12px; }
+  .notification-dialog .notification-body { padding:0 16px 16px; }
+  .notification-item { padding:16px; }
+  .notification-item-heading { gap:10px; }
+  .notification-item h3 { font-size:16px; }
+  .notification-item-footer { gap:6px 12px; }
+  .notification-item time { flex-basis:100%; }
+  .notification-item .notification-read-action { margin-left:auto; }
+  .notification-dialog .notification-footer { padding:12px 16px; }
+  .announcement-form { padding:18px; gap:18px; }
+  .announcement-compose-footer { align-items:stretch; flex-direction:column; }
+  .announcement-compose-footer .button { width:100%; }
+  .announcement-recipient-count { margin-right:auto; }
+}

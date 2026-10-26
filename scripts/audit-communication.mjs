@@ -78,14 +78,59 @@ try{
   await page.goto(npmBase+'/settings#announcements');
   await page.getByLabel('Announcement title',{exact:true}).fill('Server update');await page.getByLabel('Announcement message',{exact:true}).fill('A message from your administrator. <img onerror=alert(1)>');
   await page.getByRole('button',{name:'Send announcement',exact:true}).click();await page.getByRole('status').filter({hasText:'Sent to 2 users.'}).waitFor();
+  await page.screenshot({path:join(root,'announcements-desktop.png'),fullPage:true});
+  check(await page.locator('.announcement-history-heading').evaluate(element=>{const heading=element.querySelector('h3').getBoundingClientRect(),icon=element.querySelector('svg').getBoundingClientRect();return icon.top>=heading.top&&icon.bottom<=heading.bottom+1;}),'sent-list heading and icon share one line');
   const guest=await browser.newContext({serviceWorkers:'block',viewport:{width:390,height:844}});await instrument(guest);await login(guest,'viewer');
   const viewer=await guest.newPage();viewer.on('pageerror',error=>errors.push(error.message));await viewer.goto(npmBase+'/settings#playback');
   await viewer.getByRole('button',{name:'Notifications, 1 unread',exact:true}).click();
   await viewer.getByRole('heading',{name:'Server update',exact:true}).waitFor();
   check(await viewer.locator('.notification-message').innerText()==='A message from your administrator. <img onerror=alert(1)>','notifications render administrator content as plain text');
+  await viewer.waitForFunction(()=>getComputedStyle(document.querySelector('.notification-container')).opacity==='1');
+  const readable=()=>viewer.locator('.notification-item').first().evaluate(element=>{
+    const body=element.querySelector('.notification-message'),title=element.querySelector('h3'),footer=element.querySelector('footer');
+    const [copy,heading,meta]=[body,title,footer].map(node=>node.getBoundingClientRect());
+    const style=getComputedStyle(element),text=getComputedStyle(body),rgb=value=>value.match(/[\d.]+/g).slice(0,3).map(Number);
+    const luminance=value=>rgb(value).map(channel=>channel/255).map(channel=>channel<=.04045?channel/12.92:((channel+.055)/1.055)**2.4).reduce((sum,value,index)=>sum+value*[.2126,.7152,.0722][index],0);
+    const contrast=(luminance(text.color)+.05)/(luminance(style.backgroundColor)+.05);
+    return {readable:parseFloat(text.fontSize)>=15&&contrast>=4.5&&heading.bottom<=copy.top&&copy.bottom<=meta.top&&parseFloat(style.borderTopWidth)>=1,contrast};
+  });
+  check((await readable()).readable,'notification content has readable contrast, a clear boundary and ordered title/body/metadata');
+  check(await viewer.getByRole('button',{name:'Mark as read',exact:true}).evaluate(button=>button.getBoundingClientRect().height>=44),'per-message read action retains a 44px touch target');
+  await viewer.screenshot({path:join(root,'notifications-mobile-unread.png')});
+  await viewer.setViewportSize({width:1440,height:1000});
+  await viewer.waitForTimeout(200);
+  await viewer.screenshot({path:join(root,'notifications-desktop-unread.png')});
+  check(await viewer.locator('.notification-dialog').evaluate(element=>element.getBoundingClientRect().width>=560),'desktop notification panel has enough reading width');
+  await viewer.screenshot({path:join(root,'notifications-desktop-unread.png')});
+  await viewer.setViewportSize({width:320,height:780});
+  check(await viewer.locator('.notification-dialog').evaluate(element=>{const box=element.getBoundingClientRect();return box.left>=0&&box.right<=innerWidth&&box.height<=innerHeight;}),'notification panel fits a 320px viewport');
+  await viewer.screenshot({path:join(root,'notifications-small-unread.png')});
   await viewer.getByRole('button',{name:'Mark as read',exact:true}).click();await viewer.getByRole('button',{name:'Notifications',exact:true}).waitFor();
-  await viewer.getByRole('button',{name:'Done',exact:true}).click();await viewer.getByRole('dialog',{name:'Notifications',exact:true}).waitFor({state:'hidden'});
+  check(await viewer.locator('.notification-read-status').innerText()==='Read','read messages have a quiet status instead of an action button');
+  await viewer.getByRole('button',{name:'Close notifications',exact:true}).click();await viewer.getByRole('dialog',{name:'Notifications',exact:true}).waitFor({state:'hidden'});
+  await viewer.setViewportSize({width:390,height:844});
   await viewer.reload();await viewer.getByRole('button',{name:'Notifications',exact:true}).waitFor();check(true,'read state survives reload');
+  for(const message of [
+    {title:'Tonight’s library update',body:'A short maintenance window is scheduled for tonight.\nYour videos and watch progress will stay unchanged.'},
+    {title:'Long announcement — 表示と改行の確認',body:('これは管理者からのお知らせです。長い本文でも読みやすい幅と行間を保ち、画面からはみ出さないことを確認します。\n').repeat(5)+'https://example.test/'+('long-unbroken-reference-'.repeat(12))}
+  ]){
+    const response=await context.request.post(npmBase+'/api/accounts/announcements',{headers:{'x-virelo-request':'1'},data:message});assert.equal(response.status(),200,await response.text());
+  }
+  await viewer.reload();await viewer.getByRole('button',{name:'Notifications, 2 unread',exact:true}).click();
+  await viewer.locator('.notification-item').nth(2).waitFor();
+  for(const width of [390,320,1440]){
+    await viewer.setViewportSize({width,height:width===320?780:1000});
+    await viewer.waitForTimeout(150);
+    check(await viewer.locator('.notification-message').evaluateAll(items=>items.every(item=>item.scrollWidth<=item.clientWidth+1)),'long notifications wrap without horizontal overflow at '+width+'px');
+    await viewer.screenshot({path:join(root,`notifications-multiple-${width}.png`)});
+  }
+  await viewer.locator('.notification-item').last().scrollIntoViewIfNeeded();
+  check(await viewer.getByRole('button',{name:'Mark all as read',exact:true}).isVisible(),'bulk read stays visible while scrolling long notifications');
+  await viewer.getByRole('button',{name:'Mark all as read',exact:true}).click();
+  await viewer.getByRole('button',{name:'Notifications',exact:true}).waitFor();
+  check(await viewer.locator('.notification-read-status').count()===3,'bulk read updates every message without removing its content');
+  await viewer.keyboard.press('Escape');await viewer.getByRole('dialog',{name:'Notifications',exact:true}).waitFor({state:'hidden'});
+  await viewer.setViewportSize({width:390,height:844});
   check(await viewer.getByRole('button',{name:'Announcements',exact:true}).count()===0,'regular users have no announcement publishing controls');
   await viewer.goto(npmBase+'/settings#sharing');
   await viewer.getByRole('button',{name:'Share Virelo',exact:true}).click();await viewer.locator('.share-qr img').waitFor();
@@ -106,9 +151,22 @@ try{
     await viewer.unroute('**/api/share/addresses');
   }
   await guest.close();
-  await page.getByRole('button',{name:'Withdraw',exact:true}).click();await page.getByRole('alertdialog').getByRole('button',{name:'Withdraw',exact:true}).click();
+  await page.goto(npmBase+'/settings#announcements');await page.reload();await page.locator('.announcement-sent .notification-item').nth(2).waitFor();
+  for(const width of [1440,390]){
+    await page.setViewportSize({width,height:1000});await page.waitForTimeout(100);
+    check(await page.locator('.announcement-sent .notification-message').evaluateAll(items=>items.every(item=>item.scrollWidth<=item.clientWidth+1)),'sent announcements wrap at '+width+'px');
+    await page.locator('.announcement-sent').screenshot({path:join(root,`announcements-history-${width}.png`)});
+  }
+  await page.setViewportSize({width:1440,height:1000});
+  for(let remaining=3;remaining>0;remaining--){
+    await page.getByRole('button',{name:'Withdraw',exact:true}).first().click();await page.getByRole('alertdialog').getByRole('button',{name:'Withdraw',exact:true}).click();
+    await page.waitForFunction(count=>document.querySelectorAll('.announcement-sent .notification-item').length===count,remaining-1);
+  }
   await page.getByText('No announcements sent.',{exact:true}).waitFor();
   check(true,'administrator can send and withdraw notifications through the UI');
+  await page.getByRole('button',{name:'Notifications',exact:true}).click();await page.getByRole('heading',{name:'No notifications yet',exact:true}).waitFor();
+  check(await page.getByRole('button',{name:'Mark all as read',exact:true}).isDisabled(),'empty inbox has a clear state and no active bulk-read action');
+  await page.getByRole('button',{name:'Close notifications',exact:true}).click();await page.getByRole('dialog',{name:'Notifications',exact:true}).waitFor({state:'hidden'});
 
   const modes=[['npm',npmBase,context,page]];
   if(process.env.VIRELO_TEST_WEB_REPO){
