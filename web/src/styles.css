@@ -214,8 +214,8 @@ button,[role="button"],summary,.app-shell :is(header,footer,nav,.settings-view),
 /* Side bubbles point back to the cursor or their owning menu row. */
 :is(.context-popover,.video-settings-menu)[data-side="right"] { transform-origin:left var(--popover-anchor-y); }
 :is(.context-popover,.video-settings-menu)[data-side="left"] { transform-origin:right var(--popover-anchor-y); }
-:is(.context-popover,.video-settings-menu)[data-side="right"]::after { content:''; top:calc(var(--popover-anchor-y) - 11px); bottom:auto; left:-10px; right:auto; width:10px; height:22px; background:inherit; clip-path:polygon(100% 0,100% 100%,0 50%); }
-:is(.context-popover,.video-settings-menu)[data-side="left"]::after { content:''; top:calc(var(--popover-anchor-y) - 11px); bottom:auto; left:auto; right:-10px; width:10px; height:22px; background:inherit; clip-path:polygon(0 0,100% 50%,0 100%); }
+:is(.context-popover,.video-settings-menu)[data-side="right"]::after { content:''; top:calc(var(--popover-anchor-y) - 11px); bottom:auto; left:-10px; right:auto; width:10px; height:22px; background:inherit; clip-path:path('M10 0 C10 5 5 7 1.2 10 Q0 11 1.2 12 C5 15 10 17 10 22 Z'); }
+:is(.context-popover,.video-settings-menu)[data-side="left"]::after { content:''; top:calc(var(--popover-anchor-y) - 11px); bottom:auto; left:auto; right:-10px; width:10px; height:22px; background:inherit; clip-path:path('M0 0 C0 5 5 7 8.8 10 Q10 11 8.8 12 C5 15 0 17 0 22 Z'); }
 @starting-style {
   :is(.context-popover,.video-settings-menu)[data-side="right"][data-animate="true"] { opacity:0; transform:scale(.97); }
   :is(.context-popover,.video-settings-menu)[data-side="left"][data-animate="true"] { opacity:0; transform:scale(.97); }

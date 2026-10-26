@@ -6,6 +6,17 @@ const source = await readFile(new URL('../web/src/utils/context-menu.ts', import
 const { contextMenuPlacement: place, sidePopoverPlacement: submenu } = await import('data:text/javascript;base64,' +
   Buffer.from(stripTypeScriptTypes(source)).toString('base64'));
 
+test('context bubbles and nested settings share curved tails with rounded tips',async()=>{
+  const css=await readFile(new URL('../web/src/styles.css',import.meta.url),'utf8');
+  const player=await readFile(new URL('../web/src/player-ui.css',import.meta.url),'utf8');
+  for(const side of ['left','right']){
+    const rule=css.split('\n').find(line=>line.includes('[data-side="'+side+'"]::after'));
+    assert.match(rule,/clip-path:path\('/);
+    assert.match(rule,/ C/);assert.match(rule,/ Q/);
+  }
+  assert.doesNotMatch(player,/context-settings-menu[^\n]*clip-path:polygon/);
+});
+
 test('context bubbles open to the right of the pointer, flipping left only near the edge', () => {
   const size = { width: 280, height: 200 }, viewport = { width: 1000, height: 800 };
   const right = place({ x: 300, y: 100 }, size, viewport);

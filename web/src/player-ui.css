@@ -21,9 +21,6 @@
 .context-settings-menu { z-index:190; }
 .context-settings-menu[data-side="right"] { transform-origin:left var(--popover-anchor-y); }
 .context-settings-menu[data-side="left"] { transform-origin:right var(--popover-anchor-y); }
-.context-settings-menu::after { top:calc(var(--popover-anchor-y) - 11px); bottom:auto; width:11px; height:22px; }
-.context-settings-menu[data-side="right"]::after { left:-10px; right:auto; clip-path:polygon(100% 0,100% 100%,0 50%); }
-.context-settings-menu[data-side="left"]::after { right:-10px; left:auto; clip-path:polygon(0 0,100% 50%,0 100%); }
 .player-action-menu-content>button[aria-checked="true"] svg:last-child { color:var(--color-brand); }
 .playback-track-list,.player-action-menu { scrollbar-width:none; }
 .playback-track-list::-webkit-scrollbar,.player-action-menu::-webkit-scrollbar { display:none; }
