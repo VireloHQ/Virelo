@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { createVireloServer } from '../dist/server.js';
 import { hashPassword } from '../dist/accounts.js';
 import { openPlaybackSetting } from './helpers/playback-settings.mjs';
+import { auditLocalization } from './helpers/localization.mjs';
 
 process.env.VIRELO_LOG_LEVEL='silent';
 const {chromium}=createRequire(process.env.VIRELO_TEST_NODE_PACKAGE||import.meta.url)('playwright');
@@ -335,6 +336,7 @@ api.mediaSource=async id=>{if(!auditUrls.has(id))auditUrls.set(id,URL.createObje
   });
   for(const [mode,base,ctx,current] of modes){
     const prefix=mode==='web'?'/app':'';
+    await auditLocalization({page:current,context:ctx,mode,base,items,artifacts:root,browser});
     await ctx.addInitScript(()=>{
       localStorage.setItem('virelo-volume-leveling:v1','true');
       window.__levelingBeforePlay=[];

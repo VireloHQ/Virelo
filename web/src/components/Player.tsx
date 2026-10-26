@@ -1,3 +1,4 @@
+import { t, useLocale } from '../i18n';
 import { useEffect, useRef, useState } from 'react';
 import { useVolumeLeveling } from '../hooks/useVolumeLeveling';
 import { ArrowsOut, FastForward, Pause, PictureInPicture, Play, Repeat, Rewind, SpeakerHigh, SpeakerSlash } from '@phosphor-icons/react';
@@ -48,6 +49,7 @@ const DIRECT_AUDIO_CODECS=new Set(['aac','flac','mp3','opus','vorbis']);
 type HlsInstance=InstanceType<(typeof import('hls.js/light'))['default']>;
 
 export function Player({item,queue,queueIndex,shuffled,onShuffle,onEnded,onNext,onPrev,canGoNext=true,canGoPrev=true,autoPlay,shorts,repeatMode,onRepeatChange}:PlayerProps) {
+  useLocale();
   const canTranscode=useAccount()?.user.permissions.transcode!==false;
   const localPlayback=isLocalPlaybackHost();
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -713,14 +715,14 @@ export function Player({item,queue,queueIndex,shuffled,onShuffle,onEnded,onNext,
     onSelectSubtitle={selectSubtitle}
     onSelectQuality={(height)=>void selectQuality(height)}
   />;
-  return <div className={`player${shorts?' short-player':''}${queue?.length?' has-queue':''}${controlsVisible?' controls-visible':''}`} ref={containerRef} tabIndex={0} aria-label={item.title+' player'}
+  return <div className={`player${shorts?' short-player':''}${queue?.length?' has-queue':''}${controlsVisible?' controls-visible':''}`} ref={containerRef} tabIndex={0} aria-label={t("{value0} player", { value0: item.title })}
     onContextMenu={event=>{event.preventDefault();event.stopPropagation();revealControls();setContextPosition({x:event.clientX,y:event.clientY});}}
     onDoubleClick={()=>void fullscreen()} onPointerMove={(event)=>{clearLongPress();if(event.pointerType==='mouse'){revealControls();scheduleControlsHide();}}} onPointerDown={startLongPress} onPointerUp={()=>{clearLongPress();scheduleControlsHide();}} onPointerCancel={()=>{touchRevealOnly.current=false;clearLongPress();scheduleControlsHide();}} onPointerLeave={()=>scheduleControlsHide(300)} onFocusCapture={revealControls} onBlurCapture={()=>scheduleControlsHide(300)}
     onKeyDown={event=>{revealControls();scheduleControlsHide();if(shorts&&(event.target===event.currentTarget||event.target===videoRef.current)&&[' ','k','Enter'].includes(event.key)){event.preventDefault();event.stopPropagation();toggle();return;}if(event.target===event.currentTarget&&(event.key==='ContextMenu'||(event.shiftKey&&event.key==='F10'))){event.preventDefault();const bounds=event.currentTarget.getBoundingClientRect();setContextPosition({x:bounds.left+24,y:bounds.top+24,keyboard:true});}}}>
     <video
       className={shorts?'video-presentation short-video':'video-presentation'}
       tabIndex={shorts?0:undefined}
-      aria-label={shorts?`${item.title}. Press Space to play or pause.`:undefined}
+      aria-label={shorts?t('{value0}. Press Space to play or pause.',{value0:item.title}):undefined}
       style={presentation.style}
       ref={videoRef}
       src={`/api/media/${item.id}/stream`}
@@ -763,16 +765,16 @@ export function Player({item,queue,queueIndex,shuffled,onShuffle,onEnded,onNext,
         key={selectedSubtitle}
         src={api.subtitleUrl(item.id,selectedSubtitle)}
         srcLang={playbackInfo?.subtitleTracks.find((track)=>track.index===selectedSubtitle)?.language||'und'}
-        label={playbackInfo?.subtitleTracks.find((track)=>track.index===selectedSubtitle)?.title||'Subtitles'}
+        label={playbackInfo?.subtitleTracks.find((track)=>track.index===selectedSubtitle)?.title||t("Subtitles")}
         onText={setActiveCaption}
       />}
     </video>
     <audio ref={audioRef} preload="auto" onTimeUpdate={event=>reportBackgroundAudio(event.currentTarget)}/>
     <DraggableCaption key={`${item.id}:${selectedSubtitle}`} text={activeCaption} controlsVisible={controlsVisible} containerRef={containerRef} onDraggingChange={(dragging)=>{if(dragging)revealControls();else window.setTimeout(scheduleControlsHide,0);}}/>
-    {qualityState==='starting'&&playRequested&&(!playing||buffering)&&<div className="player-status"><LoadingSpinner/><strong>{seekingPosition!==null?'Seeking…':selectedQuality===null?'Buffering…':`Switching to ${qualityLabel(selectedQuality)}…`}</strong></div>}
-    {audioPreparing&&playRequested&&<div className="player-status"><LoadingSpinner/><strong>Preparing audio…</strong><span>Only the audio track is being converted. The cached result will be reused.</span></div>}
-    {fallback==='starting'&&playRequested&&(!playing||buffering) && <div className="player-status"><LoadingSpinner/><strong>{seekingPosition!==null?'Seeking…':playbackInfo?.requiresVideoTranscode?'Preparing video…':'Preparing audio…'}</strong></div>}
-    {(qualitySelectionError||fallback==='error'||audioError||(qualityState==='error'&&qualityRequested.current&&!playing)) && <div className="player-status error"><strong>Playback unavailable</strong><span>{qualitySelectionError||audioError||error||qualityError}{playbackBlocked.current&&!qualitySelectionError?' Choose another quality to continue; your quality limit has been kept.':''}</span></div>}
+    {qualityState==='starting'&&playRequested&&(!playing||buffering)&&<div className="player-status"><LoadingSpinner/><strong>{seekingPosition!==null?t("Seeking…"):selectedQuality===null?t("Buffering…"):t("Switching to {value0}…", { value0: qualityLabel(selectedQuality) })}</strong></div>}
+    {audioPreparing&&playRequested&&<div className="player-status"><LoadingSpinner/><strong>{t("Preparing audio…")}</strong><span>{t("Only the audio track is being converted. The cached result will be reused.")}</span></div>}
+    {fallback==='starting'&&playRequested&&(!playing||buffering) && <div className="player-status"><LoadingSpinner/><strong>{seekingPosition!==null?t("Seeking…"):playbackInfo?.requiresVideoTranscode?t("Preparing video…"):t("Preparing audio…")}</strong></div>}
+    {(qualitySelectionError||fallback==='error'||audioError||(qualityState==='error'&&qualityRequested.current&&!playing)) && <div className="player-status error"><strong>{t("Playback unavailable")}</strong><span>{t(qualitySelectionError||audioError||error||qualityError)}{playbackBlocked.current&&!qualitySelectionError?t(" Choose another quality to continue; your quality limit has been kept."):''}</span></div>}
     {shorts?<ShortsPlayerControls item={item} current={current} duration={duration} muted={muted} pip={pip}
       pipSupported={pipSupported} onSeek={seek} onMute={toggleMute} onPip={()=>void togglePip()} onNext={shorts.onNext}>
       {playbackSettings()}
@@ -788,16 +790,16 @@ export function Player({item,queue,queueIndex,shuffled,onShuffle,onEnded,onNext,
     {contextPosition&&shorts&&<ShortsContextMenu item={item} position={contextPosition} returnFocus={videoRef.current}
       onPlay={()=>{wantsPlayback.current=true;setPlayRequested(true);requestVideoPlayback();}}
       onDetails={shorts.onDetails} onClose={()=>setContextPosition(null)} />}
-    {contextPosition&&!shorts&&<PlayerActionMenu label="Video actions" position={contextPosition} returnFocus={containerRef.current} onClose={()=>setContextPosition(null)}
+    {contextPosition&&!shorts&&<PlayerActionMenu label={t("Video actions")} position={contextPosition} returnFocus={containerRef.current} onClose={()=>setContextPosition(null)}
       actions={[
         {label:pauseAction?'Pause':'Play',icon:pauseAction?<Pause/>:<Play/>,action:toggle},
-        {label:'Rewind 10 seconds',icon:<Rewind/>,action:()=>seekBy(-10)},
-        {label:'Fast-forward 30 seconds',icon:<FastForward/>,action:()=>seekBy(30)},
+        {label:t("Rewind 10 seconds"),icon:<Rewind/>,action:()=>seekBy(-10)},
+        {label:t("Fast-forward 30 seconds"),icon:<FastForward/>,action:()=>seekBy(30)},
         {label:muted?'Unmute':'Mute',icon:muted?<SpeakerSlash/>:<SpeakerHigh/>,action:toggleMute},
-        {label:'Repeat video',icon:<Repeat/>,checked:repeat==='one',action:()=>changeRepeat(repeat==='one'?'off':'one')},
-        {label:'Settings',content:playbackSettings(true)},
+        {label:t("Repeat video"),icon:<Repeat/>,checked:repeat==='one',action:()=>changeRepeat(repeat==='one'?'off':'one')},
+        {label:t("Settings"),content:playbackSettings(true)},
         ...(pipSupported?[{label:pip?'Exit Picture in Picture':'Picture in Picture',icon:<PictureInPicture/>,action:()=>void togglePip()}]:[]),
-        {label:'Fullscreen',icon:<ArrowsOut/>,action:()=>void fullscreen()}
+        {label:t("Fullscreen"),icon:<ArrowsOut/>,action:()=>void fullscreen()}
       ]}/>}
   </div>;
 }

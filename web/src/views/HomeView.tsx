@@ -1,3 +1,4 @@
+import { t, useLocale } from '../i18n';
 import { PageSkeleton } from '../components/PageSkeleton';
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
@@ -27,6 +28,7 @@ export function HomeView() {
   return <FilteredHome key={filter} filter={filter}/>;
 }
 function FilteredHome({filter}:{filter:HomeFilter}) {
+  useLocale();
   const navigate=useNavigate();
   const setFilter=useUIStore(s=>s.setHomeFilter);
   const [heroIndex,setHeroIndex]=useState(0);
@@ -43,12 +45,12 @@ function FilteredHome({filter}:{filter:HomeFilter}) {
   const rotation=useFeaturedRotation(heroRef,heroPool.length,hero?.id,advance);
   const pick=(items:MediaItem[]|undefined)=>(items??[]).filter(item=>filter==='all'||item.kind===filter);
   if(home.isLoading)return <PageSkeleton kind="home" />;
-  if(home.isError&&!data)return <div className="home-load-error"><h1>Couldn’t load your library</h1><p>Try again to reconnect to your videos.</p><Button onPress={()=>void home.refetch()}>Try again</Button></div>;
+  if(home.isError&&!data)return <div className="home-load-error"><h1>{t("Couldn’t load your library")}</h1><p>{t("Try again to reconnect to your videos.")}</p><Button onPress={()=>void home.refetch()}>{t("Try again")}</Button></div>;
   if(!data||data.total===0)return <EmptyState/>;
   const genres=hero?mediaGenres(hero.genres).slice(0,2):[];
-  const metadata=hero?[hero.kind==='series'?'Series':hero.kind==='movie'?'Movie':null,hero.year,
+  const metadata=hero?[hero.kind==='series'?t('Series'):hero.kind==='movie'?t('Movie'):null,hero.year,
     hero.kind==='series'&&hero.season!==null&&hero.episode!==null?'S'+hero.season+' · E'+hero.episode:
-    hero.duration?Math.round(hero.duration/60)+' min':null,...genres].filter(Boolean):[];
+    hero.duration?t('{count} min',{count:Math.round(hero.duration/60)}):null,...genres].filter(Boolean):[];
   const resume=hero&&(hero.progress_position??0)>10&&!hero.progress_completed;
   // Recent remains authoritative; omit identical discovery collections even
   // when their order differs. History and favorites keep their own purpose.
@@ -61,11 +63,11 @@ function FilteredHome({filter}:{filter:HomeFilter}) {
   const [unwatched,quickWatches,series]=discoveryShelves;
   const movieDiscovery=discoveryShelves[discoveryShelves.length-1];
   return <div className="home-view">
-    <nav className="home-mobile-categories" aria-label="Home categories">
+    <nav className="home-mobile-categories" aria-label={t("Home categories")}>
       <div className="home-filter">{filters.map(([value,label])=><button key={value} aria-pressed={filter===value}
-        onClick={()=>setFilter(value)}>{label}</button>)}</div>
+        onClick={()=>setFilter(value)}>{t(label)}</button>)}</div>
     </nav>
-    {hero?<section ref={heroRef} className={'hero-banner home-feature'+(hero.backdrop_path||hero.thumbnail_path||hero.poster_path?'':' home-feature-text')} aria-label="Featured titles" aria-roledescription="carousel" data-animate={animate}>
+    {hero?<section ref={heroRef} className={'hero-banner home-feature'+(hero.backdrop_path||hero.thumbnail_path||hero.poster_path?'':' home-feature-text')} aria-label={t("Featured titles")} aria-roledescription="carousel" data-animate={animate}>
       <FeaturedArtwork key={hero.id+':'+hero.metadata_revision+':'+hero.backdrop_path+':'+hero.thumbnail_path+':'+hero.poster_path} item={hero}/>
       <div className="hero-vignette"/>
       <div className="hero-content">
@@ -74,34 +76,34 @@ function FilteredHome({filter}:{filter:HomeFilter}) {
         {hero.overview&&<p>{hero.overview}</p>}
         <div className="hero-actions">
           <Button size="lg" onPress={()=>void navigate({to:'/watch/$mediaId',params:{mediaId:String(hero.id)}})}>
-            <Play weight="fill"/>{resume?'Resume':'Play'}
+            <Play weight="fill"/>{resume?t("Resume"):t("Play")}
           </Button>
-          <Button size="lg" variant="secondary" onPress={()=>void navigate({to:'/title/$mediaId',params:{mediaId:String(hero.id)}})}><Info/>More info</Button>
+          <Button size="lg" variant="secondary" onPress={()=>void navigate({to:'/title/$mediaId',params:{mediaId:String(hero.id)}})}><Info/>{t("More info")}</Button>
         </div>
       </div>
       {heroPool.length>1&&<div className="home-feature-picker">
-        {!rotation.reducedMotion&&<button className="home-rotation-toggle" aria-label={rotation.paused?'Resume banner rotation':'Pause banner rotation'}
+        {!rotation.reducedMotion&&<button className="home-rotation-toggle" aria-label={rotation.paused?t("Resume banner rotation"):t("Pause banner rotation")}
           onClick={()=>rotation.setPaused(current=>!current)}>{rotation.paused?<Play weight="fill"/>:<Pause weight="fill"/>}</button>}
-        <div className="home-feature-dots" role="group" aria-label="Choose a featured title">{heroPool.map((item,i)=><button key={item.id} aria-pressed={i===index}
-          aria-label={'Show featured title '+(i+1)+': '+(item.series_title||item.title)} onClick={event=>{setAnimate(event.detail>0);setHeroIndex(i);}}>
+        <div className="home-feature-dots" role="group" aria-label={t("Choose a featured title")}>{heroPool.map((item,i)=><button key={item.id} aria-pressed={i===index}
+          aria-label={t("Show featured title {value0}: {value1}", { value0: (i+1), value1: (item.series_title||item.title) })} onClick={event=>{setAnimate(event.detail>0);setHeroIndex(i);}}>
           <span/>
         </button>)}</div>
       </div>}
-    </section>:<header className="home-simple-heading"><h1>{filter==='series'?'Series':filter==='movie'?'Movies':'Your library'}</h1></header>}
+    </section>:<header className="home-simple-heading"><h1>{filter==='series'?t("Series"):filter==='movie'?t("Movies"):t("Your library")}</h1></header>}
     <div className="home-rows home-curated-rows">
-      <MediaRow title="Continue watching" items={pick(data.continueWatching)} playDirect/>
-      <MediaRow title="Up next" items={pick(data.nextEpisodes)} playDirect/>
-      <MediaRow title="Not watched yet" items={unwatched} poster/>
-      <MediaRow title="Your favorites" items={pick(data.favorites)} poster action={<Link to="/favorites">View all</Link>}/>
-      <MediaRow title="Recently added" items={pick(data.recent)}/>
-      {filter!=='series'&&<MediaRow title="A movie in 90 minutes" items={quickWatches} poster/>}
-      {filter!=='movie'&&<MediaRow title="Your series" items={series} poster seriesTitles/>}
+      <MediaRow title={t("Continue watching")} items={pick(data.continueWatching)} playDirect/>
+      <MediaRow title={t("Up next")} items={pick(data.nextEpisodes)} playDirect/>
+      <MediaRow title={t("Not watched yet")} items={unwatched} poster/>
+      <MediaRow title={t("Your favorites")} items={pick(data.favorites)} poster action={<Link to="/favorites">{t("View all")}</Link>}/>
+      <MediaRow title={t("Recently added")} items={pick(data.recent)}/>
+      {filter!=='series'&&<MediaRow title={t('A movie in 90 minutes')} items={quickWatches} poster/>}
+      {filter!=='movie'&&<MediaRow title={t("Your series")} items={series} poster seriesTitles/>}
       {genreShelves.map((genre,i)=><MediaRow key={genre.name} title={genre.name} items={discoveryShelves[i+3]} poster/>)}
-      {filter==='all'&&shorts.data&&shorts.data.total>0&&<MediaRow title="Shorts" items={shorts.data.items} short
-        action={<Link to="/shorts" search={{}} className="row-link">View all</Link>}/>}
-      {filter!=='series'&&<MediaRow title="Movies" items={movieDiscovery} poster/>}
-      {filter!=='all'&&!(filter==='movie'?data.movies:data.series).length&&<div className="home-category-empty"><h2>No {filter==='movie'?'movies':'series'} yet</h2>
-        <p>Browse your library or add another folder in Settings.</p><Link to="/library">Browse library</Link></div>}
+      {filter==='all'&&shorts.data&&shorts.data.total>0&&<MediaRow title={t("Shorts")} items={shorts.data.items} short
+        action={<Link to="/shorts" search={{}} className="row-link">{t("View all")}</Link>}/>}
+      {filter!=='series'&&<MediaRow title={t("Movies")} items={movieDiscovery} poster/>}
+      {filter!=='all'&&!(filter==='movie'?data.movies:data.series).length&&<div className="home-category-empty"><h2>{filter==='movie'?t("No movies yet"):t("No series yet")}</h2>
+        <p>{t("Browse your library or add another folder in Settings.")}</p><Link to="/library">{t("Browse library")}</Link></div>}
     </div>
   </div>;
 }

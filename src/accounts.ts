@@ -2,6 +2,7 @@ import { createHash, randomBytes, scrypt, timingSafeEqual } from 'node:crypto';
 import type { DatabaseSync } from 'node:sqlite';
 import type { Account, AccountPermissions, CatalogScope } from './auth-types.js';
 import { DEFAULT_APPEARANCE, normalizeAppearance, type Appearance } from './appearance.js';
+import { isLocale, type Locale } from './languages.js';
 
 export class AccountError extends Error {
   constructor(message: string, readonly statusCode = 400) { super(message); }
@@ -75,6 +76,10 @@ export class Accounts {
         user_id INTEGER PRIMARY KEY REFERENCES accounts(id) ON DELETE CASCADE,
         controller_style TEXT NOT NULL, accent_color TEXT NOT NULL
       );
+      CREATE TABLE IF NOT EXISTS account_language (
+        user_id INTEGER PRIMARY KEY REFERENCES accounts(id) ON DELETE CASCADE,
+        locale TEXT NOT NULL
+      );
       CREATE TABLE IF NOT EXISTS user_progress (
         user_id INTEGER NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
         media_id INTEGER NOT NULL REFERENCES media(id) ON DELETE CASCADE,
@@ -96,6 +101,14 @@ export class Accounts {
     catch (error) { this.db.exec('ROLLBACK'); throw error; }
   }
   hasAccounts() { return Boolean(this.db.prepare('SELECT 1 FROM accounts LIMIT 1').get()); }
+  language(id: number): Locale | null {
+    const row = this.db.prepare('SELECT locale FROM account_language WHERE user_id=?').get(id) as {locale:unknown}|undefined;
+    return isLocale(row?.locale) ? row.locale : null;
+  }
+  saveLanguage(id: number, locale: Locale) {
+    this.db.prepare('INSERT INTO account_language VALUES(?,?) ON CONFLICT(user_id) DO UPDATE SET locale=excluded.locale').run(id,locale);
+    return { locale };
+  }
   appearance(id: number): Appearance {
     const row = this.db.prepare('SELECT controller_style,accent_color FROM account_appearance WHERE user_id=?').get(id) as {controller_style:string;accent_color:string}|undefined;
     return row ? normalizeAppearance({controllerStyle:row.controller_style,accentColor:row.accent_color}) : {...DEFAULT_APPEARANCE};

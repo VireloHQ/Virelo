@@ -35,6 +35,8 @@ function withQuery(url: string, params: Record<string, string | number | undefin
 }
 
 export const api = {
+  language: () => request<{locale:string|null}>('/api/account/language'),
+  saveLanguage: (locale: string) => request<{locale:string}>('/api/account/language', {method:'PUT',body:JSON.stringify({locale})}),
   appearance: () => request<Appearance>('/api/account/appearance'),
   saveAppearance: (value: Appearance) => request<Appearance>('/api/account/appearance', {method:'PUT',body:JSON.stringify(value)}),
   shareAddresses: () => request<Array<{url:string;name:string}>>('/api/share/addresses'),

@@ -1,3 +1,4 @@
+import { t, useLocale } from '../i18n';
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { Button, Modal } from '@heroui/react';
 import { cssTimeToMilliseconds } from '../utils/motion-time';
@@ -16,6 +17,7 @@ interface ConfirmationDialogProps {
 
 // Shared app confirmation UI. React Aria handles focus trapping, restoration and scroll locking.
 export function ConfirmationDialog({ triggerLabel, triggerIcon, title, children, confirmLabel, onConfirm, confirmVariant = 'danger', onOpen }: ConfirmationDialogProps) {
+  useLocale();
   const [isOpen, setIsOpen] = useState(false);
   const [animate, setAnimate] = useState(false);
   const [isPending, setIsPending] = useState(false);
@@ -83,11 +85,11 @@ export function ConfirmationDialog({ triggerLabel, triggerIcon, title, children,
           </Modal.Header>
           <Modal.Body className="virelo-confirm-body">
             <div id={descriptionId} aria-busy={isPending} onKeyDown={event => { if (confirmVariant === 'primary' && event.key === 'Enter' && !event.nativeEvent.isComposing && (event.target as HTMLElement).tagName === 'INPUT') { event.preventDefault(); void submitConfirmation(); } }}>{children}</div>
-            {isPending && <p className="virelo-confirm-progress" role="status">Working…</p>}
-            {error && <p className="virelo-confirm-error" role="alert">{error}</p>}
+            {isPending && <p className="virelo-confirm-progress" role="status">{t("Working…")}</p>}
+            {error && <p className="virelo-confirm-error" role="alert">{t(error)}</p>}
           </Modal.Body>
           <Modal.Footer className="virelo-confirm-footer">
-            <Button variant="secondary" autoFocus={confirmVariant === 'danger'} isDisabled={isPending} onPressStart={event=>{if(event.pointerType === 'keyboard') setAnimate(false);}} onPress={()=>changeOpen(false)}>Cancel</Button>
+            <Button variant="secondary" autoFocus={confirmVariant === 'danger'} isDisabled={isPending} onPressStart={event=>{if(event.pointerType === 'keyboard') setAnimate(false);}} onPress={()=>changeOpen(false)}>{t("Cancel")}</Button>
             <Button variant={confirmVariant} className={confirmVariant === 'danger' ? 'virelo-confirm-action' : undefined} isPending={isPending} isDisabled={isPending} onPress={()=>void submitConfirmation()}>{confirmLabel}</Button>
           </Modal.Footer>
         </Modal.Dialog>

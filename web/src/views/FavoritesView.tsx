@@ -1,3 +1,4 @@
+import { t, useLocale } from '../i18n';
 import { useState } from 'react';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
@@ -17,6 +18,7 @@ const SORT_OPTIONS = [
 ];
 
 export function FavoritesView() {
+  useLocale();
   const navigate = useNavigate();
   const search = useUIStore(s => s.search);
   const [sort, setSort] = useState<SortKey>('title');
@@ -30,26 +32,26 @@ export function FavoritesView() {
   if (query.isLoading) return <PageSkeleton kind="library" />;
   return <div className="content-view favorites-view">
     <div className="content-heading">
-      <div><h1>Favorites</h1><p>Your saved videos and Shorts.</p></div>
+      <div><h1>{t("Favorites")}</h1><p>{t("Your saved videos and Shorts.")}</p></div>
       <div className="heading-controls">
-        <Select label="Sort favorites" value={sort} options={SORT_OPTIONS} onChange={value => setSort(value as SortKey)} />
+        <Select label={t("Sort favorites")} value={sort} options={SORT_OPTIONS.map(option=>({...option,label:t(option.label)}))} onChange={value => setSort(value as SortKey)} />
         {items.length > 0 && <Button className="play-all-btn" onPress={() => void navigate({
           to:'/watch/$mediaId', params:{mediaId:String(items[0].id)},
           search:{queue:true,favorites:true,sort,search:search||undefined}
-        })}><Play weight="fill"/> Play all</Button>}
+        })}><Play weight="fill"/> {t("Play all")}</Button>}
       </div>
     </div>
     {query.isError && <div className="favorites-feedback" role="alert">
-      <p>Could not load favorites. Your saved videos have not been deleted.</p>
-      <Button variant="secondary" onPress={() => void query.refetch()}>Try again</Button>
+      <p>{t("Could not load favorites. Your saved videos have not been deleted.")}</p>
+      <Button variant="secondary" onPress={() => void query.refetch()}>{t("Try again")}</Button>
     </div>}
     {items.length > 0 ? <div className="media-grid">{items.map(item => <MediaCard key={item.id} item={item}
       layout="landscape" short={Boolean(item.width && item.height && item.height > item.width)} />)}</div>
-      : !query.isError && <div className="favorites-empty"><h2>{search ? 'No matching favorites' : 'No favorites yet'}</h2>
-        <p>{search ? 'Try another search.' : 'Use the heart on a video or Short to save it here.'}</p>
-        <Link to="/library">Browse library</Link>
+      : !query.isError && <div className="favorites-empty"><h2>{search ? t("No matching favorites") : t("No favorites yet")}</h2>
+        <p>{search ? t("Try another search.") : t("Use the heart on a video or Short to save it here.")}</p>
+        <Link to="/library">{t("Browse library")}</Link>
       </div>}
     {query.hasNextPage && <div className="favorites-more"><Button variant="secondary" isPending={query.isFetching}
-      onPress={() => void query.fetchNextPage()}>Show more</Button></div>}
+      onPress={() => void query.fetchNextPage()}>{t("Show more")}</Button></div>}
   </div>;
 }

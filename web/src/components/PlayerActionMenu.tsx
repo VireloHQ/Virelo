@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, Fragment, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { Check } from '@phosphor-icons/react';
+import { t, useLocale } from '../i18n';
 import { useContextMenuPlacement } from '../hooks/useContextMenuPlacement';
 import type { ContextMenuPosition } from '../utils/context-menu';
 
@@ -9,6 +10,7 @@ export type PlayerAction = { label:string; content:ReactNode } | { label:string;
 export function PlayerActionMenu({position,label,actions,returnFocus,onClose}:{
   position:ContextMenuPosition; label:string; actions:PlayerAction[]; returnFocus:HTMLElement|null; onClose:()=>void;
 }) {
+  useLocale();
   const ref=useRef<HTMLDivElement>(null);
   const close=useRef(onClose);close.current=onClose;
   const placement=useContextMenuPlacement(ref,position,returnFocus);
@@ -58,7 +60,7 @@ export function PlayerActionMenu({position,label,actions,returnFocus,onClose}:{
     }}>
     <div className="context-popover-content player-action-menu-content">
     {actions.map(option=>'content' in option?<Fragment key={option.label}>{option.content}</Fragment>:<button key={option.label} type="button" role={option.checked===undefined?'menuitem':'menuitemradio'} aria-checked={option.checked} disabled={option.disabled}
-      onClick={()=>{dismiss();option.action();}}>{option.icon}<span>{option.label}</span>{option.checked&&<Check weight="bold"/>}</button>)}
+      onClick={()=>{dismiss();option.action();}}>{option.icon}<span>{t(option.label)}</span>{option.checked&&<Check weight="bold"/>}</button>)}
     </div>
   </div>,document.fullscreenElement||document.body);
 }

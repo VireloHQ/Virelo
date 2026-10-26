@@ -1,3 +1,4 @@
+import { t, useLocale } from '../i18n';
 import { useEffect, useRef } from 'react';
 import { Heart } from '@phosphor-icons/react';
 import { useFavorite } from '../hooks/useFavorite';
@@ -8,6 +9,7 @@ const sparks = Array.from({ length: 8 }, (_, index) => index * 45);
 export function FavoriteButton({ item, iconOnly = false, short = false }: {
   item: MediaItem; iconOnly?: boolean; short?: boolean;
 }) {
+  useLocale();
   const { favorite, pending, error, toggle } = useFavorite(item);
   const iconRef = useRef<HTMLSpanElement>(null);
   const burstRef = useRef<HTMLSpanElement>(null);
@@ -65,8 +67,8 @@ export function FavoriteButton({ item, iconOnly = false, short = false }: {
           {sparks.map(angle => <span key={angle} className="favorite-spark" />)}
         </span>
       </span>
-      {!iconOnly && <span>{favorite ? 'Saved' : 'Favorites'}</span>}
+      {!iconOnly && <span>{favorite ? t("Saved") : t("Favorites")}</span>}
     </button>
-    {error && <span className="favorite-error" role="alert">{error}</span>}
+    {error && <span className="favorite-error" role="alert">{t(error)}</span>}
   </>;
 }

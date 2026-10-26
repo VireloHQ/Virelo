@@ -1,3 +1,4 @@
+import { t, useLocale } from '../i18n';
 import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from '@tanstack/react-router';
 import { Button, Input } from '@heroui/react';
@@ -6,6 +7,7 @@ import { useUIStore } from '../store';
 import { NotificationBell } from './Notifications';
 
 export function Header() {
+  useLocale();
   const navigate = useNavigate();
   const pathname = useLocation({select:location=>location.pathname});
   const isHome = pathname === '/';
@@ -34,18 +36,18 @@ export function Header() {
   return (
     <header className={'topbar'+(isHome?' home-header':'')}>
       <div className="topbar-inner">
-        <Link to="/" className="brand" aria-label="Virelo home" onClick={()=>setHomeFilter('all')}>
+        <Link to="/" className="brand" aria-label={t("Virelo home")} onClick={()=>setHomeFilter('all')}>
           <span className="brand-mark"><img src="/virelo-icon.png?v=transparent-1" alt="" /></span>
-          <span className="brand-name">Virelo</span>
+          <span className="brand-name">{t("Virelo")}</span>
         </Link>
-        <nav className="desktop-nav" aria-label="Main navigation">
-          <Link to="/" activeOptions={{exact:true}} activeProps={homeFilter==='all'?{className:'active'}:{}} onClick={()=>setHomeFilter('all')}>Home</Link>
-          {isHome&&<><button className="home-header-category" aria-pressed={homeFilter==='movie'} onClick={()=>setHomeFilter('movie')}>Movies</button>
-            <button className="home-header-category" aria-pressed={homeFilter==='series'} onClick={()=>setHomeFilter('series')}>Series</button></>}
-          <Link to="/library" activeProps={{className:'active'}}>Library</Link>
-          <Link to="/shorts" search={{}} activeProps={{className:'active'}}>Shorts</Link>
-          <Link to="/favorites" activeProps={{className:'active'}}>Favorites</Link>
-          <Link to="/playlists" activeProps={{className:'active'}}>Playlists</Link>
+        <nav className="desktop-nav" aria-label={t("Main navigation")}>
+          <Link to="/" activeOptions={{exact:true}} activeProps={homeFilter==='all'?{className:'active'}:{}} onClick={()=>setHomeFilter('all')}>{t("Home")}</Link>
+          {isHome&&<><button className="home-header-category" aria-pressed={homeFilter==='movie'} onClick={()=>setHomeFilter('movie')}>{t("Movies")}</button>
+            <button className="home-header-category" aria-pressed={homeFilter==='series'} onClick={()=>setHomeFilter('series')}>{t("Series")}</button></>}
+          <Link to="/library" activeProps={{className:'active'}}>{t("Library")}</Link>
+          <Link to="/shorts" search={{}} activeProps={{className:'active'}}>{t("Shorts")}</Link>
+          <Link to="/favorites" activeProps={{className:'active'}}>{t("Favorites")}</Link>
+          <Link to="/playlists" activeProps={{className:'active'}}>{t("Playlists")}</Link>
         </nav>
         <div className="topbar-actions">
           <NotificationBell/>
@@ -63,7 +65,7 @@ export function Header() {
                 className="header-search-toggle"
                 isIconOnly
                 variant="ghost"
-                aria-label={searchOpen ? 'Close search' : 'Search'}
+                aria-label={searchOpen ? t("Close search") : t("Search")}
                 aria-expanded={searchOpen}
                 onPressStart={event=>setAnimateSearch(event.pointerType==='mouse'||event.pointerType==='touch'||event.pointerType==='pen')}
                 onPress={toggleSearch}
@@ -72,8 +74,8 @@ export function Header() {
               </Button>
               <Input
                 className="header-search-input"
-                aria-label={isFavorites ? 'Search favorites' : 'Search library'}
-                placeholder="Search"
+                aria-label={isFavorites ? t("Search favorites") : t("Search library")}
+                placeholder={t("Search")}
                 value={search}
                 ref={searchInputRef}
                 tabIndex={searchOpen ? 0 : -1}
@@ -86,7 +88,7 @@ export function Header() {
               />
             </div>
           </div>
-          <Button className="desktop-only icon-button settings-button" isIconOnly variant="ghost" aria-label="Settings" onPress={()=>void navigate({to:'/settings'})}>
+          <Button className="desktop-only icon-button settings-button" isIconOnly variant="ghost" aria-label={t("Settings")} onPress={()=>void navigate({to:'/settings'})}>
             <Gear size={28}/>
           </Button>
         </div>

@@ -2,13 +2,14 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import { fileURLToPath } from 'node:url';
+import { localizedStartup } from './scripts/localized-startup.mjs';
 
 const webRoot = fileURLToPath(new URL('./web', import.meta.url));
 const outDir = fileURLToPath(new URL('./dist/web', import.meta.url));
 
 export default defineConfig({
   root: webRoot,
-  plugins: [react(), tailwindcss(), {
+  plugins: [react(), tailwindcss(), localizedStartup(fileURLToPath(new URL('./web/src/i18n/messages',import.meta.url))), {
     name: 'nonblocking-startup-css',
     transformIndexHtml: {
       order: 'post',

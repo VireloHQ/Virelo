@@ -41,13 +41,13 @@
     <script src="/startup.js" defer fetchpriority="high"></script>
   </head>
   <body>
-    <div id="startup-loading" role="status"><strong>Virelo</strong><span>Loading…</span></div>
+    <div id="startup-loading" role="status"><strong>Virelo</strong><span data-startup-message="Loading…">Loading…</span></div>
     <div id="root" hidden></div>
     <section id="startup-error" hidden role="alert" aria-labelledby="startup-error-title">
-      <h1 id="startup-error-title">Virelo couldn’t start</h1>
-      <p>The app’s files could not be loaded. If Virelo was just updated, restart the server, then try again. Your videos and saved data have not been changed.</p>
-      <details><summary>Error details</summary><pre id="startup-error-detail"></pre></details>
-      <button id="startup-reload" type="button">Try again</button><a href="/">Go to home</a>
+      <h1 id="startup-error-title" data-startup-message="Virelo couldn’t start">Virelo couldn’t start</h1>
+      <p data-startup-message="The app’s files could not be loaded. If Virelo was just updated, restart the server, then try again. Your videos and saved data have not been changed.">The app’s files could not be loaded. If Virelo was just updated, restart the server, then try again. Your videos and saved data have not been changed.</p>
+      <details><summary data-startup-message="Error details">Error details</summary><pre id="startup-error-detail"></pre></details>
+      <button id="startup-reload" type="button" data-startup-message="Try again">Try again</button><a href="/" data-startup-message="Go to home">Go to home</a>
     </section>
     <noscript><p>JavaScript is required to use Virelo. Enable it, then reload this page.</p></noscript>
     <script type="module" src="/src/main.tsx"></script>

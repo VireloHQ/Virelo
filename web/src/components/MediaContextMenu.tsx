@@ -1,3 +1,4 @@
+import { t, useLocale } from '../i18n';
 import { useEffect, useRef, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { Check, Heart, Info, Play } from '@phosphor-icons/react';
@@ -26,6 +27,7 @@ export function MediaContextMenu({
   onClose: () => void;
   returnFocus?: HTMLElement|null;
 }) {
+  useLocale();
   const menuRef = useRef<HTMLDivElement>(null);
   const firstItemRef = useRef<HTMLButtonElement>(null);
   const previousFocusRef = useRef<HTMLElement|null>(null);
@@ -76,7 +78,7 @@ export function MediaContextMenu({
       className="media-context-menu context-popover"
       data-side={placement.side} data-animate={placement.animate}
       role="menu"
-      aria-label={`${item.title} actions`}
+      aria-label={t("{value0} actions", { value0: item.title })}
       style={placement.style}
       onContextMenu={(event) => { event.preventDefault(); event.stopPropagation(); }}
       onClick={(event) => event.stopPropagation()}
@@ -109,12 +111,12 @@ export function MediaContextMenu({
         end={favorite && <Check className="media-context-menu-check" weight="bold" />}
         onClick={() => choose(onFavorite)}
       >
-        {favorite ? 'Remove from favorites' : 'Add to favorites'}
+        {favorite ? t("Remove from favorites") : t("Add to favorites")}
       </MenuItem>
       <MenuItem icon={<Play weight="fill" />} onClick={() => choose(onPlay)}>
-        {item.progress_position && item.progress_position > 10 && !item.progress_completed ? 'Resume playback' : 'Play now'}
+        {item.progress_position && item.progress_position > 10 && !item.progress_completed ? t("Resume playback") : t("Play now")}
       </MenuItem>
-      <MenuItem icon={<Info />} onClick={() => choose(onDetails)}>Open details</MenuItem>
+      <MenuItem icon={<Info />} onClick={() => choose(onDetails)}>{t("Open details")}</MenuItem>
       </div>
     </div>,
     document.fullscreenElement || document.body

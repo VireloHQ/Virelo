@@ -1,3 +1,5 @@
+import { Trans } from '../i18n/Trans';
+import { t, useLocale } from '../i18n';
 import { PageSkeleton } from '../components/PageSkeleton';
 import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -46,6 +48,7 @@ const QUEUE_OPTIONS = [
   { value: 'manual', label: 'Manual next only' }
 ];
 export function SettingsView(){
+  useLocale();
   const session=useAccount();
   const isAdmin=Boolean(session?.user.isAdmin);
   const sections=settingsSections.filter(section=>section.id==='commands'?isAdmin&&session?.localAccess:isAdmin||['account','appearance','libraries','playback','sharing','tools'].includes(section.id));
@@ -72,67 +75,67 @@ export function SettingsView(){
   if(!form)return <PageSkeleton kind="settings" />;
   const hasChanges=JSON.stringify(form)!==JSON.stringify(settingsQuery.data);
   return <div className={`content-view settings-view${mobileDetail?' settings-detail-open':''}`}>
-    <header className="settings-heading"><h1>Settings</h1>{isAdmin&&['libraries','network','playback','shorts'].includes(activeSection)&&<div className="settings-heading-actions"><span aria-live="polite">{save.isSuccess&&!hasChanges&&<span className="settings-saved"><CheckCircle/> Saved</span>}</span><Button isPending={save.isPending} isDisabled={!hasChanges} onPress={()=>save.mutate()}>Save settings</Button></div>}</header>
-    {save.error&&<p className="error-copy settings-save-error">{save.error.message}</p>}
+    <header className="settings-heading"><h1>{t("Settings")}</h1>{isAdmin&&['libraries','network','playback','shorts'].includes(activeSection)&&<div className="settings-heading-actions"><span aria-live="polite">{save.isSuccess&&!hasChanges&&<span className="settings-saved"><CheckCircle/> {t("Saved")}</span>}</span><Button isPending={save.isPending} isDisabled={!hasChanges} onPress={()=>save.mutate()}>{t("Save settings")}</Button></div>}</header>
+    {save.error&&<p className="error-copy settings-save-error">{t(save.error.message)}</p>}
 
     <div className="settings-layout">
       <SettingsNavigation sections={sections} activeSection={activeSection} detailOpen={mobileDetail} onSelect={openSection}/>
 
       <div className="settings-content">
-        <button type="button" className="settings-back" onClick={closeSection}><ArrowLeft aria-hidden="true"/> All settings</button>
+        <button type="button" className="settings-back" onClick={closeSection}><ArrowLeft aria-hidden="true"/> {t("All settings")}</button>
         {activeSection==='appearance'&&<AppearanceSettings/>}
         {activeSection==='account'&&<div id="settings-panel-account" className="settings-card settings-section"><AccountProfile/></div>}
         {activeSection==='accounts'&&isAdmin&&<div id="settings-panel-accounts" className="settings-card settings-section"><AccountManager/></div>}
         {activeSection==='admin'&&isAdmin&&<AdminSettings/>}
         {activeSection==='sharing'&&<SharingSettings addresses={api.shareAddresses}/>}
         {activeSection==='announcements'&&isAdmin&&<AnnouncementSettings/>}
-        {activeSection==='activity'&&isAdmin&&<section id="settings-panel-activity" className="settings-card settings-section" aria-labelledby="settings-title-activity"><div className="settings-card-head"><div><h2 id="settings-title-activity" tabIndex={-1}>Activity</h2></div></div><ActivityView/></section>}
+        {activeSection==='activity'&&isAdmin&&<section id="settings-panel-activity" className="settings-card settings-section" aria-labelledby="settings-title-activity"><div className="settings-card-head"><div><h2 id="settings-title-activity" tabIndex={-1}>{t("Activity")}</h2></div></div><ActivityView/></section>}
         {activeSection==='data'&&isAdmin&&<DataManagement/>}
         {activeSection==='commands'&&isAdmin&&session?.localAccess&&<CustomCommandSettings/>}
         {activeSection==='libraries'&&<section id="settings-panel-libraries" className="settings-card settings-section" aria-labelledby="settings-title-libraries">
-          <div className="settings-card-head"><div><h2 id="settings-title-libraries" tabIndex={-1}>Libraries</h2><p>Manage the folders Virelo scans for media.</p></div></div>
+          <div className="settings-card-head"><div><h2 id="settings-title-libraries" tabIndex={-1}>{t("Libraries")}</h2><p>{t("Manage the folders Virelo scans for media.")}</p></div></div>
           <LibrarySettings/>
-          {isAdmin&&<SettingSwitch checked={form.libraryWatchEnabled} onChange={(v)=>setForm({...form,libraryWatchEnabled:v})} title="Watch local folders" description="Monitor configured folders and scan when files change."/>}
+          {isAdmin&&<SettingSwitch checked={form.libraryWatchEnabled} onChange={(v)=>setForm({...form,libraryWatchEnabled:v})} title={t("Watch local folders")} description={t("Monitor configured folders and scan when files change.")}/>}
         </section>}
 
         {activeSection==='network'&&<section id="settings-panel-network" className="settings-card settings-section" aria-labelledby="settings-title-network">
-          <div className="settings-card-head"><div><h2 id="settings-title-network" tabIndex={-1}>Metadata</h2><p>Choose how Virelo matches your videos and finds artwork.</p></div></div>
-          <SettingSwitch checked={form.externalMetadataEnabled} onChange={(v)=>setForm({...form,externalMetadataEnabled:v})} title="Online metadata" description="Match titles, summaries, genres and release years during scans. No account or API key required."/>
-          <SettingSwitch checked={form.externalImagesEnabled} disabled={!form.externalMetadataEnabled} onChange={(v)=>setForm({...form,externalImagesEnabled:v})} title="Posters and artwork" description="Replace generated thumbnails with posters, backdrops and episode images."/>
-          <div className="setting-row settings-action-row"><div className="setting-copy"><div><strong>Clear all metadata</strong><p>Reset titles and remove matched descriptions and artwork from every added library. Videos, generated thumbnails, favorites and watch progress stay intact. Existing videos will not be automatically matched again.</p></div></div><ConfirmationDialog triggerLabel="Clear all metadata" title="Clear all metadata?" confirmLabel="Clear metadata" onConfirm={()=>clearMetadata.mutateAsync()}><p>Clear matched titles, descriptions and artwork from <strong>every added library, including hidden libraries</strong>. Titles will return to filenames.</p><p>Your videos, generated thumbnails, favorites and watch progress will stay intact.</p><p>Existing videos will not be automatically matched again.</p></ConfirmationDialog></div>
-          <div role="status">{clearMetadata.isSuccess&&<p>Metadata cleared for {clearMetadata.data.cleared} videos.</p>}</div>
+          <div className="settings-card-head"><div><h2 id="settings-title-network" tabIndex={-1}>{t("Metadata")}</h2><p>{t("Choose how Virelo matches your videos and finds artwork.")}</p></div></div>
+          <SettingSwitch checked={form.externalMetadataEnabled} onChange={(v)=>setForm({...form,externalMetadataEnabled:v})} title={t("Online metadata")} description={t("Match titles, summaries, genres and release years during scans. No account or API key required.")}/>
+          <SettingSwitch checked={form.externalImagesEnabled} disabled={!form.externalMetadataEnabled} onChange={(v)=>setForm({...form,externalImagesEnabled:v})} title={t("Posters and artwork")} description={t("Replace generated thumbnails with posters, backdrops and episode images.")}/>
+          <div className="setting-row settings-action-row"><div className="setting-copy"><div><strong>{t("Clear all metadata")}</strong><p>{t("Reset titles and remove matched descriptions and artwork from every added library. Videos, generated thumbnails, favorites and watch progress stay intact. Existing videos will not be automatically matched again.")}</p></div></div><ConfirmationDialog triggerLabel={t("Clear all metadata")} title={t("Clear all metadata?")} confirmLabel={t("Clear metadata")} onConfirm={()=>clearMetadata.mutateAsync()}><p><Trans message="Clear matched titles, descriptions and artwork from {value0}. Titles will return to filenames." values={{value0:<strong>{t("every added library, including hidden libraries")}</strong>}}/></p><p>{t("Your videos, generated thumbnails, favorites and watch progress will stay intact.")}</p><p>{t("Existing videos will not be automatically matched again.")}</p></ConfirmationDialog></div>
+          <div role="status">{clearMetadata.isSuccess&&<p><Trans message="Metadata cleared for {value0} videos." values={{value0:clearMetadata.data.cleared}}/></p>}</div>
         </section>}
 
         {activeSection==='playback'&&<section id="settings-panel-playback" className="settings-card settings-section" aria-labelledby="settings-title-playback">
-          <div className="settings-card-head"><div><h2 id="settings-title-playback" tabIndex={-1}>Playback</h2><p>Choose what happens when a video ends in a folder queue.</p></div></div>
+          <div className="settings-card-head"><div><h2 id="settings-title-playback" tabIndex={-1}>{t("Playback")}</h2><p>{t("Choose what happens when a video ends in a folder queue.")}</p></div></div>
           <QueueLayoutSetting/>
           <VolumeLevelingSetting/>
-          {isAdmin&&<div className="setting-row"><div className="setting-copy"><div><strong>Queue advance</strong><p>Auto-advance, loop, or manually step through the folder.</p></div></div>
-            <Select className="settings-picker" label="Queue advance" value={form.queueBehavior} options={QUEUE_OPTIONS} align="end" onChange={(value)=>setForm({...form,queueBehavior:value as QueueBehavior})}/></div>}
+          {isAdmin&&<div className="setting-row"><div className="setting-copy"><div><strong>{t("Queue advance")}</strong><p>{t("Auto-advance, loop, or manually step through the folder.")}</p></div></div>
+            <Select className="settings-picker" label={t("Queue advance")} value={form.queueBehavior} options={QUEUE_OPTIONS.map(option=>({...option,label:t(option.label)}))} align="end" onChange={(value)=>setForm({...form,queueBehavior:value as QueueBehavior})}/></div>}
         </section>}
 
         {activeSection==='shorts'&&<section id="settings-panel-shorts" className="settings-card settings-section" aria-labelledby="settings-title-shorts">
-          <div className="settings-card-head"><div><h2 id="settings-title-shorts" tabIndex={-1}>Shorts</h2><p>Choose which videos appear in the vertical feed.</p></div></div>
-          <SettingSwitch checked={form.shortsIncludeLandscapes} onChange={(v)=>setForm({...form,shortsIncludeLandscapes:v})} title="Include landscape videos" description="Add landscape videos with known dimensions to the Shorts feed."/>
+          <div className="settings-card-head"><div><h2 id="settings-title-shorts" tabIndex={-1}>{t("Shorts")}</h2><p>{t("Choose which videos appear in the vertical feed.")}</p></div></div>
+          <SettingSwitch checked={form.shortsIncludeLandscapes} onChange={(v)=>setForm({...form,shortsIncludeLandscapes:v})} title={t("Include landscape videos")} description={t("Add landscape videos with known dimensions to the Shorts feed.")}/>
         </section>}
 
         {activeSection==='tools'&&<section id="settings-panel-tools" className="settings-card settings-section compact-card" aria-labelledby="settings-title-tools">
-          <div className="settings-card-head"><div><h2 id="settings-title-tools" tabIndex={-1}>Advanced</h2><p>Tools used for thumbnails and video compatibility.</p></div></div>
-          <dl className="tool-status admin-setting-group" aria-label="Media tools" aria-live="polite">
+          <div className="settings-card-head"><div><h2 id="settings-title-tools" tabIndex={-1}>{t("Advanced")}</h2><p>{t("Tools used for thumbnails and video compatibility.")}</p></div></div>
+          <dl className="tool-status admin-setting-group" aria-label={t("Media tools")} aria-live="polite">
             {(['ffmpeg','ffprobe'] as const).map(tool=>{
               const available=health.data?.[tool];
-              return <div key={tool}><dt>{tool==='ffmpeg'?'FFmpeg':'ffprobe'}</dt><dd>
+              return <div key={tool}><dt>{tool==='ffmpeg'?t("FFmpeg"):'ffprobe'}</dt><dd>
                 {available!==undefined&&(available?<CheckCircle aria-hidden="true"/>:<WarningCircle aria-hidden="true"/>)}
-                {available===undefined?(health.isError?'Could not check':'Checking…'):available?'Available':'Not found'}
+                {available===undefined?(health.isError?t("Could not check"):t("Checking…")):available?t("Available"):t("Not found")}
               </dd></div>;
             })}
           </dl>
         </section>}
       </div>
     </div>
-    <footer className="settings-legal" aria-label="Virelo licensing">
-      <span>Copyright (c) 2026 Virelo contributors. No warranty.</span>
-      <nav aria-label="Source and license"><a href="https://github.com/VireloHQ/Virelo" target="_blank" rel="noreferrer">Source code</a><a href="/LICENSE.txt" target="_blank" rel="noreferrer">AGPL-3.0-only</a></nav>
+    <footer className="settings-legal" aria-label={t("Virelo licensing")}>
+      <span>{t("Copyright (c) 2026 Virelo contributors. No warranty.")}</span>
+      <nav aria-label={t("Source and license")}><a href="https://github.com/VireloHQ/Virelo" target="_blank" rel="noreferrer">{t("Source code")}</a><a href="/LICENSE.txt" target="_blank" rel="noreferrer">{t("AGPL-3.0-only")}</a></nav>
     </footer>
   </div>;
 }

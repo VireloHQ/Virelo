@@ -5,6 +5,7 @@ import type { VireloDB } from './db.js';
 import { isIP } from 'node:net';
 import { AccountActivity } from './account-activity.js';
 import { isAppearance } from './appearance.js';
+import { isLocale } from './languages.js';
 import type { AccountDataCategory, ActivityHeartbeat } from './auth-types.js';
 
 declare module 'fastify' {
@@ -161,6 +162,12 @@ export function registerAccounts(app: FastifyInstance, db: VireloDB, isPublicHos
     if(request.account)activity.record(request.account.id,'auth.logout',null,null,request.activityAcknowledged);
     cookie(reply, request);
     return { ok: true };
+  });
+  app.get('/api/account/language', request => ({locale:accounts.language(request.account!.id)}));
+  app.put('/api/account/language', request => {
+    const body = object(request.body);
+    if (Object.keys(body).length !== 1 || !isLocale(body.locale)) throw new AccountError('Choose a supported language.');
+    return accounts.saveLanguage(request.account!.id,body.locale);
   });
   app.get('/api/account/appearance', request => accounts.appearance(request.account!.id));
   app.put('/api/account/appearance', request => {

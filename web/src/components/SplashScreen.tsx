@@ -1,7 +1,9 @@
+import { t, useLocale } from '../i18n';
 import { useEffect, useRef, useState } from 'react';
 import { cssTimeToMilliseconds } from '../utils/motion-time';
 
 export function SplashScreen({ onDone }: { onDone: () => void }) {
+  useLocale();
   const [leaving, setLeaving] = useState(false);
   const screen = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -45,10 +47,10 @@ export function SplashScreen({ onDone }: { onDone: () => void }) {
     };
   }, [onDone]);
 
-  return <div ref={screen} className={`splash-screen${leaving ? ' splash-phase-leaving' : ''}`} role="status" aria-label="Virelo">
+  return <div ref={screen} className={`splash-screen${leaving ? ' splash-phase-leaving' : ''}`} role="status" aria-label={t("Virelo")}>
     <div className="splash-content">
       <div className="splash-logo" aria-hidden="true"><img src="/virelo-icon.png?v=transparent-1" alt="" width="512" height="512" fetchPriority="high" /></div>
-      <div className="splash-wordmark" aria-hidden="true">Virelo</div>
+      <div className="splash-wordmark" aria-hidden="true">{t("Virelo")}</div>
     </div>
   </div>;
 }

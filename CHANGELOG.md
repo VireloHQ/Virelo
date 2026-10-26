@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Localize the web interface, including accounts, settings, playback, queues, notifications, sharing and recovery, into English, Japanese, Simplified Chinese, Korean and Russian. Add an account-owned language preference, browser detection, lazy catalogs and translation completeness checks.
+
 - Center the checkmark inside accent-color swatches without changing their colors or 44px hit targets.
 
 - Add Appearance settings with four original controller layouts and preset/custom accent colors. Store preferences per authenticated account, available to all users; keep account isolation, validation and deletion cleanup. Preserve playback state, mobile controls and keyboard access.

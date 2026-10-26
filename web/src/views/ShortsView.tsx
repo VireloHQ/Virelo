@@ -1,3 +1,4 @@
+import { t, useLocale } from '../i18n';
 import { PageSkeleton } from '../components/PageSkeleton';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useInfiniteQuery } from '@tanstack/react-query';
@@ -15,6 +16,7 @@ export function ShortsView() {
 }
 
 function ShortsFeedView({ startId }: { startId?: number }) {
+  useLocale();
   const scrollerRef = useRef<HTMLDivElement>(null);
   const [activeIndex, setActiveIndex] = useState(0);
   const activeIndexRef = useRef(0);
@@ -83,17 +85,17 @@ function ShortsFeedView({ startId }: { startId?: number }) {
     return () => window.removeEventListener('keydown', onKey);
   }, [goTo, activeIndex, items.length]);
 
-  if (query.isError && items.length === 0) return <div className="shorts-empty"><p>Shorts could not be loaded.</p><button onClick={() => void query.refetch()}>Try again</button></div>;
+  if (query.isError && items.length === 0) return <div className="shorts-empty"><p>{t("Shorts could not be loaded.")}</p><button onClick={() => void query.refetch()}>{t("Try again")}</button></div>;
   if (query.isLoading) return <PageSkeleton kind="shorts" />;
   if (startId !== undefined && query.data && items[0]?.id !== (query.data.pages[0]?.startId??startId)) {
-    return <div className="shorts-empty"><p>This Short is no longer available in your Shorts feed.</p>
-      <button onClick={() => history.back()}>Back</button></div>;
+    return <div className="shorts-empty"><p>{t("This Short is no longer available in your Shorts feed.")}</p>
+      <button onClick={() => history.back()}>{t("Back")}</button></div>;
   }
   if (!query.isFetching && total === 0 && items.length === 0) {
     return (
       <div className="shorts-empty">
-        <p>No vertical videos found. Portrait clips (height &gt; width) appear here as Shorts.</p>
-        <button onClick={() => history.back()}>Back</button>
+        <p>{t("No vertical videos found. Portrait clips (height > width) appear here as Shorts.")}</p>
+        <button onClick={() => history.back()}>{t("Back")}</button>
       </div>
     );
   }

@@ -1,3 +1,4 @@
+import { t, useLocale } from '../i18n';
 import { CaretLeft, CaretRight } from '@phosphor-icons/react';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import type { MediaItem } from '../types';
@@ -7,6 +8,7 @@ import { useRowWheel } from '../hooks/useRowWheel';
 export function MediaRow({title,items,playDirect=false,poster=false,short=false,seriesTitles=false,action}:{
   title:string;items:MediaItem[];playDirect?:boolean;poster?:boolean;short?:boolean;seriesTitles?:boolean;action?:ReactNode;
 }) {
+  useLocale();
   const ref=useRef<HTMLDivElement>(null);
   const hoverTimer=useRef<number|null>(null);
   const [activeId,setActiveId]=useState<number|null>(null);
@@ -40,11 +42,11 @@ export function MediaRow({title,items,playDirect=false,poster=false,short=false,
   return <section className="media-section">
     <div className="section-heading"><h2>{title}</h2><div className="home-row-actions">{action}
       {(edges.left||edges.right)&&<div className="row-controls">
-        <button disabled={!edges.left} onClick={()=>scroll(-1)} aria-label={'Scroll '+title+' left'}><CaretLeft/></button>
-        <button disabled={!edges.right} onClick={()=>scroll(1)} aria-label={'Scroll '+title+' right'}><CaretRight/></button>
+        <button disabled={!edges.left} onClick={()=>scroll(-1)} aria-label={t("Scroll {value0} left", { value0: title })}><CaretLeft/></button>
+        <button disabled={!edges.right} onClick={()=>scroll(1)} aria-label={t("Scroll {value0} right", { value0: title })}><CaretRight/></button>
       </div>}
     </div></div>
-    <div className={'media-row'+(posterLayout?' poster-row':'')+(short?' shorts-row':'')} ref={ref} role="region" aria-label={title+' titles'} tabIndex={0}
+    <div className={'media-row'+(posterLayout?' poster-row':'')+(short?' shorts-row':'')} ref={ref} role="region" aria-label={t("{value0} titles", { value0: title })} tabIndex={0}
       onKeyDown={event=>{if(event.target===event.currentTarget&&(event.key==='ArrowRight'||event.key==='ArrowLeft')){event.preventDefault();scroll(event.key==='ArrowRight'?1:-1);}}}>
       {items.map(item=><MediaCard key={item.id} item={seriesTitles?{...item,title:item.series_title||item.title}:item}
         layout={posterLayout?'poster':'landscape'} short={short} playDirect={playDirect} preview={!short&&activeId===item.id} onHoverChange={!short?hover(item.id):undefined}/>)}

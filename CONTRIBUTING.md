@@ -1,5 +1,8 @@
 # Contributing
 
+For UI text and additional languages, see [Localization](docs/LOCALIZATION.md).
+Run `npm run i18n:check` after changing messages.
+
 Keep changes focused, add tests for changed behavior, and search existing issues
 and pull requests before opening a change. Discuss large features or stored-data
 and API changes first. Update public documentation when behavior changes.

@@ -14,7 +14,7 @@ test('the normal player shares one settings entry instead of a row of preference
   assert.match(controls, /assets\/icons\/replay-10\.svg/);
   assert.match(controls, /assets\/icons\/forward-30\.svg/);
   assert.doesNotMatch(controls, /function SeekIcon|<text/);
-  assert.match(controls, /aria-label=\{props.pip \? 'Exit Picture in Picture' : 'Picture in Picture'\}/);
+  assert.match(controls, /aria-label=\{props.pip \? t\(["']Exit Picture in Picture["']\) : t\(["']Picture in Picture["']\)\}/);
   const menu = await source('components/PlaybackSettingsMenu.tsx');
   for (const setting of ['quality', 'audio', 'subtitles', 'video', 'repeat', 'speed']) assert.ok(menu.includes("sectionButton('" + setting + "'"));
   assert.match(menu, /Playback settings/);

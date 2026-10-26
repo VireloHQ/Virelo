@@ -1,3 +1,4 @@
+import { t, useLocale } from '../i18n';
 import { useRef, useState, type ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
@@ -20,6 +21,7 @@ const SORT_OPTIONS = [
 ];
 
 export function LibraryView() {
+  useLocale();
   const search = useUIStore((s)=>s.search);
   const [libraryId, setLibraryId] = useState<number|null>(null);
   const [folder, setFolder] = useState<string|null>(null);
@@ -54,7 +56,7 @@ export function LibraryView() {
     .map(([name,count])=>({name,count}));
 
   const libraryLabel = libraries.find((l)=>l.id===libraryId)?.label;
-  const title = segments.length ? segments[segments.length-1] : (folder === '' ? 'Root' : libraryLabel ?? 'Library');
+  const title = segments.length ? segments[segments.length-1] : (folder === '' ? t('Root') : libraryLabel ?? t('Library'));
 
   const jumpTo = (depth:number) => {
     setFolder(depth === 0 ? null : segments.slice(0,depth).join('/'));
@@ -76,37 +78,37 @@ export function LibraryView() {
 
   return <div className="content-view">
     <header className="content-heading">
-      <div><h1>{title}</h1><p>{mediaQ.isLoading ? 'Loading…' : `${media.length} item${media.length === 1 ? '' : 's'}`}</p></div>
+      <div><h1>{title}</h1><p>{mediaQ.isLoading ? t("Loading…") : t('{count} items',{count:media.length})}</p></div>
       <div className="heading-controls library-actions">
-        <Link to="/playlists" className={buttonVariants({variant:'secondary',className:'library-playlists-link'})}><Queue aria-hidden="true"/><span>Playlists</span><CaretRight aria-hidden="true"/></Link>
-        <Select label="Sort" value={sort} options={SORT_OPTIONS} onChange={(v)=>setSort(v as SortKey)}/>
-        {folder !== null && media.length > 0 && <Button className="play-all-btn" onPress={()=>playAll()}><Play weight="fill"/> Play all</Button>}
+        <Link to="/playlists" className={buttonVariants({variant:'secondary',className:'library-playlists-link'})}><Queue aria-hidden="true"/><span>{t("Playlists")}</span><CaretRight aria-hidden="true"/></Link>
+        <Select label={t("Sort")} value={sort} options={SORT_OPTIONS.map(option=>({...option,label:t(option.label)}))} onChange={(v)=>setSort(v as SortKey)}/>
+        {folder !== null && media.length > 0 && <Button className="play-all-btn" onPress={()=>playAll()}><Play weight="fill"/> {t("Play all")}</Button>}
       </div>
     </header>
 
-    {libraries.length > 1 && <nav className="folder-nav" aria-label="Library selection">
+    {libraries.length > 1 && <nav className="folder-nav" aria-label={t("Library selection")}>
       <FolderRow>
-        <button className={`folder-chip ${libraryId===null ? 'active' : ''}`} onClick={()=>{setLibraryId(null);setFolder(null);}}>All libraries</button>
+        <button className={`folder-chip ${libraryId===null ? 'active' : ''}`} onClick={()=>{setLibraryId(null);setFolder(null);}}>{t("All libraries")}</button>
         {libraries.map((l:Library)=><button key={l.id} className={`folder-chip ${libraryId===l.id ? 'active' : ''}`} onClick={()=>{setLibraryId(l.id);setFolder(null);}}>{l.label}</button>)}
       </FolderRow>
     </nav>}
 
-    <nav className="folder-nav" aria-label="Folder navigation">
+    <nav className="folder-nav" aria-label={t("Folder navigation")}>
       <FolderRow className="crumbs">
-        <button className={`folder-chip crumb ${folder===null ? 'active' : ''}`} onClick={()=>jumpTo(0)}>All folders</button>
+        <button className={`folder-chip crumb ${folder===null ? 'active' : ''}`} onClick={()=>jumpTo(0)}>{t("All folders")}</button>
         {segments.map((segment,i)=><button key={i} className={`folder-chip crumb ${i===segments.length-1 ? 'active' : ''}`} onClick={()=>jumpTo(i+1)}>{segment}</button>)}
-        {folder==='' && <span className="folder-chip crumb active">Root</span>}
+        {folder==='' && <span className="folder-chip crumb active">{t("Root")}</span>}
       </FolderRow>
       {childFolders.length > 0 && <FolderRow>
         {childFolders.map((child)=><button key={child.name} className="folder-chip" onClick={()=>openChild(child.name)}><FolderSimple/> {child.name} <em>{child.count}</em></button>)}
       </FolderRow>}
       {rootCount > 0 && folder === null && <FolderRow>
-        <button className="folder-chip" onClick={()=>setFolder('')}><FolderSimple/> Root <em>{rootCount}</em></button>
+        <button className="folder-chip" onClick={()=>setFolder('')}><FolderSimple/> {t("Root")} <em>{rootCount}</em></button>
       </FolderRow>}
     </nav>
 
-    {mediaQ.isLoading ? <div className="media-grid" role="status" aria-label="Loading videos" aria-busy="true">{Array.from({length:12},(_,i)=><div className="skeleton grid-skeleton" key={i}/>)}</div> :
-      media.length ? <div className="media-grid">{media.map(item=><MediaCard key={item.id} item={item}/>)}</div> : <div className="search-empty"><MagnifyingGlass/><h2>No matches</h2><p>Try another title, folder or file name.</p></div>}
+    {mediaQ.isLoading ? <div className="media-grid" role="status" aria-label={t("Loading videos")} aria-busy="true">{Array.from({length:12},(_,i)=><div className="skeleton grid-skeleton" key={i}/>)}</div> :
+      media.length ? <div className="media-grid">{media.map(item=><MediaCard key={item.id} item={item}/>)}</div> : <div className="search-empty"><MagnifyingGlass/><h2>{t("No matches")}</h2><p>{t("Try another title, folder or file name.")}</p></div>}
   </div>;
 }
 

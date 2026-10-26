@@ -1,3 +1,5 @@
+import { Trans } from '../i18n/Trans';
+import { t, useLocale, getLocale } from '../i18n';
 import { useEffect, useLayoutEffect, useRef } from 'react';
 import { Eye } from '@phosphor-icons/react';
 import type { ActivityPolicy } from '../../../src/auth-types';
@@ -5,6 +7,7 @@ import { api } from '../api';
 import { playbackActivity } from '../hooks/usePlaybackActivity';
 
 export function ActivityDisclosure({policy,compact=false}:{policy?:ActivityPolicy;compact?:boolean}) {
+  useLocale();
   const ref=useRef<HTMLDetailsElement>(null);
   useLayoutEffect(()=>{
     const element=ref.current,shell=element?.closest<HTMLElement>('.app-shell');if(!element||!shell)return;
@@ -13,8 +16,8 @@ export function ActivityDisclosure({policy,compact=false}:{policy?:ActivityPolic
     return()=>{observer.disconnect();shell.style.removeProperty('--activity-notice-height');};
   },[policy?.enabled,compact]);
   if(!policy?.enabled)return null;
-  const copy=<p>Administrators can see online status and playback, and keep sign-in, playback, account/library operations, favorites and playlist change logs for up to {policy.retentionDays} days ({policy.maxEvents.toLocaleString()} events maximum). Passwords, IP addresses and file paths are not included.</p>;
-  return compact?<details ref={ref} data-notice-version={policy.revision} className="activity-disclosure activity-disclosure-compact" aria-label="Activity monitoring notice"><summary><Eye aria-hidden="true"/>Activity monitoring is on <span>· {policy.retentionDays}-day history</span></summary>{copy}</details>:<aside className="activity-disclosure" aria-label="Activity monitoring notice"><Eye aria-hidden="true"/><div><strong>Activity monitoring is on</strong>{copy}</div></aside>;
+  const copy=<p><Trans message="Administrators can see online status and playback, and keep sign-in, playback, account/library operations, favorites and playlist change logs for up to {value0} days ({value1} events maximum). Passwords, IP addresses and file paths are not included." values={{value0:policy.retentionDays,value1:policy.maxEvents.toLocaleString(getLocale())}}/></p>;
+  return compact?<details ref={ref} data-notice-version={policy.revision} className="activity-disclosure activity-disclosure-compact" aria-label={t("Activity monitoring notice")}><summary><Eye aria-hidden="true"/>{t("Activity monitoring is on")} <span><Trans message="· {value0}-day history" values={{value0:policy.retentionDays}}/></span></summary>{copy}</details>:<aside className="activity-disclosure" aria-label={t("Activity monitoring notice")}><Eye aria-hidden="true"/><div><strong>{t("Activity monitoring is on")}</strong>{copy}</div></aside>;
 }
 
 export function ActivityReporter({policy}:{policy?:ActivityPolicy}) {

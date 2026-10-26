@@ -3,19 +3,28 @@ import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {runInNewContext} from 'node:vm';
 const source=await readFile(new URL('../web/public/startup.js',import.meta.url),'utf8');
-function boot(styles=[]){
+function boot(styles=[],options={}){
   let mounted=false,mutate,timeout,timeoutCleared=false,reloads=0,click;
   const fallback={hidden:true},loading={hidden:false},root={hidden:true,hasChildNodes:()=>mounted},detail={textContent:''},listeners=new Map();
+  const documentElement={lang:'en'},copy=[{dataset:{startupMessage:'Loading…'},textContent:''}];
   class Script {constructor(src){this.src=src;}}
   runInNewContext(source,{
-    document:{querySelectorAll:()=>styles,getElementById:id=>({'root':root,'startup-loading':loading,'startup-error':fallback,'startup-error-detail':detail,'startup-reload':{addEventListener:(_,handler)=>click=handler}})[id]},
+    document:{documentElement,querySelectorAll:selector=>selector==='link[data-startup-style]'?styles:selector==='[data-startup-message]'?copy:[],getElementById:id=>({'root':root,'startup-loading':loading,'startup-error':fallback,'startup-error-detail':detail,'startup-catalogs':{content:{textContent:options.catalogs?JSON.stringify(options.catalogs):''}},'startup-reload':{addEventListener:(_,handler)=>click=handler}})[id]},
     window:{addEventListener:(name,handler)=>listeners.set(name,handler)},HTMLScriptElement:Script,
+    navigator:{languages:options.languages??['en-US']},localStorage:{getItem:()=>options.saved??null},
     MutationObserver:class{constructor(handler){mutate=handler;}observe(){}},
     setTimeout:handler=>{timeout=handler;return 1;},clearTimeout:()=>{timeoutCleared=true;},location:{reload:()=>reloads++},Error
   });
-  return {fallback,loading,root,detail,timeout:()=>timeout(),mount(value){mounted=value;mutate();},cleared:()=>timeoutCleared,reloads:()=>reloads,
+  return {fallback,loading,root,detail,documentElement,copy,timeout:()=>timeout(),mount(value){mounted=value;mutate();},cleared:()=>timeoutCleared,reloads:()=>reloads,
     click:()=>click(),error:message=>listeners.get('error')({message}),scriptError:src=>listeners.get('error')({target:new Script(src)}),reject:reason=>listeners.get('unhandledrejection')({reason})};
 }
+test('startup recovery localizes without requiring the application module',async()=>{
+  const ja=JSON.parse(await readFile(new URL('../web/src/i18n/messages/ja.json',import.meta.url),'utf8'));
+  const app=boot([],{saved:'ja',catalogs:{en:{},ja}});
+  assert.equal(app.documentElement.lang,'ja');assert.equal(app.copy[0].textContent,ja['Loading…']);
+  app.scriptError('/assets/missing.js');assert.equal(app.fallback.hidden,false);
+  assert.equal(app.detail.textContent,ja['Could not load {url}'].replace('{url}','/assets/missing.js'));
+});
 test('startup recovery survives a missing entry script, preserves text safely, and offers an explicit retry',()=>{
   const app=boot();app.scriptError('/assets/index-missing.js');
   assert.equal(app.fallback.hidden,false);assert.equal(app.detail.textContent,'Could not load /assets/index-missing.js');

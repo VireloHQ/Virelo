@@ -94,6 +94,8 @@ npx virelo --media "C:\Users\You\Videos" --random-port
 
 ## Appearance
 
+The interface supports English, Japanese, Simplified Chinese, Korean and Russian. Change language in **Settings → Appearance → Language** or on the sign-in screen. Every account can save its own choice. See [Localization](docs/LOCALIZATION.md) to add a language.
+
 Open **Settings → Appearance** to choose Virelo, Streamline, Theater or Centerstage controller layouts and an accent color. Custom colors are adjusted for readable controls. Appearance settings are saved to the signed-in account on the server and can be changed by every user, including non-administrators. Controller layouts apply to normal videos; Shorts keep their vertical controls. No video files are changed.
 
 ## Named playlists

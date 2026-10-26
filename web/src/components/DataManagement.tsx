@@ -1,3 +1,5 @@
+import { Trans } from '../i18n/Trans';
+import { t, useLocale, getLocale } from '../i18n';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@heroui/react';
 import { ArrowClockwise, ShieldCheck } from '@phosphor-icons/react';
@@ -15,29 +17,30 @@ const categories:Array<{id:DataCategory;label:string;description:string}>=[
 function formatBytes(bytes:number){
   if(bytes===0)return '0 B';
   const unit=Math.min(3,Math.floor(Math.log(bytes)/Math.log(1024)));
-  return `${new Intl.NumberFormat(undefined,{maximumFractionDigits:1}).format(bytes/1024**unit)} ${['B','KiB','MiB','GiB'][unit]}`;
+  return `${new Intl.NumberFormat(getLocale(),{maximumFractionDigits:1}).format(bytes/1024**unit)} ${['B','KiB','MiB','GiB'][unit]}`;
 }
 
 export function DataManagement(){
+  useLocale();
   const client=useQueryClient();
   const usage=useQuery({queryKey:['data-usage'],queryFn:api.dataUsage,refetchOnWindowFocus:false});
   const clear=useMutation({mutationFn:api.clearPlaybackCache,onSuccess:()=>client.invalidateQueries({queryKey:['data-usage']})});
   return <section id="settings-panel-data" className="settings-card settings-section" aria-labelledby="settings-title-data">
-    <div className="settings-card-head"><div><h2 id="settings-title-data" tabIndex={-1}>Data management</h2><p>Storage used by Virelo on this server, separate from your video collection.</p></div></div>
-    <div className="data-safety"><ShieldCheck aria-hidden="true"/><p>Virelo never deletes, moves, renames or changes your original video files. These controls manage Virelo data only.</p></div>
-    <div className="data-usage-heading"><h3>Storage usage</h3><Button variant="ghost" isPending={usage.isFetching} onPress={()=>void usage.refetch()}><ArrowClockwise aria-hidden="true"/> Refresh usage</Button></div>
-    {usage.isPending&&<p role="status">Calculating storage usage…</p>}
-    {usage.error&&<p className="error-copy" role="alert">Could not measure storage: {usage.error.message}</p>}
+    <div className="settings-card-head"><div><h2 id="settings-title-data" tabIndex={-1}>{t("Data management")}</h2><p>{t("Storage used by Virelo on this server, separate from your video collection.")}</p></div></div>
+    <div className="data-safety"><ShieldCheck aria-hidden="true"/><p>{t("Virelo never deletes, moves, renames or changes your original video files. These controls manage Virelo data only.")}</p></div>
+    <div className="data-usage-heading"><h3>{t("Storage usage")}</h3><Button variant="ghost" isPending={usage.isFetching} onPress={()=>void usage.refetch()}><ArrowClockwise aria-hidden="true"/> {t("Refresh usage")}</Button></div>
+    {usage.isPending&&<p role="status">{t("Calculating storage usage…")}</p>}
+    {usage.error&&<p className="error-copy" role="alert"><Trans message="Could not measure storage: {value0}" values={{value0:t(usage.error.message)}}/></p>}
     {usage.data&&<>
-      <div className="data-total"><strong>{formatBytes(usage.data.totalBytes)}</strong><span>Virelo data</span></div>
-      <div className="data-location"><span>Data directory on the server</span><code>{usage.data.dataDir}</code></div>
-      <dl className="data-breakdown">{categories.map(category=><div key={category.id}><dt><strong>{category.label}</strong><span>{category.description}</span></dt><dd>{formatBytes(usage.data.categories[category.id].bytes)}</dd></div>)}</dl>
-      <p className="data-note">Current usage is a snapshot of the database and generated-data folders. Original videos and unrelated folders are not included.{usage.data.skippedLinks>0?' Filesystem links are excluded.':''}</p>
+      <div className="data-total"><strong>{formatBytes(usage.data.totalBytes)}</strong><span>{t("Virelo data")}</span></div>
+      <div className="data-location"><span>{t("Data directory on the server")}</span><code>{usage.data.dataDir}</code></div>
+      <dl className="data-breakdown">{categories.map(category=><div key={category.id}><dt><strong>{t(category.label)}</strong><span>{t(category.description)}</span></dt><dd>{formatBytes(usage.data.categories[category.id].bytes)}</dd></div>)}</dl>
+      <p className="data-note">{t("Current usage is a snapshot of the database and generated-data folders. Original videos and unrelated folders are not included.")}{usage.data.skippedLinks>0?t(" Filesystem links are excluded."):''}</p>
     </>}
-    <div className="data-cleanup setting-row"><div className="setting-copy"><div><h3>Clear unused playback cache</h3><p>Remove generated video and audio files that are not in use. They will be recreated when needed. Active playback, extracted subtitles and unrelated files are kept.</p>{usage.data&&<p>Automatic cache limit: {formatBytes(usage.data.cacheLimitBytes)}. Least-recently-used files are cleaned up automatically.</p>}</div></div>
-      <ConfirmationDialog triggerLabel="Clear cache" title="Clear unused playback cache?" confirmLabel="Clear cache" onConfirm={()=>clear.mutateAsync()}><p>Remove only unused playback files generated by Virelo. Videos may need conversion again the next time you play them.</p><p>Your original videos, thumbnails, artwork, accounts, libraries, settings, metadata, favorites and watch history will not be changed.</p></ConfirmationDialog>
+    <div className="data-cleanup setting-row"><div className="setting-copy"><div><h3>{t("Clear unused playback cache")}</h3><p>{t("Remove generated video and audio files that are not in use. They will be recreated when needed. Active playback, extracted subtitles and unrelated files are kept.")}</p>{usage.data&&<p><Trans message="Automatic cache limit: {value0}. Least-recently-used files are cleaned up automatically." values={{value0:formatBytes(usage.data.cacheLimitBytes)}}/></p>}</div></div>
+      <ConfirmationDialog triggerLabel={t("Clear cache")} title={t("Clear unused playback cache?")} confirmLabel={t("Clear cache")} onConfirm={()=>clear.mutateAsync()}><p>{t("Remove only unused playback files generated by Virelo. Videos may need conversion again the next time you play them.")}</p><p>{t("Your original videos, thumbnails, artwork, accounts, libraries, settings, metadata, favorites and watch history will not be changed.")}</p></ConfirmationDialog>
     </div>
-    <div role="status" aria-live="polite">{clear.data&&<p className="data-result">Freed {formatBytes(clear.data.freedBytes)} · {clear.data.deletedFiles} {clear.data.deletedFiles===1?'file':'files'} removed.{clear.data.retainedFiles>0?` ${clear.data.retainedFiles} cached files kept.`:''}</p>}</div>
-    <p className="data-note">Accounts, libraries and metadata have their own settings sections. Cache cleanup does not reset them.</p>
+    <div role="status" aria-live="polite">{clear.data&&<p className="data-result">{t('Freed {size} · {count} files removed.',{size:formatBytes(clear.data.freedBytes),count:clear.data.deletedFiles})}{clear.data.retainedFiles>0?' '+t('{count} cached files kept.',{count:clear.data.retainedFiles}):''}</p>}</div>
+    <p className="data-note">{t("Accounts, libraries and metadata have their own settings sections. Cache cleanup does not reset them.")}</p>
   </section>;
 }

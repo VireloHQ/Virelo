@@ -1,0 +1,28 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { mkdtemp,rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join,resolve,relative } from 'node:path';
+import { createVireloServer } from '../dist/server.js';
+import { hashPassword } from '../dist/accounts.js';
+process.env.VIRELO_LOG_LEVEL='silent';
+test('language is private per account, persists, validates requests and never revokes playback sessions',async t=>{
+  const root=await mkdtemp(join(tmpdir(),'virelo-language-test-')),options={dataDir:root,mediaPaths:[],host:'127.0.0.1',port:0};
+  let server=await createVireloServer(options);
+  t.after(async()=>{await server.app.close();const path=relative(resolve(tmpdir()),resolve(root));assert.ok(path.startsWith('virelo-language-test-')&&!path.includes('..'));await rm(root,{recursive:true,force:true});});
+  const password=await hashPassword('1'),owner=server.accounts.save({username:'owner'},password,undefined,true),viewer=server.accounts.save({username:'viewer',permissions:{play:false}},password);
+  const cookie=user=>'virelo_session='+server.accounts.createSession(user),ownerCookie=cookie(owner),viewerCookie=cookie(viewer);
+  const call=(method,payload,session,csrf=true)=>server.app.inject({method,url:'/api/account/language',payload,headers:{host:'localhost',...(csrf?{'x-virelo-request':'1'}:{}),...(session?{cookie:session}:{})}});
+  assert.equal((await call('GET')).statusCode,401);assert.equal((await call('PUT',{locale:'ja'})).statusCode,401);
+  assert.deepEqual((await call('GET',undefined,viewerCookie)).json(),{locale:null});
+  assert.equal((await call('PUT',{locale:'ja'},viewerCookie,false)).statusCode,403);
+  for(const locale of['en','ja','zh-CN','ko','ru'])assert.deepEqual((await call('PUT',{locale},viewerCookie)).json(),{locale});
+  assert.deepEqual((await call('GET',undefined,ownerCookie)).json(),{locale:null});
+  for(const payload of[{locale:'fr'},{locale:'ja-JP'},{locale:'<script>'},{locale:'__proto__'},{locale:'ja',userId:owner.id},null,[]])assert.equal((await call('PUT',payload,viewerCookie)).statusCode,400);
+  assert.equal(server.accounts.get(viewer.id).revision,viewer.revision);
+  assert.equal((await call('PUT',{locale:'ko'},ownerCookie)).statusCode,200);
+  await server.app.close();server=await createVireloServer(options);
+  assert.deepEqual((await call('GET',undefined,viewerCookie)).json(),{locale:'ru'});assert.deepEqual((await call('GET',undefined,ownerCookie)).json(),{locale:'ko'});
+  server.accounts.remove(viewer.id);assert.equal(server.accounts.db.prepare('SELECT COUNT(*) n FROM account_language WHERE user_id=?').get(viewer.id).n,0);
+  assert.equal((await call('GET',undefined,viewerCookie)).statusCode,401);
+});

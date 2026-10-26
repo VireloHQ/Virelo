@@ -1,3 +1,4 @@
+import { t, useLocale } from '../i18n';
 import { useEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent, type RefObject } from 'react';
 
 interface DraggableCaptionProps {
@@ -34,6 +35,7 @@ export function HiddenSubtitleTrack({src,srcLang,label,onText}:HiddenSubtitleTra
 }
 
 export function DraggableCaption({text,controlsVisible,containerRef,onDraggingChange}:DraggableCaptionProps) {
+  useLocale();
   const [offset,setOffset]=useState<Point>({x:0,y:0});
   const [dragging,setDragging]=useState(false);
   const drag=useRef<{pointerId:number;startX:number;startY:number;origin:Point}|null>(null);
@@ -72,7 +74,7 @@ export function DraggableCaption({text,controlsVisible,containerRef,onDraggingCh
     className={`player-caption${dragging?' dragging':''}`}
     style={style}
     role="group"
-    aria-label="Subtitles. Drag to reposition."
+    aria-label={t("Subtitles. Drag to reposition.")}
     data-controls-visible={controlsVisible?'true':'false'}
     onPointerDown={start}
     onPointerMove={move}

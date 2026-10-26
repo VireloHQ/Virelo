@@ -15,13 +15,13 @@ test('Shorts use the normal playback pipeline instead of a separate player', asy
 
 test('Shorts retain accessible seeking, favorites, PiP and context actions', async () => {
   const controls = await readFile(new URL('../web/src/components/ShortsPlayerControls.tsx', import.meta.url), 'utf8');
-  assert.match(controls, /aria-label="Seek video"/);
+  assert.match(controls, /aria-label=\{t\(["']Seek video["']\)\}/);
   assert.match(controls, /event.shiftKey \? 30 : 5/);
   assert.match(controls, /onPointerUp=.*commitSeek/);
   assert.match(controls, /<FavoriteButton item=\{item\} short/);
   assert.match(controls, /Picture in Picture/);
   assert.match(controls, /<MediaContextMenu/);
-  assert.match(controls, /aria-label="Next short"/);
+  assert.match(controls, /aria-label=\{t\(["']Next short["']\)\}/);
 });
 
 test('Shorts have no back overlay or opaque icon discs', async () => {
