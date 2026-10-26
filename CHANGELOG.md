@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Match the Activity settings heading to other sections and inset keyboard-focus outlines to the navigation row, avoiding detached or doubled borders.
+
 - Present media-tool availability in a neutral settings group with aligned names and statuses; distinguish checks in progress and failed requests from missing tools.
 
 - Tighten vertical Queue rows by removing stacked padding and reducing the row gap, preserving horizontal layout and action target sizes.

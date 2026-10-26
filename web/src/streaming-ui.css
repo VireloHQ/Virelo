@@ -99,7 +99,7 @@
 .app-shell .settings-nav-item:active { background:var(--control-pressed); transform:none; }
 .app-shell .settings-nav-item.active { background:var(--surface-3); color:var(--text); }
 .app-shell .settings-nav-item.active::before { content:""; position:absolute; inset:0 auto 0 0; width:2px; background:var(--text); }
-.app-shell .settings-nav-item:focus-visible { outline:2px solid var(--text-muted); outline-offset:2px; }
+.app-shell .settings-nav-item:focus-visible { outline:2px solid var(--text-muted); outline-offset:-2px; box-shadow:none; }
 .app-shell .settings-selection { position:absolute; top:0; left:0; width:100%; height:1px; background:var(--surface-3); border-left:2px solid var(--text); transform-origin:top; pointer-events:none; visibility:hidden; }
 @media (min-width:901px) {
   .app-shell .settings-sidebar[data-selection-ready=true] .settings-selection { visibility:visible; }

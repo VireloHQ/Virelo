@@ -25,12 +25,32 @@ const auditSettingsNavigation=async(page,mode)=>{
       return element.getAttribute('aria-current')==='page'&&Math.abs(marker.top-row.top)<1&&Math.abs(marker.height-row.height)<1;
     }),mode+' settings selection marker matches the full highlighted row: '+await button.getAttribute('id'));
   }
+  if(mode==='npm'){
+    const appearance=element=>{const style=getComputedStyle(element);return {size:style.fontSize,weight:style.fontWeight,lineHeight:style.lineHeight,margin:style.margin};};
+    await page.locator('#settings-nav-admin').click();
+    const heading=await page.locator('#settings-title-admin').evaluate(appearance);
+    await page.locator('#settings-nav-activity').click();
+    assert.deepEqual(await page.locator('#settings-title-activity').evaluate(appearance),heading);
+    check(parseFloat(heading.size)>=24,'Activity uses the same heading typography and spacing as Admin');
+    await page.screenshot({path:join(root,'activity-heading-desktop.png'),fullPage:true});
+  }
   const motion=await page.evaluate(()=>window.__settingsMotion);
   check(motion.some(item=>item.selection&&item.duration===200)&&motion.some(item=>!item.selection&&item.duration===200),mode+' pointer settings changes animate the shared selection and panel');
   const before=motion.length;
   const first=page.locator('.settings-nav-item').first();await first.focus();await page.keyboard.press('Enter');
   await page.waitForFunction(id=>document.getElementById(id)?.getAttribute('aria-current')==='page',await first.getAttribute('id'));
   check(await page.evaluate(count=>window.__settingsMotion.length===count,before),mode+' keyboard settings navigation remains immediate');
+  for(const key of ['Tab','Shift+Tab']){
+    await page.keyboard.press(key);
+    check(await page.locator('.settings-nav-item:focus-visible').evaluate(element=>{
+      const style=getComputedStyle(element);
+      return style.outlineStyle==='solid'&&style.outlineWidth==='2px'&&style.outlineOffset==='-2px'&&style.boxShadow==='none';
+    }),mode+' '+key+' focus stays inside the navigation row with no second ring');
+  }
+  await page.screenshot({path:join(root,'settings-keyboard-focus-'+mode+'.png'),fullPage:true});
+  await page.emulateMedia({forcedColors:'active'});
+  check(await first.evaluate(element=>element.matches(':focus-visible')&&getComputedStyle(element).outlineStyle==='solid'),mode+' keyboard focus remains visible in forced colors');
+  await page.emulateMedia({forcedColors:'none'});
   await page.emulateMedia({reducedMotion:'reduce'});await page.locator('.settings-nav-item').last().click();
   await page.waitForFunction(id=>document.getElementById(id)?.getAttribute('aria-current')==='page',await page.locator('.settings-nav-item').last().getAttribute('id'));
   check(await page.evaluate(count=>window.__settingsMotion.length===count,before),mode+' reduced-motion settings navigation remains immediate');
