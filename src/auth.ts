@@ -4,6 +4,7 @@ import type { Account, AuthStatus, CatalogScope } from './auth-types.js';
 import type { VireloDB } from './db.js';
 import { isIP } from 'node:net';
 import { AccountActivity } from './account-activity.js';
+import { isAppearance } from './appearance.js';
 import type { AccountDataCategory, ActivityHeartbeat } from './auth-types.js';
 
 declare module 'fastify' {
@@ -160,6 +161,11 @@ export function registerAccounts(app: FastifyInstance, db: VireloDB, isPublicHos
     if(request.account)activity.record(request.account.id,'auth.logout',null,null,request.activityAcknowledged);
     cookie(reply, request);
     return { ok: true };
+  });
+  app.get('/api/account/appearance', request => accounts.appearance(request.account!.id));
+  app.put('/api/account/appearance', request => {
+    if (!isAppearance(request.body)) throw new AccountError('Choose a controller style and a six-digit hex color.');
+    return accounts.saveAppearance(request.account!.id,request.body);
   });
   app.patch('/api/auth/me', async (request, reply) => {
     throttle(request);

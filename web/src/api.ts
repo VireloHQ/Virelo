@@ -1,4 +1,5 @@
 import type { FolderEntry, HomeData, Library, MediaItem, PlaybackInfo, PlaybackQuality, ScanStatus, Settings, ShortsFeed } from './types';
+import type { Appearance } from './utils/appearance';
 import type { Account, AuthStatus, ActivityPolicy, ActivityHeartbeat, ActivityPage, LiveActivity, AccountDataSummary, AccountDataCategory } from '../../src/auth-types';
 import type { DataUsage } from '../../src/types';
 import type { PlaylistDetail, PlaylistSummary, PlaylistWrite } from './types';
@@ -34,6 +35,8 @@ function withQuery(url: string, params: Record<string, string | number | undefin
 }
 
 export const api = {
+  appearance: () => request<Appearance>('/api/account/appearance'),
+  saveAppearance: (value: Appearance) => request<Appearance>('/api/account/appearance', {method:'PUT',body:JSON.stringify(value)}),
   shareAddresses: () => request<Array<{url:string;name:string}>>('/api/share/addresses'),
   notifications: (before?:number) => request<NotificationPage>(withQuery('/api/notifications',{before})),
   readNotifications: (id?:number) => request<{ok:boolean}>('/api/notifications/read',{method:'POST',body:JSON.stringify({id})}),

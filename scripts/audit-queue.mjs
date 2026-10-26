@@ -160,6 +160,40 @@ try {
     check(await list.evaluate(node => getComputedStyle(node).scrollSnapType === 'none'), label + ' no snapping fights wheel or touch');
     await page.evaluate(() => { const video = document.querySelector('.player video'); window.__originalVideo = video; video.currentTime = 10; video.pause(); window.__baselineLoads = window.__sourceLoads; });
     await page.waitForFunction(() => document.querySelector('.player video').currentTime >= 9 && !document.querySelector('.player video').seeking);
+    for(const controllerStyle of ['classic','streamline','theater','centerstage']){
+      await page.evaluate(controllerStyle=>window.__client.setQueryData(['appearance'],{controllerStyle,accentColor:'#79b8ff'}),controllerStyle);
+      await page.waitForFunction(style=>document.querySelector('.player-controls')?.dataset.controllerStyle===style,controllerStyle);
+      for(const viewport of scenario.name==='desktop'?[{width:1440,height:1000},{width:900,height:700},{width:844,height:390}]:[{width:scenario.width,height:scenario.height}]){
+        await page.setViewportSize(viewport);await settle(page);
+        await page.locator('.player').dispatchEvent('pointermove',{pointerType:'mouse'});
+        check(await page.locator('.player').evaluate(element=>{
+          const player=element.getBoundingClientRect(),controls=element.querySelectorAll('.player-controls button,.player-controls input');
+          return [...controls].every(control=>{
+            const box=control.getBoundingClientRect();
+            return !box.width||!box.height||(box.left>=player.left-1&&box.right<=player.right+1&&box.top>=player.top-1&&box.bottom<=player.bottom+1);
+          });
+        }),label+' '+controllerStyle+' controls fit '+viewport.width+'x'+viewport.height);
+        await page.locator('.player').screenshot({path:join(artifacts,mode+'-'+scenario.name+'-'+controllerStyle+'-'+viewport.width+'.png')});
+      }
+      check(await page.evaluate(()=>document.querySelector('.player video')===window.__originalVideo&&window.__sourceLoads===window.__baselineLoads&&document.querySelector('.player video').currentTime>=9),label+' '+controllerStyle+' changes no video source or position');
+      await page.locator('.player').getByRole('button',{name:'Rewind 10 seconds',exact:true}).click();
+      await page.waitForFunction(()=>document.querySelector('.player video').currentTime<1);
+      await page.locator('.player').getByRole('button',{name:'Fast-forward 30 seconds',exact:true}).click();
+      await page.waitForFunction(()=>document.querySelector('.player video').currentTime>=29);
+      await page.locator('.player-play-button').click();await page.waitForFunction(()=>!document.querySelector('.player video').paused);
+      await page.locator('.player-play-button').click();await page.waitForFunction(()=>document.querySelector('.player video').paused);
+      check(true,label+' '+controllerStyle+' play, pause and seek buttons remain functional');
+      if(scenario.name==='desktop'){
+        await page.locator('.player').getByRole('button',{name:'Fullscreen',exact:true}).click();
+        await page.waitForFunction(()=>Boolean(document.fullscreenElement));
+        check(await page.locator('.player-controls').evaluate(element=>element.closest('.player')===document.fullscreenElement),label+' '+controllerStyle+' fullscreen retains its controller');
+        await page.evaluate(()=>document.exitFullscreen());
+      }
+      await page.evaluate(()=>document.querySelector('.player video').currentTime=10);
+      await page.waitForFunction(()=>!document.querySelector('.player video').seeking);
+    }
+    await page.evaluate(()=>window.__client.setQueryData(['appearance'],{controllerStyle:'classic',accentColor:'#c3a6ff'}));
+    await page.setViewportSize({width:scenario.width,height:scenario.height});await settle(page);
     await list.scrollIntoViewIfNeeded(); await list.evaluate(node => node.scrollTo({ left: 0, behavior: 'instant' }));
     if (!scenario.touch) {
       await list.hover(); await page.mouse.wheel(0, 80);

@@ -1,6 +1,6 @@
 # Privacy
 
-Virelo runs on the host computer and stores its catalog, settings, thumbnails, watch progress, favorites, cached HLS segments, and optional artwork in the configured data directory.
+Virelo runs on the host computer and stores its catalog, settings, thumbnails, watch progress, favorites, cached HLS segments, and optional artwork in the configured data directory. Controller style and accent-color preferences are stored separately for each account and removed when that account is deleted.
 
 ## Default behavior
 

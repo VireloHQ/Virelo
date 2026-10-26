@@ -66,6 +66,58 @@ const auditSettingsNavigation=async(page,mode)=>{
   await page.setViewportSize({width:1440,height:1000});
   await page.screenshot({path:join(root,'settings-navigation-'+mode+'.png'),fullPage:true});
 };
+const auditAppearance=async(page,mode)=>{
+  await page.locator('#settings-nav-appearance').click();
+  await page.locator('#settings-title-appearance').waitFor();
+  check(await page.getByRole('radio').count()===4,mode+' appearance offers four original controller styles');
+  for(const width of [1440,390,320]){
+    await page.setViewportSize({width,height:900});
+    check(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),mode+' appearance fits '+width+'px');
+    await page.screenshot({path:join(root,'appearance-'+mode+'-'+width+'.png'),fullPage:true});
+  }
+  await page.setViewportSize({width:1440,height:1000});
+  await page.getByRole('radio',{name:/Streamline/}).check();
+  await page.getByRole('textbox',{name:'Accent color hex code'}).fill('#123456');
+  await page.getByRole('button',{name:'Save appearance',exact:true}).click();
+  await page.getByRole('status').filter({hasText:'Saved'}).waitFor();
+  const color=await page.evaluate(()=>getComputedStyle(document.documentElement).getPropertyValue('--color-brand').trim());
+  check(color!=='#123456'&&color.startsWith('#'),mode+' custom accent is adjusted for readable controls');
+  await page.reload();
+  if(mode==='web')await page.locator('#settings-nav-appearance').click();
+  await page.getByRole('radio',{name:/Streamline/}).waitFor();
+  check(await page.getByRole('radio',{name:/Streamline/}).isChecked(),mode+' controller style survives a reload');
+  check(await page.getByRole('textbox',{name:'Accent color hex code'}).inputValue()==='#123456',mode+' custom accent survives a reload');
+  if(mode==='npm'){
+    const switchUser=async username=>{
+      const response=await page.request.post(new URL('/api/auth/login',page.url()).href,{headers:{'x-virelo-request':'1'},data:{username,password:'1'}});
+      assert.equal(response.status(),200);
+      const status=page.waitForResponse(response=>new URL(response.url()).pathname==='/api/auth/status');
+      await page.evaluate(()=>window.dispatchEvent(new Event('virelo-auth-expired')));
+      assert.equal((await (await status).json()).user.username,username);
+    };
+    await switchUser('viewer');
+    await page.getByRole('radio',{name:/Virelo/}).waitFor();
+    check(await page.getByRole('radio',{name:/Virelo/}).isChecked(),'switching accounts never reuses the previous appearance');
+    await page.getByRole('radio',{name:/Centerstage/}).check();await page.getByRole('button',{name:'Mint',exact:true}).click();
+    await page.getByRole('button',{name:'Save appearance',exact:true}).click();await page.getByRole('status').filter({hasText:'Saved'}).waitFor();
+    check(true,'a regular user can save a personal appearance without administrator access');
+    await switchUser('owner');
+    await page.waitForFunction(()=>document.querySelector('input[name="controller-style"][value="streamline"]')?.checked);
+    check(await page.getByRole('textbox',{name:'Accent color hex code'}).inputValue()==='#123456','returning to the owner restores only the owner preferences');
+  }else{
+    await page.evaluate(async()=>{const {router}=await import('/src/router.tsx');await router.navigate({to:'/'});});
+    await page.waitForFunction(()=>location.pathname==='/'&&document.documentElement.style.getPropertyValue('--color-brand')==='');
+    check(true,'Web app accents do not leak into the landing page');
+    await page.evaluate(async()=>{const {router}=await import('/src/router.tsx');await router.navigate({to:'/app/settings'});});
+    await page.locator('#settings-nav-appearance').click();await page.getByRole('radio',{name:/Streamline/}).waitFor();
+    check(await page.getByRole('radio',{name:/Streamline/}).isChecked(),'returning from the landing page restores browser preferences');
+  }
+  await page.getByRole('textbox',{name:'Accent color hex code'}).fill('bad');
+  check(await page.getByRole('button',{name:'Save appearance',exact:true}).isDisabled(),mode+' invalid color cannot be saved');
+  await page.getByRole('button',{name:'Reset to default',exact:true}).click();
+  await page.getByRole('button',{name:'Save appearance',exact:true}).click();
+  await page.getByRole('status').filter({hasText:'Saved'}).waitFor();
+};
 try{
   await mkdir(media);
   for(const [name,volume,size] of [['quiet',.5,'320x180'],['loud',2,'320x180'],['portrait',.5,'180x320']])execFileSync(process.env.FFMPEG_PATH||'ffmpeg',[
@@ -135,6 +187,7 @@ try{
   await login(context,'owner');
   await page.goto(npmBase+'/settings#admin');await page.locator('.admin-setting-group').first().waitFor();
   await auditSettingsNavigation(page,'npm');
+  await auditAppearance(page,'npm');
   await page.goto(npmBase+'/settings#admin');await page.locator('.admin-setting-group').first().waitFor();
   const adminSurface=await page.locator('.admin-setting-group').first().evaluate(element=>{
     const style=getComputedStyle(element);return {background:style.backgroundColor,border:style.borderTopColor,radius:style.borderRadius,padding:style.padding};
@@ -264,7 +317,7 @@ api.mediaFile=async id=>{if(!auditFiles.has(id))auditFiles.set(id,fetch('/__comm
 api.mediaSource=async id=>{if(!auditUrls.has(id))auditUrls.set(id,URL.createObjectURL(await api.mediaFile(id)));return auditUrls.get(id);};`});
     });
     await webPage.goto(webBase+'/app/settings');await webPage.locator('.settings-heading').waitFor();
-    await webPage.setViewportSize({width:1440,height:1000});await auditSettingsNavigation(webPage,'web');
+    await webPage.setViewportSize({width:1440,height:1000});await auditSettingsNavigation(webPage,'web');await auditAppearance(webPage,'web');
     await webPage.setViewportSize({width:390,height:844});
     await webPage.evaluate(async items=>{const {saveStoredMedia}=await import('/src/local-library.ts');for(const item of items)await saveStoredMedia(item);},items);
     modes.push(['web',webBase,webContext,webPage]);

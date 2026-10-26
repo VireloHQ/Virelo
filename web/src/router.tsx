@@ -1,6 +1,7 @@
 import { createRootRoute, createRoute, createRouter, Outlet } from '@tanstack/react-router';
 import { createRouteView, RouteErrorView, RouteNavigationGuard, RoutePendingView } from './components/RouteRecovery';
 import { Header } from './components/Header';
+import { AppearanceProvider } from './components/AppearanceProvider';
 import { MobileNav } from './components/MobileNav';
 import { NotFoundView } from './views/NotFoundView';
 import type { SortKey } from './types';
@@ -57,7 +58,7 @@ function validateWatchSearch(input: Record<string, unknown>): WatchRouteSearch {
 function Shell() {
   useScanRefresh();
   const policy=useAccount()?.monitoring;
-  return <div className={'app-shell'+(policy?.enabled?' activity-monitored':'')}><RouteNavigationGuard viewForPath={viewForPath} /><Header /><main className="page-shell"><ActivityDisclosure policy={policy} compact/><Outlet /></main><MobileNav /></div>;
+  return <AppearanceProvider><div className={'app-shell'+(policy?.enabled?' activity-monitored':'')}><RouteNavigationGuard viewForPath={viewForPath} /><Header /><main className="page-shell"><ActivityDisclosure policy={policy} compact/><Outlet /></main><MobileNav /></div></AppearanceProvider>;
 }
 
 const rootRoute = createRootRoute({ component: Shell, notFoundComponent: NotFoundView, errorComponent: RouteErrorView });

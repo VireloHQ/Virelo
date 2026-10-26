@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add Appearance settings with four original controller layouts and preset/custom accent colors. Store preferences per authenticated account, available to all users; keep account isolation, validation and deletion cleanup. Preserve playback state, mobile controls and keyboard access.
+
 - Match the Activity settings heading to other sections and inset keyboard-focus outlines to the navigation row, avoiding detached or doubled borders.
 
 - Present media-tool availability in a neutral settings group with aligned names and statuses; distinguish checks in progress and failed requests from missing tools.

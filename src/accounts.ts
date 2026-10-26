@@ -1,6 +1,7 @@
 import { createHash, randomBytes, scrypt, timingSafeEqual } from 'node:crypto';
 import type { DatabaseSync } from 'node:sqlite';
 import type { Account, AccountPermissions, CatalogScope } from './auth-types.js';
+import { DEFAULT_APPEARANCE, normalizeAppearance, type Appearance } from './appearance.js';
 
 export class AccountError extends Error {
   constructor(message: string, readonly statusCode = 400) { super(message); }
@@ -70,6 +71,10 @@ export class Accounts {
       );
       CREATE INDEX IF NOT EXISTS account_sessions_user ON account_sessions(user_id);
       CREATE TABLE IF NOT EXISTS account_config (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+      CREATE TABLE IF NOT EXISTS account_appearance (
+        user_id INTEGER PRIMARY KEY REFERENCES accounts(id) ON DELETE CASCADE,
+        controller_style TEXT NOT NULL, accent_color TEXT NOT NULL
+      );
       CREATE TABLE IF NOT EXISTS user_progress (
         user_id INTEGER NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
         media_id INTEGER NOT NULL REFERENCES media(id) ON DELETE CASCADE,
@@ -91,6 +96,15 @@ export class Accounts {
     catch (error) { this.db.exec('ROLLBACK'); throw error; }
   }
   hasAccounts() { return Boolean(this.db.prepare('SELECT 1 FROM accounts LIMIT 1').get()); }
+  appearance(id: number): Appearance {
+    const row = this.db.prepare('SELECT controller_style,accent_color FROM account_appearance WHERE user_id=?').get(id) as {controller_style:string;accent_color:string}|undefined;
+    return row ? normalizeAppearance({controllerStyle:row.controller_style,accentColor:row.accent_color}) : {...DEFAULT_APPEARANCE};
+  }
+  saveAppearance(id: number, value: Appearance): Appearance {
+    const appearance = normalizeAppearance(value);
+    this.db.prepare('INSERT INTO account_appearance VALUES(?,?,?) ON CONFLICT(user_id) DO UPDATE SET controller_style=excluded.controller_style,accent_color=excluded.accent_color').run(id,appearance.controllerStyle,appearance.accentColor);
+    return appearance;
+  }
   passwordHash(id: number) { return (this.db.prepare('SELECT password_hash FROM accounts WHERE id=?').get(id) as {password_hash: string} | undefined)?.password_hash; }
   findUsername(username: string) { return (this.db.prepare('SELECT id FROM accounts WHERE username_key=?').get(usernameKey(username)) as {id: number} | undefined)?.id; }
   get(id: number): Account | undefined {

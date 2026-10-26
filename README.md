@@ -92,6 +92,10 @@ npx virelo --media "C:\Users\You\Videos" --random-port
 | 📦 | **PWA** | Install Virelo as an app when supported by your browser. |
 | 🔒 | **Private by default** | Localhost binding, local accounts, per-user library permissions, no telemetry, and no advertising. |
 
+## Appearance
+
+Open **Settings → Appearance** to choose Virelo, Streamline, Theater or Centerstage controller layouts and an accent color. Custom colors are adjusted for readable controls. Appearance settings are saved to the signed-in account on the server and can be changed by every user, including non-administrators. Controller layouts apply to normal videos; Shorts keep their vertical controls. No video files are changed.
+
 ## Named playlists
 
 Open **Playlists** from Library or the desktop navigation. Add a video from its
