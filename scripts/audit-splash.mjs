@@ -41,8 +41,8 @@ try{
             const sample=()=>{
               const element=document.querySelector('.splash-screen');
               if(element){
-                const logo=element.querySelector('img'),opacity=Number(getComputedStyle(element).opacity);
-                window.__splashTrace.push({t:performance.now()-start,visible:element.getBoundingClientRect().width>0&&opacity>.1,opacity,logo:logo.complete&&logo.naturalWidth>0,leaving:element.classList.contains('splash-phase-leaving')});
+                const logo=element.querySelector('img'),opacity=Number(getComputedStyle(element).opacity),box=element.getBoundingClientRect();
+                window.__splashTrace.push({t:performance.now()-start,visible:box.width>0&&box.right>0&&opacity>.1,opacity,left:box.left,width:box.width,logo:logo.complete&&logo.naturalWidth>0,leaving:element.classList.contains('splash-phase-leaving')});
               }
               if(performance.now()-start<5500)requestAnimationFrame(sample);
             };
@@ -72,8 +72,12 @@ try{
               assert.ok(firstLogo,mode+' '+label+' paints the logo');
               assert.ok((leaving?.t??visible.at(-1).t)-firstLogo.t>=500,mode+' '+label+' holds the loaded logo before leaving');
             }
-            if(scenario==='reduced')assert.ok(visible.every(frame=>frame.opacity===1),'reduced motion has no fade');
-            else assert.ok(trace.some(frame=>frame.opacity>0&&frame.opacity<1),'the handoff uses a fade');
+            if(scenario==='reduced')assert.ok(visible.every(frame=>frame.left===0),'reduced motion does not slide');
+            else {
+              assert.ok(trace.some(frame=>frame.leaving&&frame.left < -frame.width*.2),'the handoff slides left');
+              assert.ok(trace.filter(frame=>frame.leaving).at(-1).left < -trace.at(-1).width*.98,'the slide completes before the splash is removed');
+              assert.ok(trace.every(frame=>frame.opacity===1),'the handoff does not fade out');
+            }
             assert.ok(await page.evaluate(()=>document.getElementById('root').getBoundingClientRect().width>0),'the app is visible after the splash');
             assert.deepEqual(errors,[]);checks++;console.log('PASS',mode,label);
           };

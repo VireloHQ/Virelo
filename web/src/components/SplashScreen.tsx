@@ -16,7 +16,7 @@ export function SplashScreen({ onDone }: { onDone: () => void }) {
       started = true;
       window.clearTimeout(logoTimer);
       const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-      const duration = reduced ? 0 : cssTimeToMilliseconds(getComputedStyle(document.documentElement).getPropertyValue('--dur-long'));
+      const duration = reduced ? 0 : cssTimeToMilliseconds(getComputedStyle(element).getPropertyValue('--splash-exit-duration'));
       leaveTimer = window.setTimeout(() => {
         setLeaving(true);
         finishTimer = window.setTimeout(onDone, duration);

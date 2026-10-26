@@ -18,9 +18,9 @@ test('the app loads one shared, restrained motion system after its base styles',
   assert.match(motion, /@media \(hover:hover\) and \(pointer:fine\)/);
 });
 
-test('the splash remains visible before a short fade and waits for visible, styled startup', async () => {
+test('the splash waits for visible startup before its horizontal handoff', async () => {
   const splash = await source('components/SplashScreen.tsx');
-  assert.match(splash, /--dur-long/);
+  assert.match(splash, /getComputedStyle\(element\).*--splash-exit-duration/);
   assert.match(splash, /prefers-reduced-motion/);
   assert.doesNotMatch(splash, /setPhase|phase ===|1400|translate|scale/);
   assert.match(splash, /clearTimeout\(finishTimer\)/);
@@ -34,6 +34,9 @@ test('the splash remains visible before a short fade and waits for visible, styl
   assert.match(css, /html \{[^}]*scroll-behavior: auto/);
   assert.doesNotMatch(css, /splashSlideUp|splashNameReveal|@keyframes picker-in|transition:width/);
   assert.match(css, /prefers-reduced-motion:reduce\) \{\s*\.splash-screen \{ transition:none/);
+  assert.match(css, /--splash-exit-duration:560ms/);
+  assert.match(css, /transition:transform var\(--splash-exit-duration\) var\(--ease-in-out\)/);
+  assert.match(css, /splash-screen.splash-phase-leaving \{ transform:translate3d\(-100%,0,0\)/);
 });
 
 test('settings pointer navigation moves a shared selection and fades the panel without layout travel', async () => {

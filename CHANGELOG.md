@@ -6,7 +6,7 @@
 
 - Animate pointer-driven settings selection with a shared moving highlight and a short, position-stable panel fade; keep keyboard and reduced-motion navigation immediate. Add share/playlist action icons, align video action heights, and shorten nonessential helper copy.
 
-- Restore the startup splash with a brief visible logo/wordmark hold before the shared fade. Start timing only when the screen is visible, wait briefly for the logo without blocking startup indefinitely, and honor reduced motion.
+- Restore the startup splash with a brief visible logo/wordmark hold before a 560ms leftward slide. Start timing only when the screen is visible, wait briefly for the logo without blocking startup indefinitely, and disable the slide for reduced motion.
 
 - Match settings selection rails to the full highlighted row in Web and npm. Reuse the existing Admin card styling for announcement composition and sent history instead of introducing separate tinted surfaces.
 
