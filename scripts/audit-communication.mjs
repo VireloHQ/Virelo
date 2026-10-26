@@ -70,6 +70,10 @@ const auditAppearance=async(page,mode)=>{
   await page.locator('#settings-nav-appearance').click();
   await page.locator('#settings-title-appearance').waitFor();
   check(await page.getByRole('radio').count()===4,mode+' appearance offers four original controller styles');
+  check(await page.locator('.appearance-swatches button[aria-pressed="true"]').evaluate(button=>{
+    const box=button.getBoundingClientRect(),icon=button.querySelector('svg').getBoundingClientRect();
+    return box.width===44&&box.height===44&&Math.abs(icon.x+icon.width/2-box.x-box.width/2)<.1&&Math.abs(icon.y+icon.height/2-box.y-box.height/2)<.1;
+  }),mode+' accent swatch checkmark stays centered within its 44px hit target');
   for(const width of [1440,390,320]){
     await page.setViewportSize({width,height:900});
     check(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),mode+' appearance fits '+width+'px');

@@ -60,7 +60,7 @@
 .app-shell .appearance-hex { width:116px; min-height:44px; padding:8px 12px; border:1px solid var(--line-strong); border-radius:4px; background:var(--surface-2); color:var(--text); }
 .app-shell .appearance-hex:focus-visible { outline:2px solid var(--text-muted); outline-offset:-2px; box-shadow:none; }
 .appearance-swatches { display:flex; align-items:center; flex-wrap:wrap; gap:4px; }
-.appearance-swatches button { display:grid; place-items:center; flex:none; width:44px; height:44px; padding:9px; border:8px solid var(--page); border-radius:50%; background:var(--swatch); color:#100f12; cursor:pointer; }
+.appearance-swatches button { display:grid; place-items:center; flex:none; width:44px; height:44px; padding:0; border:8px solid var(--page); border-radius:50%; background:var(--swatch); color:#100f12; cursor:pointer; }
 .appearance-swatches button svg { width:16px; height:16px; }
 .appearance-swatches button:focus-visible,.appearance-color-picker:focus-visible { outline:2px solid var(--text-muted); outline-offset:0; }
 .appearance-actions { display:flex; align-items:center; flex-wrap:wrap; gap:12px; margin-top:28px; }
