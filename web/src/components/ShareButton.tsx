@@ -42,7 +42,7 @@ export function ShareButton({webOnly=false,addresses,label='Share Virelo',path}:
             {options.length>1&&<Select label={t("Server address")} value={origin} options={options} onChange={value=>{setOrigin(value);setCopied(false);}}/>}
             <div className="share-qr">{qr?<img src={qr} alt={t("QR code for the share link")} width={256} height={256}/>:<p role="status">{t("Creating QR code…")}</p>}</div>
             <Input aria-label={t("Share link")} value={url} readOnly onFocus={event=>event.currentTarget.select()}/>
-            {!webOnly&&<p className="communication-help">{local?t("This address only works on this PC. Use --host 0.0.0.0 for LAN access."):t("The other device must be able to reach this server.")}</p>}
+            {!webOnly&&local&&<p className="communication-help">{t("This address only works on this PC. Use --host 0.0.0.0 for LAN access.")}</p>}
             {error&&<p className="error-copy" role="alert">{t(error)}</p>}
           </Modal.Body>
           <Modal.Footer className="virelo-confirm-footer">

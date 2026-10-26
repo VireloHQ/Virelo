@@ -94,7 +94,7 @@ function SignIn({ status, onDone }: {status:AuthStatus;onDone:(status:AuthStatus
     <label htmlFor="sign-in-username">{t("Username")}</label><Input id="sign-in-username" autoComplete="username" autoCapitalize="none" spellCheck={false} maxLength={64} value={username} onChange={event=>setUsername(event.target.value)} disabled={pending} autoFocus/>
     {setup && <><label htmlFor="sign-in-name">{t("Display name")}</label><Input id="sign-in-name" autoComplete="nickname" maxLength={80} value={displayName} onChange={event=>setDisplayName(event.target.value)} disabled={pending}/></>}
     <label htmlFor="sign-in-password">{t("Password")}</label><Input id="sign-in-password" type="password" autoComplete={setup?'new-password':'current-password'} maxLength={256} value={password} onChange={event=>setPassword(event.target.value)} disabled={pending}/>
-    {setup && <><small>{t("Choose a password or PIN. No complexity requirements.")}</small><label htmlFor="sign-in-confirm">{t("Confirm password")}</label><Input id="sign-in-confirm" type="password" autoComplete="new-password" value={confirmation} onChange={event=>setConfirmation(event.target.value)} disabled={pending}/></>}
+    {setup && <><label htmlFor="sign-in-confirm">{t("Confirm password")}</label><Input id="sign-in-confirm" type="password" autoComplete="new-password" value={confirmation} onChange={event=>setConfirmation(event.target.value)} disabled={pending}/></>}
     {error && <p className="error-copy" role="alert">{t(error)}</p>}
     <Button type="submit" isPending={pending} isDisabled={pending}>{setup?t("Create administrator"):t("Sign in")}</Button>
     {!setup&&<p className="account-help">{t("Forgot your password? Ask your server administrator to reset it.")}</p>}

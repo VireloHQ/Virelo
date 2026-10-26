@@ -74,7 +74,7 @@ try {
   for(const [mode,base] of modes) for(const [name,width,height] of [['desktop',1440,900],['mobile',390,844],['small',320,780]].filter(size=>!process.env.VIRELO_TEST_PLAYLIST_SCENARIO||size[0]===process.env.VIRELO_TEST_PLAYLIST_SCENARIO)) {
     const label=mode+' '+name, prefix=mode==='web'?'/app':'', title='Evening '+name;
     const context=await browser.newContext({serviceWorkers:'block',viewport:{width,height},isMobile:width<600,hasTouch:width<600,reducedMotion:'reduce'});
-    const page=lastPage=await context.newPage(), errors=[];page.setDefaultTimeout(30000);page.on('pageerror',error=>errors.push(error.message));
+    const page=lastPage=await context.newPage(), errors=[];page.setDefaultTimeout(30000);page.on('pageerror',error=>errors.push(error.stack||error.message));
     if(mode==='npm') {
       const status=await(await page.request.get(base+'/api/auth/status')).json();
       const auth=await page.request.post(base+(status.setupRequired?'/api/auth/setup':'/api/auth/login'),{headers:{'X-Virelo-Request':'1'},data:{username:'audit',password:'1'}});
@@ -162,7 +162,7 @@ api.mediaSource=async id=>{if(!urls.has(id))urls.set(id,URL.createObjectURL(awai
     await page.locator('.player video').evaluate(video=>{window.__playlistVideo=video;window.__playlistSource=video.currentSrc;});
     await page.getByRole('button',{name:'Options for Clip 3',exact:true}).click();await page.getByRole('menuitem',{name:'Remove from queue',exact:true}).click();
     await page.getByRole('button',{name:'Save current order',exact:true}).click();
-    await page.getByText('Playlist saved. Playback is unchanged.',{exact:true}).waitFor();
+    await page.locator('.playlist-notice').filter({hasText:/^Saved$/}).waitFor();
     check(await page.locator('.player video').evaluate(video=>video===window.__playlistVideo&&video.currentSrc===window.__playlistSource&&!video.paused),label+' saving a changed playback queue does not reload the current video');
     check((await call(page,mode,'playlist',id)).itemCount===2,label+' saving queue edits updates only this playlist');
     await page.getByRole('button',{name:'Save queue as playlist',exact:true}).click();

@@ -70,7 +70,7 @@ export function LibrarySettings() {
       {previous.data?.length===0&&<p>{t("No previous folders.")}</p>}
     </details>}
     <div className="library-scan">
-      <p>{t("Scan checks video files, fills in missing technical details and restores missing thumbnails. Missing downloaded artwork is fetched again when online metadata and images are enabled. Original video files are never changed.")}</p>
+      <p>{t("Find new videos and restore missing thumbnails.")}</p>
       <div className="scan-strip">{scan.data?.running ? <ScanProgress status={scan.data} compact/> : <div><CheckCircle/><span><strong>{scanMessage(scan.data)}</strong></span></div>}
         {session?.user.permissions.scanLibraries&&<Button variant="secondary" isDisabled={Boolean(scan.data?.running)||startScan.isPending} onPress={()=>startScan.mutate()}>{t("Scan")}</Button>}
       </div>

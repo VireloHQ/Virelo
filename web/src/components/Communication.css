@@ -9,8 +9,6 @@
 .share-trigger { min-height:44px; white-space:nowrap; }
 .share-trigger>svg { width:20px; height:20px; flex:none; }
 .communication-download { margin-right:auto; align-self:center; text-decoration:underline; text-underline-offset:4px; }
-.playback-leveling { border-bottom:1px solid #49434f; margin-bottom:8px; padding-bottom:12px; }
-.playback-leveling p { padding:6px 10px 0; margin:0; font-size:12px; line-height:1.5; color:#c2bec6; }
 @media (max-width:600px) {
   .topbar-actions { gap:2px; }
   .communication-trigger.icon-button { min-width:48px!important; width:48px!important; height:48px!important; }

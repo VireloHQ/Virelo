@@ -262,7 +262,7 @@ export function PlaybackSettingsMenu({
           <span><strong>{quality.label}</strong><small>{index===0?t("Highest available"):formatBitrate(quality.bitrate)}</small></span>
           {typeof qualityPreference==='number'&&selectedQuality===quality.height&&<Check weight="bold"/>}
         </button>)}
-        {shown==='audio'&&onLevelingChange&&<div className="playback-leveling"><button type="button" role="menuitemcheckbox" disabled={!levelingAvailable} aria-checked={leveling} onClick={()=>onLevelingChange(!leveling)}><Waveform/><span><strong>{t("Volume leveling")}</strong><small>{!levelingAvailable?t("Unavailable"):leveling?t("On"):t("Off")}</small></span>{leveling&&<Check weight="bold"/>}</button><p>{t("Live volume adjustment. No pre-scan or file changes.")}</p>{levelingError&&<p role="status">{t(levelingError)}</p>}</div>}
+        {shown==='audio'&&onLevelingChange&&<div className="playback-leveling"><button type="button" className="playback-toggle-row" role="menuitemcheckbox" tabIndex={-1} disabled={!levelingAvailable} aria-checked={leveling} onClick={()=>onLevelingChange(!leveling)}><Waveform aria-hidden="true"/><span><strong>{t("Volume leveling")}</strong><small>{!levelingAvailable?t("Unavailable"):leveling?t("On"):t("Off")}</small></span>{leveling&&<Check weight="bold" aria-hidden="true"/>}</button>{levelingError&&<p role="status">{t(levelingError)}</p>}</div>}
         {shown==='audio'&&allowConversion&&audioTracks.map(track=><button type="button" role="menuitemradio" tabIndex={-1}
           aria-checked={selectedAudio===track.index} className={selectedAudio===track.index?'selected':''}
           disabled={busy||!track.supported} key={track.index} onClick={()=>select(()=>onSelectAudio(track.index))}>

@@ -91,6 +91,6 @@ function PlaylistQueueActions({ items, playlist }: { items: MediaItem[]; playlis
       <Button variant="secondary" isPending={save.isPending} isDisabled={!dirty || save.isPending} onPress={() => save.mutate()}>{t("Save current order")}</Button></>}
     <SavePlaylist mediaIds={items.map(item => item.id)} label={t("Save queue as playlist")}/>
     {save.error && <p className="error-copy" role="alert">{t(save.error.message)}</p>}
-    {save.isSuccess && !dirty && <span className="playlist-notice" role="status">{t("Playlist saved. Playback is unchanged.")}</span>}
+    {save.isSuccess && !dirty && <span className="playlist-notice" role="status">{t("Saved")}</span>}
   </div>;
 }

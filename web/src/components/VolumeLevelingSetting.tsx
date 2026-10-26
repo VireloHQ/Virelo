@@ -8,7 +8,7 @@ export function VolumeLevelingSetting(){
   const enabled=useSyncExternalStore(subscribeLeveling,readLevelingPreference);
   const supported=canLevelAudio();
   return <div className="setting-row"><div className="setting-copy"><div><strong>{t("Volume leveling")}</strong><p>{t("Keep volume consistent across videos and Shorts.")}</p>
-    {!supported&&<p className="account-notice">{t("Unavailable in this browser. Original audio is used to avoid native HLS audio-routing issues.")}</p>}</div></div>
+    {!supported&&<p className="account-notice">{t("Unavailable in this browser.")}</p>}</div></div>
     <Switch aria-label={t("Volume leveling")} isSelected={enabled&&supported} isDisabled={!supported} onChange={saveLevelingPreference}><Switch.Content><Switch.Control><Switch.Thumb/></Switch.Control></Switch.Content></Switch>
   </div>;
 }

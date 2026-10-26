@@ -17,7 +17,6 @@ export function VideoSettingsPanel({settings,onChange,onReset}:{
           <button type="button" aria-pressed={settings.fit === 'contain'} onClick={() => onChange({ fit: 'contain' })}><ArrowsIn />{t("Fit")}</button>
           <button type="button" aria-pressed={settings.fit === 'cover'} onClick={() => onChange({ fit: 'cover' })}><ArrowsOut />{t("Fill")}</button>
         </div>
-        <p className="video-settings-hint">{settings.fit === 'cover' ? t("Crop the edges to fill the player.") : t("Show the entire frame without cropping.")} {t("Quality stays unchanged.")}</p>
         <div className="video-settings-rotation"><span>{t("Rotation")}</span><div>
           <button type="button" aria-label={t("Rotate counterclockwise")} onClick={() => onChange({ rotation: settings.rotation - 90 })}><ArrowCounterClockwise /></button>
           <output aria-label={t("Rotation")} aria-live="polite">{settings.rotation}°</output>
@@ -34,7 +33,6 @@ export function VideoSettingsPanel({settings,onChange,onReset}:{
           onReset();
           event.currentTarget.closest('.video-settings-content')?.querySelector<HTMLButtonElement>('.video-settings-fit button')?.focus({preventScroll:true});
         }}><ArrowCounterClockwise />{t("Reset adjustments")}</button>
-        <p className="video-settings-hint">{t("Resets for each video. Picture in Picture uses the original view.")}</p>
       </div>
   );
 }

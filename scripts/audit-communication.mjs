@@ -9,6 +9,7 @@ import { createVireloServer } from '../dist/server.js';
 import { hashPassword } from '../dist/accounts.js';
 import { openPlaybackSetting } from './helpers/playback-settings.mjs';
 import { auditLocalization } from './helpers/localization.mjs';
+import { auditAudioMenu } from './helpers/audio-menu.mjs';
 
 process.env.VIRELO_LOG_LEVEL='silent';
 const {chromium}=createRequire(process.env.VIRELO_TEST_NODE_PACKAGE||import.meta.url)('playwright');
@@ -336,7 +337,7 @@ api.mediaSource=async id=>{if(!auditUrls.has(id))auditUrls.set(id,URL.createObje
   });
   for(const [mode,base,ctx,current] of modes){
     const prefix=mode==='web'?'/app':'';
-    await auditLocalization({page:current,context:ctx,mode,base,items,artifacts:root,browser});
+    if(process.env.VIRELO_TEST_SKIP_LOCALIZATION!=='1')await auditLocalization({page:current,context:ctx,mode,base,items,artifacts:root,browser});
     await ctx.addInitScript(()=>{
       localStorage.setItem('virelo-volume-leveling:v1','true');
       window.__levelingBeforePlay=[];
@@ -369,6 +370,7 @@ api.mediaSource=async id=>{if(!auditUrls.has(id))auditUrls.set(id,URL.createObje
     await verifyQr(current,link);check(true,mode+' rounded QR and embedded logo decode at three image sizes');
     await current.getByRole('button',{name:'Copy link',exact:true}).click();check(await current.evaluate(()=>window.__copied)===link,mode+' copy action uses the displayed URL');
     await current.keyboard.press('Escape');await current.getByRole('dialog',{name:shareLabel,exact:true}).waitFor({state:'hidden'});
+    await auditAudioMenu(current,mode,root,check);
     await openPlaybackSetting(current,'Audio');
     if(await current.getByRole('menuitemcheckbox',{name:/Volume leveling/}).getAttribute('aria-checked')==='true')await current.getByRole('menuitemcheckbox',{name:/Volume leveling/}).click();
     await current.getByRole('menuitemcheckbox',{name:/Volume leveling/}).click();

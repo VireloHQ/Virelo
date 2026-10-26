@@ -3,6 +3,25 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 const source = path => readFile(new URL('../web/src/' + path, import.meta.url), 'utf8');
 
+
+test('audio toggles share fixed icon, label and check columns', async () => {
+  const menu = await source('components/PlaybackSettingsMenu.tsx');
+  assert.match(menu, /className="playback-toggle-row" role="menuitemcheckbox" tabIndex=\{-1\}/);
+  assert.match(menu, /aria-checked=\{leveling\}/);
+  const css = await source('player-ui.css');
+  assert.match(css, /:is\(\.playback-setting-row,\.playback-toggle-row\).*grid-template-columns:20px minmax\(0,1fr\) 16px/);
+  assert.match(css, /\.playback-leveling:not\(:last-child\)/);
+  assert.doesNotMatch(await source('components/Communication.css'), /playback-leveling/);
+});
+
+test('routine controls omit implementation commentary while errors and privacy notices remain', async () => {
+  for (const file of ['components/PlaybackSettingsMenu.tsx','components/Player.tsx','components/VideoSettingsPanel.tsx','views/WatchView.tsx','views/PlaylistsView.tsx']) {
+    assert.doesNotMatch(await source(file), /No pre-scan|file changes|file stays unchanged|Playback is unchanged|Quality stays unchanged|Original files stay unchanged|cached result will be reused/);
+  }
+  assert.match(await source('components/PlaybackSettingsMenu.tsx'), /levelingError/);
+  assert.match(await source('components/VolumeLevelingSetting.tsx'), /Unavailable in this browser\./);
+});
+
 test('the normal player shares one settings entry instead of a row of preference icons', async () => {
   const player = await source('components/Player.tsx');
   assert.match(player, /unified=\{!shorts\}/);

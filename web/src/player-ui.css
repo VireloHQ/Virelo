@@ -58,7 +58,11 @@
 .playback-menu-back>svg { width:18px; height:18px; }
 .playback-menu-back:hover { background:var(--control-hover); }
 .playback-menu-back:focus-visible { outline:2px solid var(--color-focus); outline-offset:-2px; }
-.playback-track-list .playback-setting-row { display:grid; grid-template-columns:20px minmax(0,1fr) 16px; gap:10px; min-height:46px; }
+.playback-track-list :is(.playback-setting-row,.playback-toggle-row) { display:grid; grid-template-columns:20px minmax(0,1fr) 16px; gap:10px; min-height:46px; }
+.playback-toggle-row>span { display:block; min-width:0; }
+.playback-track-list .playback-toggle-row>svg:first-child { color:var(--text-muted); }
+.playback-leveling:not(:last-child) { border-bottom:1px solid var(--line); margin-bottom:8px; padding-bottom:8px; }
+.playback-leveling p { padding:6px 10px 0; margin:0; font-size:12px; line-height:1.5; color:var(--text-muted); }
 .playback-setting-row>span { min-width:0; display:flex; align-items:center; justify-content:space-between; gap:12px; }
 .playback-setting-row strong { white-space:nowrap; font-weight:500; }
 .playback-setting-row small { min-width:0; margin:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; text-align:right; }

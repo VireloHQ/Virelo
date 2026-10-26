@@ -1,4 +1,3 @@
-import { Trans } from '../i18n/Trans';
 import { t, useLocale } from '../i18n';
 import { useState } from 'react';
 import { Button, Input } from '@heroui/react';
@@ -24,7 +23,7 @@ export function PlaylistsView() {
     onSuccess: async playlist => { await client.invalidateQueries({ queryKey: ['playlists'] }); void navigate({ to: '/playlists/$playlistId', params: { playlistId: String(playlist.id) } }); }
   });
   return <div className="content-view playlists-view">
-    <header className="content-heading"><div><h1>{t("Playlists")}</h1><p>{t("Your videos, in your own order.")}</p></div><Link to="/library">{t("Browse library")}</Link></header>
+    <header className="content-heading"><div><h1>{t("Playlists")}</h1></div><Link to="/library">{t("Browse library")}</Link></header>
     <form className="playlist-create" onSubmit={event => { event.preventDefault(); if (!create.isPending) create.mutate(); }}>
       <label className="playlist-field"><span>{t("New playlist")}</span><Input aria-label={t("New playlist name")} maxLength={100} placeholder={t("Playlist name")} value={name} onChange={event => setName(event.target.value)}/></label>
       <Button type="submit" isPending={create.isPending} isDisabled={create.isPending || !name.trim()}>{t("Create playlist")}</Button>
@@ -66,26 +65,26 @@ function PlaylistEditor({ playlist, reload }: { playlist: PlaylistDetail; reload
   };
   return <div className="content-view playlist-editor">
     <Link className="playlist-back" to="/playlists">{t("All playlists")}</Link>
-    <header className="content-heading"><div><h1>{playlist.name}</h1><p><Trans message="{value0} · Save changes to keep the new order." values={{value0:t('{count} videos',{count:playlist.itemCount})}}/></p></div>
+    <header className="content-heading"><div><h1>{playlist.name}</h1><p>{t('{count} videos',{count:playlist.itemCount})}</p></div>
       <div className="heading-controls"><Button isDisabled={!items.length || dirty} onPress={() => play()}><Play weight="fill"/> {t("Play all")}</Button><Button variant="secondary" isDisabled={items.length < 2 || dirty} onPress={() => play(0, true)}><Shuffle/> {t("Shuffle")}</Button></div>
     </header>
     <form className="playlist-create" onSubmit={event => { event.preventDefault(); if (dirty && !save.isPending) save.mutate(); }}>
       <label className="playlist-field"><span>{t("Playlist name")}</span><Input aria-label={t("Playlist name")} maxLength={100} value={name} onChange={event => setName(event.target.value)}/></label>
       <Button type="submit" isPending={save.isPending} isDisabled={!dirty || save.isPending}>{t("Save changes")}</Button>
     </form>
-    {save.error && <div className="playlist-feedback" role="alert"><p>{t(save.error.message)}</p><p>{t("Your unsaved changes are still shown below.")}</p></div>}
+    {save.error && <div className="playlist-feedback" role="alert"><p>{t(save.error.message)}</p></div>}
     {notice && <p className="playlist-notice" role="status">{t(notice)}</p>}
-    {playlist.unavailableCount > 0 && <p className="playlist-notice">{t('{count} unavailable videos skipped. References are kept; restore library access to see them again.',{count:playlist.unavailableCount})}</p>}
+    {playlist.unavailableCount > 0 && <p className="playlist-notice">{t('{count} videos are unavailable. Check library access.',{count:playlist.unavailableCount})}</p>}
     <div className="playlist-section-heading"><h2>{t("Videos")}</h2><Link to="/library">{t("Add videos from library")}</Link></div>
     {!items.length && <p className="playlist-empty-copy">{t("No available videos. Add a video from its details or save a queue to this playlist.")}</p>}
     <PlaybackQueue editing items={items} activeIndex={-1} repeatMode="off" onRepeatChange={() => {}} onSelect={index => play(index)} state={queue} onEdit={update}/>
     <footer className="playlist-management">
       <span role="status">{dirty ? t("Unsaved changes") : t("All changes saved")}</span>
-      <div><ConfirmationDialog triggerLabel={t("Reload playlist")} title={t("Reload playlist?")} confirmLabel={t("Reload")} onConfirm={reload}><p>{t("Discard unsaved edits and load the latest saved playlist. Original files stay unchanged.")}</p></ConfirmationDialog>
+      <div><ConfirmationDialog triggerLabel={t("Reload playlist")} title={t("Reload playlist?")} confirmLabel={t("Reload")} onConfirm={reload}><p>{t("Discard unsaved changes and reload?")}</p></ConfirmationDialog>
       <ConfirmationDialog triggerLabel={t("Delete playlist")} title={t("Delete playlist?")} confirmLabel={t("Delete playlist")} onConfirm={async () => {
         await api.deletePlaylist(playlist.id, playlist.revision); await client.invalidateQueries({ queryKey: ['playlists'] });
         client.removeQueries({ queryKey: ['playlist', playlist.id] }); void navigate({ to: '/playlists' });
-      }}><p><Trans message="Delete {value0} from your saved playlists? Videos, favorites and watch history stay unchanged." values={{value0:<strong>{playlist.name}</strong>}}/></p></ConfirmationDialog></div>
+      }}><p><strong>{playlist.name}</strong></p></ConfirmationDialog></div>
     </footer>
   </div>;
 }

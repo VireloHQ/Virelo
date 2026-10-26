@@ -50,7 +50,7 @@ export function NotificationBell(){
             <div className="notification-list">{inbox.data?.items?.map(item=><NotificationCard item={item} unread={item.readAt===null} key={item.id}>
               {item.readAt===null?<Button className="notification-read-action" variant="ghost" isDisabled={read.isPending} onPress={()=>read.mutate(item.id)}><Check aria-hidden="true"/> {t("Mark as read")}</Button>:<span className="notification-read-status"><CheckCircle aria-hidden="true"/> {t("Read")}</span>}
             </NotificationCard>)}</div>
-            {inbox.data?.items?.length===0&&<div className="notification-empty"><Bell aria-hidden="true"/><h3>{t("No notifications yet")}</h3><p>{t("Messages from your server administrator will appear here.")}</p></div>}
+            {inbox.data?.items?.length===0&&<div className="notification-empty"><Bell aria-hidden="true"/><h3>{t("No notifications yet")}</h3></div>}
             {(cursors.length>0||inbox.data?.nextBefore)&&<div className="notification-pagination"><Button variant="secondary" isDisabled={!cursors.length} onPress={()=>setCursors(values=>values.slice(0,-1))}>{t("Newer")}</Button><Button variant="secondary" isDisabled={!inbox.data?.nextBefore} onPress={()=>setCursors(values=>[...values,inbox.data!.nextBefore!])}>{t("Older")}</Button></div>}
           </Modal.Body>
         </Modal.Dialog>
@@ -70,7 +70,7 @@ export function AnnouncementSettings(){
     await client.invalidateQueries({queryKey:['announcements']});await client.invalidateQueries({queryKey:['notifications']});
   }});
   return <section id="settings-panel-announcements" className="settings-card settings-section" aria-labelledby="settings-title-announcements">
-    <div className="settings-card-head"><div><h2 id="settings-title-announcements" tabIndex={-1}>{t("Announcements")}</h2><p>{t("Send a message to users on this server.")}</p></div></div>
+    <div className="settings-card-head"><div><h2 id="settings-title-announcements" tabIndex={-1}>{t("Announcements")}</h2></div></div>
     <form className="announcement-form admin-setting-group" onSubmit={event=>{event.preventDefault();setFeedback('');send.mutate();}}>
       <h3 className="announcement-compose-title"><Megaphone aria-hidden="true"/> {t("New announcement")}</h3>
       <label>{t("Title")}<Input aria-label={t("Announcement title")} name="title" autoComplete="off" maxLength={120} value={title} onChange={event=>setTitle(event.target.value)} disabled={send.isPending}/></label>
@@ -85,7 +85,7 @@ export function AnnouncementSettings(){
     <div className="announcement-sent admin-setting-group"><div className="announcement-history-heading"><h3><Megaphone aria-hidden="true"/> {t("Sent announcements")}</h3>{sent.data&&<span><Trans message="{value0} sent" values={{value0:sent.data.length}}/></span>}</div>
       {sent.isPending&&<p role="status">{t("Loading announcements…")}</p>}
       {sent.error&&<p className="error-copy" role="alert"><Trans message="Could not load announcements. {value0}" values={{value0:<button onClick={()=>void sent.refetch()}>{t("Try again")}</button>}}/></p>}
-      {sent.data?.length===0&&<div className="notification-empty"><Megaphone aria-hidden="true"/><h3>{t("No announcements sent.")}</h3><p>{t("Sent messages will appear here. You can withdraw them at any time.")}</p></div>}
+      {sent.data?.length===0&&<div className="notification-empty"><Megaphone aria-hidden="true"/><h3>{t("No announcements sent.")}</h3></div>}
       <div className="notification-list">{sent.data?.map(item=><NotificationCard item={item} key={item.id}>
         <span className="announcement-recipient-count"><Users aria-hidden="true"/>{t('{count} recipients',{count:item.recipients})}</span>
         <div className="announcement-withdraw" role="group" aria-label={t("Actions for {value0}", { value0: item.title })}><ConfirmationDialog triggerLabel={t("Withdraw")} title={t("Withdraw this announcement?")} confirmLabel={t("Withdraw")} onConfirm={async()=>{await api.withdrawAnnouncement(item.id);await client.invalidateQueries({queryKey:['announcements']});await client.invalidateQueries({queryKey:['notifications']});}}><p>{t("Remove this announcement from every inbox. Users may already have read or copied it.")}</p></ConfirmationDialog></div>
