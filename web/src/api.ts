@@ -3,6 +3,7 @@ import type { Account, AuthStatus, ActivityPolicy, ActivityHeartbeat, ActivityPa
 import type { DataUsage } from '../../src/types';
 import type { PlaylistDetail, PlaylistSummary, PlaylistWrite } from './types';
 import type { CustomCommand, CustomCommandDefinition } from '../../src/custom-command-types';
+import type { Announcement,AnnouncementWrite,NotificationPage } from '../../src/notification-types';
 
 export interface QualityTranscodeState {
   status:string;
@@ -33,6 +34,12 @@ function withQuery(url: string, params: Record<string, string | number | undefin
 }
 
 export const api = {
+  shareAddresses: () => request<Array<{url:string;name:string}>>('/api/share/addresses'),
+  notifications: (before?:number) => request<NotificationPage>(withQuery('/api/notifications',{before})),
+  readNotifications: (id?:number) => request<{ok:boolean}>('/api/notifications/read',{method:'POST',body:JSON.stringify({id})}),
+  announcements: () => request<Announcement[]>('/api/accounts/announcements'),
+  sendAnnouncement: (body:AnnouncementWrite) => request<{id:number;recipients:number}>('/api/accounts/announcements',{method:'POST',body:JSON.stringify(body)}),
+  withdrawAnnouncement: (id:number) => request<{ok:boolean}>(`/api/accounts/announcements/${id}`,{method:'DELETE'}),
   commands: () => request<CustomCommand[]>('/api/commands'),
   saveCommand: (definition: CustomCommandDefinition, id?: number) => request<CustomCommand>(id === undefined ? '/api/commands' : `/api/commands/${id}`, { method: id === undefined ? 'POST' : 'PUT', body: JSON.stringify(definition) }),
   removeCommand: (id: number) => request<{ok:boolean}>(`/api/commands/${id}`, { method: 'DELETE' }),

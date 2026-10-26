@@ -157,6 +157,32 @@ Series/
 
 Supported containers include MP4, M4V, MKV, WebM, MOV, AVI, WMV, MPEG, TS, M2TS, FLV, OGV, and 3GP. Browser codec support determines whether a file can play directly.
 
+## Sharing, volume leveling and announcements
+
+Use **Share** in the header to copy a link or generate/download a QR code locally.
+On the server PC, a LAN address is offered only when Virelo is already listening
+on that interface. Sharing never starts a tunnel, opens a port, includes a session
+token or bypasses sign-in/library permissions. Personal playlist/settings URLs
+are not shared. Other devices must be able to reach the selected address.
+
+Enable **Settings → Playback → Volume leveling**, or **Player Settings → Audio →
+Volume leveling**, to reduce loudness differences during playback. It is off by
+default, saved on this device, and shared by normal videos, Shorts and selected
+audio tracks. Live stereo-weighted estimates, bounded gain and a compressor are
+used without scanning or rewriting videos. Manual volume and mute remain in
+control. This is not full-file integrated LUFS normalization or a guaranteed
+true-peak mastering process. Browser audio processing support is required.
+Safari/iOS WebKit is left on original audio to avoid its native-HLS audio-routing
+limitation; the controls explain when leveling is unavailable.
+
+Administrators can send plain-text messages in **Settings → Announcements** to
+all currently enabled users or selected users. Recipients use the header bell;
+read state is stored separately per account. Active clients check about every
+30 seconds. Messages expire after 90 days, with 200 announcements and 100,000
+recipient records allowed per server. Administrators can withdraw messages;
+new accounts do not inherit old announcements. This is server-local in-app
+delivery, not email, OS push or announcements from Virelo's developers.
+
 ## 🧰 Optional tools
 
 Virelo works without FFmpeg for formats supported by the browser. Installing `ffmpeg` and `ffprobe` adds:

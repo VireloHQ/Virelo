@@ -22,7 +22,8 @@ import { pickNativeFolder } from './folder-picker.js';
 import { isMediaFile, isVideoPath, mediaWatchFilter } from './media-files.js';
 import { assertSupportedNode } from './runtime.js';
 import { CustomCommands, registerCustomCommands } from './custom-commands.js';
-import { serverUrl } from './network-urls.js';
+import { serverUrl,networkUrls,acceptsIpv4 } from './network-urls.js';
+import { registerNotifications } from './notifications.js';
 import { mediaScheduler,MediaBusyError } from './media-work.js';
 
 const SORT_KEYS: SortKey[] = ['title', 'newest', 'oldest', 'year', 'duration', 'random'];
@@ -108,6 +109,14 @@ export async function createVireloServer(config: RuntimeConfig, pickFolder: (sig
   });
   const webRoot = fileURLToPath(new URL('./web', import.meta.url));
   const { accounts, fresh } = registerAccounts(app, db, host => commands.allowsHost(host));
+  registerNotifications(app,db.db);
+  app.get('/api/share/addresses',async request=>{
+    if(!directLocal(request))return [];
+    const address=app.server.address();
+    if(!address||typeof address==='string')return [];
+    const ipv4=config.host==='::'&&await acceptsIpv4(address.port,app.server);
+    return networkUrls(config.host,address.port,undefined,ipv4);
+  });
   registerCustomCommands(app, commands, request => fresh(request, true));
   registerPlaylists(app, db);
   let activePicker: AbortController | null = null;

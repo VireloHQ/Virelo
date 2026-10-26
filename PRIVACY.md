@@ -8,6 +8,27 @@ Virelo does not include telemetry, analytics, advertising, cloud account registr
 
 New installations match filenames against Cinemeta during library scans and cache the returned metadata and artwork locally. Online matching and artwork downloads can be disabled independently by an administrator in Settings. Network access to the server requires an account, but HTTP does not encrypt traffic: use HTTPS or a trusted VPN on untrusted networks.
 
+## Sharing, playback loudness and server announcements
+
+Share links and QR codes are generated locally. They do not contain session
+credentials, transfer account permissions or publish the host. Only a directly
+connected localhost client can request the server's existing LAN addresses.
+Personal playlists and account/settings URLs are replaced with the server home.
+
+Optional volume leveling reads decoded audio locally during playback. The
+device-local preference is stored in localStorage; samples and loudness estimates
+are not uploaded, stored in the server database or written to original files.
+
+Server administrators may send plain-text announcements. The local database
+stores the message, sender reference, creation time, intended account IDs and
+each recipient's read timestamp. Other users cannot read or change these records.
+The administrator UI does not expose per-user read receipts, but the host owner
+can inspect the database. Messages are pruned after 90 days during use and can
+be withdrawn sooner. Deleting an account removes its recipient/read records;
+messages it sent may remain for other recipients without the deleted sender
+reference. Browser clients poll only this server. Virelo developers do not send
+messages through this channel, and no email, OS push or third-party service is used.
+
 ## Optional activity monitoring
 
 The npm server's **Settings → Admin → Monitor activity** is off by default.

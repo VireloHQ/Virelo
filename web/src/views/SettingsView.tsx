@@ -10,12 +10,15 @@ import { Select } from '../components/Select';
 import { SettingsNavigation } from '../components/SettingsNavigation';
 import { ConfirmationDialog } from '../components/ConfirmationDialog';
 import { QueueLayoutSetting } from '../components/QueueLayoutSetting';
+import { VolumeLevelingSetting } from '../components/VolumeLevelingSetting';
 import type { QueueBehavior, Settings } from '../types';
 import { useAccount } from '../components/AccountSession';
 import { AccountManager, AccountProfile } from '../components/AccountSettings';
 import { ActivityView, AdminSettings } from '../components/AccountAdministration';
 import { DataManagement } from '../components/DataManagement';
 import { CustomCommandSettings } from '../components/CustomCommandSettings';
+import { AnnouncementSettings } from '../components/Notifications';
+import { Megaphone } from '@phosphor-icons/react';
 
 const settingsSections = [
   { id:'account', label:'Account', description:'Your name, password and sign-in', icon:UserCircle, group:'General' },
@@ -24,6 +27,7 @@ const settingsSections = [
   { id:'tools', label:'Advanced', description:'Media tool availability', icon:SlidersHorizontal, group:'General' },
   { id:'accounts', label:'Account Manager', description:'Users, access and personal data', icon:UsersThree, group:'Admin' },
   { id:'activity', label:'Activity', description:'Online sessions and activity logs', icon:Eye, group:'Admin' },
+  { id:'announcements', label:'Announcements', description:'Send messages to server users', icon:Megaphone, group:'Admin' },
   { id:'admin', label:'Admin', description:'Network access and monitoring', icon:ShieldCheck, group:'Admin' },
   { id:'network', label:'Metadata', description:'Titles, posters and artwork', icon:ImageSquare, group:'Admin' },
   { id:'shorts', label:'Shorts', description:'Videos in your vertical feed', icon:DeviceMobile, group:'Admin' },
@@ -73,6 +77,7 @@ export function SettingsView(){
         {activeSection==='account'&&<div id="settings-panel-account" className="settings-card settings-section"><AccountProfile/></div>}
         {activeSection==='accounts'&&isAdmin&&<div id="settings-panel-accounts" className="settings-card settings-section"><AccountManager/></div>}
         {activeSection==='admin'&&isAdmin&&<AdminSettings/>}
+        {activeSection==='announcements'&&isAdmin&&<AnnouncementSettings/>}
         {activeSection==='activity'&&isAdmin&&<section id="settings-panel-activity" className="settings-card settings-section" aria-labelledby="settings-title-activity"><h2 id="settings-title-activity" tabIndex={-1}>Activity</h2><ActivityView/></section>}
         {activeSection==='data'&&isAdmin&&<DataManagement/>}
         {activeSection==='commands'&&isAdmin&&session?.localAccess&&<CustomCommandSettings/>}
@@ -93,6 +98,7 @@ export function SettingsView(){
         {activeSection==='playback'&&<section id="settings-panel-playback" className="settings-card settings-section" aria-labelledby="settings-title-playback">
           <div className="settings-card-head"><div><h2 id="settings-title-playback" tabIndex={-1}>Playback</h2><p>Choose what happens when a video ends in a folder queue.</p></div></div>
           <QueueLayoutSetting/>
+          <VolumeLevelingSetting/>
           {isAdmin&&<div className="setting-row"><div className="setting-copy"><div><strong>Queue advance</strong><p>Auto-advance, loop, or manually step through the folder.</p></div></div>
             <Select className="settings-picker" label="Queue advance" value={form.queueBehavior} options={QUEUE_OPTIONS} align="end" onChange={(value)=>setForm({...form,queueBehavior:value as QueueBehavior})}/></div>}
         </section>}

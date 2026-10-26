@@ -30,6 +30,13 @@ local regression measurements, not a supported viewer count or network benchmark
 
 ## Browser checks
 
+`node scripts/audit-communication.mjs` checks locally generated QR/link sharing,
+administrator publishing/withdrawal, private inbox read state and real decoded
+audio with leveling on/off. Synthetic clips with different mastering levels
+verify gain, manual volume, mute, seeking and Shorts. It uses an ephemeral server
+and generated files, removes media/account fixtures, and keeps screenshots in
+the reported temporary directory. Set `VIRELO_TEST_WEB_REPO` to include Web checks.
+
 `node scripts/audit-playlists.mjs` verifies named-playlist creation, editing,
 reopening, queue saves during playback, conflict recovery and confirmed deletion
 on desktop and mobile using isolated storage and generated media. The Web checks

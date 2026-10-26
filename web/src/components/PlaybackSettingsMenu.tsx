@@ -30,6 +30,10 @@ interface PlaybackSettingsMenuProps {
   onRepeatChange?: (mode: RepeatMode) => void;
   speed?: number;
   onSpeedChange?: (speed: number) => void;
+  leveling?:boolean;
+  onLevelingChange?:(enabled:boolean)=>void;
+  levelingError?:string;
+  levelingAvailable?:boolean;
   onSelectAudio: (stream: number) => void;
   onSelectSubtitle: (stream: number|null) => void;
   onSelectQuality: (preference: QualityPreference) => void;
@@ -41,7 +45,7 @@ export function PlaybackSettingsMenu({
   audioTracks, subtitleTracks, selectedAudio, selectedSubtitle, busy=false,
   qualityOptions, selectedQuality, qualityPreference, activeQuality=null, allowAutoQuality=false, allowConversion=true,
   unified=false, context=false, pictureControls, repeatMode='off', hasQueue=false, onRepeatChange, speed=1, onSpeedChange,
-  onSelectAudio, onSelectSubtitle, onSelectQuality
+  onSelectAudio, onSelectSubtitle, onSelectQuality, leveling=false,onLevelingChange,levelingError='',levelingAvailable=true
 }: PlaybackSettingsMenuProps) {
   const [menu,setMenu] = useState<{section:Setting;open:boolean}>({section:'settings',open:false});
   const open=menu.open?menu.section:null;
@@ -183,7 +187,7 @@ export function PlaybackSettingsMenu({
   return <div className={'playback-settings'+(context?' context-playback-settings':'')} ref={rootRef} onDoubleClick={event=>event.stopPropagation()}>
     {unified?settingButton('settings',context?'Settings':'Playback settings',context?<><Gear/><span>Settings</span><CaretRight/></>:<DotsThree/>):<>
       {qualityOptions.length>0&&settingButton('quality','Quality',<><MonitorPlay/><span className="playback-quality-label">{displayedQuality}</span></>,displayedQuality)}
-      {allowConversion&&audioTracks.length>1&&settingButton('audio','Audio',<Waveform/>,audioLabel)}
+      {(onLevelingChange||allowConversion&&audioTracks.length>1)&&settingButton('audio','Audio',<Waveform/>,audioLabel)}
       {subtitleTracks.length>0&&settingButton('subtitles','Subtitles',<Subtitles weight={selectedSubtitle===null?'regular':'fill'}/>,subtitleLabel)}
     </>}
     {createPortal(<div ref={menuRef} id={menuId} className={'playback-settings-menu'+(shown==='video'?' video-settings-menu':'')+(context?' context-popover context-settings-menu':'')}
@@ -221,7 +225,7 @@ export function PlaybackSettingsMenu({
       {shown==='video'?pictureControls:<div className="playback-track-list">
         {shown==='settings'&&<>
           {qualityOptions.length>0&&sectionButton('quality',<MonitorPlay/>,displayedQuality)}
-          {allowConversion&&audioTracks.length>1&&sectionButton('audio',<Waveform/>,audioLabel)}
+          {(onLevelingChange||allowConversion&&audioTracks.length>1)&&sectionButton('audio',<Waveform/>,audioLabel+(leveling?' · Leveling on':''))}
           {subtitleTracks.length>0&&sectionButton('subtitles',<Subtitles/>,subtitleLabel)}
           {pictureControls&&sectionButton('video',<SlidersHorizontal/>,'Fit, rotation and color')}
           {onRepeatChange&&sectionButton('repeat',<Repeat/>,repeatLabels[repeatMode])}
@@ -254,7 +258,8 @@ export function PlaybackSettingsMenu({
           <span><strong>{quality.label}</strong><small>{index===0?'Highest available':formatBitrate(quality.bitrate)}</small></span>
           {typeof qualityPreference==='number'&&selectedQuality===quality.height&&<Check weight="bold"/>}
         </button>)}
-        {shown==='audio'&&audioTracks.map(track=><button type="button" role="menuitemradio" tabIndex={-1}
+        {shown==='audio'&&onLevelingChange&&<div className="playback-leveling"><button type="button" role="menuitemcheckbox" disabled={!levelingAvailable} aria-checked={leveling} onClick={()=>onLevelingChange(!leveling)}><Waveform/><span><strong>Volume leveling</strong><small>{!levelingAvailable?'Unavailable':leveling?'On':'Off'}</small></span>{leveling&&<Check weight="bold"/>}</button><p>Live volume adjustment. No pre-scan or file changes.</p>{levelingError&&<p role="status">{levelingError}</p>}</div>}
+        {shown==='audio'&&allowConversion&&audioTracks.map(track=><button type="button" role="menuitemradio" tabIndex={-1}
           aria-checked={selectedAudio===track.index} className={selectedAudio===track.index?'selected':''}
           disabled={busy||!track.supported} key={track.index} onClick={()=>select(()=>onSelectAudio(track.index))}>
           <span><strong>{trackLabel(track,'Audio',track.typeIndex+1)}</strong><small>{track.supported?trackMeta(track):`${track.codec.toUpperCase()} · Unavailable`}</small></span>

@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Add local link/QR sharing without access tokens, public exposure or permission bypasses. Offer existing LAN listener addresses on the host PC and preserve QR generator notices.
+- Add opt-in device-local live volume leveling to normal playback, Shorts and selected audio, with bounded gain, silence gating and manual volume/mute preservation. Keep sources untouched and distinguish live stereo estimates from full-file integrated LUFS normalization.
+- Add administrator-originated in-app announcements for current enabled or selected users, private per-account inbox/read state, withdrawal, pagination, storage/rate limits and 90-day expiry. No developer feed, email, OS push or third-party notification service is used.
+
 - Share bounded media-tool scheduling across video conversion, audio, probing, subtitles and scanning. Reserve an audio/remux slot, fairly rotate waiting accounts, cancel abandoned work promptly and return retry information on overload. Limit decoder/encoder threads and background work, and verify multi-user behavior with isolated synthetic-media regressions.
 - Honor compatible-video copying only for verified independent H.264 boundaries without reordered frames; safely re-encode other cases. Include source identity, duration and copy mode in segment cache fingerprints, preserving original files.
 

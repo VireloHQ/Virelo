@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useVolumeLeveling } from '../hooks/useVolumeLeveling';
 import { ArrowsOut, FastForward, Pause, PictureInPicture, Play, Repeat, Rewind, SpeakerHigh, SpeakerSlash } from '@phosphor-icons/react';
 import { LoadingSpinner } from './LoadingSpinner';
 import { api } from '../api';
@@ -97,6 +98,7 @@ export function Player({item,queue,queueIndex,shuffled,onShuffle,onEnded,onNext,
   const [duration,setDuration] = useState(item.duration || 0);
   const {volume,setVolume,muted,setMuted} = usePlaybackVolume();
   const {speed,changeSpeed} = usePlaybackSpeed(videoRef,audioRef,item.id,externalAudioUrl);
+  const {leveling,setLeveling,levelingError,levelingSupported}=useVolumeLeveling(videoRef,audioRef,externalAudioUrl);
   const [pip,setPip] = useState(false);
   const [pipSupported,setPipSupported] = useState(false);
   const [singleRepeat,setSingleRepeat] = useState<RepeatMode>('off');
@@ -706,6 +708,7 @@ export function Player({item,queue,queueIndex,shuffled,onShuffle,onEnded,onNext,
     pictureControls={!shorts&&<VideoSettingsPanel settings={presentation.settings} onChange={presentation.update} onReset={presentation.reset}/>}
     repeatMode={repeat} hasQueue={Boolean(queue?.length)} onRepeatChange={changeRepeat}
     speed={speed} onSpeedChange={changeSpeed}
+    leveling={leveling} onLevelingChange={setLeveling} levelingError={levelingError} levelingAvailable={levelingSupported}
     onSelectAudio={selectAudio}
     onSelectSubtitle={selectSubtitle}
     onSelectQuality={(height)=>void selectQuality(height)}
