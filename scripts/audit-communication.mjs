@@ -14,6 +14,16 @@ const {chromium}=createRequire(process.env.VIRELO_TEST_NODE_PACKAGE||import.meta
 const root=await mkdtemp(join(tmpdir(),'virelo-communication-')),media=join(root,'media');
 let server,browser,vite;const errors=[],results=[];
 const check=(value,label)=>{assert.ok(value,label);console.log('PASS',label);};
+const auditSettingsNavigation=async(page,mode)=>{
+  for(const button of await page.locator('.settings-nav-item').all()){
+    await button.click();
+    check(await button.evaluate(element=>{
+      const marker=getComputedStyle(element,'::before'),height=element.getBoundingClientRect().height;
+      return element.getAttribute('aria-current')==='page'&&marker.top==='0px'&&marker.bottom==='0px'&&Math.abs(parseFloat(marker.height)-height)<1;
+    }),mode+' settings selection marker matches the full highlighted row: '+await button.getAttribute('id'));
+  }
+  await page.screenshot({path:join(root,'settings-navigation-'+mode+'.png'),fullPage:true});
+};
 try{
   await mkdir(media);
   for(const [name,volume,size] of [['quiet',.5,'320x180'],['loud',2,'320x180'],['portrait',.5,'180x320']])execFileSync(process.env.FFMPEG_PATH||'ffmpeg',[
@@ -75,10 +85,23 @@ try{
   let page=await context.newPage();page.setDefaultTimeout(15000);page.on('pageerror',error=>errors.push(error.message));
   const login=async(context,user)=>{const response=await context.request.post(npmBase+'/api/auth/login',{headers:{'x-virelo-request':'1'},data:{username:user,password:'1'}});assert.equal(response.status(),200,await response.text());};
   await login(context,'owner');
+  await page.goto(npmBase+'/settings#admin');await page.locator('.admin-setting-group').first().waitFor();
+  await auditSettingsNavigation(page,'npm');
+  await page.goto(npmBase+'/settings#admin');await page.locator('.admin-setting-group').first().waitFor();
+  const adminSurface=await page.locator('.admin-setting-group').first().evaluate(element=>{
+    const style=getComputedStyle(element);return {background:style.backgroundColor,border:style.borderTopColor,radius:style.borderRadius,padding:style.padding};
+  });
+  await page.screenshot({path:join(root,'admin-reference-desktop.png'),fullPage:true});
   await page.goto(npmBase+'/settings#announcements');
+  check(await page.locator('.announcement-form').evaluate((element,reference)=>{
+    const style=getComputedStyle(element);return style.backgroundColor===reference.background&&style.borderTopColor===reference.border&&style.borderRadius===reference.radius&&style.padding===reference.padding;
+  },adminSurface),'announcement composer shares the existing Admin card surface, border, radius and spacing');
   await page.getByLabel('Announcement title',{exact:true}).fill('Server update');await page.getByLabel('Announcement message',{exact:true}).fill('A message from your administrator. <img onerror=alert(1)>');
   await page.getByRole('button',{name:'Send announcement',exact:true}).click();await page.getByRole('status').filter({hasText:'Sent to 2 users.'}).waitFor();
   await page.screenshot({path:join(root,'announcements-desktop.png'),fullPage:true});
+  check(await page.locator('.announcement-sent').evaluate((element,reference)=>{
+    const style=getComputedStyle(element);return style.backgroundColor===reference.background&&style.borderTopColor===reference.border&&style.borderRadius===reference.radius&&style.padding===reference.padding;
+  },adminSurface),'sent history shares the existing Admin card surface, border, radius and spacing');
   check(await page.locator('.announcement-history-heading').evaluate(element=>{const heading=element.querySelector('h3').getBoundingClientRect(),icon=element.querySelector('svg').getBoundingClientRect();return icon.top>=heading.top&&icon.bottom<=heading.bottom+1;}),'sent-list heading and icon share one line');
   const guest=await browser.newContext({serviceWorkers:'block',viewport:{width:390,height:844}});await instrument(guest);await login(guest,'viewer');
   const viewer=await guest.newPage();viewer.on('pageerror',error=>errors.push(error.message));await viewer.goto(npmBase+'/settings#playback');
@@ -87,14 +110,20 @@ try{
   check(await viewer.locator('.notification-message').innerText()==='A message from your administrator. <img onerror=alert(1)>','notifications render administrator content as plain text');
   await viewer.waitForFunction(()=>getComputedStyle(document.querySelector('.notification-container')).opacity==='1');
   const readable=()=>viewer.locator('.notification-item').first().evaluate(element=>{
-    const body=element.querySelector('.notification-message'),title=element.querySelector('h3'),footer=element.querySelector('footer');
+    const body=element.querySelector('.notification-message'),title=element.querySelector('h3'),footer=element.querySelector('footer'),time=element.querySelector('time');
     const [copy,heading,meta]=[body,title,footer].map(node=>node.getBoundingClientRect());
-    const style=getComputedStyle(element),text=getComputedStyle(body),rgb=value=>value.match(/[\d.]+/g).slice(0,3).map(Number);
+    const text=getComputedStyle(body),rgb=value=>value.match(/[\d.]+/g).slice(0,3).map(Number);
     const luminance=value=>rgb(value).map(channel=>channel/255).map(channel=>channel<=.04045?channel/12.92:((channel+.055)/1.055)**2.4).reduce((sum,value,index)=>sum+value*[.2126,.7152,.0722][index],0);
-    const contrast=(luminance(text.color)+.05)/(luminance(style.backgroundColor)+.05);
-    return {readable:parseFloat(text.fontSize)>=15&&contrast>=4.5&&heading.bottom<=copy.top&&copy.bottom<=meta.top&&parseFloat(style.borderTopWidth)>=1,contrast};
+    let surface=element;while(surface.parentElement&&getComputedStyle(surface).backgroundColor==='rgba(0, 0, 0, 0)')surface=surface.parentElement;
+    const contrast=(luminance(text.color)+.05)/(luminance(getComputedStyle(surface).backgroundColor)+.05);
+    return {readable:parseFloat(text.fontSize)>=15&&contrast>=4.5&&heading.bottom<=copy.top&&time.getBoundingClientRect().bottom<=copy.top&&copy.bottom<=meta.top,contrast};
   });
-  check((await readable()).readable,'notification content has readable contrast, a clear boundary and ordered title/body/metadata');
+  check((await readable()).readable,'notification content has readable contrast with title/date above the message and actions below');
+  check(await viewer.locator('.notification-item').first().evaluate(element=>{
+    const style=getComputedStyle(element),dialog=getComputedStyle(element.closest('.notification-dialog'));
+    const neutral=value=>{const channels=value.match(/[\d.]+/g).slice(0,3).map(Number);return Math.max(...channels)-Math.min(...channels)<=10;};
+    return parseFloat(style.borderTopWidth)===0&&style.backgroundColor==='rgba(0, 0, 0, 0)'&&neutral(dialog.backgroundColor)&&neutral(getComputedStyle(element.querySelector('.notification-unread')).color)&&getComputedStyle(element,'::before').content==='none';
+  }),'unread messages use a neutral unboxed row without a colored fill or accent rail');
   check(await viewer.getByRole('button',{name:'Mark as read',exact:true}).evaluate(button=>button.getBoundingClientRect().height>=44),'per-message read action retains a 44px touch target');
   await viewer.screenshot({path:join(root,'notifications-mobile-unread.png')});
   await viewer.setViewportSize({width:1440,height:1000});
@@ -103,7 +132,7 @@ try{
   check(await viewer.locator('.notification-dialog').evaluate(element=>element.getBoundingClientRect().width>=560),'desktop notification panel has enough reading width');
   await viewer.screenshot({path:join(root,'notifications-desktop-unread.png')});
   await viewer.setViewportSize({width:320,height:780});
-  check(await viewer.locator('.notification-dialog').evaluate(element=>{const box=element.getBoundingClientRect();return box.left>=0&&box.right<=innerWidth&&box.height<=innerHeight;}),'notification panel fits a 320px viewport');
+  check(await viewer.locator('.notification-dialog').evaluate(element=>{const box=element.getBoundingClientRect();return box.left>=12&&box.right<=innerWidth-12&&box.height<=innerHeight;}),'notification panel retains side margins in a 320px viewport');
   await viewer.screenshot({path:join(root,'notifications-small-unread.png')});
   await viewer.getByRole('button',{name:'Mark as read',exact:true}).click();await viewer.getByRole('button',{name:'Notifications',exact:true}).waitFor();
   check(await viewer.locator('.notification-read-status').innerText()==='Read','read messages have a quiet status instead of an action button');
@@ -155,6 +184,10 @@ try{
   for(const width of [1440,390]){
     await page.setViewportSize({width,height:1000});await page.waitForTimeout(100);
     check(await page.locator('.announcement-sent .notification-message').evaluateAll(items=>items.every(item=>item.scrollWidth<=item.clientWidth+1)),'sent announcements wrap at '+width+'px');
+    check(await page.locator('.announcement-sent .notification-item').evaluateAll(items=>items.every(item=>{
+      const style=getComputedStyle(item),time=item.querySelector('time').getBoundingClientRect(),message=item.querySelector('.notification-message').getBoundingClientRect();
+      return style.backgroundColor==='rgba(0, 0, 0, 0)'&&parseFloat(style.borderRadius)===0&&time.bottom<=message.top;
+    })),'sent history uses flat rows and clearly separated title/date/message at '+width+'px');
     await page.locator('.announcement-sent').screenshot({path:join(root,`announcements-history-${width}.png`)});
   }
   await page.setViewportSize({width:1440,height:1000});
@@ -182,6 +215,8 @@ api.mediaFile=async id=>{if(!auditFiles.has(id))auditFiles.set(id,fetch('/__comm
 api.mediaSource=async id=>{if(!auditUrls.has(id))auditUrls.set(id,URL.createObjectURL(await api.mediaFile(id)));return auditUrls.get(id);};`});
     });
     await webPage.goto(webBase+'/app/settings');await webPage.locator('.settings-heading').waitFor();
+    await webPage.setViewportSize({width:1440,height:1000});await auditSettingsNavigation(webPage,'web');
+    await webPage.setViewportSize({width:390,height:844});
     await webPage.evaluate(async items=>{const {saveStoredMedia}=await import('/src/local-library.ts');for(const item of items)await saveStoredMedia(item);},items);
     modes.push(['web',webBase,webContext,webPage]);
   }

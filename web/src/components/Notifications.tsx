@@ -13,9 +13,12 @@ import './Notifications.css';
 const notificationTime=new Intl.DateTimeFormat(undefined,{dateStyle:'medium',timeStyle:'short'});
 function NotificationCard({item,unread=false,children}:{item:Pick<Announcement,'title'|'body'|'createdAt'>;unread?:boolean;children:ReactNode}){
   return <article className="notification-item" data-unread={unread} aria-label={item.title}>
-    <div className="notification-item-heading"><h3>{item.title}</h3>{unread&&<span className="notification-new">New</span>}</div>
+    <header className="notification-item-heading">
+      <div className="notification-item-title"><h3>{item.title}</h3>{unread&&<span className="notification-unread">Unread</span>}</div>
+      <time dateTime={new Date(item.createdAt).toISOString()}>{notificationTime.format(item.createdAt)}</time>
+    </header>
     <p className="notification-message">{item.body}</p>
-    <footer className="notification-item-footer"><time dateTime={new Date(item.createdAt).toISOString()}>{notificationTime.format(item.createdAt)}</time>{children}</footer>
+    <footer className="notification-item-footer">{children}</footer>
   </article>;
 }
 
@@ -64,10 +67,10 @@ export function AnnouncementSettings(){
   }});
   return <section id="settings-panel-announcements" className="settings-card settings-section" aria-labelledby="settings-title-announcements">
     <div className="settings-card-head"><div><h2 id="settings-title-announcements" tabIndex={-1}>Announcements</h2><p>Send a message to users on this server.</p></div></div>
-    <form className="announcement-form" onSubmit={event=>{event.preventDefault();setFeedback('');send.mutate();}}>
+    <form className="announcement-form admin-setting-group" onSubmit={event=>{event.preventDefault();setFeedback('');send.mutate();}}>
       <h3 className="announcement-compose-title"><Megaphone aria-hidden="true"/> New announcement</h3>
-      <label>Title<Input aria-label="Announcement title" maxLength={120} value={title} onChange={event=>setTitle(event.target.value)} disabled={send.isPending}/></label>
-      <label>Message<textarea aria-label="Announcement message" maxLength={4000} value={body} onChange={event=>setBody(event.target.value)} disabled={send.isPending}/></label>
+      <label>Title<Input aria-label="Announcement title" name="title" autoComplete="off" maxLength={120} value={title} onChange={event=>setTitle(event.target.value)} disabled={send.isPending}/></label>
+      <label>Message<textarea aria-label="Announcement message" name="message" autoComplete="off" maxLength={4000} value={body} onChange={event=>setBody(event.target.value)} disabled={send.isPending}/></label>
       <Select label="Announcement recipients" value={audience} options={[{value:'all',label:'All current enabled users'},{value:'selected',label:'Selected users'}]} onChange={setAudience}/>
       {audience==='selected'&&<fieldset className="announcement-recipients"><legend>Recipients</legend>{users.data?.filter(user=>user.enabled).map(user=><label key={user.id}><input type="checkbox" checked={selected.includes(user.id)} disabled={send.isPending} onChange={event=>setSelected(values=>event.target.checked?[...values,user.id]:values.filter(id=>id!==user.id))}/>{user.displayName} (@{user.username})</label>)}</fieldset>}
       {users.error&&audience==='selected'&&<p className="error-copy" role="alert">Could not load users. <button type="button" onClick={()=>void users.refetch()}>Try again</button></p>}
@@ -76,7 +79,7 @@ export function AnnouncementSettings(){
       {feedback&&<p className="account-feedback" role="status">{feedback}</p>}
       <details className="announcement-delivery"><summary>Delivery details</summary><p>Messages appear in Virelo, usually within 30 seconds. No email or OS push is sent. They expire after 90 days, with up to 200 retained. New accounts do not receive earlier messages. Per-user read receipts are not shown to administrators.</p></details>
     </form>
-    <div className="announcement-sent"><div className="announcement-history-heading"><h3><Megaphone aria-hidden="true"/> Sent announcements</h3>{sent.data&&<span>{sent.data.length} sent</span>}</div>
+    <div className="announcement-sent admin-setting-group"><div className="announcement-history-heading"><h3><Megaphone aria-hidden="true"/> Sent announcements</h3>{sent.data&&<span>{sent.data.length} sent</span>}</div>
       {sent.isPending&&<p role="status">Loading announcements…</p>}
       {sent.error&&<p className="error-copy" role="alert">Could not load announcements. <button onClick={()=>void sent.refetch()}>Try again</button></p>}
       {sent.data?.length===0&&<div className="notification-empty"><Megaphone aria-hidden="true"/><h3>No announcements sent.</h3><p>Sent messages will appear here. You can withdraw them at any time.</p></div>}

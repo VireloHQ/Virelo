@@ -2,7 +2,9 @@
 
 ## Unreleased
 
-- Rework received and sent announcements with a wider reading panel, separated message cards, readable body/metadata contrast, restrained read controls, clear recipient/withdrawal rows, and a grouped composer. Preserve read-state isolation, publishing permissions and plain-text rendering; test mobile widths, long messages, bulk reads and withdrawal.
+- Match settings selection rails to the full highlighted row in Web and npm. Reuse the existing Admin card styling for announcement composition and sent history instead of introducing separate tinted surfaces.
+
+- Rework received and sent announcements as neutral, divider-separated lists with dates beside titles, a small unread indicator, readable body/metadata contrast and quiet read/withdrawal controls. Remove tinted cards and nested composer framing. Preserve read-state isolation, publishing permissions and plain-text rendering; test mobile widths, long messages, bulk reads and withdrawal.
 
 - Reserve a clear central area around share-QR logos, including their transparent parts, without a separate badge. Verify the empty margin and decoding in both the displayed and downloadable image.
 
