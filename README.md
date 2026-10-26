@@ -159,7 +159,9 @@ Supported containers include MP4, M4V, MKV, WebM, MOV, AVI, WMV, MPEG, TS, M2TS,
 
 ## Sharing, volume leveling and announcements
 
-Use **Share** in the header to copy a link or generate/download a QR code locally.
+Use **Settings → Sharing → Share Virelo** to share this server, or **Share video**
+beside a video's details/playback actions. QR codes have rounded modules and
+finder corners, a centered Virelo logo, and a self-contained PNG download.
 On the server PC, a LAN address is offered only when Virelo is already listening
 on that interface. Sharing never starts a tunnel, opens a port, includes a session
 token or bypasses sign-in/library permissions. Personal playlist/settings URLs

@@ -31,6 +31,7 @@ local regression measurements, not a supported viewer count or network benchmark
 ## Browser checks
 
 `node scripts/audit-communication.mjs` checks locally generated QR/link sharing,
+independent jsQR decoding of rounded/logo-embedded PNGs at multiple sizes,
 administrator publishing/withdrawal, private inbox read state and real decoded
 audio with leveling on/off. Synthetic clips with different mastering levels
 verify gain, manual volume, mute, seeking and Shorts. It uses an ephemeral server

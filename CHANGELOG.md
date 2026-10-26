@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Brand share QR codes with a centered Virelo logo, rounded modules/finder corners, high error correction and a PNG export with the logo embedded. Verify decoding independently at native, 256px and 192px sizes, including LAN/IPv6/long addresses.
+- Replace the header share icon with labelled video actions and a Sharing settings section. Enlarge header search, notifications and settings icons to 28px with 48px touch targets.
+
 - Add local link/QR sharing without access tokens, public exposure or permission bypasses. Offer existing LAN listener addresses on the host PC and preserve QR generator notices.
 - Add opt-in device-local live volume leveling to normal playback, Shorts and selected audio, with bounded gain, silence gating and manual volume/mute preservation. Keep sources untouched and distinguish live stereo estimates from full-file integrated LUFS normalization.
 - Add administrator-originated in-app announcements for current enabled or selected users, private per-account inbox/read state, withdrawal, pagination, storage/rate limits and 90-day expiry. No developer feed, email, OS push or third-party notification service is used.

@@ -11,6 +11,8 @@ import { SettingsNavigation } from '../components/SettingsNavigation';
 import { ConfirmationDialog } from '../components/ConfirmationDialog';
 import { QueueLayoutSetting } from '../components/QueueLayoutSetting';
 import { VolumeLevelingSetting } from '../components/VolumeLevelingSetting';
+import { SharingSettings } from '../components/ShareButton';
+import { QrCode } from '@phosphor-icons/react';
 import type { QueueBehavior, Settings } from '../types';
 import { useAccount } from '../components/AccountSession';
 import { AccountManager, AccountProfile } from '../components/AccountSettings';
@@ -24,6 +26,7 @@ const settingsSections = [
   { id:'account', label:'Account', description:'Your name, password and sign-in', icon:UserCircle, group:'General' },
   { id:'libraries', label:'Libraries', description:'Folders and automatic scanning', icon:Folders, group:'General' },
   { id:'playback', label:'Playback', description:'What plays next', icon:PlayCircle, group:'General' },
+  { id:'sharing', label:'Sharing', description:'Links and QR codes for other devices', icon:QrCode, group:'General' },
   { id:'tools', label:'Advanced', description:'Media tool availability', icon:SlidersHorizontal, group:'General' },
   { id:'accounts', label:'Account Manager', description:'Users, access and personal data', icon:UsersThree, group:'Admin' },
   { id:'activity', label:'Activity', description:'Online sessions and activity logs', icon:Eye, group:'Admin' },
@@ -42,7 +45,7 @@ const QUEUE_OPTIONS = [
 export function SettingsView(){
   const session=useAccount();
   const isAdmin=Boolean(session?.user.isAdmin);
-  const sections=settingsSections.filter(section=>section.id==='commands'?isAdmin&&session?.localAccess:isAdmin||['account','libraries','playback','tools'].includes(section.id));
+  const sections=settingsSections.filter(section=>section.id==='commands'?isAdmin&&session?.localAccess:isAdmin||['account','libraries','playback','sharing','tools'].includes(section.id));
   const hash=useLocation({select:location=>location.hash});
   const navigate=useNavigate();
   const selectedSection=sections.find(section=>section.id===hash)?.id;
@@ -77,6 +80,7 @@ export function SettingsView(){
         {activeSection==='account'&&<div id="settings-panel-account" className="settings-card settings-section"><AccountProfile/></div>}
         {activeSection==='accounts'&&isAdmin&&<div id="settings-panel-accounts" className="settings-card settings-section"><AccountManager/></div>}
         {activeSection==='admin'&&isAdmin&&<AdminSettings/>}
+        {activeSection==='sharing'&&<SharingSettings addresses={api.shareAddresses}/>}
         {activeSection==='announcements'&&isAdmin&&<AnnouncementSettings/>}
         {activeSection==='activity'&&isAdmin&&<section id="settings-panel-activity" className="settings-card settings-section" aria-labelledby="settings-title-activity"><h2 id="settings-title-activity" tabIndex={-1}>Activity</h2><ActivityView/></section>}
         {activeSection==='data'&&isAdmin&&<DataManagement/>}

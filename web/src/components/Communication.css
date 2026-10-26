@@ -5,7 +5,8 @@
 .communication-body input { width:100%; min-width:0; font-size:14px; }
 .communication-body .communication-help { font-size:13px; color:#b9b6c0; }
 .share-qr { display:grid; place-items:center; min-height:256px; }
-.share-qr img { max-width:100%; object-fit:contain; image-rendering:pixelated; border-radius:6px; }
+.share-qr img { max-width:100%; object-fit:contain; border-radius:16px; }
+.share-trigger { min-height:44px; white-space:nowrap; }
 .communication-download { margin-right:auto; align-self:center; text-decoration:underline; text-underline-offset:4px; }
 .notification-badge { position:absolute; right:1px; top:1px; min-width:18px; padding:0 4px; line-height:18px; border-radius:10px; background:var(--color-brand,#ae93ff); color:#120e1a; font-size:11px; font-weight:700; }
 .notification-list { display:grid; gap:0; }
@@ -27,5 +28,5 @@
 .announcement-sent { margin-top:32px; border-top:1px solid #47434d; padding-top:24px; }
 @media (max-width:600px) {
   .topbar-actions { gap:2px; }
-  .communication-trigger.icon-button { min-width:44px!important; width:44px!important; height:44px!important; }
+  .communication-trigger.icon-button { min-width:48px!important; width:48px!important; height:48px!important; }
 }

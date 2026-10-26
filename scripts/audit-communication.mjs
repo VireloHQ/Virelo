@@ -4,6 +4,7 @@ import { execFileSync,spawn } from 'node:child_process';
 import { mkdtemp,mkdir,readFile,rm,stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join,resolve,relative } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { createVireloServer } from '../dist/server.js';
 import { hashPassword } from '../dist/accounts.js';
 import { openPlaybackSetting } from './helpers/playback-settings.mjs';
@@ -31,7 +32,9 @@ try{
   server.accounts.save({username:'viewer',displayName:'Viewer',allLibraries:true},hash);
   await server.app.listen({host:'127.0.0.1',port:0});const npmBase='http://127.0.0.1:'+server.app.server.address().port;
   browser=await chromium.launch({headless:true,executablePath:process.env.VIRELO_TEST_CHROMIUM,args:['--autoplay-policy=no-user-gesture-required']});
-  const instrument=async context=>context.addInitScript(()=>{
+  const instrument=async context=>{
+    await context.addInitScript({path:fileURLToPath(new URL('../node_modules/jsqr/dist/jsQR.js',import.meta.url))});
+    return context.addInitScript(()=>{
     window.__contexts=[];
     const Native=window.AudioContext;
     window.AudioContext=class extends Native{
@@ -40,7 +43,26 @@ try{
       createMediaElementSource(element){const node=super.createMediaElementSource(element);this.__sources.push(element);return node;}
     };
     Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText:async text=>{window.__copied=text;}}});
-  });
+    });
+  };
+  const verifyQr=async(current,expected)=>{
+    await current.locator('.share-qr img').evaluate(image=>image.decode());
+    const result=await current.locator('.share-qr img').evaluate((image,expected)=>{
+      const canvas=document.createElement('canvas'),sizes=[image.naturalWidth,256,192],decoded=[];
+      let colored=0;
+      for(const size of sizes){
+        canvas.width=canvas.height=size;const ctx=canvas.getContext('2d');ctx.drawImage(image,0,0,size,size);
+        const pixels=ctx.getImageData(0,0,size,size);
+        if(size===256)for(let i=0;i<pixels.data.length;i+=4)if(Math.max(...pixels.data.subarray(i,i+3))-Math.min(...pixels.data.subarray(i,i+3))>40)colored++;
+        decoded.push(window.jsQR(pixels.data,size,size)?.data===expected);
+      }
+      return {decoded,colored};
+    },expected);
+    assert.deepEqual(result.decoded,[true,true,true],'rounded, branded QR decodes at native, 256px and 192px sizes');
+    assert.ok(result.colored>30,'the downloaded image contains the color logo, not a separate DOM overlay');
+    assert.equal(await current.getByRole('link',{name:'Save QR',exact:true}).getAttribute('href'),await current.locator('.share-qr img').getAttribute('src'));
+    assert.equal(await current.getByRole('link',{name:'Save QR',exact:true}).getAttribute('download'),'virelo-qr.png');
+  };
   const context=await browser.newContext({serviceWorkers:'block',viewport:{width:1440,height:1000}});await instrument(context);
   let page=await context.newPage();page.setDefaultTimeout(15000);page.on('pageerror',error=>errors.push(error.message));
   const login=async(context,user)=>{const response=await context.request.post(npmBase+'/api/auth/login',{headers:{'x-virelo-request':'1'},data:{username:user,password:'1'}});assert.equal(response.status(),200,await response.text());};
@@ -57,11 +79,25 @@ try{
   await viewer.getByRole('button',{name:'Done',exact:true}).click();await viewer.getByRole('dialog',{name:'Notifications',exact:true}).waitFor({state:'hidden'});
   await viewer.reload();await viewer.getByRole('button',{name:'Notifications',exact:true}).waitFor();check(true,'read state survives reload');
   check(await viewer.getByRole('button',{name:'Announcements',exact:true}).count()===0,'regular users have no announcement publishing controls');
-  await viewer.getByRole('button',{name:'Share',exact:true}).click();await viewer.locator('.share-qr img').waitFor();
+  await viewer.goto(npmBase+'/settings#sharing');
+  await viewer.getByRole('button',{name:'Share Virelo',exact:true}).click();await viewer.locator('.share-qr img').waitFor();
+  await verifyQr(viewer,npmBase+'/');
   await viewer.waitForFunction(()=>getComputedStyle(document.querySelector('.virelo-confirm-container')).opacity==='1');
   await viewer.waitForTimeout(100);
   await viewer.screenshot({path:join(root,'share-mobile.png')});check(await viewer.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'share fits mobile');
-  await viewer.getByRole('button',{name:'Close share',exact:true}).click();await guest.close();
+  check(await viewer.locator('.topbar .share-trigger').count()===0,'sharing is a labelled action outside the header');
+  check(await viewer.locator('.topbar-actions button').evaluateAll(buttons=>buttons.filter(button=>button.getBoundingClientRect().width>0).every(button=>{const box=button.getBoundingClientRect(),icon=button.querySelector('svg')?.getBoundingClientRect();return box.width>=48&&box.height>=48&&icon?.width>=28&&icon?.height>=28;})),'header icons are 28px with 48px touch targets');
+  await viewer.getByRole('button',{name:'Close share',exact:true}).click();
+  for(const address of ['http://192.168.1.42:41777','http://[fd00:1234:5678:90ab::42]:41777','https://virelo.riyo.me',`https://${'media.'.repeat(16)}example.test`]){
+    await viewer.route('**/api/share/addresses',route=>route.fulfill({json:[{url:address,name:'Test interface'}]}));
+    await viewer.getByRole('button',{name:'Share Virelo',exact:true}).click();
+    await viewer.waitForFunction(expected=>document.querySelector('input[aria-label="Share link"]')?.value===expected,address+'/');
+    await viewer.locator('.share-qr img').waitFor();await verifyQr(viewer,address+'/');
+    check(true,'branded QR decodes LAN, IPv6 and public/long addresses: '+address);
+    await viewer.getByRole('button',{name:'Close share',exact:true}).click();
+    await viewer.unroute('**/api/share/addresses');
+  }
+  await guest.close();
   await page.getByRole('button',{name:'Withdraw',exact:true}).click();await page.getByRole('alertdialog').getByRole('button',{name:'Withdraw',exact:true}).click();
   await page.getByText('No announcements sent.',{exact:true}).waitFor();
   check(true,'administrator can send and withdraw notifications through the UI');
@@ -94,11 +130,13 @@ api.mediaSource=async id=>{if(!auditUrls.has(id))auditUrls.set(id,URL.createObje
     const prefix=mode==='web'?'/app':'';
     await current.goto(base+prefix+'/watch/'+items[0].id+'?queue=false');
     await current.waitForFunction(()=>{const v=document.querySelector('.player video');return v&&!v.paused&&v.currentTime>.2;});
-    await current.getByRole('button',{name:'Share',exact:true}).click();await current.locator('.share-qr img').waitFor();
-    check(await current.locator('.share-qr img').getAttribute('src').then(value=>value.startsWith('data:image/gif;base64,')),mode+' QR is generated locally');
+    const shareLabel=mode==='npm'?'Share video':'Share Virelo';
+    await current.getByRole('button',{name:shareLabel,exact:true}).click();await current.locator('.share-qr img').waitFor();
+    check(await current.locator('.share-qr img').getAttribute('src').then(value=>value.startsWith('data:image/png;base64,')),mode+' branded PNG QR is generated locally');
     const link=await current.getByLabel('Share link',{exact:true}).inputValue();check(link===base+(mode==='web'?'/app':'/watch/'+items[0].id),mode+' share link has the correct scope');
+    await verifyQr(current,link);check(true,mode+' rounded QR and embedded logo decode at three image sizes');
     await current.getByRole('button',{name:'Copy link',exact:true}).click();check(await current.evaluate(()=>window.__copied)===link,mode+' copy action uses the displayed URL');
-    await current.keyboard.press('Escape');await current.getByRole('dialog',{name:'Share Virelo',exact:true}).waitFor({state:'hidden'});
+    await current.keyboard.press('Escape');await current.getByRole('dialog',{name:shareLabel,exact:true}).waitFor({state:'hidden'});
     await openPlaybackSetting(current,'Audio');await current.getByRole('menuitemcheckbox',{name:/Volume leveling/}).click();
     await current.waitForFunction(()=>window.__contexts.some(context=>context.__limiters.length>0));
     await current.getByRole('menuitemcheckbox',{name:/Volume leveling/}).click();await current.waitForTimeout(700);

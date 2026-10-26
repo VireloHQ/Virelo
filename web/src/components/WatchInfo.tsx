@@ -4,6 +4,7 @@ import { CaretDown, FileVideo, Folder } from '@phosphor-icons/react';
 import { api } from '../api';
 import type { MediaItem } from '../types';
 import { FavoriteButton } from './FavoriteButton';
+import { ShareButton } from './ShareButton';
 import { MediaRow } from './MediaRow';
 import './WatchInfo.css';
 
@@ -29,7 +30,7 @@ export function WatchInfo({ item, actions, children }: { item: MediaItem; action
             {item.height != null && item.height > 0 && <li>{item.height>=2160?'4K':item.height+'p'}</li>}
           </ul>
         </div>
-        <div className="watch-info-actions"><FavoriteButton item={item}/>{actions}</div>
+        <div className="watch-info-actions"><FavoriteButton item={item}/><ShareButton label="Share video" path={'/watch/'+item.id} addresses={api.shareAddresses}/>{actions}</div>
       </div>
       <div className="watch-info-body">
         {(overview || genres.length>0) && <div className="watch-editorial">

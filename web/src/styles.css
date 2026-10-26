@@ -139,7 +139,7 @@ button,[role="button"],summary,.app-shell :is(header,footer,nav,.settings-view),
 .header-search-shell.open .header-search-motion { pointer-events:auto; }
 .header-search-shell.open .header-search-motion::before { opacity:1; clip-path:inset(0 round 6px); }
 .header-search-toggle { position:absolute!important; inset:0 0 auto auto; z-index:1; width:48px!important; min-width:48px!important; height:48px!important; padding:0!important; border-radius:6px!important; color:var(--text-muted)!important; transform:none!important; pointer-events:auto; transition:color var(--dur-micro) var(--ease-out),background-color var(--dur-micro) var(--ease-out)!important; }
-.header-search-toggle svg { width:20px; height:20px; }
+.header-search-toggle svg { width:28px; height:28px; }
 .header-search-toggle:focus-visible { outline:2px solid var(--text-muted)!important; outline-offset:-2px; box-shadow:none!important; }
 .header-search-icon { position:absolute; left:14px; z-index:1; width:20px; height:20px; color:var(--text-muted); opacity:0; pointer-events:none; }
 .header-search-input { position:relative; z-index:1; flex:1; min-width:0; width:calc(100% - 48px); height:44px; margin-right:48px; padding-left:44px!important; opacity:0; transform:none; pointer-events:none; border:0!important; outline:0!important; border-radius:0!important; background:transparent!important; box-shadow:none!important; }
@@ -158,7 +158,7 @@ button,[role="button"],summary,.app-shell :is(header,footer,nav,.settings-view),
 .icon-button { min-width:48px!important; height:48px!important; padding:0!important; border-radius:13px!important; color:var(--text-muted)!important; transition:background-color var(--dur-short) var(--ease-out),color var(--dur-short) var(--ease-out),transform var(--dur-micro) var(--ease-out)!important; }
 .icon-button:hover { background:rgba(255,255,255,.08)!important; color:var(--text)!important; }
 .icon-button:active { transform:none; }
-.settings-button svg { width:26px!important; height:26px!important; }
+.topbar-actions .icon-button svg { width:28px!important; height:28px!important; }
 
 .home-view { min-height:100vh; }
 .hero-banner { position:relative; min-height:min(68vw,720px); max-height:720px; height:calc(100vh - 88px); display:flex; align-items:flex-end; overflow:hidden; background:radial-gradient(circle at 72% 30%,color-mix(in oklch,var(--color-brand) 12%,var(--surface-3)),var(--page) 62%); }

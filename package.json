@@ -73,6 +73,7 @@
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.4",
     "hls.js": "^1.6.16",
+    "jsqr": "1.4.0",
     "qrcode-generator": "2.0.4",
     "react": "^19.2.8",
     "react-aria": "^3.52.1",
