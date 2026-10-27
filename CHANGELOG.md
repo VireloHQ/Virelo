@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Stabilize browser regression fixtures for playback continuity and background media work; keep language selection and connection recovery usable in short windows.
+- Pin media regression jobs to Ubuntu 24.04 and bound FFmpeg setup time while keeping the cross-platform build matrix on current runner images.
 
 - Align the Audio menu toggle with other player controls and remove redundant implementation commentary from routine interface messages.
 
