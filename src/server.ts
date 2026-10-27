@@ -540,6 +540,7 @@ export async function createVireloServer(config: RuntimeConfig, pickFolder: (sig
   for(const bucket of ['hls','audio'])await app.register(fastifyStatic, {
     root:resolve(config.dataDir,'cache',bucket),prefix:`/${bucket}/`,wildcard:true,decorateReply:false,cacheControl:false,
     allowedPath(pathname,root,request){
+      if(!root)return false;
       try{mediaResource(request);generatedFileInfo(resolve(root,'.'+pathname),resolve(config.dataDir,'cache'));return true;}catch{return false;}
     }
   });

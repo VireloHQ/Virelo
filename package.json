@@ -75,6 +75,7 @@
     "@vitejs/plugin-react": "^6.0.4",
     "hls.js": "^1.6.16",
     "jsqr": "1.4.0",
+    "playwright": "1.62.1",
     "qrcode-generator": "2.0.4",
     "react": "^19.2.8",
     "react-aria": "^3.52.1",
