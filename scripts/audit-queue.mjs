@@ -124,12 +124,12 @@ try {
         overview: index===0?'An adventure through an open world, brought together in a personal video library.':null,
         genres:index===0?'Animation, Adventure':null,year:index===0?2024:null,container:'mp4',video_codec:'h264',audio_codec:'aac'
       }));
-      window.__items = items; window.__sourceLoads = 0; window.__requests = []; window.__mutations = [];
+      window.__items = items; window.__sourceLoads = 0; window.__loadsByMediaId = {}; window.__requests = []; window.__mutations = [];
       api.media = async (params = {}) => { if (window.__failRefetch) throw new Error('Test refresh failure'); window.__requests.push(params); const { offset = 0, limit = 500 } = params; return items.slice(offset, offset + limit).map(item => ({ ...item })); };
       api.mediaById = async id => ({ ...items.find(item => item.id === id) });
-      api.mediaSource = async () => { window.__sourceLoads++; return base + '/__queue-clip.mp4'; };
+      api.mediaSource = async id => { window.__sourceLoads++; window.__loadsByMediaId[id]=(window.__loadsByMediaId[id]??0)+1; return base + '/__queue-clip.mp4'; };
       api.mediaFile = async () => new File([await (await fetch(base + '/__queue-clip.mp4')).arrayBuffer()], 'clip.mp4', { type: 'video/mp4' });
-      api.playbackInfo = async () => { window.__sourceLoads++; return { audioTracks: [], subtitleTracks: [], qualityOptions: [], defaultAudioStream: null, requiresTranscode: false }; };
+      api.playbackInfo = async id => { window.__sourceLoads++; window.__loadsByMediaId[id]=(window.__loadsByMediaId[id]??0)+1; return { audioTracks: [], subtitleTracks: [], qualityOptions: [], defaultAudioStream: null, requiresTranscode: false }; };
       api.progress = async () => {}; api.thumbnail = async () => null;
       api.settings = async () => ({ queueBehavior: 'auto', externalMetadataEnabled: false });
       api.libraries = async () => []; api.folders = async () => [];
@@ -147,7 +147,9 @@ try {
       await settle(page);
     };
     const reset = async () => { await queue.getByRole('button', { name: 'Queue options', exact: true }).click(); await page.getByRole('menuitem', { name: 'Reset queue', exact: true }).click(); await settle(page); };
-    await queue.waitFor(); await page.waitForFunction(() => document.querySelector('.player video')?.readyState >= 2);
+    await queue.waitFor(); await page.waitForFunction(() => { const video=document.querySelector('.player video'); return video&&video.readyState>=2&&!video.paused&&video.currentTime>.1; });
+    await page.locator('.player').hover();await page.locator('.player-play-button').click();
+    await page.waitForFunction(()=>document.querySelector('.player video').paused);
     const watchInfo=page.getByRole('region',{name:'Video information'});
     check(await watchInfo.locator('.watch-overview').isVisible(),label+' watch layout uses the real synopsis');
     check(await watchInfo.locator('.watch-genres li').count()===2,label+' watch layout includes the available genres');
@@ -158,7 +160,7 @@ try {
     await page.evaluate(()=>scrollTo(0,0));
     check(await page.locator('.playback-queue-tile').count() === 24, label + ' loads all queue entries');
     check(await list.evaluate(node => getComputedStyle(node).scrollSnapType === 'none'), label + ' no snapping fights wheel or touch');
-    await page.evaluate(() => { const video = document.querySelector('.player video'); window.__originalVideo = video; video.currentTime = 10; video.pause(); window.__baselineLoads = window.__sourceLoads; });
+    await page.evaluate(() => { const video = document.querySelector('.player video'); window.__originalVideo = video; video.currentTime = 10; video.pause(); window.__baselineLoads = window.__loadsByMediaId[1]; window.__originalSource = video.currentSrc; window.__videoLoads = 0; video.addEventListener('loadstart',()=>window.__videoLoads++); });
     await page.waitForFunction(() => document.querySelector('.player video').currentTime >= 9 && !document.querySelector('.player video').seeking);
     for(const controllerStyle of ['classic','streamline','theater','centerstage']){
       await page.evaluate(controllerStyle=>window.__client.setQueryData(['appearance'],{controllerStyle,accentColor:'#79b8ff'}),controllerStyle);
@@ -175,7 +177,7 @@ try {
         }),label+' '+controllerStyle+' controls fit '+viewport.width+'x'+viewport.height);
         await page.locator('.player').screenshot({path:join(artifacts,mode+'-'+scenario.name+'-'+controllerStyle+'-'+viewport.width+'.png')});
       }
-      check(await page.evaluate(()=>document.querySelector('.player video')===window.__originalVideo&&window.__sourceLoads===window.__baselineLoads&&document.querySelector('.player video').currentTime>=9),label+' '+controllerStyle+' changes no video source or position');
+      check(await page.evaluate(()=>document.querySelector('.player video')===window.__originalVideo&&window.__loadsByMediaId[1]===window.__baselineLoads&&document.querySelector('.player video').currentSrc===window.__originalSource&&window.__videoLoads===0&&document.querySelector('.player video').currentTime>=9),label+' '+controllerStyle+' changes no video source or position');
       await page.locator('.player').getByRole('button',{name:'Rewind 10 seconds',exact:true}).click();
       await page.waitForFunction(()=>document.querySelector('.player video').currentTime<1);
       await page.locator('.player').getByRole('button',{name:'Fast-forward 30 seconds',exact:true}).click();
@@ -265,8 +267,8 @@ try {
     await page.waitForFunction(() => !document.querySelector('.watch-copy [role="alert"]'));
     await page.getByRole('button', { name: 'Undo queue change', exact: true }).click(); check((await ids())[1] === 4, label + ' undo restores exclusion');
     await reset();
-    const continuity = await page.evaluate(() => ({ sameNode: document.querySelector('.player video') === window.__originalVideo, loads: window.__sourceLoads, baseline: window.__baselineLoads, time: document.querySelector('.player video').currentTime }));
-    check(continuity.sameNode && continuity.loads === continuity.baseline && continuity.time >= 9, label + ' edits never reload or restart current video: ' + JSON.stringify(continuity));
+    const continuity = await page.evaluate(() => ({ sameNode: document.querySelector('.player video') === window.__originalVideo, loads: window.__loadsByMediaId[1], sourceUnchanged: document.querySelector('.player video').currentSrc===window.__originalSource, reloads: window.__videoLoads, paused: document.querySelector('.player video').paused, baseline: window.__baselineLoads, time: document.querySelector('.player video').currentTime }));
+    check(continuity.sameNode && continuity.sourceUnchanged && continuity.reloads === 0 && continuity.paused && continuity.loads === continuity.baseline && Math.abs(continuity.time-10)<.1, label + ' edits never reload or restart current video: ' + JSON.stringify(continuity));
     await queue.getByRole('button', { name: 'Use vertical queue', exact: true }).click();
     await page.waitForFunction(() => document.querySelector('.playback-queue')?.dataset.layout === 'vertical');
     const geometry = await page.evaluate(() => { const p = document.querySelector('.player').getBoundingClientRect(), q = document.querySelector('.playback-queue').getBoundingClientRect(); return { side: q.left >= p.right, below: q.top >= p.bottom, width: document.documentElement.scrollWidth, viewport: innerWidth }; });

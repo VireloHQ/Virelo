@@ -59,7 +59,7 @@ try{
   const originalUrl=await firstCard().getAttribute('src'),documentTime=await page.evaluate(()=>performance.timeOrigin);
   await page.getByRole('button',{name:'Settings',exact:true}).click();
   await page.locator('.settings-sidebar').getByRole('button',{name:'Libraries',exact:true}).click();
-  await page.getByText('Scan checks video files, fills in missing technical details',{exact:false}).waitFor();
+  await page.locator('#settings-panel-libraries .library-scan').waitFor();
   await page.locator('.scan-strip').filter({hasText:'1 thumbnail generated'}).waitFor();
   await page.getByRole('button',{name:'Scan',exact:true}).click();
   await page.locator('.scan-strip').filter({hasText:'1 thumbnail restored'}).waitFor();

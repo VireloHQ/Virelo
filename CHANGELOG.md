@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Stabilize browser regression fixtures for playback continuity and background media work; keep language selection and connection recovery usable in short windows.
+
 - Align the Audio menu toggle with other player controls and remove redundant implementation commentary from routine interface messages.
 
 - Localize the web interface, including accounts, settings, playback, queues, notifications, sharing and recovery, into English, Japanese, Simplified Chinese, Korean and Russian. Add an account-owned language preference, browser detection, lazy catalogs and translation completeness checks.

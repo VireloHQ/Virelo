@@ -31,13 +31,14 @@ async function checkEntryScreen(browser,base) {
     await page.setViewportSize(viewport);
     const layout=await page.evaluate(()=>{
       const rect=selector=>{const r=document.querySelector(selector).getBoundingClientRect();return {center:r.x+r.width/2,top:r.top,bottom:r.bottom,height:r.height};};
-      return {brand:rect('.account-brand'),title:rect('.account-status h1'),copy:rect('.account-status p'),button:rect('.account-status button'),overflow:document.documentElement.scrollWidth>innerWidth};
+      return {brand:rect('.account-brand'),language:rect('.language-select'),title:rect('.account-status h1'),copy:rect('.account-status p'),button:rect('.account-status button'),overflow:document.documentElement.scrollWidth>innerWidth};
     });
     for(const item of Object.values(layout).filter(value=>typeof value==='object'))assert.ok(Math.abs(item.center-viewport.width/2)<1,'connection content is centered');
     assert.ok(layout.copy.top-layout.title.bottom>=15,'description has breathing room');
     assert.ok(layout.button.top-layout.copy.bottom>=23,'retry is separated from the explanation');
     assert.ok(layout.button.height>=44,'retry has a touch-friendly target');
-    assert.ok(layout.button.bottom<=viewport.height,'retry stays in view');assert.equal(layout.overflow,false);
+    assert.ok(layout.language.top>=layout.brand.bottom+12&&layout.title.top>=layout.language.bottom+12,'language control remains visible without overlapping the logo or status');
+    assert.ok(layout.button.bottom<=viewport.height,'retry stays in view: '+JSON.stringify({viewport,layout}));assert.equal(layout.overflow,false);
     await page.screenshot({path:join(repo,`node_modules/.cache/account-connection-${viewport.width}.png`)});
   }
   const retry=nextRequest();const before=await title.boundingBox();
@@ -142,6 +143,7 @@ try {
   await page.locator('.splash-screen').waitFor({state:'hidden'});
   for(const width of [901,1024,1440,1920,2560]){
     await page.setViewportSize({width,height:1000});
+    await page.evaluate(async()=>{await document.fonts.ready;await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));});
     const layout=await page.evaluate(()=>{
       const sidebar=document.querySelector('.settings-sidebar'),heading=document.querySelector('.settings-heading h1'),brand=document.querySelector('.brand');
       const description=document.querySelector('#settings-nav-account small');
@@ -151,7 +153,7 @@ try {
     assert.ok(layout.sidebar>=240&&layout.sidebar<=280,'settings navigation has room for descriptions at '+width);
     assert.ok(Math.abs(layout.heading-layout.brand)<1,'settings stay aligned to the app gutter at '+width);
     assert.equal(layout.overflow,false,'settings fit the viewport at '+width);
-    if(width>=1440)assert.ok(layout.description<=layout.lineHeight+1,'account description fits on one line at '+width);
+    if(width>=1440)assert.ok(layout.description<=layout.lineHeight+1,'account description fits on one line at '+width+': '+JSON.stringify(layout));
     if([1440,1920].includes(width))await page.screenshot({path:join(repo,`node_modules/.cache/settings-layout-${width}.png`)});
   }
   await page.setViewportSize({width:1440,height:1000});

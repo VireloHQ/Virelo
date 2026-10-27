@@ -91,12 +91,12 @@ export function ActivityView({userId}:{userId?:number}) {
   </section>;
 }
 
-const categories:Array<{key:AccountDataCategory;label:string;description:string;icon:typeof Heart}>=[
-  {key:'history',label:'Watch history',description:'Resume positions and watched status',icon:ClockCounterClockwise},
-  {key:'favorites',label:'Favorites',description:'Videos saved as favorites',icon:Heart},
-  {key:'playlists',label:'Playlists',description:'Named playlists and their ordering',icon:ListBullets},
-  {key:'sessions',label:'Signed-in sessions',description:'Sign this user out on every device',icon:SignOut},
-  {key:'activity',label:'Activity log',description:'Retained events involving this user',icon:Eye}
+const categories:Array<{key:AccountDataCategory;label:string;action:string;description:string;icon:typeof Heart}>=[
+  {key:'history',label:'Watch history',action:'Clear watch history',description:'Resume positions and watched status',icon:ClockCounterClockwise},
+  {key:'favorites',label:'Favorites',action:'Clear favorites',description:'Videos saved as favorites',icon:Heart},
+  {key:'playlists',label:'Playlists',action:'Clear playlists',description:'Named playlists and their ordering',icon:ListBullets},
+  {key:'sessions',label:'Signed-in sessions',action:'Sign out devices',description:'Sign this user out on every device',icon:SignOut},
+  {key:'activity',label:'Activity log',action:'Clear activity',description:'Retained events involving this user',icon:Eye}
 ];
 export function ManagedUserData({user}:{user:Account}) {
   useLocale();
@@ -114,7 +114,7 @@ export function ManagedUserData({user}:{user:Account}) {
     {data.error&&<p role="alert" className="error-copy"><Trans message="Could not load user data. {value0}" values={{value0:<button onClick={()=>void data.refetch()}>{t("Try again")}</button>}}/></p>}
     {data.isPending&&<p role="status">{t("Loading user data…")}</p>}
     {data.data&&<div className="managed-data-list">{categories.map(category=><div key={category.key}><category.icon aria-hidden="true"/><div><strong>{t(category.label)}</strong><p>{t(category.description)}{category.key==='playlists'?' · '+t('{count} entries',{count:data.data!.playlistItems}):''}</p></div><span className="managed-data-count">{data.data![category.key==='activity'?'activityEvents':category.key]}</span>
-      <ConfirmationDialog triggerLabel={category.key==='sessions'?t("Sign out devices"):t("Clear {value0}", { value0: t(category.label) })} title={category.key==='sessions'?t("Sign out {value0} on all devices?", { value0: user.displayName }):t("Clear {value0}'s {value1}?", { value0: user.displayName, value1: t(category.label) })} confirmLabel={category.key==='sessions'?t("Sign out devices"):t("Clear data")} onConfirm={()=>clear(category.key)}>
+      <ConfirmationDialog triggerLabel={t(category.action)} title={category.key==='sessions'?t("Sign out {value0} on all devices?", { value0: user.displayName }):t("Clear {value0}'s {value1}?", { value0: user.displayName, value1: t(category.label) })} confirmLabel={category.key==='sessions'?t("Sign out devices"):t("Clear data")} onConfirm={()=>clear(category.key)}>
         <p>{category.key==='sessions'?t("All sessions for this account will be revoked. Buffered or downloaded content cannot be recalled."):t("Delete only this account’s {value0}. This cannot be undone.", { value0: t(category.label) })}</p><p>{t("Original videos and other users' favorites, history and playlists are not changed.")}{category.key==='activity'?t(" Shared log entries involving this user are removed from the global log too. The clearing action may remain."):''}{category.key==='sessions'&&user.id===session?.user.id?t(" You will also be signed out."):''}</p>
       </ConfirmationDialog>
     </div>)}</div>}
