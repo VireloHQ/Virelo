@@ -36,6 +36,8 @@ jobs:
       - name: Install FFmpeg
         timeout-minutes: 5
         run: |
+          # Avoid the throttled Azure mirror (actions/runner-images#12949).
+          sudo sed -i 's|azure\.archive\.ubuntu\.com|archive.ubuntu.com|g' /etc/apt/apt-mirrors.txt
           sudo apt-get update -o Acquire::Retries=3
           sudo apt-get install --yes --no-install-recommends ffmpeg
       - run: npm ci
