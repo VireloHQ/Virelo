@@ -115,9 +115,10 @@ export class VireloDB {
     catch { return this.pathKey(path); }
   }
 
-  private linkedLibrary(id:number){
+  private unverifiedLibrary(id:number,allowMissing=false){
     const root=this.db.prepare('SELECT path FROM libraries WHERE id=?').get(id) as {path:string}|undefined;
-    try{return Boolean(root&&lstatSync(root.path).isSymbolicLink());}catch{return false;}
+    try{return !root||!lstatSync(root.path).isDirectory();}
+    catch(error){return !allowMissing||(error as NodeJS.ErrnoException).code!=='ENOENT';}
   }
 
   private mergeLibraryAliases() {
@@ -221,9 +222,9 @@ export class VireloDB {
     const rows=this.db.prepare('SELECT id,path,library_id FROM media').all() as Array<{id:number;path:string;library_id:number}>;
     const update=this.db.prepare('UPDATE media SET library_id=?,folder=? WHERE id=?');
     for (const row of rows) {
-      if(this.linkedLibrary(row.library_id))continue;
+      if(this.unverifiedLibrary(row.library_id))continue;
       const path=canonicalMediaPath(row.path),owner=this.ownerForPath(path,libraries);
-      if (owner&&owner.id!==row.library_id)
+      if (owner&&owner.id!==row.library_id&&!this.unverifiedLibrary(owner.id))
         update.run(owner.id,relative(owner.path,dirname(path)).replaceAll('\\','/'),row.id);
     }
   }
@@ -272,11 +273,12 @@ export class VireloDB {
 
   getMediaByPath(path: string): MediaRecord | undefined {
     const absolute=resolve(path),canonical=canonicalMediaPath(path);
-    const row=(this.db.prepare(`SELECT * FROM media WHERE path ${process.platform==='win32'?'COLLATE NOCASE':''} IN (?,?) ORDER BY id`).all(absolute,canonical) as unknown as MediaRecord[]).find(item=>!this.linkedLibrary(item.library_id));
+    // Missing roots retain exact DB-only lookups, but cannot establish alias identity.
+    const row=(this.db.prepare(`SELECT * FROM media WHERE path ${process.platform==='win32'?'COLLATE NOCASE':''} IN (?,?) ORDER BY id`).all(absolute,canonical) as unknown as MediaRecord[]).find(item=>!this.unverifiedLibrary(item.library_id,true));
     if(row)return row;
     // Indexed basename candidates recover older alias spellings without an all-files filesystem walk.
     const candidates=this.db.prepare('SELECT * FROM media WHERE filename COLLATE NOCASE IN (?,?) ORDER BY id').all(basename(absolute),basename(canonical)) as unknown as MediaRecord[];
-    return candidates.find(item=>!this.linkedLibrary(item.library_id)&&this.pathKey(canonicalMediaPath(item.path))===this.pathKey(canonical));
+    return candidates.find(item=>!this.unverifiedLibrary(item.library_id)&&this.pathKey(canonicalMediaPath(item.path))===this.pathKey(canonical));
   }
 
   private personalJoins(scope?: CatalogScope) {
@@ -327,12 +329,15 @@ export class VireloDB {
   upsertMedia(input: Omit<MediaRecord, 'id' | 'added_at' | 'updated_at'>): MediaRecord {
     const existing=this.getMediaByPath(input.path);
     input={...input,path:existing?.path??canonicalMediaPath(input.path)};
-    // The lookup excludes linked roots; SQLite's conflict update must not resurrect their IDs.
-    const conflicts=this.db.prepare(`SELECT library_id FROM media WHERE path=? ${process.platform==='win32'?'COLLATE NOCASE':''}`).all(input.path) as {library_id:number}[];
-    if(conflicts.some(row=>this.linkedLibrary(row.library_id)))throw Error('Media file not found');
     const owner=this.libraryForPath(input.path);
     if (owner&&owner.id!==input.library_id)
       input={...input,library_id:owner.id,folder:relative(owner.path,dirname(canonicalMediaPath(input.path))).replaceAll('\\','/')};
+    // Offline DB-only updates may retain an ID, never transfer it between unverified roots.
+    const conflicts=this.db.prepare(`SELECT library_id FROM media WHERE path=? ${process.platform==='win32'?'COLLATE NOCASE':''}`).all(input.path) as {library_id:number}[];
+    if(conflicts.some(row=>{
+      const sameLibrary=row.library_id===input.library_id;
+      return this.unverifiedLibrary(row.library_id,sameLibrary)||(!sameLibrary&&this.unverifiedLibrary(input.library_id));
+    }))throw Error('Media file not found');
     const now = Date.now();
     this.db.prepare(`
       INSERT INTO media(
@@ -406,7 +411,7 @@ export class VireloDB {
   }
 
   deleteMissingForLibrary(libraryId: number, existingPaths: Set<string>) {
-    if(this.linkedLibrary(libraryId))return;
+    if(this.unverifiedLibrary(libraryId))return;
     const paths = new Set([...existingPaths].map(path => this.pathKey(canonicalMediaPath(path))));
     const rows = this.db.prepare('SELECT id,path FROM media WHERE library_id=?').all(libraryId) as Array<{id:number;path:string}>;
     const del = this.db.prepare('DELETE FROM media WHERE id=?');

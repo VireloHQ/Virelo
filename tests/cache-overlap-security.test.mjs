@@ -3,11 +3,14 @@ import assert from 'node:assert/strict';
 import { mkdtemp, mkdir, open, readFile, writeFile, rm, stat, symlink, realpath } from 'node:fs/promises';
 import { createReadStream } from 'node:fs';
 import { createHash } from 'node:crypto';
+import { execFileSync } from 'node:child_process';
+import { realpathSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, relative, resolve } from 'node:path';
 import { createVireloServer } from '../dist/server.js';
 import { VireloDB } from '../dist/db.js';
 import { mediaScheduler } from '../dist/media-work.js';
+import { assertSeparateCache } from '../dist/data-management.js';
 
 process.env.VIRELO_LOG_LEVEL = 'silent';
 const dirLink = (target, path) => symlink(target, path, process.platform === 'win32' ? 'junction' : 'dir');
@@ -34,6 +37,28 @@ function indexOriginal(db, library, path) {
     kind: 'video', folder: '', size: 1, mtime: 1, duration: 1, width: 160, height: 90, video_codec: 'h264', audio_codec: 'aac', container: 'mpegts',
     series_title: null, season: null, episode: null, year: null, thumbnail_path: null, poster_path: null, backdrop_path: null, overview: null, genres: null, external_id: null });
 }
+
+test('Windows short-name paths cannot bypass cache overlap checks or startup protection', { skip: process.platform !== 'win32' }, async t => {
+  const root = await fixture(t), data = join(root, 'long-data-directory'), media = join(data, 'cache', 'hls', 'original-recordings');
+  await mkdir(media, { recursive: true });
+  const original = join(media, 'segment-0.ts'); await writeFile(original, 'ORIGINAL transport stream');
+  const shortMedia = execFileSync('cmd.exe', ['/d', '/s', '/c', `for %I in ("${media}") do @echo %~sI`], { encoding: 'utf8', windowsHide: true, windowsVerbatimArguments: true }).trim();
+  const canonicalMedia = realpathSync.native(media);
+  if (shortMedia.toLowerCase() === canonicalMedia.toLowerCase()) { t.skip('8.3 names are unavailable on this volume'); return; }
+  assert.equal(realpathSync.native(shortMedia).toLowerCase(), canonicalMedia.toLowerCase());
+  const canonicalData = realpathSync.native(data), before = await fingerprint(original);
+  assert.throws(() => assertSeparateCache(canonicalData, [shortMedia]), /overlaps a media library/);
+  const server = await createVireloServer({ dataDir: canonicalData, mediaPaths: [shortMedia], host: '127.0.0.1', port: 0 });
+  try {
+    server.db.updateSettings({ libraryWatchEnabled: false, externalMetadataEnabled: false });
+    const call = authenticate(server), item = indexOriginal(server.db, server.db.visibleLibraries()[0], original);
+    const stream = await call(`/api/media/${item.id}/stream`, 'GET', undefined, { range: 'bytes=0-24' });
+    assert.equal(stream.statusCode, 206, stream.body); assert.equal(stream.body, 'ORIGINAL transport stream');
+    assert.equal((await call('/api/libraries', 'POST', { path: shortMedia })).statusCode, 409);
+    assert.equal((await call('/api/data/cache', 'DELETE')).statusCode, 409);
+    assert.deepEqual(await fingerprint(original), before);
+  } finally { await server.app.close(); }
+});
 
 test('configured and persisted cache-contained media survive startup over budget; UI and direct ranges remain usable', async t => {
   for (const persisted of [false, true]) await t.test(persisted ? 'persisted library' : 'configured library', async t => {

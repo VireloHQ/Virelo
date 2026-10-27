@@ -1,5 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import { syncBuiltinESMExports } from 'node:module';
 import { mkdtemp, mkdir, writeFile, readFile, rm, symlink, realpath, rename } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, relative, resolve } from 'node:path';
@@ -125,16 +127,30 @@ test('re-adding a repointed legacy root junction neither transfers grants nor ad
   assert.equal(await readFile(sourceA, 'utf8'), 'ORIGINAL A'); assert.equal(await readFile(join(targetB, 'Show', 'source.mp4'), 'utf8'), 'DIFFERENT B');
 });
 
-test('an exact canonical SQLite path conflict cannot adopt identity from a legacy root junction', async t => {
+for (const state of ['linked', 'missing', 'unreadable', 'not-directory']) test(`an exact canonical SQLite path conflict cannot adopt identity from a ${state} legacy root`, async t => {
   const context = await fixture(t), { actual } = context;
   const db = context.db = new VireloDB(join(actual, 'data')), root = join(actual, 'media'), legacy = join(actual, 'legacy-root');
   const path = join(root, 'Show', 'source.mp4'); await writeFile(path, 'retained original');
   const library = db.addLibrary(root, 'Original'), item = db.upsertMedia(media(library, path));
   const accounts = new Accounts(db.db), user = accounts.save({ username: 'viewer', libraryIds: [library.id] }, 'fixture-only');
   db.setLike(item.id, true, user.id); db.setProgress(item.id, 31, 60, user.id);
+  const retained = JSON.stringify(db.getMedia(item.id, accounts.scope(accounts.get(user.id))));
   await dirLink(root, legacy); db.db.prepare('UPDATE libraries SET path=? WHERE id=?').run(legacy, library.id);
+  if (state === 'missing' || state === 'not-directory') await rename(legacy, legacy + '-old');
+  if (state === 'not-directory') await writeFile(legacy, 'not a directory');
+  if (state === 'unreadable') {
+    const lstat = fs.lstatSync;
+    const mock = t.mock.method(fs, 'lstatSync', (path, ...args) => {
+      if (resolve(path) === legacy) throw Object.assign(new Error('Permission denied'), { code: 'EACCES' });
+      return lstat(path, ...args);
+    });
+    syncBuiltinESMExports();
+    t.after(() => { mock.mock.restore(); syncBuiltinESMExports(); });
+    assert.throws(() => fs.lstatSync(legacy), { code: 'EACCES' });
+  }
   const approved = db.addLibrary(root, 'Approved canonical root');
   assert.notEqual(approved.id, library.id); assert.deepEqual(accounts.get(user.id).libraryIds, [library.id]);
+  assert.equal(db.getMedia(item.id).library_id, library.id, 'unverified old roots cannot migrate media identities during registration');
   for (const spelling of [path, ...(process.platform === 'win32' ? [path.toUpperCase()] : [])]) {
     let failure;
     try { db.upsertMedia(media(approved, spelling)); } catch (error) { failure = error; }
@@ -143,11 +159,44 @@ test('an exact canonical SQLite path conflict cannot adopt identity from a legac
   }
   const status = scanStatus(); await scanLibrary(db, approved, join(actual, 'data'), status);
   assert.equal(status.errors, 1, 'the conflicting file is skipped instead of transferring personal identity');
+  db.deleteMissingForLibrary(library.id, new Set());
+  assert.equal(JSON.stringify(db.getMedia(item.id, accounts.scope(accounts.get(user.id)))), retained, 'neither collision rejection nor pruning may change old metadata or personal state');
   const personal = db.getMedia(item.id, accounts.scope(accounts.get(user.id)));
   assert.equal(personal.liked, 1); assert.equal(personal.progress_position, 31);
   assert.equal(db.getMedia(item.id, { userId: user.id, libraryIds: [approved.id] }), undefined);
   assert.equal(db.db.prepare('SELECT COUNT(*) AS n FROM media').get().n, 1);
   assert.equal(await readFile(path, 'utf8'), 'retained original');
+});
+
+test('missing roots support same-library DB rows but cannot transfer or prune their identities', async t => {
+  const context = await fixture(t), { actual } = context;
+  const db = context.db = new VireloDB(join(actual, 'data')), root = join(actual, 'offline');
+  const library = db.addLibrary(root, 'Offline'), path = join(root, 'Show', 'source.mp4');
+  const item = db.upsertMedia(media(library, path));
+  db.setLike(item.id, true); db.setProgress(item.id, 19, 60);
+  assert.equal(db.getMediaByPath(path)?.id, item.id);
+  assert.equal(db.upsertMedia({ ...media(library, path), title: 'Updated offline metadata' }).id, item.id);
+  const nested = db.addLibrary(join(root, 'Show'), 'Offline nested root');
+  assert.equal(db.getMedia(item.id).library_id, library.id);
+  assert.throws(() => db.upsertMedia(media(nested, path)), /Media file not found/);
+  db.deleteMissingForLibrary(library.id, new Set());
+  assert.equal(db.getMedia(item.id).title, 'Updated offline metadata');
+  assert.equal(db.getMedia(item.id).liked, 1); assert.equal(db.getMedia(item.id).progress_position, 19);
+});
+
+test('an unavailable destination cannot claim an existing identity until its directory is verified', async t => {
+  const context = await fixture(t), { actual } = context;
+  const db = context.db = new VireloDB(join(actual, 'data')), root = join(actual, 'media'), pending = join(root, 'Offline');
+  const library = db.addLibrary(root, 'Media'), path = join(pending, 'source.mp4'), item = db.upsertMedia(media(library, path));
+  db.setLike(item.id, true); db.setProgress(item.id, 27, 60);
+  const nested = db.addLibrary(pending, 'Pending directory');
+  assert.equal(db.getMedia(item.id).library_id, library.id);
+  assert.throws(() => db.upsertMedia(media(nested, path)), /Media file not found/);
+  assert.throws(() => db.upsertMedia(media(library, path)), /Media file not found/, 'the resolved owner must be checked, not just the supplied library ID');
+  await mkdir(pending); db.addLibrary(pending, 'Now available');
+  assert.equal(db.upsertMedia(media(nested, path)).id, item.id);
+  assert.equal(db.getMedia(item.id).library_id, nested.id);
+  assert.equal(db.getMedia(item.id).liked, 1); assert.equal(db.getMedia(item.id).progress_position, 27);
 });
 
 test('generated file checks permit ancestor aliases but reject links at or below the approved root', async t => {

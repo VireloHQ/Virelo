@@ -37,10 +37,10 @@ const contains=(parent:string,path:string)=>{
 };
 
 export function assertSeparateCache(dataDir:string,libraryPaths:string[]){
-  const cache=realpathSync(join(dataDir,'cache'));
+  const cache=realpathSync.native(join(dataDir,'cache'));
   for(const path of libraryPaths){
     let library;
-    try{library=realpathSync(path);}catch(reason){
+    try{library=realpathSync.native(path);}catch(reason){
       if((reason as NodeJS.ErrnoException).code==='ENOENT')library=resolve(path);
       else throw reason;
     }
