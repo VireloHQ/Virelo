@@ -114,7 +114,7 @@ test('an in-root junction cannot bypass a denied nested library through an allow
   await writeFile(join(folder, 'source.mp4'), 'NESTED PRIVATE VIDEO');
   const alias = join(root, 'allowed', 'alias'); await dirLink(folder, alias);
   const item = db.upsertMedia({ ...items[0], path: join(alias, 'source.mp4') });
-  assert.notEqual(hidden.id, item.library_id);
+  assert.equal(hidden.id, item.library_id, 'canonical source ownership belongs to the denied nested library');
   const response = await call(`/api/media/${item.id}/stream`);
   assert.equal(response.statusCode, 404); assert.ok(!response.body.includes('NESTED PRIVATE VIDEO'));
   assert.equal(await readFile(join(folder, 'source.mp4'), 'utf8'), 'NESTED PRIVATE VIDEO');

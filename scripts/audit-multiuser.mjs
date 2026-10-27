@@ -85,7 +85,7 @@ if(process.argv[2]==='server'){
     const measure=async(name,work)=>{
       await rpc('reset');const times=[],health=[];let finished=false;
       const ping=(async()=>{while(!finished){const reply=await get('/api/health');assert.equal(reply.status,200);health.push(reply.ms);await new Promise(done=>setTimeout(done,25));}})();
-      const record=reply=>{assert.equal(reply.status,200);times.push(reply.ms);return reply;};
+      const record=reply=>{if(reply.status!==200)assert.fail(`${name}: HTTP ${reply.status}: ${reply.body.toString('utf8',0,2048)}`);times.push(reply.ms);return reply;};
       let detail;
       try{detail=await work(record);}finally{finished=true;await ping;}
       const stats=await rpc('stats');assert.ok(stats.maxHeavy<=2);assert.ok(stats.maxTools<=3);
@@ -111,10 +111,12 @@ if(process.argv[2]==='server'){
     const audioState=await post('/api/media/'+ready.ids[0]+'/audio/start',0,{audioStream:1});
     const audio=audioState.playlist.replace('/index.m3u8','')+'/segment-1.ts';
     const mixed=await measure('audio-behind-8-videos',async record=>{
-      const videos=Promise.all(Array.from({length:8},async(_,i)=>record(await get(segment(i,2),i))));
+      const videos=Promise.allSettled(Array.from({length:8},async(_,i)=>record(await get(segment(i,2),i))));
       const deadline=performance.now()+10000;
       while((await rpc('stats')).maxHeavy<2){assert.ok(performance.now()<deadline,'video jobs must start');await new Promise(done=>setTimeout(done,5));}
-      const reply=record(await get(audio));await videos;return {audioWaitMs:Math.round(reply.ms)};
+      const reply=record(await get(audio));
+      for(const result of await videos)assert.equal(result.status,'fulfilled',result.status==='rejected'?String(result.reason):undefined);
+      return {audioWaitMs:Math.round(reply.ms)};
     });assert.ok(mixed.encoders.indexOf('audio-only')<8,'audio starts without waiting for the video backlog');
     const burst=await measure('burst-cold-20',async record=>{
       await Promise.all(Array.from({length:20},async(_,i)=>record(await get(segment(2+Math.floor(i/4),2+i%4,360),i%16))));

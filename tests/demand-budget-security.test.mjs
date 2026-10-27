@@ -24,11 +24,11 @@ test('a burst of queued segments cannot exceed the configured cache budget', { t
     const source = join(root, 'source.mp4'); await writeFile(source, 'temporary source');
     const state = await startDemand(root, 1, source, { mode: 'compatible', duration: 10 });
     assert.equal(state.status, 'ready');
-    let allAdmitted, completed = 0;
-    const admitted = new Promise(resolve => { allAdmitted = resolve; });
+    let workersStarted, admissions = 0;
+    const active = new Promise(resolve => { workersStarted = resolve; });
     DemandCache.prototype[admission] = async function(bytes) {
       try { return await admit.call(this, bytes); }
-      finally { if (bytes === 2 * SEGMENT_MAX_BYTES && ++completed === 5) allAdmitted(); }
+      finally { if (bytes === 2 * SEGMENT_MAX_BYTES) admissions++; }
     };
     childProcess.spawn = (command, args, options) => {
       if (!args.includes('mpegts')) return spawn(command, args, options);
@@ -39,14 +39,14 @@ test('a burst of queued segments cannot exceed the configured cache budget', { t
         try { await file.truncate(SEGMENT_MAX_BYTES - 1); } finally { await file.close(); }
         child.emit('close', 0);
       };
-      if (finishing) void finish(); else ready.push(finish);
+      if (finishing) void finish(); else { ready.push(finish); if(ready.length===2)workersStarted(); }
       return child;
     };
     syncBuiltinESMExports();
     const prefix = state.playlist.replace('/index.m3u8', '');
     const results = Promise.allSettled(Array.from({ length: 5 }, (_, index) => demandSegment(root, prefix, `segment-${index}.ts`, new AbortController().signal, 'viewer')));
-    // Hold workers until every request has either reserved its budget or been rejected.
-    await admitted; finishing = true; await Promise.all(ready.map(finish => finish()));
+    // Queued requests must not reserve the disk budget before obtaining a work slot.
+    await active; assert.equal(admissions,2); finishing = true; await Promise.all(ready.map(finish => finish()));
     const settled = await results;
     for (const result of settled) if (result.status === 'fulfilled') result.value.release();
     assert.ok(settled.some(result => result.status === 'fulfilled'));

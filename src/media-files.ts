@@ -1,9 +1,20 @@
 import type { Stats } from 'node:fs';
 import { realpathSync, statSync } from 'node:fs';
 import { open } from 'node:fs/promises';
-import { extname, isAbsolute, relative, sep } from 'node:path';
+import { basename, dirname, extname, isAbsolute, relative, resolve, sep } from 'node:path';
 
 const VIDEO_EXTENSIONS = new Set(['.mp4','.m4v','.mkv','.webm','.mov','.avi','.wmv','.mpg','.mpeg','.ts','.m2ts','.flv','.ogv','.3gp']);
+
+export function canonicalMediaPath(path:string):string {
+  const absolute=resolve(path),suffix:string[]=[];
+  let parent=absolute;
+  for(;;){
+    try{return resolve(realpathSync.native(parent),...suffix);}
+    catch(error){if(!['ENOENT','ENOTDIR'].includes((error as NodeJS.ErrnoException).code??''))return absolute;}
+    const next=dirname(parent);if(next===parent)return absolute;
+    suffix.unshift(basename(parent));parent=next;
+  }
+}
 
 export function resolveLibraryFile(path:string,root:string):string|null {
   try {

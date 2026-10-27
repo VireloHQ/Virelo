@@ -86,7 +86,8 @@ export class CustomCommands {
     return { ok: true };
   }
   allowsHost(host: string) {
-    return [...this.runs.values()].some(run => run.status === 'running' && run.activeUrl && new URL(run.activeUrl).hostname === host.toLowerCase());
+    const canonical=host.toLowerCase().replace(/\.$/,'');
+    return [...this.runs.values()].some(run => run.status === 'running' && run.activeUrl && new URL(run.activeUrl).hostname.replace(/\.$/,'') === canonical);
   }
   async start(id: number) {
     if (this.closing) throw new AccountError('The server is shutting down.', 503);

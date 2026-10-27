@@ -73,9 +73,28 @@ Safe generated artwork can still be displayed when a source drive is offline.
 If a configured or retained library overlaps the playback cache, startup skips
 pruning and cache operations return `409` without removing that library. Sign-in,
 management and direct original playback remain available. Use separate media and
-data directories to restore conversion and cleanup. Legacy noncanonical library
-roots fail closed if they can no longer be verified; re-add the intended folder
-through library management rather than editing database paths manually.
+data directories to restore conversion and cleanup.
+
+Legacy roots reached through ancestor aliases, such as macOS `/var` and
+`/private/var`, can be repaired by explicitly re-adding the same physical folder
+through library management. This retains its library ID, media IDs, grants and
+personal state. Canonical and alias spellings resolve to the same catalog entries.
+
+A legacy root that is itself a symbolic link or junction is different: its target
+may have changed. Re-adding the intended physical folder creates or selects a
+canonical library without transferring the old root's grants or adopting its
+media IDs/history. An administrator must review and grant the canonical library
+explicitly. The ambiguous old library and personal records remain retained and
+fail closed; do not edit database paths to bypass that protection. Generated
+artwork accepts ancestor aliases above its approved folder, but not links at or
+inside that folder.
+
+If an ambiguous old library already occupies the exact canonical media path in
+the database, rescanning skips that file rather than transferring its ID or
+personal history to the new library. To index those files without modifying the
+originals, use a separate data directory (a fresh catalog), retain the old data
+directory as a backup, and explicitly recreate the approved grants. Personal
+history is not automatically merged between catalogs.
 
 These checks do not isolate an attacker with the same OS/filesystem privileges.
 Such an attacker can race file operations or change the database and originals
