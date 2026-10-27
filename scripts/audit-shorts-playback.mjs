@@ -150,7 +150,10 @@ api.mediaSource = async id => {
           }));
         check(labels.length>0&&labels.every(span=>span.nowrap&&span.bounded&&span.height<=span.lineHeight+1),
           label+' '+locale+' action captions stay within one aligned line');
-        if(locale==='ja'||locale==='en')check(labels.every(span=>span.fits),label+' '+locale+' action captions are not clipped');
+        if(locale==='ja'||locale==='en') {
+          if(labels.some(span=>!span.fits))console.error(labels);
+          check(labels.every(span=>span.fits),label+' '+locale+' action captions are not clipped');
+        }
         if(locale==='ja')await page.screenshot({path:join(root,mode+'-'+size.name+'-ja.png')});
       }
       await changeLanguage(page, 'en');
