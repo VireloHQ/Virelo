@@ -43,6 +43,18 @@ const npmBase = 'http://127.0.0.1:' + app.server.address().port;
 const children = [];
 let browser, lastPage, checks = 0;
 const check = (value, label) => { assert.ok(value, label); checks++; console.log('PASS', label); };
+async function changeLanguage(page, locale) {
+  await page.evaluate(locale => {
+    const key = 'virelo.language.v1', oldValue = localStorage.getItem(key);
+    localStorage.setItem(key, locale);
+    window.dispatchEvent(new StorageEvent('storage', {key, oldValue, newValue:locale, storageArea:localStorage}));
+  }, locale);
+  await page.waitForFunction(locale => document.documentElement.lang === locale, locale);
+  await page.evaluate(async () => {
+    await document.fonts.ready;
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+  });
+}
 async function serveWeb() {
   const webRepo = resolve(process.env.VIRELO_TEST_WEB_REPO);
   const child = spawn(process.execPath, [join(webRepo, 'node_modules/vite/bin/vite.js'), '--host', '127.0.0.1', '--port', '0'],
@@ -127,6 +139,24 @@ api.mediaSource = async id => {
       const bareIcons = buttonStyles.length >= 5 && buttonStyles.every(s => s.background === 'rgba(0, 0, 0, 0)' && s.svgBackground === 'rgba(0, 0, 0, 0)' && s.border === '0px' && s.padding === '0px' && s.width >= 44);
       if (!bareIcons) console.error(buttonStyles);
       check(bareIcons, label + ' bare icons retain usable touch targets');
+      for (const locale of ['en','ja','zh-CN','ko','ru']) {
+        await changeLanguage(page, locale);
+        const labels = await page.locator('.short-actions button>span:not(.favorite-icon-wrap)').evaluateAll(spans => spans
+          .filter(span => getComputedStyle(span).display !== 'none')
+          .map(span => {
+            const style = getComputedStyle(span), rect = span.getBoundingClientRect(), button = span.parentElement.getBoundingClientRect();
+            return {text:span.textContent,nowrap:style.whiteSpace==='nowrap',height:rect.height,lineHeight:parseFloat(style.lineHeight),
+              fits:span.scrollWidth<=span.clientWidth+1,bounded:rect.width<=button.width+1};
+          }));
+        check(labels.length>0&&labels.every(span=>span.nowrap&&span.bounded&&span.height<=span.lineHeight+1),
+          label+' '+locale+' action captions stay within one aligned line');
+        if(locale==='ja'||locale==='en') {
+          if(labels.some(span=>!span.fits))console.error(labels);
+          check(labels.every(span=>span.fits),label+' '+locale+' action captions are not clipped');
+        }
+        if(locale==='ja')await page.screenshot({path:join(root,mode+'-'+size.name+'-ja.png')});
+      }
+      await changeLanguage(page, 'en');
       const bounds = await page.locator('.short-actions button').evaluateAll(buttons => buttons.map(button => { const r = button.getBoundingClientRect(); return { top: r.top, left: r.left, right: r.right, bottom: r.bottom }; }));
       check(bounds.every(r => r.top >= 0 && r.left >= 0 && r.right <= size.width && r.bottom <= size.height), label + ' all controls fit the viewport');
       const quality = page.getByRole('button', { name: 'Quality', exact: true });

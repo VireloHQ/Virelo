@@ -3,6 +3,11 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 const source = path => readFile(new URL('../web/src/' + path, import.meta.url), 'utf8');
 
+test('volume trigger focus does not dismiss the popover before its own press toggles it', async () => {
+  const controls = await source('components/PlayerControls.tsx');
+  assert.match(controls, /<Button ref=\{triggerRef\}/);
+  assert.match(controls, /shouldCloseOnInteractOutside=\{target => !triggerRef\.current\?\.contains\(target\)\}/);
+});
 
 test('audio toggles share fixed icon, label and check columns', async () => {
   const menu = await source('components/PlaybackSettingsMenu.tsx');

@@ -50,7 +50,7 @@ function declaredKeys(source,name) {
     for(const[key,value]of Object.entries(node)){if(['tokens','comments'].includes(key))continue;if(Array.isArray(value))value.forEach(walk);else if(value&&typeof value==='object')walk(value);}
   };walk(parseSync('config.ts',source).program);return keys.sort();
 }
-const identities=new Set(['Virelo','FFmpeg','Termux','Streamline','Theater','Centerstage','AGPL-3.0-only','{type} {number}','{value0}p','.']);
+const identities=new Set(['Virelo','FFmpeg','Termux','PiP','Streamline','Theater','Centerstage','AGPL-3.0-only','{type} {number}','{value0}p','.']);
 export async function checkI18n(root) {
   const directory=join(root,'web/src/i18n/messages'),english=JSON.parse(await readFile(join(directory,'en.json'),'utf8')),issues=[];
   const names=(await readdir(directory)).filter(name=>name.endsWith('.json'));

@@ -1,5 +1,5 @@
 import { t, useLocale } from '../i18n';
-import { Fragment, useState, type CSSProperties, type ReactNode } from 'react';
+import { Fragment, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { Button, Popover } from '@heroui/react';
 import { ArrowsOut, Pause, PictureInPicture, Play, Shuffle, SkipBack, SkipForward, SpeakerHigh, SpeakerSlash } from '@phosphor-icons/react';
 import { RepeatControl } from './RepeatControl';
@@ -70,11 +70,13 @@ export function PlayerControls(props: PlayerControlsProps) {
 function PlayerVolume({ volume, muted, onVolume, onMute }: { volume: number; muted: boolean; onVolume: (value: number) => void; onMute: () => void }) {
   useLocale();
   const [open, setOpen] = useState(false), [animate, setAnimate] = useState(false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
   const value = muted ? 0 : volume;
   return <div className="player-volume"><Popover isOpen={open} onOpenChange={setOpen}>
-    <Button isIconOnly variant="ghost" className="player-volume-trigger" aria-label={t("Volume")}
+    <Button ref={triggerRef} isIconOnly variant="ghost" className="player-volume-trigger" aria-label={t("Volume")}
       onPressStart={event => setAnimate(event.pointerType !== 'keyboard')}>{muted || volume === 0 ? <SpeakerSlash/> : <SpeakerHigh/>}</Button>
     <Popover.Content className="player-volume-popover" placement="top" offset={12} containerPadding={8} isNonModal data-animate={animate}
+      shouldCloseOnInteractOutside={target => !triggerRef.current?.contains(target)}
       UNSTABLE_portalContainer={document.fullscreenElement instanceof HTMLElement ? document.fullscreenElement : document.body}>
       <Popover.Dialog aria-label={t("Volume")}><div className="player-volume-dialog"
         onKeyDownCapture={event => { if (event.key === 'Escape') setAnimate(false); }}>
