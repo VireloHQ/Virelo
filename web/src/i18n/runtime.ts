@@ -12,9 +12,13 @@ const catalogs = new Map<Locale, Catalog>([['en', en]]);
 const pending = new Map<Locale, Promise<Catalog>>();
 const listeners = new Set<() => void>();
 let locale: Locale = 'en', sequence = 0;
+let initialized = false;
+// Undefined is signed out; null is an account following the device preference.
+let accountLocale: Locale | null | undefined;
 export const getLocale = () => locale;
 export const subscribeLocale = (listener: () => void) => { listeners.add(listener); return () => { listeners.delete(listener); }; };
 export async function loadLocale(value: Locale): Promise<Catalog> {
+  if (!isLocale(value)) throw new Error('Choose a supported language.');
   const saved = catalogs.get(value);
   if (saved) return saved;
   let task = pending.get(value);
@@ -31,20 +35,36 @@ export async function setLocale(value: Locale, persist = true): Promise<void> {
   if (request !== sequence) return;
   locale = value;
   if (typeof document !== 'undefined') document.documentElement.lang = value;
-  if (persist) try { localStorage.setItem(LANGUAGE_KEY, value); } catch { /* The choice still applies to this tab. */ }
+  if (persist) {
+    if (accountLocale !== undefined) accountLocale = value;
+    try {
+      if (accountLocale === undefined) localStorage.setItem(LANGUAGE_KEY, value);
+      else localStorage.setItem('virelo-account-language-changed', Date.now() + ':' + Math.random());
+    } catch { /* The choice still applies to this tab. */ }
+  }
   listeners.forEach(listener => listener());
+}
+export function setAccountLocale(value: Locale | null | undefined): Promise<void> {
+  accountLocale = value;
+  return setLocale(value ?? deviceLocale(), false).catch(() => setLocale('en', false));
 }
 export function deviceLocale(): Locale {
   let saved: unknown;
-  try { saved = localStorage.getItem(LANGUAGE_KEY) ?? localStorage.getItem('virelo-public-locale:v1'); } catch { /* Browser preferences remain available. */ }
+  try {
+    const current = localStorage.getItem(LANGUAGE_KEY);
+    saved = isLocale(current) ? current : localStorage.getItem('virelo-public-locale:v1');
+  } catch { /* Browser preferences remain available. */ }
   return resolveLocale(saved, typeof navigator === 'undefined' ? [] : navigator.languages?.length ? navigator.languages : [navigator.language]);
 }
 export const t = (message: string, values?: Record<string, MessageValue>) => translate(catalogs.get(locale) ?? en, locale, message, values);
 export const translateLocale = (value: Locale, message: string, values?: Record<string, MessageValue>) => translate(catalogs.get(value) ?? en, value, message, values);
 export function initializeLocale() {
-  if (typeof window === 'undefined') return;
-  void setLocale(deviceLocale(), false).catch(() => setLocale('en',false));
+  if (typeof window === 'undefined' || initialized) return;
+  initialized = true;
+  void setLocale(accountLocale ?? deviceLocale(), false).catch(() => setLocale('en',false));
   window.addEventListener('storage', event => {
-    if (event.key === LANGUAGE_KEY || event.key === null) void setLocale(deviceLocale(), false).catch(() => {});
+    if (accountLocale != null) return;
+    try { if (event.storageArea && event.storageArea !== localStorage) return; } catch { return; }
+    if (event.key === LANGUAGE_KEY || event.key === 'virelo-public-locale:v1' || event.key === null) void setLocale(deviceLocale(), false).catch(() => {});
   });
 }

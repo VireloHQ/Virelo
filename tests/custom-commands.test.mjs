@@ -57,6 +57,7 @@ test('commands use literal arguments, bounded plain-text output and scoped URL d
     const active=await until(()=>commands.list().find(c=>c.id===noisy.id),value=>Boolean(value.activeUrl));
     assert.equal(active.activeUrl,'https://ready.share.example');assert.ok(active.output.length<=32768);assert.ok(!active.output.includes('\x1b'));
     assert.equal(commands.allowsHost('ready.share.example'),true);
+    assert.equal(commands.allowsHost('READY.SHARE.EXAMPLE.'),true,'Host trust and Secure cookies use the same canonical hostname');
     for(const host of ['outside.example','wrong.share.example.attacker.test','secret.share.example','query.share.example','other.share.example'])assert.equal(commands.allowsHost(host),false,host);
     assert.throws(()=>commands.save(definition(),noisy.id),/Stop the command/);assert.throws(()=>commands.remove(noisy.id),/Stop the command/);
     await assert.rejects(commands.start(noisy.id),/Stop the command/);
@@ -147,6 +148,8 @@ test('command APIs reject viewers, LAN, proxies, cross-origin requests and remot
     assert.equal((await app.inject({url:'/api/auth/status',headers:{host:'other.share.example'}})).statusCode,403);
     const remoteLogin=await app.inject({method:'POST',url:'/api/auth/login',headers:{host:'ready.share.example',origin:'https://ready.share.example','x-virelo-request':'1'},payload:{username:'viewer',password:'1'}});
     assert.equal(remoteLogin.statusCode,200,remoteLogin.body);assert.match(remoteLogin.headers['set-cookie'],/; Secure/);
+    const dottedLogin=await app.inject({method:'POST',url:'/api/auth/login',headers:{host:'READY.SHARE.EXAMPLE.',origin:'https://ready.share.example.','x-virelo-request':'1'},payload:{username:'viewer',password:'1'}});
+    assert.equal(dottedLogin.statusCode,200,dottedLogin.body);assert.match(dottedLogin.headers['set-cookie'],/; Secure/);
     const localLogin=await app.inject({method:'POST',url:'/api/auth/login',headers:{'x-virelo-request':'1'},payload:{username:'viewer',password:'1'}});
     assert.equal(localLogin.statusCode,200);assert.doesNotMatch(localLogin.headers['set-cookie'],/; Secure/);
     assert.equal((await inject({method:'POST',url:'/api/accounts/security',payload:{adminLocalOnly:true}})).statusCode,200);

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, mkdir, readFile, readdir, rm, stat, symlink, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, readdir, realpath, rm, stat, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createHash } from 'node:crypto';
@@ -107,7 +107,7 @@ test('data API is admin-only, same-origin and only clears generated cache withou
     assert.equal((await inject({method:'DELETE',url:'/api/data/cache',headers:{origin:'https://other.example'}})).statusCode,403);
     assert.equal((await inject({method:'DELETE',url:'/api/data/cache',payload:{path:mediaDir}})).statusCode,400);
     const usage=await inject({url:'/api/data'});assert.equal(usage.statusCode,200,usage.body);
-    assert.match(usage.headers['cache-control'],/no-store/);assert.equal(usage.json().dataDir,dataDir);
+    assert.match(usage.headers['cache-control'],/no-store/);assert.equal(usage.json().dataDir,await realpath(dataDir));
     assert.equal(usage.json().categories.cache.bytes,9);assert.equal(usage.json().cacheLimitBytes,512*1024*1024);
     const clear=await inject({method:'DELETE',url:'/api/data/cache'});assert.equal(clear.statusCode,200,clear.body);
     assert.deepEqual(clear.json(),{deletedFiles:1,freedBytes:9,retainedFiles:0,retainedBytes:0});

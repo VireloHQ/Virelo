@@ -43,7 +43,15 @@ VIRELO_TRUSTED_HOSTS=media.example.com virelo --host 0.0.0.0
 
 This allowlist does not provide authentication.
 
+Address ranges are checked as IP literals, not as DNS-name prefixes. Public
+hostnames that resemble private addresses still require an explicit allowlist
+entry or a running custom command's exact public hostname.
+
 State-changing API requests require `X-Virelo-Request: 1` in addition to a valid session. Cross-origin requests are rejected and cross-origin credential sharing is not enabled. Session cookies are host-only, HttpOnly and SameSite=Strict. Passwords are stored using salted scrypt (N=32768, r=8, p=3); plaintext passwords and raw session tokens are not stored. Hashing concurrency and login attempts are bounded. Sessions expire after seven days at most or 24 hours without requests, with up to 32 sessions per account.
+
+Downloaded metadata is limited to 16 MiB per JSON response and artwork to 32 MiB
+per image. Limits count the received, decompressed bytes rather than trusting
+`Content-Length`; oversized transfers are cancelled and partial images removed.
 
 ## Permissions and revocation
 
@@ -54,6 +62,43 @@ New users have no library access by default. Favorites and watch history are acc
 Changes to passwords, names, roles, permissions or enabled state revoke that user's sessions and close their active media responses. Deleting an account removes its personal state, not media files. The final enabled administrator cannot be disabled, demoted or deleted. Signing out clears the current session and its active media responses; tabs on the same origin synchronize account changes when browser messaging/storage is available. Data already downloaded, cached by older versions or buffered by a client cannot be recalled. Do not share an OS/browser profile when that distinction matters.
 
 Administrators have full administrative trust even if their browsing is restricted to selected libraries: they can grant themselves access. This feature does not isolate mutually untrusted administrators or protect against someone who can read or modify the data directory. Protect OS permissions and backups accordingly.
+
+Generated playback files must stay inside non-linked cache directories; cached
+responses and cleanup reject symbolic links, junctions and hard-linked targets.
+Registered library roots are canonicalized, and source reads must still resolve
+inside the same granted library. Playback probes and subtitle conversion recheck
+the current session, permissions and library access after asynchronous work.
+Safe generated artwork can still be displayed when a source drive is offline.
+
+If a configured or retained library overlaps the playback cache, startup skips
+pruning and cache operations return `409` without removing that library. Sign-in,
+management and direct original playback remain available. Use separate media and
+data directories to restore conversion and cleanup.
+
+Legacy roots reached through ancestor aliases, such as macOS `/var` and
+`/private/var`, can be repaired by explicitly re-adding the same physical folder
+through library management. This retains its library ID, media IDs, grants and
+personal state. Canonical and alias spellings resolve to the same catalog entries.
+
+A legacy root that is itself a symbolic link or junction is different: its target
+may have changed. Re-adding the intended physical folder creates or selects a
+canonical library without transferring the old root's grants or adopting its
+media IDs/history. An administrator must review and grant the canonical library
+explicitly. The ambiguous old library and personal records remain retained and
+fail closed; do not edit database paths to bypass that protection. Generated
+artwork accepts ancestor aliases above its approved folder, but not links at or
+inside that folder.
+
+If an ambiguous old library already occupies the exact canonical media path in
+the database, rescanning skips that file rather than transferring its ID or
+personal history to the new library. To index those files without modifying the
+originals, use a separate data directory (a fresh catalog), retain the old data
+directory as a backup, and explicitly recreate the approved grants. Personal
+history is not automatically merged between catalogs.
+
+These checks do not isolate an attacker with the same OS/filesystem privileges.
+Such an attacker can race file operations or change the database and originals
+directly. Run Virelo under a non-administrator OS account and protect its data.
 
 ## Activity monitoring and user data
 
@@ -87,6 +132,10 @@ are intended for trusted local use, not exposure to the public Internet.
 
 The optional **Settings → Admin** restriction blocks administrator accounts unless the direct socket peer is loopback and there are no forwarding headers. It applies to login and existing sessions, not just management endpoints. Regular users remain accessible over the network. Change the restriction only from a direct localhost connection on the server PC; changing it revokes other administrator sessions.
 
+Proxy markers include `Forwarded`, `X-Forwarded-*`, `X-Real-IP`,
+`CF-Connecting-IP` and `True-Client-IP`. Their presence denies local-only
+capabilities; their values never grant them.
+
 **A local reverse proxy, SSH tunnel, or port forward can make a remote client appear to be localhost.** No HTTP application can recover an original address that such an intermediary discards. Do not use the localhost-only option as a guarantee against remote access behind a header-stripping loopback proxy or tunnel. Preserve forwarding headers (Virelo treats those connections as non-local), and enforce remote administrative restrictions at the proxy/firewall as well. This setting is not an OS-level sandbox.
 
 ## Custom command execution
@@ -119,6 +168,16 @@ exact HTTPS origin without credentials, path, query or fragment is accepted.
 Provider login, authorization, content policies and traffic limits remain the
 operator's responsibility. Process state does not guarantee tunnel health or
 that all buffered or previously downloaded data has been revoked after stopping.
+
+Before public access, create accounts locally, use strong unique passwords, and
+verify from an external connection that anonymous media requests are denied and
+local-only administration remains blocked. Short PINs are still supported but
+are not appropriate Internet-facing credentials. Keep the public `Host` and
+proxy markers intact; do not rewrite requests to look like direct localhost
+traffic. For Cloudflare, review [`httpHostHeader` and Access settings](https://developers.cloudflare.com/cloudflare-one/networks/connectors/cloudflare-tunnel/configure-tunnels/origin-parameters/).
+An additional proxy authentication policy and edge rate limits can restrict
+who reaches the sign-in endpoint. Virelo's login throttling uses the socket
+peer, so clients behind a shared proxy share its attempt budget.
 
 ## Local administrator recovery
 

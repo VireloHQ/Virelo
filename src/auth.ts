@@ -2,7 +2,7 @@ import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { AccountError, Accounts, hashPassword, verifyPassword } from './accounts.js';
 import type { Account, AuthStatus, CatalogScope } from './auth-types.js';
 import type { VireloDB } from './db.js';
-import { isIP } from 'node:net';
+import { requestHostname, isLoopbackAddress } from './request-security.js';
 import { AccountActivity } from './account-activity.js';
 import { isAppearance } from './appearance.js';
 import { isLocale } from './languages.js';
@@ -14,12 +14,11 @@ declare module 'fastify' {
 
 export function directLocal(request: FastifyRequest) {
   const peer = request.raw.socket.remoteAddress || request.ip;
-  const hostHeader = (request.headers.host || '').toLowerCase();
-  const host = hostHeader.startsWith('[') ? hostHeader.slice(1,hostHeader.indexOf(']')) : hostHeader.split(':')[0].replace(/\.$/,'');
+  const host = requestHostname(request.headers.host || '');
   // Requiring a literal loopback Host also prevents rebinding a LAN hostname during setup.
-  const localHost = host === 'localhost' || host === '::1' || (isIP(host) === 4 && host.startsWith('127.'));
-  return localHost && Boolean(peer && (/^127\./.test(peer) || peer === '::1' || /^::ffff:127\./i.test(peer)))
-    && !['forwarded','x-forwarded-for','x-real-ip','x-forwarded-host','x-forwarded-proto'].some(header => request.headers[header] !== undefined);
+  const localHost = host === 'localhost' || isLoopbackAddress(host);
+  return localHost && Boolean(peer && isLoopbackAddress(peer))
+    && !Object.keys(request.headers).some(header => header === 'forwarded' || header.startsWith('x-forwarded-') || ['x-real-ip','cf-connecting-ip','true-client-ip'].includes(header));
 }
 function token(request: FastifyRequest) {
   const matches = (request.headers.cookie || '').split(';').map(part => part.trim()).filter(part => part.startsWith('virelo_session='));

@@ -1,9 +1,9 @@
 import { createHash } from 'node:crypto';
-import { stat, rename, rm } from 'node:fs/promises';
+import { stat, rename } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { hasFfmpeg, probeMedia, canCopyVideoSegment, type PlaybackQuality } from './ffmpeg.js';
-import { runMediaProcess } from './media-process.js';
-import { MediaBusyError } from './media-work.js';
+import { runMediaProcessInSlot } from './media-process.js';
+import { mediaScheduler, MediaBusyError } from './media-work.js';
 import { DemandCache, SEGMENT_MAX_BYTES } from './demand-cache.js';
 import { prepareGeneratedFile } from './image-files.js';
 
@@ -99,28 +99,32 @@ class Manager {
   private async encode(spec:Spec,index:number,quality:PlaybackQuality|undefined,path:string,signal:AbortSignal,owner:string){
     const temporary=path+'.part',start=index*SEGMENT_SECONDS,length=Math.min(SEGMENT_SECONDS,spec.duration-start);
     const work={owner,scope:this.root,signal};
-    try{
-      if(signal.aborted)throw Error('Playback request was cancelled.');
-      const copy=spec.mode==='compatible'&&spec.copyVideo&&await canCopyVideoSegment(spec.source,start,length,spec.duration,spec.fingerprint,work);
-      await this.cache.prune(2*SEGMENT_MAX_BYTES);
-      await prepareGeneratedFile(temporary,this.cache.root);await prepareGeneratedFile(path,this.cache.root);
-      const args=['-hide_banner','-loglevel','error','-filter_threads','1','-threads','2','-ss',String(start),'-i',spec.source,'-t',String(length)];
-      if(spec.mode==='audio')args.push('-vn');
-      else if(copy)args.push('-map','0:v:0','-c:v','copy','-bsf:v','h264_mp4toannexb');
-      else{
-        args.push('-map','0:v:0','-c:v','libx264','-preset','veryfast','-threads','2','-pix_fmt','yuv420p','-bf','0','-sc_threshold','0');
-        if(quality){const landscape=(spec.sourceWidth??1)>=(spec.sourceHeight??1);args.push('-vf',landscape?`scale=-2:${quality.height}`:`scale=${quality.height}:-2`,'-b:v',String(quality.bitrate),'-maxrate',String(Math.round(quality.bitrate*1.08)),'-bufsize',String(quality.bitrate*2));}
-        else args.push('-crf','21');
-      }
-      args.push('-map',spec.audioStream===undefined?'0:a:0?':`0:${spec.audioStream}`,'-c:a','aac','-b:a','192k','-ac','2','-af','aresample=async=1:first_pts=0','-output_ts_offset',String(start),'-muxdelay','0','-f','mpegts','-fs',String(SEGMENT_MAX_BYTES),'-y',temporary);
-      await runMediaProcess(process.env.FFMPEG_PATH||'ffmpeg',args,{...work,kind:spec.mode==='audio'||copy?'interactive':'video',timeout:45000});
-      const info=await stat(temporary);if(!info.size||info.size>=SEGMENT_MAX_BYTES)throw Error('Playback segment exceeds the size limit.');
-      await rename(temporary,path);await this.cache.record(path);return path;
-    }finally{await rm(temporary,{force:true}).catch(()=>{});}
+    const copy=spec.mode==='compatible'&&spec.copyVideo&&await canCopyVideoSegment(spec.source,start,length,spec.duration,spec.fingerprint,work);
+    return mediaScheduler.run(async signal=>{
+      let releaseBudget:(()=>void)|undefined;
+      try{
+        if(signal.aborted)throw Error('Playback request was cancelled.');
+        releaseBudget=await this.cache.reserve(2*SEGMENT_MAX_BYTES);
+        this.cache.discard(temporary);
+        await prepareGeneratedFile(temporary,this.cache.root);await prepareGeneratedFile(path,this.cache.root);
+        const args=['-hide_banner','-loglevel','error','-filter_threads','1','-threads','2','-ss',String(start),'-i',spec.source,'-t',String(length)];
+        if(spec.mode==='audio')args.push('-vn');
+        else if(copy)args.push('-map','0:v:0','-c:v','copy','-bsf:v','h264_mp4toannexb');
+        else{
+          args.push('-map','0:v:0','-c:v','libx264','-preset','veryfast','-threads','2','-pix_fmt','yuv420p','-bf','0','-sc_threshold','0');
+          if(quality){const landscape=(spec.sourceWidth??1)>=(spec.sourceHeight??1);args.push('-vf',landscape?`scale=-2:${quality.height}`:`scale=${quality.height}:-2`,'-b:v',String(quality.bitrate),'-maxrate',String(Math.round(quality.bitrate*1.08)),'-bufsize',String(quality.bitrate*2));}
+          else args.push('-crf','21');
+        }
+        args.push('-map',spec.audioStream===undefined?'0:a:0?':`0:${spec.audioStream}`,'-c:a','aac','-b:a','192k','-ac','2','-af','aresample=async=1:first_pts=0','-output_ts_offset',String(start),'-muxdelay','0','-f','mpegts','-fs',String(SEGMENT_MAX_BYTES),'-y',temporary);
+        await runMediaProcessInSlot(process.env.FFMPEG_PATH||'ffmpeg',args,{signal,timeout:45000});
+        const info=await stat(temporary);if(!info.size||info.size>=SEGMENT_MAX_BYTES)throw Error('Playback segment exceeds the size limit.');
+        await rename(temporary,path);await this.cache.record(path);return path;
+      }finally{try{this.cache.discard(temporary);}catch{}releaseBudget?.();}
+    },{...work,kind:spec.mode==='audio'||copy?'interactive':'video'});
   }
   async stop(){const jobs=[...this.jobs.values()];for(const job of jobs)job.controller.abort();await Promise.allSettled(jobs.map(job=>job.promise));}
 }
 export async function stopDemandPlayback(dataDir?:string){await Promise.all([...managers].filter(([root])=>!dataDir||root===resolve(dataDir)).map(([,manager])=>manager.stop()));}
-export function initializeDemandCache(dataDir:string){return managerFor(dataDir).cache.prune();}
+export function initializeDemandCache(dataDir:string,safetyCheck:()=>void=()=>{},prune=true){const cache=managerFor(dataDir).cache;cache.setSafetyCheck(safetyCheck);return prune?cache.prune():Promise.resolve();}
 export function playbackCacheLimit(dataDir:string){return managerFor(dataDir).cache.limit;}
 export function clearPlaybackCache(dataDir:string,authorize:()=>void){return managerFor(dataDir).cache.clearUnused(authorize);}

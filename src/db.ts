@@ -1,21 +1,12 @@
 import { DatabaseSync, type SQLInputValue } from 'node:sqlite';
-import { dirname, isAbsolute, relative, resolve, sep } from 'node:path';
-import { realpathSync } from 'node:fs';
+import { basename, dirname, isAbsolute, relative, resolve, sep } from 'node:path';
+import { lstatSync, realpathSync } from 'node:fs';
 import { parseMediaName } from './scanner.js';
 import { buildHome } from './home.js';
 import type { CatalogScope } from './auth-types.js';
 import type { AppSettings, FolderEntry, Library, MediaRecord, MediaKind, ShortsFeed, ShortsItem, SortKey } from './types.js';
-
-const DEFAULT_SETTINGS: AppSettings = {
-  externalMetadataEnabled: true,
-  externalImagesEnabled: true,
-  metadataProvider: 'cinemeta',
-  metadataLanguage: 'ja-JP',
-  tmdbApiKey: '',
-  libraryWatchEnabled: true,
-  shortsIncludeLandscapes: false,
-  queueBehavior: 'auto'
-};
+import { DEFAULT_SETTINGS, isSettingValue, validateSettingsPatch } from './settings.js';
+import { canonicalMediaPath } from './media-files.js';
 
 const SORT_ORDER: Record<SortKey, string> = {
   title: 'm.sort_title COLLATE NOCASE ASC, m.id ASC',
@@ -33,9 +24,11 @@ export class VireloDB {
 
   constructor(dataDir: string) {
     this.db = new DatabaseSync(resolve(dataDir, 'virelo.db'));
-    this.db.exec('PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL; PRAGMA foreign_keys=ON; PRAGMA busy_timeout=5000;');
-    this.migrate();
-    this.db.function('shorts_rank', { deterministic: true }, (id, seed) => shortsRank(Number(id), Number(seed)));
+    try {
+      this.db.exec('PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL; PRAGMA foreign_keys=ON; PRAGMA busy_timeout=5000;');
+      this.migrate();
+      this.db.function('shorts_rank', { deterministic: true }, (id, seed) => shortsRank(Number(id), Number(seed)));
+    } catch(error) { this.db.close();throw error; }
   }
 
   private migrate() {
@@ -85,6 +78,7 @@ export class VireloDB {
       CREATE INDEX IF NOT EXISTS idx_media_kind ON media(kind);
       CREATE INDEX IF NOT EXISTS idx_media_title ON media(sort_title);
       CREATE INDEX IF NOT EXISTS idx_media_added ON media(added_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_media_filename ON media(filename COLLATE NOCASE);
       CREATE TABLE IF NOT EXISTS progress (
         media_id INTEGER PRIMARY KEY,
         position REAL NOT NULL DEFAULT 0,
@@ -119,6 +113,12 @@ export class VireloDB {
   private directoryKey(path:string) {
     try { return this.pathKey(realpathSync.native(path)); }
     catch { return this.pathKey(path); }
+  }
+
+  private unverifiedLibrary(id:number,allowMissing=false){
+    const root=this.db.prepare('SELECT path FROM libraries WHERE id=?').get(id) as {path:string}|undefined;
+    try{return !root||!lstatSync(root.path).isDirectory();}
+    catch(error){return !allowMissing||(error as NodeJS.ErrnoException).code!=='ENOENT';}
   }
 
   private mergeLibraryAliases() {
@@ -166,13 +166,16 @@ export class VireloDB {
     const rows = this.db.prepare('SELECT key, value FROM settings').all() as Array<{key: string; value: string}>;
     const result: AppSettings = { ...DEFAULT_SETTINGS };
     for (const row of rows) {
-      if (!(row.key in result)) continue;
-      try { (result as unknown as Record<string, unknown>)[row.key] = JSON.parse(row.value); } catch { /* ignore corrupt setting */ }
+      try {
+        const value: unknown = JSON.parse(row.value);
+        if (isSettingValue(row.key, value)) (result as unknown as Record<string, unknown>)[row.key] = value;
+      } catch { /* Ignore corrupt settings and keep the default. */ }
     }
     return result;
   }
 
   updateSettings(patch: Partial<AppSettings>) {
+    validateSettingsPatch(patch);
     const allowed = new Set(Object.keys(DEFAULT_SETTINGS));
     const stmt = this.db.prepare(`INSERT INTO settings(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value`);
     this.db.exec('BEGIN');
@@ -205,6 +208,7 @@ export class VireloDB {
   }
 
   private ownerForPath(path: string,libraries: readonly Library[]): Library | undefined {
+    path=canonicalMediaPath(path);
     let owner: Library | undefined;
     for (const library of libraries) {
       const rest=relative(library.path,path);
@@ -218,9 +222,10 @@ export class VireloDB {
     const rows=this.db.prepare('SELECT id,path,library_id FROM media').all() as Array<{id:number;path:string;library_id:number}>;
     const update=this.db.prepare('UPDATE media SET library_id=?,folder=? WHERE id=?');
     for (const row of rows) {
-      const owner=this.ownerForPath(row.path,libraries);
-      if (owner&&owner.id!==row.library_id)
-        update.run(owner.id,relative(owner.path,dirname(row.path)).replaceAll('\\','/'),row.id);
+      if(this.unverifiedLibrary(row.library_id))continue;
+      const path=canonicalMediaPath(row.path),owner=this.ownerForPath(path,libraries);
+      if (owner&&owner.id!==row.library_id&&!this.unverifiedLibrary(owner.id))
+        update.run(owner.id,relative(owner.path,dirname(path)).replaceAll('\\','/'),row.id);
     }
   }
 
@@ -239,18 +244,22 @@ export class VireloDB {
   }
 
   addLibrary(path: string, label: string, persistent = true): Library {
-    path = resolve(path);
+    path = canonicalMediaPath(path);
     const now = Date.now();
     const libraries=this.listLibraries();
     const pathMatch=libraries.find(library=>this.pathKey(library.path)===this.pathKey(path));
     const directory=pathMatch?null:this.directoryKey(path);
-    const existing=pathMatch??libraries.find(library=>this.directoryKey(library.path)===directory);
+    const existing=pathMatch??libraries.find(library=>{
+      try{return !lstatSync(library.path).isSymbolicLink()&&this.directoryKey(library.path)===directory;}catch{return false;}
+    });
     if (existing) {
+      // Explicit re-registration repairs ancestor aliases, never a legacy root junction's grant.
+      if(this.pathKey(existing.path)!==this.pathKey(path))this.db.prepare('UPDATE libraries SET path=? WHERE id=?').run(path,existing.id);
       if (persistent) this.db.prepare('UPDATE libraries SET persistent=1 WHERE id=?').run(existing.id);
     } else {
       this.db.prepare('INSERT INTO libraries(path,label,created_at,persistent) VALUES(?,?,?,?)').run(path, label, now, Number(persistent));
     }
-    const library = this.db.prepare('SELECT * FROM libraries WHERE path=?').get(existing?.path ?? path) as unknown as Library;
+    const library = (existing?this.db.prepare('SELECT * FROM libraries WHERE id=?').get(existing.id):this.db.prepare('SELECT * FROM libraries WHERE path=?').get(path)) as unknown as Library;
     this.sessionPinned.add(library.id);
     this.reassignMedia();
     return library;
@@ -263,7 +272,13 @@ export class VireloDB {
   }
 
   getMediaByPath(path: string): MediaRecord | undefined {
-    return this.db.prepare(`SELECT * FROM media WHERE path=? ${process.platform === 'win32' ? 'COLLATE NOCASE' : ''} ORDER BY id LIMIT 1`).get(path) as unknown as MediaRecord | undefined;
+    const absolute=resolve(path),canonical=canonicalMediaPath(path);
+    // Missing roots retain exact DB-only lookups, but cannot establish alias identity.
+    const row=(this.db.prepare(`SELECT * FROM media WHERE path ${process.platform==='win32'?'COLLATE NOCASE':''} IN (?,?) ORDER BY id`).all(absolute,canonical) as unknown as MediaRecord[]).find(item=>!this.unverifiedLibrary(item.library_id,true));
+    if(row)return row;
+    // Indexed basename candidates recover older alias spellings without an all-files filesystem walk.
+    const candidates=this.db.prepare('SELECT * FROM media WHERE filename COLLATE NOCASE IN (?,?) ORDER BY id').all(basename(absolute),basename(canonical)) as unknown as MediaRecord[];
+    return candidates.find(item=>!this.unverifiedLibrary(item.library_id)&&this.pathKey(canonicalMediaPath(item.path))===this.pathKey(canonical));
   }
 
   private personalJoins(scope?: CatalogScope) {
@@ -312,13 +327,17 @@ export class VireloDB {
   }
 
   upsertMedia(input: Omit<MediaRecord, 'id' | 'added_at' | 'updated_at'>): MediaRecord {
-    if(process.platform==='win32'){
-      const existing=this.getMediaByPath(input.path);
-      if(existing)input={...input,path:existing.path};
-    }
+    const existing=this.getMediaByPath(input.path);
+    input={...input,path:existing?.path??canonicalMediaPath(input.path)};
     const owner=this.libraryForPath(input.path);
     if (owner&&owner.id!==input.library_id)
-      input={...input,library_id:owner.id,folder:relative(owner.path,dirname(input.path)).replaceAll('\\','/')};
+      input={...input,library_id:owner.id,folder:relative(owner.path,dirname(canonicalMediaPath(input.path))).replaceAll('\\','/')};
+    // Offline DB-only updates may retain an ID, never transfer it between unverified roots.
+    const conflicts=this.db.prepare(`SELECT library_id FROM media WHERE path=? ${process.platform==='win32'?'COLLATE NOCASE':''}`).all(input.path) as {library_id:number}[];
+    if(conflicts.some(row=>{
+      const sameLibrary=row.library_id===input.library_id;
+      return this.unverifiedLibrary(row.library_id,sameLibrary)||(!sameLibrary&&this.unverifiedLibrary(input.library_id));
+    }))throw Error('Media file not found');
     const now = Date.now();
     this.db.prepare(`
       INSERT INTO media(
@@ -392,10 +411,11 @@ export class VireloDB {
   }
 
   deleteMissingForLibrary(libraryId: number, existingPaths: Set<string>) {
-    const paths = new Set([...existingPaths].map(path => this.pathKey(path)));
+    if(this.unverifiedLibrary(libraryId))return;
+    const paths = new Set([...existingPaths].map(path => this.pathKey(canonicalMediaPath(path))));
     const rows = this.db.prepare('SELECT id,path FROM media WHERE library_id=?').all(libraryId) as Array<{id:number;path:string}>;
     const del = this.db.prepare('DELETE FROM media WHERE id=?');
-    for (const row of rows) if (!paths.has(this.pathKey(row.path))) del.run(row.id);
+    for (const row of rows) if (!paths.has(this.pathKey(canonicalMediaPath(row.path)))) del.run(row.id);
   }
 
   listMedia(options: { search?: string; kind?: MediaKind; limit?: number; offset?: number; libraryId?: number; folder?: string; sort?: SortKey; liked?: boolean } = {}, scope?: CatalogScope) {

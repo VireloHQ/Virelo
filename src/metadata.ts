@@ -1,7 +1,7 @@
 import { createWriteStream } from 'node:fs';
 import { rename, rm } from 'node:fs/promises';
 import { pipeline } from 'node:stream/promises';
-import { Readable } from 'node:stream';
+import { Readable, Transform } from 'node:stream';
 import type { ReadableStream as NodeReadableStream } from 'node:stream/web';
 import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
@@ -13,6 +13,16 @@ const CINEMETA_API = 'https://v3-cinemeta.strem.io';
 const TMDB_API = 'https://api.themoviedb.org/3';
 const TMDB_IMAGE = 'https://image.tmdb.org/t/p';
 const REQUEST_TIMEOUT = 15000;
+const JSON_LIMIT = 16 * 1024 * 1024;
+const ARTWORK_LIMIT = 32 * 1024 * 1024;
+
+function responseLimit(limit: number) {
+  let bytes = 0;
+  return new Transform({ transform(chunk: Buffer, _encoding, done) {
+    bytes += chunk.length;
+    done(bytes > limit ? new Error('Remote response exceeds the size limit.') : null, chunk);
+  } });
+}
 
 interface CinemetaPreview {
   id: string;
@@ -46,7 +56,12 @@ interface CinemetaMeta extends CinemetaPreview {
 async function fetchJson<T>(url: string): Promise<T> {
   const response = await fetch(url, { signal: AbortSignal.timeout(REQUEST_TIMEOUT) });
   if (!response.ok) throw new Error(`Metadata request failed: ${response.status}`);
-  return response.json() as Promise<T>;
+  if (!response.body) throw new Error('Metadata details were unavailable.');
+  const chunks: Buffer[] = [];
+  await pipeline(Readable.fromWeb(response.body as unknown as NodeReadableStream), responseLimit(JSON_LIMIT), async stream => {
+    for await (const chunk of stream) chunks.push(chunk);
+  });
+  return JSON.parse(Buffer.concat(chunks).toString('utf8')) as T;
 }
 
 async function download(url: string, target: string) {
@@ -60,7 +75,7 @@ async function download(url: string, target: string) {
   if (!contentType.toLowerCase().startsWith('image/')) throw new Error('Artwork response was not an image.');
   const temporary = `${target}.${randomUUID()}.tmp`;
   try {
-    await pipeline(Readable.fromWeb(response.body as unknown as NodeReadableStream), createWriteStream(temporary));
+    await pipeline(Readable.fromWeb(response.body as unknown as NodeReadableStream), responseLimit(ARTWORK_LIMIT), createWriteStream(temporary));
     if(!await imageFileExists(temporary))throw Error('Artwork download was not a supported image.');
     await prepareGeneratedFile(target);
     await rename(temporary, target);

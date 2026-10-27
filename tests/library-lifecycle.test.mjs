@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {mkdtemp,mkdir,rm,writeFile,readFile,symlink} from 'node:fs/promises';
+import {mkdtemp,mkdir,realpath,rm,writeFile,readFile,symlink} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join,relative,resolve} from 'node:path';
 import {VireloDB} from '../dist/db.js';
@@ -80,9 +80,10 @@ test('startup folders are temporary; UI additions and promoted folders survive a
     assert.equal(added.statusCode,200,added.body);assert.equal(added.json().persistent,1);await idle(server);
     await server.app.close();
     server=await createVireloServer({dataDir:data,mediaPaths:[next],host:'127.0.0.1',port:0});
-    assert.deepEqual((await call('GET','/api/libraries')).json().map(l=>l.path).sort(),[next,saved].sort());
-    assert.deepEqual((await call('GET','/api/accounts/libraries')).json().map(l=>l.path).sort(),[next,saved].sort());
-    assert.deepEqual((await call('GET','/api/accounts/previous-libraries')).json().map(l=>l.path),[first]);
+    const canonicalPaths=(await Promise.all([next,saved].map(path=>realpath(path)))).sort();
+    assert.deepEqual((await call('GET','/api/libraries')).json().map(l=>l.path).sort(),canonicalPaths);
+    assert.deepEqual((await call('GET','/api/accounts/libraries')).json().map(l=>l.path).sort(),canonicalPaths);
+    assert.deepEqual((await call('GET','/api/accounts/previous-libraries')).json().map(l=>l.path),[await realpath(first)]);
     const restored=await call('POST','/api/libraries',{path:first});
     assert.equal(restored.json().id,temporary[0].id);assert.equal(restored.json().persistent,1);await idle(server);
     await writeFile(media(restored.json()).path,'test media');

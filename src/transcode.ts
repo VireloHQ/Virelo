@@ -1,19 +1,15 @@
-import { readFile, rename, rm, stat } from 'node:fs/promises';
+import { readFile, rename, stat } from 'node:fs/promises';
+import { unlinkSync } from 'node:fs';
 import { createHash, randomUUID } from 'node:crypto';
 import { join,resolve } from 'node:path';
 import { hasFfmpeg, type PlaybackQuality } from './ffmpeg.js';
 import { runMediaProcess } from './media-process.js';
 import { demandStatus, startDemand, stopDemandPlayback } from './demand-playback.js';
-import { prepareGeneratedFile } from './image-files.js';
+import { generatedFileInfo, prepareGeneratedFile } from './image-files.js';
 
 export interface TranscodeOptions { audioStream?:number;copyVideo?:boolean;startTime?:number;duration?:number|null; }
 export interface AdaptiveTranscodeOptions extends TranscodeOptions {hasAudio:boolean;sourceWidth:number;sourceHeight:number;qualities:PlaybackQuality[];}
-export type TranscodeState=ReturnType<typeof demandStatus>;
-export type AdaptiveTranscodeState=TranscodeState;
-export type AudioTranscodeState=TranscodeState;
 export function hlsDir(dataDir:string,id:number){return join(dataDir,'cache','hls',String(id));}
-export function hlsVariantDir(dataDir:string,id:number,audioStream?:number,startTime=0){return join(hlsDir(dataDir,id),...(startTime>0?['seek',String(startTime)]:[]),audioStream===undefined?'default':`audio-${audioStream}`);}
-export function hlsPlaylist(dataDir:string,id:number,audioStream?:number,startTime=0){return join(hlsVariantDir(dataDir,id,audioStream,startTime),'index.m3u8');}
 export function transcodeStatus(dataDir:string,id:number,audioStream?:number,_startTime=0){return demandStatus(dataDir,id,'compatible',audioStream);}
 export function adaptiveTranscodeStatus(dataDir:string,id:number,audioStream:number|undefined,_qualities:PlaybackQuality[],_startTime=0){return demandStatus(dataDir,id,'adaptive',audioStream);}
 export function audioTranscodeStatus(dataDir:string,id:number,audioStream:number){return demandStatus(dataDir,id,'audio',audioStream);}
@@ -34,10 +30,12 @@ export async function extractSubtitleVtt(dataDir:string,id:number,source:string,
       if(!(await hasFfmpeg()))throw Error('FFmpeg is not installed or not available in PATH.');
       const temporary=`${target}.${randomUUID()}.tmp`;
       try{
+        await prepareGeneratedFile(temporary,join(dataDir,'cache'));
         await runMediaProcess(process.env.FFMPEG_PATH||'ffmpeg',['-hide_banner','-loglevel','warning','-threads','2','-i',source,'-map',`0:${subtitleStream}`,'-c:s','webvtt','-f','webvtt','-y',temporary],{kind:'video',owner,scope:resolve(dataDir),timeout:60000});
+        generatedFileInfo(temporary,join(dataDir,'cache'));
         if(!(await readFile(temporary,'utf8')).startsWith('WEBVTT'))throw Error('Subtitle conversion failed.');
         await prepareGeneratedFile(target,join(dataDir,'cache'));await rename(temporary,target);
-      }finally{await rm(temporary,{force:true}).catch(()=>{});}
+      }finally{try{generatedFileInfo(temporary,join(dataDir,'cache'));unlinkSync(temporary);}catch{}}
     })();
     subtitleJobs.set(target,job);
   }

@@ -5,9 +5,6 @@ export interface PlaylistSummary {
   itemCount: number; unavailableCount: number;
 }
 export interface PlaylistWrite { name?: string; mediaIds?: number[]; revision: number; append?: boolean }
-export interface StoredPlaylist {
-  id: number; name: string; revision: number; mediaIds: number[]; createdAt: number; updatedAt: number;
-}
 export function playlistName(value: unknown): string {
   if (typeof value !== 'string' || !value.trim() || [...value.trim()].length > 100 || /[\p{Cc}]/u.test(value))
     throw new PlaylistValueError('Enter a playlist name with 1–100 characters.');

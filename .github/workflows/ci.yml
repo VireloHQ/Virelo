@@ -1,13 +1,18 @@
 name: CI
 on:
   push:
+    branches: [main]
+    tags: ['v*']
   pull_request:
+permissions:
+  contents: read
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 jobs:
   build:
     strategy:
+      fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
         node: [22, 24, 26]
@@ -41,7 +46,6 @@ jobs:
           sudo apt-get update -o Acquire::Retries=3
           sudo apt-get install --yes --no-install-recommends ffmpeg
       - run: npm ci
-      - run: npm install --no-save --package-lock=false playwright@1.62.1
       - run: npx playwright install --with-deps chromium
       - run: npm run check
       - run: npm run audit:package
