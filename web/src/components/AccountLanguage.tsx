@@ -1,13 +1,25 @@
 import { useEffect } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../api';
-import { deviceLocale, isLocale, setLocale } from '../i18n';
+import { isLocale, setAccountLocale } from '../i18n';
 
 export function AccountLanguage() {
-  const { data } = useQuery({queryKey:['account-language'],queryFn:api.language,refetchOnWindowFocus:true});
+  const client = useQueryClient();
+  const { data } = useQuery({queryKey:['account-language'],queryFn:api.language,refetchOnWindowFocus:'always'});
   useEffect(() => {
-    if (data) void setLocale(isLocale(data.locale) ? data.locale : deviceLocale(), false).catch(() => {});
+    void setAccountLocale(isLocale(data?.locale) ? data.locale : null);
   }, [data]);
-  useEffect(() => () => { void setLocale(deviceLocale(), false).catch(() => {}); }, []);
+  useEffect(() => {
+    const storage = (event: StorageEvent) => {
+      try { if (event.storageArea && event.storageArea !== localStorage) return; } catch { return; }
+      if (event.key === 'virelo-account-language-changed')
+        void client.cancelQueries({queryKey:['account-language']}).then(() => client.invalidateQueries({queryKey:['account-language']}));
+    };
+    window.addEventListener('storage', storage);
+    return () => {
+      window.removeEventListener('storage', storage);
+      void setAccountLocale(undefined);
+    };
+  }, [client]);
   return null;
 }

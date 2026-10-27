@@ -5,17 +5,7 @@ import { parseMediaName } from './scanner.js';
 import { buildHome } from './home.js';
 import type { CatalogScope } from './auth-types.js';
 import type { AppSettings, FolderEntry, Library, MediaRecord, MediaKind, ShortsFeed, ShortsItem, SortKey } from './types.js';
-
-const DEFAULT_SETTINGS: AppSettings = {
-  externalMetadataEnabled: true,
-  externalImagesEnabled: true,
-  metadataProvider: 'cinemeta',
-  metadataLanguage: 'ja-JP',
-  tmdbApiKey: '',
-  libraryWatchEnabled: true,
-  shortsIncludeLandscapes: false,
-  queueBehavior: 'auto'
-};
+import { DEFAULT_SETTINGS, isSettingValue, validateSettingsPatch } from './settings.js';
 
 const SORT_ORDER: Record<SortKey, string> = {
   title: 'm.sort_title COLLATE NOCASE ASC, m.id ASC',
@@ -33,9 +23,11 @@ export class VireloDB {
 
   constructor(dataDir: string) {
     this.db = new DatabaseSync(resolve(dataDir, 'virelo.db'));
-    this.db.exec('PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL; PRAGMA foreign_keys=ON; PRAGMA busy_timeout=5000;');
-    this.migrate();
-    this.db.function('shorts_rank', { deterministic: true }, (id, seed) => shortsRank(Number(id), Number(seed)));
+    try {
+      this.db.exec('PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL; PRAGMA foreign_keys=ON; PRAGMA busy_timeout=5000;');
+      this.migrate();
+      this.db.function('shorts_rank', { deterministic: true }, (id, seed) => shortsRank(Number(id), Number(seed)));
+    } catch(error) { this.db.close();throw error; }
   }
 
   private migrate() {
@@ -166,13 +158,16 @@ export class VireloDB {
     const rows = this.db.prepare('SELECT key, value FROM settings').all() as Array<{key: string; value: string}>;
     const result: AppSettings = { ...DEFAULT_SETTINGS };
     for (const row of rows) {
-      if (!(row.key in result)) continue;
-      try { (result as unknown as Record<string, unknown>)[row.key] = JSON.parse(row.value); } catch { /* ignore corrupt setting */ }
+      try {
+        const value: unknown = JSON.parse(row.value);
+        if (isSettingValue(row.key, value)) (result as unknown as Record<string, unknown>)[row.key] = value;
+      } catch { /* Ignore corrupt settings and keep the default. */ }
     }
     return result;
   }
 
   updateSettings(patch: Partial<AppSettings>) {
+    validateSettingsPatch(patch);
     const allowed = new Set(Object.keys(DEFAULT_SETTINGS));
     const stmt = this.db.prepare(`INSERT INTO settings(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value`);
     this.db.exec('BEGIN');
@@ -240,6 +235,7 @@ export class VireloDB {
 
   addLibrary(path: string, label: string, persistent = true): Library {
     path = resolve(path);
+    try { path=realpathSync.native(path); } catch(error) { if((error as NodeJS.ErrnoException).code!=='ENOENT')throw error; }
     const now = Date.now();
     const libraries=this.listLibraries();
     const pathMatch=libraries.find(library=>this.pathKey(library.path)===this.pathKey(path));

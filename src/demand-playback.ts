@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { stat, rename, rm } from 'node:fs/promises';
+import { stat, rename } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { hasFfmpeg, probeMedia, canCopyVideoSegment, type PlaybackQuality } from './ffmpeg.js';
 import { runMediaProcess } from './media-process.js';
@@ -99,10 +99,12 @@ class Manager {
   private async encode(spec:Spec,index:number,quality:PlaybackQuality|undefined,path:string,signal:AbortSignal,owner:string){
     const temporary=path+'.part',start=index*SEGMENT_SECONDS,length=Math.min(SEGMENT_SECONDS,spec.duration-start);
     const work={owner,scope:this.root,signal};
+    let releaseBudget:(()=>void)|undefined;
     try{
       if(signal.aborted)throw Error('Playback request was cancelled.');
       const copy=spec.mode==='compatible'&&spec.copyVideo&&await canCopyVideoSegment(spec.source,start,length,spec.duration,spec.fingerprint,work);
-      await this.cache.prune(2*SEGMENT_MAX_BYTES);
+      releaseBudget=await this.cache.reserve(2*SEGMENT_MAX_BYTES);
+      this.cache.discard(temporary);
       await prepareGeneratedFile(temporary,this.cache.root);await prepareGeneratedFile(path,this.cache.root);
       const args=['-hide_banner','-loglevel','error','-filter_threads','1','-threads','2','-ss',String(start),'-i',spec.source,'-t',String(length)];
       if(spec.mode==='audio')args.push('-vn');
@@ -116,11 +118,11 @@ class Manager {
       await runMediaProcess(process.env.FFMPEG_PATH||'ffmpeg',args,{...work,kind:spec.mode==='audio'||copy?'interactive':'video',timeout:45000});
       const info=await stat(temporary);if(!info.size||info.size>=SEGMENT_MAX_BYTES)throw Error('Playback segment exceeds the size limit.');
       await rename(temporary,path);await this.cache.record(path);return path;
-    }finally{await rm(temporary,{force:true}).catch(()=>{});}
+    }finally{try{this.cache.discard(temporary);}catch{}releaseBudget?.();}
   }
   async stop(){const jobs=[...this.jobs.values()];for(const job of jobs)job.controller.abort();await Promise.allSettled(jobs.map(job=>job.promise));}
 }
 export async function stopDemandPlayback(dataDir?:string){await Promise.all([...managers].filter(([root])=>!dataDir||root===resolve(dataDir)).map(([,manager])=>manager.stop()));}
-export function initializeDemandCache(dataDir:string){return managerFor(dataDir).cache.prune();}
+export function initializeDemandCache(dataDir:string,safetyCheck:()=>void=()=>{},prune=true){const cache=managerFor(dataDir).cache;cache.setSafetyCheck(safetyCheck);return prune?cache.prune():Promise.resolve();}
 export function playbackCacheLimit(dataDir:string){return managerFor(dataDir).cache.limit;}
 export function clearPlaybackCache(dataDir:string,authorize:()=>void){return managerFor(dataDir).cache.clearUnused(authorize);}

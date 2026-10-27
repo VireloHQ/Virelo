@@ -1,8 +1,19 @@
 import type { Stats } from 'node:fs';
+import { realpathSync, statSync } from 'node:fs';
 import { open } from 'node:fs/promises';
 import { extname, isAbsolute, relative, sep } from 'node:path';
 
 const VIDEO_EXTENSIONS = new Set(['.mp4','.m4v','.mkv','.webm','.mov','.avi','.wmv','.mpg','.mpeg','.ts','.m2ts','.flv','.ogv','.3gp']);
+
+export function resolveLibraryFile(path:string,root:string):string|null {
+  try {
+    // Roots are canonical at registration; a later junction must not retarget a grant.
+    if(relative(root,realpathSync.native(root)))return null;
+    const actual=realpathSync.native(path),rest=relative(root,actual);
+    if(!rest||rest==='..'||rest.startsWith('..'+sep)||isAbsolute(rest)||!statSync(actual).isFile())return null;
+    return actual;
+  }catch{return null;}
+}
 
 export function ignoredMediaEntry(name: string) {
   return name.startsWith('.') || name.toLowerCase() === 'node_modules';

@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Harden public-host validation and local-only administration, cache/source filesystem boundaries, in-flight permission revocation, and concurrent playback-cache budgets. Preserve startup and direct playback when legacy library paths overlap the cache instead of pruning possible originals.
+- Validate settings before persisting them and bound decoded metadata/artwork downloads. Recover malformed preferences, account-language isolation, cross-tab appearance changes and restricted browser messaging/storage.
+- Retain HeroUI's accessible primitives while loading only used component styles. Move bundled fonts out of server runtime dependencies, retain their license and remove unused legacy transcode helpers/types.
+- Run feature-branch CI through pull requests rather than duplicate push checks, with read-only workflow tokens; retain main/release-tag verification.
+
 - Stabilize browser regression fixtures for playback continuity and background media work; keep language selection and connection recovery usable in short windows.
 - Pin media regression jobs to Ubuntu 24.04 and bound FFmpeg setup time while keeping the cross-platform build matrix on current runner images.
 

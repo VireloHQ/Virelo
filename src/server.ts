@@ -1,7 +1,7 @@
-import Fastify from 'fastify';
+import Fastify, { type FastifyRequest } from 'fastify';
 import fastifyStatic from '@fastify/static';
 import chokidar from 'chokidar';
-import { createReadStream, existsSync, watch as watchDirectory, type FSWatcher } from 'node:fs';
+import { createReadStream, existsSync, realpathSync, watch as watchDirectory, type FSWatcher } from 'node:fs';
 import { stat } from 'node:fs/promises';
 import { basename, extname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -19,12 +19,15 @@ import { directLocal, registerAccounts } from './auth.js';
 import { registerPlaylists } from './playlists.js';
 import type { CatalogScope } from './auth-types.js';
 import { pickNativeFolder } from './folder-picker.js';
-import { isMediaFile, isVideoPath, mediaWatchFilter } from './media-files.js';
+import { isMediaFile, isVideoPath, mediaWatchFilter, resolveLibraryFile } from './media-files.js';
+import { generatedFileInfo } from './image-files.js';
 import { assertSupportedNode } from './runtime.js';
 import { CustomCommands, registerCustomCommands } from './custom-commands.js';
 import { serverUrl,networkUrls,acceptsIpv4 } from './network-urls.js';
 import { registerNotifications } from './notifications.js';
 import { mediaScheduler,MediaBusyError } from './media-work.js';
+import { requestHostname, isTrustedHostname } from './request-security.js';
+import { AccountError } from './accounts.js';
 
 const SORT_KEYS: SortKey[] = ['title', 'newest', 'oldest', 'year', 'duration', 'random'];
 
@@ -47,37 +50,26 @@ function publicSettings(settings: AppSettings) {
 }
 
 
-function hostWithoutPort(value: string) {
-  if (value.startsWith('[')) return value.slice(1, value.indexOf(']'));
-  return value.split(':')[0].toLowerCase();
-}
-
-function isPrivateHost(host: string, configHost: string) {
-  const normalized = host.toLowerCase();
-  const trusted = (process.env.VIRELO_TRUSTED_HOSTS || '').split(',').map((value) => value.trim().toLowerCase()).filter(Boolean);
-  if (trusted.includes(normalized)) return true;
-  if (['localhost', '127.0.0.1', '::1'].includes(normalized) || normalized.endsWith('.local') || /^[a-z0-9-]+$/i.test(normalized)) return true;
-  if (configHost !== '0.0.0.0' && configHost !== '::' && normalized === configHost.toLowerCase()) return true;
-  if (/^127\./.test(normalized) || /^10\./.test(normalized) || /^192\.168\./.test(normalized) || /^169\.254\./.test(normalized)) return true;
-  const ipv4 = normalized.match(/^172\.(\d{1,3})\./);
-  if (ipv4 && Number(ipv4[1]) >= 16 && Number(ipv4[1]) <= 31) return true;
-  const cgnat = normalized.match(/^100\.(\d{1,3})\./);
-  if (cgnat && Number(cgnat[1]) >= 64 && Number(cgnat[1]) <= 127) return true;
-  if (/^(fc|fd|fe[89ab])/i.test(normalized)) return true;
-  return false;
-}
-
 function isTermuxRuntime() {
   return Boolean(process.env.TERMUX_VERSION || process.env.PREFIX?.includes('/com.termux/'));
 }
 
 export async function createVireloServer(config: RuntimeConfig, pickFolder: (signal: AbortSignal) => Promise<string | null> = pickNativeFolder) {
   assertSupportedNode();
-  mediaScheduler.openScope(resolve(config.dataDir));
   ensureDataDirs(config.dataDir);
-  await initializeDemandCache(config.dataDir);
+  config={...config,dataDir:realpathSync.native(config.dataDir)};
+  mediaScheduler.openScope(resolve(config.dataDir));
   const db = new VireloDB(config.dataDir);
+  // Broad/archived libraries may contain even a hidden data folder; keep the UI, disable the cache.
+  const checkCacheLibraries=()=>assertSeparateCache(config.dataDir,[...config.mediaPaths,...db.listLibraries().map(library=>library.path)]);
+  let cacheBlocked:Error|undefined;
+  try {
+    try{checkCacheLibraries();}catch(error){if((error as {statusCode?:number}).statusCode!==409)throw error;cacheBlocked=error as Error;}
+    await initializeDemandCache(config.dataDir,checkCacheLibraries,!cacheBlocked);
+  } catch(error) { db.close();await mediaScheduler.closeScope(resolve(config.dataDir));throw error; }
   const app = Fastify({ logger: { level: process.env.VIRELO_LOG_LEVEL || 'info', redact: ['req.headers.cookie','req.headers.authorization','res.headers.set-cookie'] }, bodyLimit: 1024 * 1024 });
+  if(cacheBlocked)app.log.warn(cacheBlocked.message);
+  const trustedHosts = (process.env.VIRELO_TRUSTED_HOSTS || '').split(',').map(value => value.trim().toLowerCase()).filter(Boolean);
   const commands = new CustomCommands(db.db, config.dataDir, () => {
     const address = app.server.address();
     const host = address && typeof address === 'object' ? address.address : config.host;
@@ -85,8 +77,8 @@ export async function createVireloServer(config: RuntimeConfig, pickFolder: (sig
   });
   app.addHook('onRequest', async (request, reply) => {
     const hostHeader = request.headers.host || '';
-    const hostname = hostWithoutPort(hostHeader);
-    if (!hostname || (!isPrivateHost(hostname, config.host) && !commands.allowsHost(hostname))) return reply.code(403).send({ error: 'Untrusted Host header.' });
+    const hostname = requestHostname(hostHeader);
+    if (!hostname || (!isTrustedHostname(hostname, config.host, trustedHosts) && !commands.allowsHost(hostname))) return reply.code(403).send({ error: 'Untrusted Host header.' });
     const origin = request.headers.origin;
     if (origin) {
       try {
@@ -109,6 +101,33 @@ export async function createVireloServer(config: RuntimeConfig, pickFolder: (sig
   });
   const webRoot = fileURLToPath(new URL('./web', import.meta.url));
   const { accounts, fresh } = registerAccounts(app, db, host => commands.allowsHost(host));
+  const mediaResource=(request:FastifyRequest)=>{
+    const user=fresh(request),scope=accounts.scope(user),route=request.routeOptions.url??'';
+    const params=request.params as {id?:string;'*'?:string};
+    const media=db.getMedia(Number(params.id??params['*']?.split('/')[0]),scope);
+    if(!media)throw new AccountError('Media not found.',404);
+    if(!route.includes('/artwork/')&&!user.permissions.play
+      ||(route.startsWith('/playback/')||/\/(?:transcode|quality|audio)\//.test(route))&&!user.permissions.transcode)
+      throw new AccountError('Your account does not have permission for this action.',403);
+    if(/^\/(?:hls|audio|playback)\//.test(route)||/^\/api\/media\/:id\/(?:transcode|quality|audio|subtitles)\//.test(route))checkCacheLibraries();
+    if(route.includes('/artwork/'))return media;
+    const library=db.visibleLibraries(scope).find(library=>library.id===media.library_id);
+    const path=library&&resolveLibraryFile(media.path,library.path);
+    if(!path||db.libraryForPath(path)?.id!==media.library_id)throw new AccountError('Media file not found',404);
+    return {...media,path};
+  };
+  const cachedPath=(request:FastifyRequest,bucket:string)=>resolve(config.dataDir,'cache',bucket,(request.params as {'*':string})['*']);
+  app.addHook('preHandler',async request=>{if(/^\/(?:hls|audio)\//.test(request.routeOptions.url??''))mediaResource(request);});
+  app.addHook('onSend',async(request,reply,payload)=>{
+    const route=request.routeOptions.url??'';
+    if(reply.statusCode<400&&(/^\/(?:hls|audio|playback)\//.test(route)||/^\/api\/media\/:id\/(?:stream|playback|subtitles|transcode|quality|audio|artwork)(?:\/|$)/.test(route))){
+      mediaResource(request);
+      const bucket=/^\/(hls|audio)\//.exec(route)?.[1];
+      if(bucket)try{generatedFileInfo(cachedPath(request,bucket),resolve(config.dataDir,'cache'));}
+      catch{throw new AccountError('Playback resource not found.',404);}
+    }
+    return payload;
+  });
   registerNotifications(app,db.db);
   app.get('/api/share/addresses',async request=>{
     if(!directLocal(request))return [];
@@ -241,7 +260,10 @@ export async function createVireloServer(config: RuntimeConfig, pickFolder: (sig
     });
   });
   app.post<{ Body: Partial<AppSettings> & { tmdbApiKey?: string; clearTmdbApiKey?: boolean } }>('/api/settings', async (request) => {
-    const body = request.body || {};
+    const body = request.body ?? {};
+    if (typeof body !== 'object' || Array.isArray(body)
+      || body.clearTmdbApiKey !== undefined && typeof body.clearTmdbApiKey !== 'boolean'
+      || body.tmdbApiKey !== undefined && typeof body.tmdbApiKey !== 'string') throw new AccountError('Invalid settings.');
     const patch: Partial<AppSettings> = {};
     for (const key of ['externalMetadataEnabled','externalImagesEnabled','metadataProvider','metadataLanguage','libraryWatchEnabled','shortsIncludeLandscapes','queueBehavior'] as const) {
       if (body[key] !== undefined) (patch as any)[key] = body[key];
@@ -284,6 +306,7 @@ export async function createVireloServer(config: RuntimeConfig, pickFolder: (sig
     }
     const user = fresh(request);
     if (!user.permissions.manageLibraries) return reply.code(403).send({ error: 'Library management is not allowed.' });
+    assertSeparateCache(config.dataDir,[path]);
     const label = typeof request.body?.label === 'string' ? request.body.label.trim().slice(0,200) : '';
     const library = db.addLibrary(path, label || basename(path) || path);
     if (!user.allLibraries) accounts.grantLibrary(user.id, library.id);
@@ -329,19 +352,19 @@ export async function createVireloServer(config: RuntimeConfig, pickFolder: (sig
     return { ok: true };
   });
   app.get<{ Params: { id: string } }>('/api/media/:id/playback', async (request, reply) => {
-    const media = db.getMedia(Number(request.params.id), request.catalogScope!);
-    if (!media || !existsSync(media.path)) return reply.code(404).send({ error: 'Media file not found' });
+    const media = mediaResource(request);
     const info = await probePlaybackInfo(media.path,{owner:String(request.account!.id),scope:resolve(config.dataDir)});
+    mediaResource(request);
     if (!info) return reply.code(503).send({ error: 'ffprobe is required to inspect audio and subtitle tracks.' });
     return info;
   });
   app.post<{ Params: { id: string }; Body: { audioStream?: number; startTime?: number } }>('/api/media/:id/transcode/start', async (request, reply) => {
-    const media = db.getMedia(Number(request.params.id), request.catalogScope!);
-    if (!media || !existsSync(media.path)) return reply.code(404).send({ error: 'Media file not found' });
+    let media = mediaResource(request);
     const audioStream = request.body?.audioStream;
     const startTime=request.body?.startTime;
     if(startTime!==undefined&&(!Number.isFinite(startTime)||startTime<0||(media.duration&&startTime>=media.duration)))return reply.code(400).send({error:'Invalid seek position.'});
     const info=await probePlaybackInfo(media.path,{owner:String(request.account!.id),scope:resolve(config.dataDir)});
+    media=mediaResource(request);
     if (audioStream !== undefined) {
       if (!Number.isInteger(audioStream) || audioStream < 0) return reply.code(400).send({ error: 'Invalid audio stream.' });
       if (!info?.audioTracks.some((track) => track.index === audioStream)) return reply.code(400).send({ error: 'Audio stream not found.' });
@@ -356,11 +379,11 @@ export async function createVireloServer(config: RuntimeConfig, pickFolder: (sig
     return transcodeStatus(config.dataDir, Number(request.params.id), audioStream,startTime);
   });
   app.post<{ Params: { id: string }; Body: { audioStream?: number; startTime?: number } }>('/api/media/:id/quality/start', async (request, reply) => {
-    const media=db.getMedia(Number(request.params.id), request.catalogScope!);
-    if(!media||!existsSync(media.path))return reply.code(404).send({error:'Media file not found'});
+    let media=mediaResource(request);
     const startTime=request.body?.startTime;
     if(startTime!==undefined&&(!Number.isFinite(startTime)||startTime<0||(media.duration&&startTime>=media.duration)))return reply.code(400).send({error:'Invalid seek position.'});
     const info=await probePlaybackInfo(media.path,{owner:String(request.account!.id),scope:resolve(config.dataDir)});
+    media=mediaResource(request);
     if(!info||!info.width||!info.height)return reply.code(503).send({error:'Video resolution could not be inspected.'});
     const audioStream=request.body?.audioStream;
     if(audioStream!==undefined&&(!Number.isInteger(audioStream)||!info.audioTracks.some((track)=>track.index===audioStream)))return reply.code(400).send({error:'Audio stream not found.'});
@@ -376,11 +399,11 @@ export async function createVireloServer(config: RuntimeConfig, pickFolder: (sig
     return adaptiveTranscodeStatus(config.dataDir,media.id,audioStream,playbackQualities(media.width,media.height),startTime);
   });
   app.post<{ Params: { id: string }; Body: { audioStream?: number } }>('/api/media/:id/audio/start', async (request, reply) => {
-    const media = db.getMedia(Number(request.params.id), request.catalogScope!);
-    if (!media || !existsSync(media.path)) return reply.code(404).send({ error: 'Media file not found' });
+    let media = mediaResource(request);
     const audioStream = request.body?.audioStream;
     if (!Number.isInteger(audioStream) || Number(audioStream) < 0) return reply.code(400).send({ error: 'Invalid audio stream.' });
     const info = await probePlaybackInfo(media.path,{owner:String(request.account!.id),scope:resolve(config.dataDir)});
+    media=mediaResource(request);
     if (!info?.audioTracks.some((track) => track.index === audioStream)) return reply.code(400).send({ error: 'Audio stream not found.' });
     return startAudioTranscode(config.dataDir, media.id, media.path, Number(audioStream),media.duration);
   });
@@ -392,18 +415,21 @@ export async function createVireloServer(config: RuntimeConfig, pickFolder: (sig
     return audioTranscodeStatus(config.dataDir, media.id, audioStream);
   });
   app.get<{ Params: { id: string; stream: string } }>('/api/media/:id/subtitles/:stream', async (request, reply) => {
-    const media = db.getMedia(Number(request.params.id), request.catalogScope!);
-    if (!media || !existsSync(media.path)) return reply.code(404).send({ error: 'Media file not found' });
+    let media = mediaResource(request);
     const subtitleStream = Number(request.params.stream);
     if (!Number.isInteger(subtitleStream) || subtitleStream < 0) return reply.code(400).send({ error: 'Invalid subtitle stream.' });
     const info = await probePlaybackInfo(media.path,{owner:String(request.account!.id),scope:resolve(config.dataDir)});
+    media=mediaResource(request);
     const track = info?.subtitleTracks.find((candidate) => candidate.index === subtitleStream);
     if (!track) return reply.code(404).send({ error: 'Subtitle stream not found.' });
     if (!track.supported) return reply.code(415).send({ error: 'This subtitle format cannot be converted to WebVTT.' });
     try {
       const subtitle = await extractSubtitleVtt(config.dataDir, media.id, media.path, subtitleStream,String(request.account!.id));
+      mediaResource(request);
+      generatedFileInfo(subtitle.path,resolve(config.dataDir,'cache'));
       return reply.type('text/vtt; charset=utf-8').header('Cache-Control','private, max-age=86400').send(createReadStream(subtitle.path));
     } catch (error) {
+      if(error instanceof AccountError)throw error;
       if(error instanceof MediaBusyError)return reply.code(503).header('Retry-After','1').send({error:error.message});
       return reply.code(500).send({ error: error instanceof Error ? error.message : 'Subtitle conversion failed.' });
     }
@@ -442,18 +468,25 @@ export async function createVireloServer(config: RuntimeConfig, pickFolder: (sig
   });
 
   app.get<{ Params: { id: string; kind: string } }>('/api/media/:id/artwork/:kind', async (request, reply) => {
-    const media = db.getMedia(Number(request.params.id), request.catalogScope!);
-    if (!media) return reply.code(404).send();
+    const media = mediaResource(request);
     const path = request.params.kind === 'poster' ? media.poster_path : request.params.kind === 'backdrop' ? media.backdrop_path : media.thumbnail_path;
-    if (!path || !existsSync(path)) return reply.code(404).send();
-    reply.header('Cache-Control', 'public, max-age=86400, immutable').type(contentType(path));
-    return reply.send(createReadStream(path));
+    if (!path) return reply.code(404).send();
+    let actual:string|null=null;
+    for(const folder of ['thumbnails','artwork'])try{generatedFileInfo(path,resolve(config.dataDir,folder));actual=path;break;}catch{}
+    if(!actual){
+      const library=db.visibleLibraries().find(library=>library.id===media.library_id);
+      actual=library?resolveLibraryFile(path,library.path):null;
+      if(actual&&db.libraryForPath(actual)?.id!==media.library_id)actual=null;
+    }
+    if(!actual)return reply.code(404).send();
+    reply.header('Cache-Control', 'private, no-store').type(contentType(actual));
+    return reply.send(createReadStream(actual));
   });
 
   app.get<{ Params: { id: string } }>('/api/media/:id/stream', async (request, reply) => {
-    const media = db.getMedia(Number(request.params.id), request.catalogScope!);
-    if (!media || !existsSync(media.path)) return reply.code(404).send({ error: 'Media file not found' });
+    const media = mediaResource(request);
     const info = await stat(media.path);
+    mediaResource(request);
     const total = info.size;
     const range = request.headers.range;
     reply.header('Accept-Ranges', 'bytes').header('Cache-Control', 'private, max-age=0').type(contentType(media.path));
@@ -487,6 +520,7 @@ export async function createVireloServer(config: RuntimeConfig, pickFolder: (sig
   });
 
   app.get<{Params:{id:string;stamp:string;mode:string;audio:string;'*':string}}>('/playback/:id/:stamp/:mode/:audio/*',async(request,reply)=>{
+    mediaResource(request);
     const {id,stamp,mode,audio}=request.params,resource=request.params['*'];
     const prefix=`/playback/${id}/${stamp}/${mode}/${audio}`;
     const manifest=demandManifest(config.dataDir,prefix,resource);
@@ -496,13 +530,19 @@ export async function createVireloServer(config: RuntimeConfig, pickFolder: (sig
     const abort=()=>{if(!reply.raw.writableFinished)controller.abort();};reply.raw.once('close',abort);
     try{
       const segment=await demandSegment(config.dataDir,prefix,resource,controller.signal,String(request.account!.id));
+      try{mediaResource(request);generatedFileInfo(segment.path,resolve(config.dataDir,'cache'));}
+      catch(error){segment.release();throw error;}
       if(controller.signal.aborted){segment.release();return reply;}
       reply.raw.once('close',segment.release);
       return reply.type('video/mp2t').header('Cache-Control','private, max-age=3600').send(createReadStream(segment.path));
-    }catch(reason){if(controller.signal.aborted)return reply;if(reason instanceof MediaBusyError)reply.header('Retry-After','1');return reply.code(503).send({error:reason instanceof Error?reason.message:'Playback segment is unavailable.'});}
+    }catch(reason){if(controller.signal.aborted)return reply;if(reason instanceof AccountError)throw reason;if(reason instanceof MediaBusyError)reply.header('Retry-After','1');return reply.code(503).send({error:reason instanceof Error?reason.message:'Playback segment is unavailable.'});}
   });
-  await app.register(fastifyStatic, { root: resolve(config.dataDir, 'cache', 'hls'), prefix: '/hls/', wildcard: true, decorateReply: false, cacheControl: false });
-  await app.register(fastifyStatic, { root: resolve(config.dataDir, 'cache', 'audio'), prefix: '/audio/', wildcard: true, decorateReply: false, cacheControl: false });
+  for(const bucket of ['hls','audio'])await app.register(fastifyStatic, {
+    root:resolve(config.dataDir,'cache',bucket),prefix:`/${bucket}/`,wildcard:true,decorateReply:false,cacheControl:false,
+    allowedPath(pathname,root,request){
+      try{mediaResource(request);generatedFileInfo(resolve(root,'.'+pathname),resolve(config.dataDir,'cache'));return true;}catch{return false;}
+    }
+  });
   await app.register(fastifyStatic, {
     root: webRoot, prefix: '/', wildcard: true, decorateReply: true,
     setHeaders(reply, path) {

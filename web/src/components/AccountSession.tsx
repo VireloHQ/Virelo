@@ -33,8 +33,8 @@ export function AccountSession({ children }: {children:ReactNode}) {
   const query = useQuery({ queryKey:sessionKey, queryFn:api.authStatus, retry:false, staleTime:0, refetchOnWindowFocus:true, refetchInterval:60_000 });
   const channel = useRef<BroadcastChannel | null>(null);
   const notify = () => {
-    if (channel.current) channel.current.postMessage('changed');
-    else try { localStorage.setItem('virelo-account-changed', String(Date.now())); } catch { /* Focus also rechecks the session. */ }
+    try { if (channel.current) { channel.current.postMessage('changed'); return; } } catch { /* Fall back when browser messaging is blocked. */ }
+    try { localStorage.setItem('virelo-account-changed', Date.now() + ':' + Math.random()); } catch { /* Focus also rechecks the session. */ }
   };
   const refresh = async () => { await client.invalidateQueries({queryKey:sessionKey}); };
   useEffect(() => {
@@ -45,7 +45,9 @@ export function AccountSession({ children }: {children:ReactNode}) {
     const storage = (event:StorageEvent) => { if (event.key === 'virelo-account-changed') expired(); };
     window.addEventListener('virelo-auth-expired', expired);
     window.addEventListener('storage', storage);
-    if ('BroadcastChannel' in window) { channel.current = new BroadcastChannel('virelo-account'); channel.current.onmessage = expired; }
+    try {
+      if ('BroadcastChannel' in window) { channel.current = new BroadcastChannel('virelo-account'); channel.current.onmessage = expired; }
+    } catch { channel.current = null; }
     return () => { window.removeEventListener('virelo-auth-expired',expired); window.removeEventListener('storage',storage); channel.current?.close(); channel.current = null; };
   }, [client]);
   const logout = async () => {

@@ -61,6 +61,30 @@ async function checkFieldFocus(page,label) {
   assert.equal(focus.outline,'solid',label+' retains a visible focus indicator');
   assert.equal(focus.width,'2px');assert.equal(focus.offset,'-2px',label+' focus indicator stays inside the field');
 }
+async function checkRestrictedMessaging(browser,base,server) {
+  const admin=server.accounts.list().find(user=>user.enabled&&user.isAdmin);
+  for(const mode of ['constructor','postMessage']) {
+    const context=await browser.newContext({serviceWorkers:'block',reducedMotion:'reduce'}),errors=[];
+    try {
+      await context.addCookies([{name:'virelo_session',value:server.accounts.createSession(admin),url:base,httpOnly:true,sameSite:'Strict'}]);
+      await context.addInitScript(mode=>{
+        const NativeChannel=window.BroadcastChannel;
+        window.BroadcastChannel=mode==='constructor'?class {constructor(){throw new DOMException('Blocked','SecurityError');}}:class extends NativeChannel {postMessage(){throw new DOMException('Blocked','SecurityError');}};
+      },mode);
+      const pages=await Promise.all([context.newPage(),context.newPage()]);
+      for(const page of pages)page.on('pageerror',error=>errors.push(error.message));
+      await Promise.all(pages.map(async page=>{
+        await page.goto(base+'/settings#account');
+        await page.getByRole('button',{name:'Sign out',exact:true}).waitFor();
+      }));
+      await pages[0].getByRole('button',{name:'Sign out',exact:true}).click();
+      await Promise.all(pages.map(page=>page.getByRole('heading',{name:'Welcome back',exact:true}).waitFor({timeout:12000})));
+      assert.deepEqual(errors,[],mode+' failure must not break the app or cross-tab logout');
+      for(const page of pages)assert.equal(await page.locator('.media-card,.account-users').count(),0);
+    } finally {await context.close();}
+  }
+  console.log('accounts: blocked messaging falls back to storage without breaking sign-in or cross-tab logout');
+}
 process.env.VIRELO_LOG_LEVEL='silent';
 let browser,server,diagnosticPage;
 let chosenFolder=null,pickCalls=0,pickError=false;
@@ -366,6 +390,7 @@ try {
   console.log('accounts: profile username, display name and password changes keep the current session usable');
   assert.deepEqual(errors,[]);
   await owner.close();await viewer.close();
+  await checkRestrictedMessaging(browser,base,server);
 } catch(error) {
   if(diagnosticPage&&!diagnosticPage.isClosed())await diagnosticPage.screenshot({path:join(repo,'node_modules/.cache/accounts-failure.png')}).catch(()=>undefined);
   throw error;

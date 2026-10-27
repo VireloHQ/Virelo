@@ -15,6 +15,12 @@ test('appearance defaults and validation are bounded, normalized and injection-s
   assert.deepEqual(normalize({ controllerStyle: 'unknown', accentColor: 'url(secret)' }), defaults);
   assert.deepEqual(normalize({ controllerStyle: 'theater', accentColor: '#AB12EF' }), { controllerStyle: 'theater', accentColor: '#ab12ef' });
   assert.deepEqual(variables('url(secret)'), {});
+  for (const suffix of ['\n', '\r', '\r\n']) {
+    const accentColor = '#abcdef' + suffix;
+    assert.equal(valid({ ...defaults, accentColor }), false, 'trailing line breaks are not hex colors');
+    assert.deepEqual(normalize({ ...defaults, accentColor }), defaults);
+    assert.deepEqual(variables(accentColor), {});
+  }
 });
 test('custom accents remain readable, including black and saturated colors', () => {
   const luminance = hex => [1, 3, 5].reduce((sum, index, i) => {
