@@ -56,6 +56,14 @@ export async function auditPlayerTransport(page,label,check,artifacts) {
   const volume=player.getByRole('button',{name:'Volume',exact:true});
   await volume.click();
   const dialog=page.getByRole('dialog',{name:'Volume',exact:true}),slider=dialog.getByRole('slider',{name:'Volume',exact:true});
+  for(let cycle=0;cycle<3;cycle++) {
+    await slider.focus();
+    await volume.click();
+    await page.waitForTimeout(250);
+    check(!await dialog.isVisible(),label+' volume trigger closes once without reopening, cycle '+(cycle+1));
+    await volume.click();
+    await dialog.waitFor({state:'visible'});
+  }
   await slider.fill('0.6');
   await page.waitForFunction(()=>Math.abs(document.querySelector('.player video').volume-.6)<.01);
   check(await dialog.getByRole('status',{name:'Volume level'}).textContent()==='60',label+' volume popover shows the selected percentage');

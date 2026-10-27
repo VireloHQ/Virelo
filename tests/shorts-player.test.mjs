@@ -29,3 +29,12 @@ test('Shorts have no back overlay or opaque icon discs', async () => {
   assert.doesNotMatch(css, /\.shorts-back\b/);
   assert.match(css, /\.short-actions button svg \{[^}]*padding:0;[^}]*border:0;[^}]*background:transparent;/);
 });
+
+test('Japanese Shorts captions stay concise while accessible picture-in-picture names remain descriptive', async () => {
+  const ja = JSON.parse(await readFile(new URL('../web/src/i18n/messages/ja.json', import.meta.url), 'utf8'));
+  assert.equal(ja.PiP, 'PiP');
+  assert.equal(ja.Original, '元の画質');
+  for (const key of ['Mute','Unmute','Favorites','Saved','Original','Audio','Subtitles','PiP','Next'])
+    assert.ok([...ja[key]].length <= 5, key + ' must fit the compact action rail');
+  assert.notEqual(ja['Picture in Picture'], ja.PiP);
+});
