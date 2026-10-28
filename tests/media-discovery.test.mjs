@@ -7,6 +7,8 @@ import {isMediaFile,isVideoPath,mediaWatchFilter} from '../dist/media-files.js';
 import {scanLibrary} from '../dist/scanner.js';
 import {createVireloServer} from '../dist/server.js';
 import {refreshMissingMetadata} from '../dist/metadata.js';
+import {execFileSync} from 'node:child_process';
+import {hasFfmpeg,hasFfprobe} from '../dist/ffmpeg.js';
 process.env.VIRELO_LOG_LEVEL='silent';
 
 async function fixture(t){
@@ -104,6 +106,35 @@ test('closing the server finishes an in-flight discovery before closing its data
   await server.app.close();assert.equal(server.scanStatus.running,false);assert.equal(server.scanStatus.errors,0);
   assert.equal(await server.runScan(),false,'shutdown cannot start another scan against a closed database');
   } finally {await server.app.close();}
+});
+
+test('folder changes during an active scan are scanned again and receive thumbnails', {timeout:20000}, async t=>{
+  if(!await hasFfmpeg()||!await hasFfprobe()){t.skip('FFmpeg and ffprobe are required');return;}
+  const root=await fixture(t),media=join(root,'media');await mkdir(media);
+  const source=join(media,'First.mp4'),added=join(media,'Added.mp4');
+  execFileSync(process.env.FFMPEG_PATH||'ffmpeg',['-hide_banner','-loglevel','error','-f','lavfi','-i','color=c=0x334455:s=160x90:r=5:d=2','-c:v','libx264','-pix_fmt','yuv420p',source],{windowsHide:true});
+  const original=await readFile(source),fetchOriginal=globalThis.fetch;
+  let release,entered=false;
+  const metadataGate=new Promise(resolve=>{release=resolve;});
+  globalThis.fetch=async()=>{entered=true;await metadataGate;return new Response(JSON.stringify({metas:[]}));};
+  const server=await createVireloServer({dataDir:join(root,'data'),mediaPaths:[media],host:'127.0.0.1',port:0});
+  try {
+    server.db.updateSettings({externalMetadataEnabled:true,externalImagesEnabled:false});await server.app.ready();
+    await server.runScan();
+    const waiting=Date.now()+5000;
+    while(!entered&&Date.now()<waiting)await new Promise(done=>setTimeout(done,10));
+    assert.ok(entered,'the scan has finished its file snapshot and is still matching metadata');
+    await writeFile(added,original);
+    await new Promise(done=>setTimeout(done,3500));
+    assert.equal(server.scanStatus.running,true,'the watcher debounce expires while the first scan is still active');
+    release();
+    const deadline=Date.now()+7000;
+    while((!server.db.getMediaByPath(added)?.thumbnail_path||server.scanStatus.running)&&Date.now()<deadline)await new Promise(done=>setTimeout(done,25));
+    const item=server.db.getMediaByPath(added);
+    assert.ok(item?.thumbnail_path,'the queued scan generates artwork for the newly added video');
+    assert.ok((await stat(item.thumbnail_path)).size>0);
+    assert.deepEqual(await readFile(source),original);assert.deepEqual(await readFile(added),original);
+  } finally {release();await server.app.close();globalThis.fetch=fetchOriginal;}
 });
 
 test('cancelled discovery never prunes records and shutdown stops scheduling metadata jobs',async t=>{

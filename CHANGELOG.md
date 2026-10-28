@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Refresh artwork after library scans, retain folder changes detected during a scan, and dismiss playlist-save feedback without shifting action buttons.
+
 - Add videos to existing or new playlists from media-card context menus.
 
 - Save personal appearance preferences automatically and keep administrator Save actions scoped to their own settings section.

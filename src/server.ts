@@ -145,6 +145,7 @@ export async function createVireloServer(config: RuntimeConfig, pickFolder: (sig
   app.addHook('preClose', async () => { closing = true; scanAbort.abort(); activePicker?.abort(); await Promise.all([commands.close(),mediaScheduler.closeScope(resolve(config.dataDir))]); });
   let watcher: { close(): void | Promise<unknown> } | null = null;
   let watchDebounce: NodeJS.Timeout | null = null;
+  let watchScanPending = false;
 
   if (config.mediaPaths.length) {
     for (const mediaPath of config.mediaPaths) {
@@ -185,6 +186,10 @@ export async function createVireloServer(config: RuntimeConfig, pickFolder: (sig
       } finally {
         scanStatus.running = false;
         scanStatus.finishedAt = Date.now();
+        if (watchScanPending && !closing) {
+          watchScanPending = false;
+          void runScan();
+        }
       }
     })();
     return true;
@@ -192,6 +197,8 @@ export async function createVireloServer(config: RuntimeConfig, pickFolder: (sig
 
   async function refreshWatcher() {
     if (watcher) { await watcher.close(); watcher = null; }
+    if (watchDebounce) { clearTimeout(watchDebounce); watchDebounce = null; }
+    watchScanPending = false;
     if (closing || !db.getSettings().libraryWatchEnabled) return;
     const paths = db.visibleLibraries().map((l) => l.path).filter((p) => existsSync(p));
     if (!paths.length) return;
@@ -199,7 +206,11 @@ export async function createVireloServer(config: RuntimeConfig, pickFolder: (sig
     const schedule = () => {
       if (closing) return;
       if (watchDebounce) clearTimeout(watchDebounce);
-      watchDebounce = setTimeout(() => { void runScan(); }, 1400);
+      watchDebounce = setTimeout(() => {
+        watchDebounce = null;
+        if (scanStatus.running) watchScanPending = true;
+        else void runScan();
+      }, 1400);
     };
     const scheduleFile = (path: string) => {
       if (closing) return;

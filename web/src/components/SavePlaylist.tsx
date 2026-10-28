@@ -1,6 +1,7 @@
 import { Trans } from '../i18n/Trans';
 import { t, useLocale } from '../i18n';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Input } from '@heroui/react';
 import { ListPlus } from '@phosphor-icons/react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -15,6 +16,11 @@ export function SavePlaylist({ mediaIds, label = 'Add to playlist', initialOpen,
   const client = useQueryClient();
   const [enabled, setEnabled] = useState(Boolean(initialOpen)), [name, setName] = useState(''), [target, setTarget] = useState('new');
   const [notice, setNotice] = useState('');
+  useEffect(() => {
+    if (!notice) return;
+    const timeout = window.setTimeout(() => setNotice(''), 3500);
+    return () => window.clearTimeout(timeout);
+  }, [notice]);
   const playlists = useQuery({ queryKey: ['playlists'], queryFn: api.playlists, enabled, refetchOnMount: 'always' });
   return <div className="save-playlist" onClick={event=>event.stopPropagation()} onPointerDown={event=>event.stopPropagation()} onContextMenu={event=>event.stopPropagation()}>
     <ConfirmationDialog triggerLabel={t(label)} triggerIcon={<ListPlus aria-hidden="true"/>} title={t("Save to playlist")} confirmLabel={t("Save")} confirmVariant="primary"
@@ -28,7 +34,7 @@ export function SavePlaylist({ mediaIds, label = 'Add to playlist', initialOpen,
           : (() => { throw new Error('Reload the playlist list and try again.'); })();
         await client.invalidateQueries({ queryKey: ['playlists'] });
         await client.invalidateQueries({ queryKey: ['playlist', saved.id] });
-        setNotice(t('Saved to {name}.',{name:saved.name}));
+        setNotice(saved.name);
       }}>
       <div className="playlist-form">
         <Select label={t("Playlist")} value={target} options={[{ value: 'new', label: t('New playlist') },
@@ -39,6 +45,6 @@ export function SavePlaylist({ mediaIds, label = 'Add to playlist', initialOpen,
         {playlists.isError && <p className="error-copy" role="alert"><Trans message="Could not load existing playlists. {value0}" values={{value0:<button type="button" onClick={() => void playlists.refetch()}>{t("Try again")}</button>}}/></p>}
       </div>
     </ConfirmationDialog>
-    {notice && <span className="playlist-notice" role="status">{t(notice)}</span>}
+    {notice && createPortal(<span className="playlist-save-notice" role="status">{t('Saved to {name}.',{name:notice})}</span>, document.fullscreenElement || document.body)}
   </div>;
 }
