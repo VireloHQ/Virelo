@@ -193,6 +193,7 @@ api.mediaSource=async id=>{if(!urls.has(id))urls.set(id,URL.createObjectURL(awai
     const reset=panel.getByRole('button',{name:'Reset changes',exact:true});
     check(await panel.evaluate(element=>{const style=getComputedStyle(element);return style.borderTopStyle==='solid'&&parseFloat(style.borderTopWidth)>=1&&parseFloat(style.borderRadius)>0;}),label+' playlist videos are grouped inside a bordered panel');
     check(await panel.getByRole('heading',{name:'Playlist videos',exact:true}).isVisible(),label+' the list has its own visible heading');
+    check(await panel.locator('.playback-queue-tile').evaluateAll(rows=>rows.every(row=>{const style=getComputedStyle(row);return parseFloat(style.borderTopWidth)===0&&parseFloat(style.borderBottomWidth)===0&&parseFloat(style.paddingTop)===0&&parseFloat(style.paddingBottom)===0;})),label+' video rows are compact without separator lines');
     check(await reset.isDisabled()&&await panel.getByRole('button',{name:'Playlist options',exact:true}).count()===0,label+' whole-list reset is explicit, disabled when unchanged, and not another ellipsis');
     check(await panel.getByRole('link',{name:'Add videos',exact:true}).getAttribute('href')===prefix+'/library',label+' add videos is a visible library action inside the list header');
     check(await panel.locator('.queue-item-menu').evaluateAll(buttons=>buttons.length===3&&buttons.every(button=>{const rect=button.getBoundingClientRect();return rect.width>=44&&rect.height>=44;})),label+' each video retains its own touch-sized options button');

@@ -30,8 +30,7 @@
 .playlist-add-videos { min-height:44px; max-width:100%; gap:8px; font-size:14px; }
 .playlist-add-videos svg { flex:none; width:20px; height:20px; }
 .playlist-editor .playback-queue[data-editing] .playback-queue-list { max-height:65dvh; gap:0; padding:0 12px; }
-.playlist-editor .playback-queue[data-editing] .playback-queue-tile { grid-template-columns:32px minmax(0,1fr) 44px; padding:8px 0; border-bottom:1px solid var(--line); border-radius:0; }
-.playlist-editor .playback-queue[data-editing] .playback-queue-tile:last-child { border-bottom:0; }
+.playlist-editor .playback-queue[data-editing] .playback-queue-tile { grid-template-columns:32px minmax(0,1fr) 44px; padding:0; border-radius:0; }
 .playlist-editor .playback-queue[data-editing] .queue-item-menu { width:44px; }
 .playlist-editor .playback-queue[data-editing] .queue-item-menu[aria-expanded="true"] { background:rgba(255,255,255,.06); }
 .playlist-editor .playback-queue[data-editing] .queue-footer { padding:8px 20px; border-top:1px solid var(--line); }
