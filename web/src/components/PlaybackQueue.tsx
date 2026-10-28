@@ -1,5 +1,5 @@
 import { t, useLocale } from '../i18n';
-import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { DndContext, DragOverlay, KeyboardSensor, PointerSensor, closestCenter, useSensor, useSensors } from '@dnd-kit/core';
 import { SortableContext, horizontalListSortingStrategy, verticalListSortingStrategy, sortableKeyboardCoordinates, useSortable } from '@dnd-kit/sortable';
@@ -27,6 +27,7 @@ interface PlaybackQueueProps {
   state: QueueState;
   onEdit: (change: (current: QueueState) => QueueState) => void;
   editing?: boolean;
+  headerActions?: ReactNode;
 }
 const reducedQuery = () => window.matchMedia('(prefers-reduced-motion: reduce)');
 const subscribeMotion = (notify: () => void) => {
@@ -34,7 +35,7 @@ const subscribeMotion = (notify: () => void) => {
   return () => query.removeEventListener('change', notify);
 };
 
-export function PlaybackQueue({ items, activeIndex, repeatMode, onRepeatChange, onSelect, state, onEdit, editing = false }: PlaybackQueueProps) {
+export function PlaybackQueue({ items, activeIndex, repeatMode, onRepeatChange, onSelect, state, onEdit, editing = false, headerActions }: PlaybackQueueProps) {
   useLocale();
   const { layout: savedLayout, setLayout } = useQueueLayout();
   const layout = editing ? 'vertical' : savedLayout;
@@ -88,9 +89,8 @@ export function PlaybackQueue({ items, activeIndex, repeatMode, onRepeatChange, 
   const focusList = () => requestAnimationFrame(() => queueList.current?.focus({ preventScroll: true }));
   const menuIndex = items.findIndex(item => item.id === menu?.id);
   const menuItem = items[menuIndex];
-  const actions: PlayerAction[] = menu?.id == null ? editing ? [
-    { label: t("Reset changes"), icon: <ArrowCounterClockwise/>, action: () => onEdit(resetQueue) }
-  ] : [
+  const canReset = state.shuffled || state.ids.length !== state.sourceIds.length || state.ids.some((id, index) => id !== state.sourceIds[index]);
+  const actions: PlayerAction[] = menu?.id == null ? [
     { label: t("Show now playing"), icon: <Play/>, action: () => showCurrent(Boolean(menu?.position.keyboard)) },
     { label: t("Clear upcoming"), icon: <X/>, disabled: activeIndex === items.length - 1, action: () => onEdit(clearUpcoming) },
     { label: t("Reset queue"), icon: <ArrowCounterClockwise/>, action: () => onEdit(resetQueue) }
@@ -106,14 +106,17 @@ export function PlaybackQueue({ items, activeIndex, repeatMode, onRepeatChange, 
     <header className="playback-queue-head">
       <div className="playback-queue-title"><QueueIcon/><div><h2 id="playback-queue-title">{editing ? t("Playlist videos") : t("Queue")}</h2><span>{editing ? t('{count} videos',{count:items.length}) : t("{value0} of {value1}", { value0: activeIndex + 1, value1: items.length })}</span></div></div>
       <div className="playback-queue-nav">
+        {headerActions}
         {!editing && <>
         <button type="button" aria-label={t("Shuffle queue")} aria-pressed={state.shuffled} title={state.shuffled ? t("Turn shuffle off") : t("Shuffle queue")} disabled={items.length < 2} onClick={() => onEdit(toggleQueueShuffle)}><Shuffle/></button>
         <RepeatControl mode={repeatMode} hasQueue queueOnly onChange={onRepeatChange}/>
         <button type="button" aria-label={vertical ? t("Use horizontal queue") : t("Use vertical queue")} title={vertical ? t("Horizontal queue") : t("Vertical queue")} onClick={() => setLayout(vertical ? 'horizontal' : 'vertical')}>{vertical ? <Rows/> : <List/>}</button>
         </>}
-        <button type="button" aria-label={editing ? t("Playlist options") : t("Queue options")} aria-haspopup="menu" aria-expanded={menu?.id === null} onClick={event => openMenu(null, event.currentTarget, undefined, event.detail === 0)}><DotsThree weight="bold"/></button>
+        {editing ? <button type="button" className="queue-reset-changes" disabled={!canReset} onClick={() => onEdit(resetQueue)}><ArrowCounterClockwise aria-hidden="true"/>{t("Reset changes")}</button>
+          : <button type="button" aria-label={t("Queue options")} aria-haspopup="menu" aria-expanded={menu?.id === null} onClick={event => openMenu(null, event.currentTarget, undefined, event.detail === 0)}><DotsThree weight="bold"/></button>}
       </div>
     </header>
+    {editing && !items.length && <p className="playlist-empty-copy">{t("No available videos. Add a video from its details or save a queue to this playlist.")}</p>}
     <DndContext sensors={sensors} collisionDetection={args => {
       const point = args.pointerCoordinates, bounds = queueList.current?.getBoundingClientRect();
       if (point && bounds && (point.x < bounds.left || point.x > bounds.right || point.y < bounds.top || point.y > bounds.bottom)) return [];
@@ -163,14 +166,14 @@ export function PlaybackQueue({ items, activeIndex, repeatMode, onRepeatChange, 
           <DotsSixVertical/><QueueArtwork item={dragItem}/><strong>{dragItem.title}</strong></div> : null}
       </DragOverlay>, document.body)}
     </DndContext>
-    <div className="queue-footer">
+    {(!editing || items.length > 1 || state.notice) && <div className="queue-footer">
       <div className="queue-feedback"><span role="status">{editing && state.notice ? t("Unsaved playlist changes.") : t(state.notice || "Drag the handle to reorder.")}</span><button type="button" disabled={!state.undo?.ids.length} onClick={() => onEdit(undoQueueEdit)} aria-label={editing ? t("Undo playlist change") : t("Undo queue change")}>{t("Undo")}</button></div>
       {!vertical && <div className="queue-scroll-controls">
         <button type="button" onClick={() => browse(-1)} disabled={!edges.left} aria-label={t("Scroll queue left")}><CaretLeft/></button>
         <button type="button" onClick={() => browse(1)} disabled={!edges.right} aria-label={t("Scroll queue right")}><CaretRight/></button>
       </div>}
-    </div>
-    {menu && (menu.id === null || menuItem) && <PlayerActionMenu position={menu.position} label={menuItem ? t(editing ? '{value0} actions' : '{value0} queue actions',{value0:menuItem.title}) : editing ? t("Playlist options") : t("Queue options")} actions={actions} returnFocus={menu.trigger} onClose={() => setMenu(null)}/>}
+    </div>}
+    {menu && (menu.id === null || menuItem) && <PlayerActionMenu position={menu.position} label={menuItem ? t(editing ? '{value0} actions' : '{value0} queue actions',{value0:menuItem.title}) : t("Queue options")} actions={actions} returnFocus={menu.trigger} onClose={() => setMenu(null)}/>}
   </section>;
 }
 
