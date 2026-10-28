@@ -1,7 +1,8 @@
 import { t, useLocale } from '../i18n';
-import { useEffect, useRef, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
-import { Check, Heart, Info, Play } from '@phosphor-icons/react';
+import { Check, Heart, Info, ListPlus, Play } from '@phosphor-icons/react';
+import { SavePlaylist } from './SavePlaylist';
 import { useContextMenuPlacement } from '../hooks/useContextMenuPlacement';
 import type { ContextMenuPosition } from '../utils/context-menu';
 import type { MediaItem } from '../types';
@@ -29,6 +30,7 @@ export function MediaContextMenu({
 }) {
   useLocale();
   const menuRef = useRef<HTMLDivElement>(null);
+  const [playlistOpen, setPlaylistOpen] = useState<'pointer' | 'keyboard'>();
   const firstItemRef = useRef<HTMLButtonElement>(null);
   const previousFocusRef = useRef<HTMLElement|null>(null);
   const closeRef = useRef(onClose);
@@ -36,12 +38,14 @@ export function MediaContextMenu({
   const placement = useContextMenuPlacement(menuRef, position, returnFocus);
 
   useEffect(() => {
+    if (playlistOpen) return;
     previousFocusRef.current = returnFocus ?? (document.activeElement instanceof HTMLElement ? document.activeElement : null);
     firstItemRef.current?.focus({ preventScroll: true });
     const onPointerDown = (event: PointerEvent) => {
-      if (!menuRef.current?.contains(event.target as Node)) closeRef.current();
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) closeRef.current();
     };
     const onKeyDown = (event: KeyboardEvent) => {
+      if (!menuRef.current) return;
       if (event.key === 'Escape') {
         event.preventDefault();
         previousFocusRef.current?.focus({ preventScroll: true });
@@ -50,6 +54,7 @@ export function MediaContextMenu({
     };
     const scrollAtOpen = { x: window.scrollX, y: window.scrollY };
     const onViewportChange = (event: Event) => {
+      if (!menuRef.current) return;
       if (event.target instanceof Node && menuRef.current?.contains(event.target)) return;
       if (event.type === 'scroll' && event.target === document && window.scrollX === scrollAtOpen.x && window.scrollY === scrollAtOpen.y) return;
       closeRef.current();
@@ -64,13 +69,19 @@ export function MediaContextMenu({
       window.removeEventListener('scroll', onViewportChange, true);
       window.removeEventListener('resize', onViewportChange);
     };
-  }, []);
+  }, [playlistOpen]);
 
   const choose = (action: () => void) => {
     if (previousFocusRef.current?.isConnected) previousFocusRef.current.focus({ preventScroll: true });
     onClose();
     action();
   };
+
+  if (playlistOpen) return <SavePlaylist mediaIds={[item.id]} initialOpen={playlistOpen} onClose={() => {
+    const focus = previousFocusRef.current;
+    onClose();
+    window.requestAnimationFrame(() => { if (focus?.isConnected) focus.focus({preventScroll:true}); });
+  }}/>;
 
   return createPortal(
     <div
@@ -117,13 +128,14 @@ export function MediaContextMenu({
         {item.progress_position && item.progress_position > 10 && !item.progress_completed ? t("Resume playback") : t("Play now")}
       </MenuItem>
       <MenuItem icon={<Info />} onClick={() => choose(onDetails)}>{t("Open details")}</MenuItem>
+      <MenuItem icon={<ListPlus />} onClick={event => setPlaylistOpen(event.detail > 0 ? 'pointer' : 'keyboard')}>{t("Add to playlist")}</MenuItem>
       </div>
     </div>,
     document.fullscreenElement || document.body
   );
 }
 
-function MenuItem({ children, icon, end, onClick, ref }: { children: ReactNode; icon: ReactNode; end?: ReactNode; onClick: () => void; ref?: React.Ref<HTMLButtonElement> }) {
+function MenuItem({ children, icon, end, onClick, ref }: { children: ReactNode; icon: ReactNode; end?: ReactNode; onClick: (event: MouseEvent<HTMLButtonElement>) => void; ref?: React.Ref<HTMLButtonElement> }) {
   return <button ref={ref} className="media-context-menu-item" role="menuitem" onClick={onClick}>
     <span className="media-context-menu-icon">{icon}</span>
     <span className="media-context-menu-label">{children}</span>

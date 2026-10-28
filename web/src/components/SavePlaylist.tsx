@@ -10,14 +10,15 @@ import { Select } from './Select';
 import { playlistName } from '../utils/playlist-values';
 import './Playlists.css';
 
-export function SavePlaylist({ mediaIds, label = 'Add to playlist' }: { mediaIds: number[]; label?: string }) {
+export function SavePlaylist({ mediaIds, label = 'Add to playlist', initialOpen, onClose }: { mediaIds: number[]; label?: string; initialOpen?: 'pointer' | 'keyboard'; onClose?: () => void }) {
   useLocale();
   const client = useQueryClient();
-  const [enabled, setEnabled] = useState(false), [name, setName] = useState(''), [target, setTarget] = useState('new');
+  const [enabled, setEnabled] = useState(Boolean(initialOpen)), [name, setName] = useState(''), [target, setTarget] = useState('new');
   const [notice, setNotice] = useState('');
-  const playlists = useQuery({ queryKey: ['playlists'], queryFn: api.playlists, enabled });
-  return <div className="save-playlist">
+  const playlists = useQuery({ queryKey: ['playlists'], queryFn: api.playlists, enabled, refetchOnMount: 'always' });
+  return <div className="save-playlist" onClick={event=>event.stopPropagation()} onPointerDown={event=>event.stopPropagation()} onContextMenu={event=>event.stopPropagation()}>
     <ConfirmationDialog triggerLabel={t(label)} triggerIcon={<ListPlus aria-hidden="true"/>} title={t("Save to playlist")} confirmLabel={t("Save")} confirmVariant="primary"
+      initialOpen={initialOpen} onAfterClose={onClose}
       onOpen={() => { setEnabled(true); void playlists.refetch({ cancelRefetch: false }); setName(''); setTarget('new'); setNotice(''); }}
       onConfirm={async () => {
         if (!mediaIds.length) throw new Error('Choose at least one video.');
