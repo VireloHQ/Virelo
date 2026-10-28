@@ -1,9 +1,9 @@
 import { t, useLocale } from '../i18n';
 import { useState } from 'react';
-import { Button, Input } from '@heroui/react';
+import { Button, Input, buttonVariants } from '@heroui/react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useParams } from '@tanstack/react-router';
-import { Play, Queue, Shuffle } from '@phosphor-icons/react';
+import { ListPlus, Play, Queue, Shuffle } from '@phosphor-icons/react';
 import { api } from '../api';
 import { PageSkeleton } from '../components/PageSkeleton';
 import { PlaybackQueue } from '../components/PlaybackQueue';
@@ -75,9 +75,8 @@ function PlaylistEditor({ playlist, reload }: { playlist: PlaylistDetail; reload
     {save.error && <div className="playlist-feedback" role="alert"><p>{t(save.error.message)}</p></div>}
     {notice && <p className="playlist-notice" role="status">{t(notice)}</p>}
     {playlist.unavailableCount > 0 && <p className="playlist-notice">{t('{count} videos are unavailable. Check library access.',{count:playlist.unavailableCount})}</p>}
-    <div className="playlist-section-heading"><h2>{t("Videos")}</h2><Link to="/library">{t("Add videos from library")}</Link></div>
-    {!items.length && <p className="playlist-empty-copy">{t("No available videos. Add a video from its details or save a queue to this playlist.")}</p>}
-    <PlaybackQueue editing items={items} activeIndex={-1} repeatMode="off" onRepeatChange={() => {}} onSelect={index => play(index)} state={queue} onEdit={update}/>
+    <PlaybackQueue editing items={items} activeIndex={-1} repeatMode="off" onRepeatChange={() => {}} onSelect={index => play(index)} state={queue} onEdit={update}
+      headerActions={<Link to="/library" className={buttonVariants({variant:'secondary',className:'playlist-add-videos'})}><ListPlus aria-hidden="true"/>{t("Add videos")}</Link>}/>
     <footer className="playlist-management">
       <span role="status">{dirty ? t("Unsaved changes") : t("All changes saved")}</span>
       <div><ConfirmationDialog triggerLabel={t("Reload playlist")} title={t("Reload playlist?")} confirmLabel={t("Reload")} onConfirm={reload}><p>{t("Discard unsaved changes and reload?")}</p></ConfirmationDialog>

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Group playlist videos in a bordered list with explicit add/reset controls, clearer row actions, and responsive spacing.
+
 - Refresh artwork after library scans, retain folder changes detected during a scan, and dismiss playlist-save feedback without shifting action buttons.
 
 - Add videos to existing or new playlists from media-card context menus.
