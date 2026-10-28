@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useLayoutEffect, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useLayoutEffect, useRef, type ReactNode } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../api';
 import { appearanceVariables, DEFAULT_APPEARANCE, normalizeAppearance, type Appearance } from '../utils/appearance';
@@ -12,8 +12,13 @@ const AppearanceContext = createContext({
 export const useAppearance = () => useContext(AppearanceContext);
 export function AppearanceProvider({ children }: { children: ReactNode }) {
   const client = useQueryClient();
+  const active = useRef(true);
+  useEffect(() => { active.current = true; return () => { active.current = false; }; }, []);
   const query = useQuery({ queryKey: ['appearance'], queryFn: async () => normalizeAppearance(await api.appearance()), refetchOnWindowFocus: 'always' });
-  const mutation = useMutation({ mutationFn: api.saveAppearance, onSuccess: async value => {
+  const mutation = useMutation({ scope: { id: 'appearance' }, mutationFn: (value: Appearance) => {
+    if (!active.current) throw new Error('Appearance settings are unavailable.');
+    return api.saveAppearance(value);
+  }, onSuccess: async value => {
     await client.cancelQueries({queryKey:['appearance']});
     client.setQueryData(['appearance'], normalizeAppearance(value));
     try { localStorage.setItem('virelo-appearance-changed', Date.now() + ':' + Math.random()); } catch { /* Focus also refreshes settings. */ }
