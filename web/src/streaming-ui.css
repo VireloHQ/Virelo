@@ -83,7 +83,6 @@
 .app-shell .settings-view { width:100%; max-width:1680px; margin-inline:0; padding-top:48px; }
 .app-shell .settings-heading { align-items:center; gap:16px; margin-bottom:48px; }
 .app-shell .settings-heading h1 { margin:0; font-size:36px; line-height:1.2; letter-spacing:-.035em; font-weight:600; }
-.app-shell .settings-heading-actions { width:auto; gap:12px; }
 .app-shell .settings-layout { display:grid; grid-template-columns:clamp(240px,20vw,280px) minmax(0,1fr); gap:clamp(32px,3.5vw,56px); align-items:start; }
 .app-shell .settings-sidebar {
   position:sticky; top:calc(var(--topbar) + 32px); display:grid; gap:4px;
@@ -199,8 +198,6 @@
   .app-shell .settings-view { padding-top:28px; padding-bottom:calc(90px + env(safe-area-inset-bottom)); }
   .app-shell .settings-heading { flex-direction:row; align-items:center; margin-bottom:28px; }
   .app-shell .settings-heading h1 { font-size:30px; }
-  .app-shell .settings-heading-actions { width:auto; }
-  .app-shell .settings-heading-actions>.button { padding-inline:12px; font-size:13px; }
   .app-shell .settings-saved { display:none; }
   .app-shell .settings-layout { display:block; }
   .app-shell .settings-sidebar { position:static; display:grid; gap:0; }

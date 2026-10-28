@@ -60,7 +60,6 @@
     .route-recovery-notice { opacity:0; }
   }
 }
-.app-shell .settings-heading-actions > span { min-inline-size:72px; }
 .app-shell .media-card-art > img { transition:opacity var(--dur-short) var(--ease-out); }
 @media (hover:hover) and (pointer:fine) {
   .app-shell .media-card:hover .media-card-art > img { opacity:.94; }

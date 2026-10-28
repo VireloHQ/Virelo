@@ -23,7 +23,7 @@ async function mount(t, api, client = new QueryClient({ defaultOptions: { querie
     removeProperty: key => properties.delete(key)
   };
   const harness = { api, hooks: {
-    createContext: () => ({ Provider: 'appearance-provider' }), useContext: context => context,
+    createContext: () => ({ Provider: 'appearance-provider' }), useContext: context => context, useRef: value => ({current:value}),
     useEffect: setup => effects.push(setup), useLayoutEffect: setup => effects.push(setup)
   }, query: {
     useQueryClient: () => client,
@@ -45,7 +45,7 @@ async function mount(t, api, client = new QueryClient({ defaultOptions: { querie
   const unmount = () => { cleanups.splice(0).reverse().forEach(cleanup => cleanup()); unsubscribers.splice(0).forEach(unsubscribe => unsubscribe()); };
   t.after(() => { unmount(); client.clear(); restores.reverse().forEach(restore => restore()); });
   const { AppearanceProvider } = await load('components/AppearanceProvider.tsx', {
-    react: 'export const {createContext,useContext,useEffect,useLayoutEffect} = globalThis.__appearanceTest.hooks;',
+    react: 'export const {createContext,useContext,useEffect,useLayoutEffect,useRef} = globalThis.__appearanceTest.hooks;',
     '@tanstack/react-query': 'export const {useQueryClient,useQuery,useMutation} = globalThis.__appearanceTest.query;',
     '../api': 'export const api = globalThis.__appearanceTest.api;'
   });
@@ -114,4 +114,28 @@ test('failed appearance saves leave the current settings in the cache', async t 
   await settle();
   await assert.rejects(env.value.save({ controllerStyle: 'theater', accentColor: '#abcdef' }), /offline/);
   assert.deepEqual(env.client.getQueryData(['appearance']), defaults);
+});
+
+test('consecutive appearance saves run in order and keep the latest choice', async t => {
+  const first = deferred(), calls = [], older = { ...defaults, controllerStyle:'theater' }, latest = { ...defaults, controllerStyle:'centerstage' };
+  const env = await mount(t, { appearance: async () => defaults, saveAppearance: async value => {
+    calls.push(value); if (calls.length === 1) await first.promise; return value;
+  } });
+  const one = env.value.save(older), two = env.value.save(latest);
+  await settle(); assert.deepEqual(calls, [older]);
+  first.resolve(); await Promise.all([one,two]);
+  assert.deepEqual(calls, [older,latest]);
+  assert.deepEqual(env.client.getQueryData(['appearance']), latest);
+});
+
+test('queued appearance writes cannot start after the account provider unmounts', async t => {
+  const first = deferred(), calls = [];
+  const env = await mount(t, { appearance: async () => defaults, saveAppearance: async value => {
+    calls.push(value); await first.promise; return value;
+  } });
+  const one = env.value.save(defaults), two = env.value.save({...defaults,controllerStyle:'theater'});
+  const rejected = assert.rejects(two, /unavailable/);
+  await settle(); env.unmount(); first.resolve();
+  await Promise.all([one,rejected]);
+  assert.equal(calls.length, 1);
 });

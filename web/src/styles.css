@@ -441,8 +441,8 @@ button,[role="button"],summary,.app-shell :is(header,footer,nav,.settings-view),
 .settings-heading-status { display:inline-flex; align-items:center; gap:8px; flex:none; padding:8px 11px; border:1px solid color-mix(in oklch,var(--safe) 18%,transparent); border-radius:999px; color:var(--safe); background:color-mix(in oklch,var(--safe) 5.5%,transparent); font-size:11px; font-weight:800; letter-spacing:.04em; }
 .settings-status-dot { width:7px; height:7px; border-radius:50%; background:var(--safe); box-shadow:0 0 0 4px color-mix(in oklch,var(--safe) 8%,transparent); }
 .settings-section-kicker { color:var(--muted-2); font-size:10px; font-weight:800; letter-spacing:.14em; text-transform:uppercase; }
-.settings-heading-actions { display:flex; align-items:center; justify-content:flex-end; gap:12px; flex:none; }
-.settings-heading-actions>.button { min-height:44px; }
+.settings-section-actions { display:flex; align-items:center; flex-wrap:wrap; gap:12px; margin-top:24px; }
+.settings-section-actions>.button { min-height:44px; }
 .settings-saved { display:inline-flex; align-items:center; gap:6px; color:var(--safe); font-size:12px; font-weight:700; }
 .settings-saved svg { width:16px; height:16px; }
 .settings-save-error { margin:-10px 0 18px; }
@@ -654,7 +654,6 @@ button,[role="button"],summary,.app-shell :is(header,footer,nav,.settings-view),
   .settings-heading h1 { font-size:clamp(38px,11vw,52px); }
   .settings-heading p { max-width:48ch; font-size:13px; }
   .settings-heading-status { align-self:flex-start; }
-  .settings-heading-actions { width:100%; }
   .settings-layout { display:block; }
   .settings-sidebar { position:static; display:flex; gap:6px; overflow-x:auto; margin:0 -4px 14px; padding:6px; border-radius:15px; }
   .settings-nav-item { display:flex; flex:none; gap:8px; min-height:44px; padding:6px 9px; border-color:rgba(255,255,255,.08); background:rgba(255,255,255,.025); }
@@ -669,7 +668,6 @@ button,[role="button"],summary,.app-shell :is(header,footer,nav,.settings-view),
 @media (max-width: 520px) {
   .settings-heading h1 { font-size:40px; }
   .settings-heading p { font-size:12px; }
-  .settings-heading-actions { justify-content:space-between; }
   .settings-section { padding:19px 16px; border-radius:17px; }
   .settings-section .settings-card-head h2 { font-size:24px; }
   .settings-section .settings-card-head p { font-size:13px; }

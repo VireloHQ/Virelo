@@ -47,6 +47,10 @@ const QUEUE_OPTIONS = [
   { value: 'loop', label: 'Auto next, loop folder' },
   { value: 'manual', label: 'Manual next only' }
 ];
+const sectionFields: Record<string, readonly (keyof Settings)[]> = {
+  libraries:['libraryWatchEnabled'], network:['externalMetadataEnabled','externalImagesEnabled'],
+  playback:['queueBehavior'], shorts:['shortsIncludeLandscapes']
+};
 export function SettingsView(){
   useLocale();
   const session=useAccount();
@@ -70,13 +74,20 @@ export function SettingsView(){
     window.requestAnimationFrame(()=>document.getElementById(`settings-nav-${activeSection}`)?.focus());
   };
   useEffect(()=>{if(settingsQuery.data&&!form)setForm(settingsQuery.data);},[settingsQuery.data,form]);
-  const save=useMutation({mutationFn:()=>api.saveSettings(form!),onSuccess:(data)=>{setForm(data);client.setQueryData(['settings'],data);}});
+  const save=useMutation({mutationFn:api.saveSettings,onMutate:()=>settingsQuery.data,onSuccess:(data,submitted,previous)=>{
+    setForm(current=>current?Object.fromEntries(Object.entries(data).map(([key,value])=>{
+      const field=key as keyof Settings;
+      return [field,current[field]===previous?.[field]||(field in submitted&&current[field]===submitted[field])?value:current[field]];
+    })) as Settings:data);
+    client.setQueryData(['settings'],data);
+  }});
   const clearMetadata=useMutation({mutationFn:api.clearAllMetadata,onSuccess:()=>client.invalidateQueries({predicate:(query)=>['home','media','related','shorts','watch-queue','queue','search'].includes(String(query.queryKey[0]))})});
   if(!form)return <PageSkeleton kind="settings" />;
-  const hasChanges=JSON.stringify(form)!==JSON.stringify(settingsQuery.data);
+  const changes=Object.fromEntries((sectionFields[activeSection]??[]).filter(key=>form[key]!==settingsQuery.data?.[key]).map(key=>[key,form[key]]));
+  const hasChanges=Object.keys(changes).length>0;
+  const saveAction=isAdmin&&<div className="settings-section-actions"><Button isPending={save.isPending} isDisabled={!hasChanges} onPress={()=>save.mutate(changes)}>{t("Save settings")}</Button><span aria-live="polite">{save.isSuccess&&!hasChanges&&sectionFields[activeSection]?.some(key=>key in save.variables)&&<span className="settings-saved"><CheckCircle/> {t("Saved")}</span>}</span>{save.error&&sectionFields[activeSection]?.some(key=>key in save.variables)&&<p className="error-copy" role="alert">{t(save.error.message)}</p>}</div>;
   return <div className={`content-view settings-view${mobileDetail?' settings-detail-open':''}`}>
-    <header className="settings-heading"><h1>{t("Settings")}</h1>{isAdmin&&['libraries','network','playback','shorts'].includes(activeSection)&&<div className="settings-heading-actions"><span aria-live="polite">{save.isSuccess&&!hasChanges&&<span className="settings-saved"><CheckCircle/> {t("Saved")}</span>}</span><Button isPending={save.isPending} isDisabled={!hasChanges} onPress={()=>save.mutate()}>{t("Save settings")}</Button></div>}</header>
-    {save.error&&<p className="error-copy settings-save-error">{t(save.error.message)}</p>}
+    <header className="settings-heading"><h1>{t("Settings")}</h1></header>
 
     <div className="settings-layout">
       <SettingsNavigation sections={sections} activeSection={activeSection} detailOpen={mobileDetail} onSelect={openSection}/>
@@ -96,12 +107,14 @@ export function SettingsView(){
           <div className="settings-card-head"><div><h2 id="settings-title-libraries" tabIndex={-1}>{t("Libraries")}</h2><p>{t("Manage the folders Virelo scans for media.")}</p></div></div>
           <LibrarySettings/>
           {isAdmin&&<SettingSwitch checked={form.libraryWatchEnabled} onChange={(v)=>setForm({...form,libraryWatchEnabled:v})} title={t("Watch local folders")} description={t("Monitor configured folders and scan when files change.")}/>}
+          {saveAction}
         </section>}
 
         {activeSection==='network'&&<section id="settings-panel-network" className="settings-card settings-section" aria-labelledby="settings-title-network">
           <div className="settings-card-head"><div><h2 id="settings-title-network" tabIndex={-1}>{t("Metadata")}</h2><p>{t("Choose how Virelo matches your videos and finds artwork.")}</p></div></div>
           <SettingSwitch checked={form.externalMetadataEnabled} onChange={(v)=>setForm({...form,externalMetadataEnabled:v})} title={t("Online metadata")} description={t("Match titles, summaries, genres and release years during scans. No account or API key required.")}/>
           <SettingSwitch checked={form.externalImagesEnabled} disabled={!form.externalMetadataEnabled} onChange={(v)=>setForm({...form,externalImagesEnabled:v})} title={t("Posters and artwork")} description={t("Replace generated thumbnails with posters, backdrops and episode images.")}/>
+          {saveAction}
           <div className="setting-row settings-action-row"><div className="setting-copy"><div><strong>{t("Clear all metadata")}</strong><p>{t("Reset titles and remove matched descriptions and artwork from every added library. Videos, generated thumbnails, favorites and watch progress stay intact. Existing videos will not be automatically matched again.")}</p></div></div><ConfirmationDialog triggerLabel={t("Clear all metadata")} title={t("Clear all metadata?")} confirmLabel={t("Clear metadata")} onConfirm={()=>clearMetadata.mutateAsync()}><p><Trans message="Clear matched titles, descriptions and artwork from {value0}. Titles will return to filenames." values={{value0:<strong>{t("every added library, including hidden libraries")}</strong>}}/></p><p>{t("Your videos, generated thumbnails, favorites and watch progress will stay intact.")}</p><p>{t("Existing videos will not be automatically matched again.")}</p></ConfirmationDialog></div>
           <div role="status">{clearMetadata.isSuccess&&<p><Trans message="Metadata cleared for {value0} videos." values={{value0:clearMetadata.data.cleared}}/></p>}</div>
         </section>}
@@ -112,11 +125,13 @@ export function SettingsView(){
           <VolumeLevelingSetting/>
           {isAdmin&&<div className="setting-row"><div className="setting-copy"><div><strong>{t("Queue advance")}</strong><p>{t("Auto-advance, loop, or manually step through the folder.")}</p></div></div>
             <Select className="settings-picker" label={t("Queue advance")} value={form.queueBehavior} options={QUEUE_OPTIONS.map(option=>({...option,label:t(option.label)}))} align="end" onChange={(value)=>setForm({...form,queueBehavior:value as QueueBehavior})}/></div>}
+          {saveAction}
         </section>}
 
         {activeSection==='shorts'&&<section id="settings-panel-shorts" className="settings-card settings-section" aria-labelledby="settings-title-shorts">
           <div className="settings-card-head"><div><h2 id="settings-title-shorts" tabIndex={-1}>{t("Shorts")}</h2><p>{t("Choose which videos appear in the vertical feed.")}</p></div></div>
           <SettingSwitch checked={form.shortsIncludeLandscapes} onChange={(v)=>setForm({...form,shortsIncludeLandscapes:v})} title={t("Include landscape videos")} description={t("Add landscape videos with known dimensions to the Shorts feed.")}/>
+          {saveAction}
         </section>}
 
         {activeSection==='tools'&&<section id="settings-panel-tools" className="settings-card settings-section compact-card" aria-labelledby="settings-title-tools">

@@ -68,6 +68,50 @@ const auditSettingsNavigation=async(page,mode)=>{
   await page.setViewportSize({width:1440,height:1000});
   await page.screenshot({path:join(root,'settings-navigation-'+mode+'.png'),fullPage:true});
 };
+const auditSettingsSave=async(page,mode)=>{
+  const setSwitch=async(name,value)=>{
+    const control=page.getByRole('switch',{name,exact:true});
+    if(await control.isChecked()!==value)await control.press('Space');
+    assert.equal(await control.isChecked(),value);
+  };
+  const waitSaved=(key,value)=>page.waitForFunction(async({mode,key,value})=>{
+    const settings=mode==='npm'?await fetch('/api/settings').then(response=>response.json()):await(await import('/src/local-library.ts')).readSettings();
+    return settings[key]===value;
+  },{mode,key,value});
+  check(await page.locator('.settings-heading button').count()===0,mode+' settings header has no misleading global Save button');
+  if(mode==='npm'){
+    await page.locator('#settings-nav-libraries').click();
+    await setSwitch('Watch local folders',true);
+    await waitSaved('libraryWatchEnabled',false);
+    await page.locator('#settings-nav-network').click();
+    await setSwitch('Online metadata',true);
+    const request=page.waitForRequest(request=>new URL(request.url()).pathname==='/api/settings'&&request.method()==='POST');
+    await page.getByRole('button',{name:'Save settings',exact:true}).click();
+    assert.deepEqual((await request).postDataJSON(),{externalMetadataEnabled:true});
+    await waitSaved('externalMetadataEnabled',true);await waitSaved('libraryWatchEnabled',false);
+    check(true,'saving metadata submits only its section and leaves the library draft unsaved');
+    await setSwitch('Online metadata',false);
+    await page.getByRole('button',{name:'Save settings',exact:true}).click();await waitSaved('externalMetadataEnabled',false);
+    await page.locator('#settings-nav-libraries').click();
+    check(await page.getByRole('switch',{name:'Watch local folders',exact:true}).isChecked(),'another section save preserves the pending library draft');
+    check(await page.locator('#settings-panel-libraries .settings-section-actions').getByRole('button',{name:'Save settings',exact:true}).isEnabled(),'administrator Save belongs to its own settings panel');
+    await page.getByRole('button',{name:'Save settings',exact:true}).click();await waitSaved('libraryWatchEnabled',true);
+    await setSwitch('Watch local folders',false);
+    await page.getByRole('button',{name:'Save settings',exact:true}).click();await waitSaved('libraryWatchEnabled',false);
+  }else{
+    await page.locator('#settings-nav-playback').click();
+    await page.getByRole('button',{name:'Queue advance',exact:true}).click();
+    await page.getByRole('option',{name:'Manual next only',exact:true}).click();await waitSaved('queueBehavior','manual');
+    await page.reload();await page.locator('#settings-nav-playback').click();
+    check(await page.getByRole('button',{name:'Queue advance',exact:true}).innerText()==='Manual next only','Web queue behavior autosaves and survives reload');
+    await page.getByRole('button',{name:'Queue advance',exact:true}).click();
+    await page.getByRole('option',{name:'Auto next, stop at end',exact:true}).click();await waitSaved('queueBehavior','auto');
+    await page.locator('#settings-nav-shorts').click();
+    await setSwitch('Include landscape videos',true);await waitSaved('shortsIncludeLandscapes',true);
+    await setSwitch('Include landscape videos',false);await waitSaved('shortsIncludeLandscapes',false);
+    check(await page.getByRole('button',{name:'Save settings',exact:true}).count()===0,'Web playback and Shorts preferences require no Save button');
+  }
+};
 const auditAppearance=async(page,mode)=>{
   await page.locator('#settings-nav-appearance').click();
   await page.locator('#settings-title-appearance').waitFor();
@@ -82,9 +126,12 @@ const auditAppearance=async(page,mode)=>{
     await page.screenshot({path:join(root,'appearance-'+mode+'-'+width+'.png'),fullPage:true});
   }
   await page.setViewportSize({width:1440,height:1000});
+  check(await page.locator('.settings-heading button').count()===0,mode+' settings heading has no global Save action');
+  check(await page.getByRole('button',{name:'Save appearance',exact:true}).count()===0,mode+' appearance has no manual Save action');
   await page.getByRole('radio',{name:/Streamline/}).check();
+  await page.getByRole('status').filter({hasText:'Saved'}).waitFor();
   await page.getByRole('textbox',{name:'Accent color hex code'}).fill('#123456');
-  await page.getByRole('button',{name:'Save appearance',exact:true}).click();
+  await page.getByRole('textbox',{name:'Accent color hex code'}).press('Enter');
   await page.getByRole('status').filter({hasText:'Saved'}).waitFor();
   const color=await page.evaluate(()=>getComputedStyle(document.documentElement).getPropertyValue('--color-brand').trim());
   check(color!=='#123456'&&color.startsWith('#'),mode+' custom accent is adjusted for readable controls');
@@ -105,7 +152,8 @@ const auditAppearance=async(page,mode)=>{
     await page.getByRole('radio',{name:/Virelo/}).waitFor();
     check(await page.getByRole('radio',{name:/Virelo/}).isChecked(),'switching accounts never reuses the previous appearance');
     await page.getByRole('radio',{name:/Centerstage/}).check();await page.getByRole('button',{name:'Mint',exact:true}).click();
-    await page.getByRole('button',{name:'Save appearance',exact:true}).click();await page.getByRole('status').filter({hasText:'Saved'}).waitFor();
+    await page.getByRole('status').filter({hasText:'Saved'}).waitFor();
+    await page.waitForFunction(()=>document.querySelector('.appearance-hex')?.value==='#72d6ae');
     check(true,'a regular user can save a personal appearance without administrator access');
     await switchUser('owner');
     await page.waitForFunction(()=>document.querySelector('input[name="controller-style"][value="streamline"]')?.checked);
@@ -119,9 +167,29 @@ const auditAppearance=async(page,mode)=>{
     check(await page.getByRole('radio',{name:/Streamline/}).isChecked(),'returning from the landing page restores browser preferences');
   }
   await page.getByRole('textbox',{name:'Accent color hex code'}).fill('bad');
-  check(await page.getByRole('button',{name:'Save appearance',exact:true}).isDisabled(),mode+' invalid color cannot be saved');
+  check(await page.getByRole('textbox',{name:'Accent color hex code'}).getAttribute('aria-invalid')==='true',mode+' invalid color is identified before persistence');
   await page.getByRole('button',{name:'Reset to default',exact:true}).click();
-  await page.getByRole('button',{name:'Save appearance',exact:true}).click();
+  await page.getByRole('status').filter({hasText:'Saved'}).waitFor();
+  if(mode==='npm')await page.route('**/api/account/appearance',async route=>{
+    if(route.request().method()==='PUT')await route.fulfill({status:503,contentType:'application/json',body:JSON.stringify({error:'Could not save appearance. Allow browser storage and try again.'})});
+    else await route.continue();
+  });
+  else await page.evaluate(()=>{
+    const original=Storage.prototype.setItem;
+    window.__restoreAppearanceStorage=()=>{Storage.prototype.setItem=original;};
+    Storage.prototype.setItem=function(key,value){if(key==='virelo.appearance.v1')throw Error('blocked');return original.call(this,key,value);};
+  });
+  await page.getByRole('button',{name:'Sky',exact:true}).click();
+  await page.getByRole('alert').filter({hasText:'Could not save appearance.'}).waitFor();
+  check(await page.getByRole('textbox',{name:'Accent color hex code'}).inputValue()==='#79b8ff',mode+' failed autosave keeps the unsaved color for retry');
+  check(await page.getByRole('status').filter({hasText:/^Saved$/}).count()===0,mode+' failed autosave never reports Saved');
+  if(mode==='npm')await page.unroute('**/api/account/appearance');else await page.evaluate(()=>window.__restoreAppearanceStorage());
+  await page.getByRole('button',{name:'Try again',exact:true}).click();
+  await page.getByRole('status').filter({hasText:'Saved'}).waitFor();
+  await page.reload();if(mode==='web')await page.locator('#settings-nav-appearance').click();
+  await page.waitForFunction(()=>document.querySelector('.appearance-hex')?.value==='#79b8ff');
+  check(true,mode+' retry persists the pending appearance without a manual Save action');
+  await page.getByRole('button',{name:'Reset to default',exact:true}).click();
   await page.getByRole('status').filter({hasText:'Saved'}).waitFor();
 };
 try{
@@ -193,6 +261,7 @@ try{
   await login(context,'owner');
   await page.goto(npmBase+'/settings#admin');await page.locator('.admin-setting-group').first().waitFor();
   await auditSettingsNavigation(page,'npm');
+  await auditSettingsSave(page,'npm');
   await auditAppearance(page,'npm');
   await page.goto(npmBase+'/settings#admin');await page.locator('.admin-setting-group').first().waitFor();
   const adminSurface=await page.locator('.admin-setting-group').first().evaluate(element=>{
@@ -323,7 +392,7 @@ api.mediaFile=async id=>{if(!auditFiles.has(id))auditFiles.set(id,fetch('/__comm
 api.mediaSource=async id=>{if(!auditUrls.has(id))auditUrls.set(id,URL.createObjectURL(await api.mediaFile(id)));return auditUrls.get(id);};`});
     });
     await webPage.goto(webBase+'/app/settings');await webPage.locator('.settings-heading').waitFor();
-    await webPage.setViewportSize({width:1440,height:1000});await auditSettingsNavigation(webPage,'web');await auditAppearance(webPage,'web');
+    await webPage.setViewportSize({width:1440,height:1000});await auditSettingsNavigation(webPage,'web');await auditSettingsSave(webPage,'web');await auditAppearance(webPage,'web');
     await webPage.setViewportSize({width:390,height:844});
     await webPage.evaluate(async items=>{const {saveStoredMedia}=await import('/src/local-library.ts');for(const item of items)await saveStoredMedia(item);},items);
     modes.push(['web',webBase,webContext,webPage]);

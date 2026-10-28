@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Save personal appearance preferences automatically and keep administrator Save actions scoped to their own settings section.
+
 - Keep Shorts action labels compact and aligned across languages; prevent the volume popup from closing and reopening on a trigger click.
 - Harden public-host validation and local-only administration, cache/source filesystem boundaries, in-flight permission revocation, and concurrent playback-cache budgets. Preserve startup and direct playback when legacy library paths overlap the cache instead of pruning possible originals.
 - Validate settings before persisting them and bound decoded metadata/artwork downloads. Recover malformed preferences, account-language isolation, cross-tab appearance changes and restricted browser messaging/storage.
