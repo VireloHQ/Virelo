@@ -110,7 +110,7 @@ try {
     };
     await settings('shorts');
     check(await page.locator('.settings-nav-item').evaluateAll(items=>items.length>0&&items.every(item=>item.querySelectorAll('.settings-nav-icon[aria-hidden="true"]').length===1)),label+' every settings section has one decorative icon');
-    check(await page.locator('.settings-content button').first().evaluate(element=>getComputedStyle(element).userSelect)==='none',label+' buttons do not select text');
+    check(await page.locator('button:visible').evaluateAll(buttons=>buttons.length>0&&buttons.every(element=>getComputedStyle(element).userSelect==='none')),label+' buttons do not select text');
     check(await page.locator('.settings-view').evaluate(element=>getComputedStyle(element).userSelect)==='none',label+' settings chrome does not select text');
     stable(await page.evaluate(() => window.__capture('.settings-heading h1')), 'page text stays in its final position after loading');
     const pageEvents = await page.evaluate(() => window.__motion.filter(event => /content-view|settings-section/.test(event.className)));
