@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add videos to existing or new playlists from media-card context menus.
+
 - Save personal appearance preferences automatically and keep administrator Save actions scoped to their own settings section.
 
 - Keep Shorts action labels compact and aligned across languages; prevent the volume popup from closing and reopening on a trigger click.

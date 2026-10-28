@@ -13,13 +13,15 @@ interface ConfirmationDialogProps {
   onConfirm: () => Promise<unknown>;
   confirmVariant?: 'danger' | 'primary';
   onOpen?: () => void;
+  initialOpen?: 'pointer' | 'keyboard';
+  onAfterClose?: () => void;
 }
 
 // Shared app confirmation UI. React Aria handles focus trapping, restoration and scroll locking.
-export function ConfirmationDialog({ triggerLabel, triggerIcon, title, children, confirmLabel, onConfirm, confirmVariant = 'danger', onOpen }: ConfirmationDialogProps) {
+export function ConfirmationDialog({ triggerLabel, triggerIcon, title, children, confirmLabel, onConfirm, confirmVariant = 'danger', onOpen, initialOpen, onAfterClose }: ConfirmationDialogProps) {
   useLocale();
-  const [isOpen, setIsOpen] = useState(false);
-  const [animate, setAnimate] = useState(false);
+  const [isOpen, setIsOpen] = useState(Boolean(initialOpen));
+  const [animate, setAnimate] = useState(initialOpen === 'pointer');
   const [isPending, setIsPending] = useState(false);
   const [error, setError] = useState('');
   const pending = useRef(false);
@@ -51,6 +53,7 @@ export function ConfirmationDialog({ triggerLabel, triggerIcon, title, children,
       const frames = element === surface ? [{opacity,transform},{opacity:0,transform:'scale(.97)'}] : [{opacity},{opacity:0}];
       return element.animate(frames, {duration,easing:tokens.getPropertyValue('--ease-out').trim() || 'ease-out',fill:'forwards'}).finished.catch(()=>{});
     }));
+    onAfterClose?.();
   };
   const changeOpen = (open: boolean) => {
     if (pending.current) return;
@@ -75,9 +78,9 @@ export function ConfirmationDialog({ triggerLabel, triggerIcon, title, children,
     }
   };
 
-  return <Modal isOpen={isOpen} onOpenChange={changeOpen}>
-    <Button variant="secondary" onPressStart={event=>setAnimate(event.pointerType === 'mouse' || event.pointerType === 'touch' || event.pointerType === 'pen')}>{triggerIcon}{triggerLabel}</Button>
-    <Modal.Backdrop className="virelo-confirm-backdrop" data-animate={animate} onExit={animateExit} isDismissable={!isPending} isKeyboardDismissDisabled={isPending}>
+  const dialog = <Modal.Backdrop className="virelo-confirm-backdrop" data-animate={animate} onExit={animateExit} isDismissable={!isPending} isKeyboardDismissDisabled={isPending}
+    {...(initialOpen ? {isOpen,onOpenChange:changeOpen} : {})}
+    UNSTABLE_portalContainer={document.fullscreenElement instanceof HTMLElement ? document.fullscreenElement : document.body}>
       <Modal.Container className="virelo-confirm-container" data-animate={animate} placement="center" size="sm" scroll="inside">
         <Modal.Dialog className="virelo-confirm-dialog" role={confirmVariant === 'danger' ? 'alertdialog' : 'dialog'} aria-describedby={descriptionId}>
           <Modal.Header className="virelo-confirm-header">
@@ -94,6 +97,9 @@ export function ConfirmationDialog({ triggerLabel, triggerIcon, title, children,
           </Modal.Footer>
         </Modal.Dialog>
       </Modal.Container>
-    </Modal.Backdrop>
+    </Modal.Backdrop>;
+  return initialOpen ? dialog : <Modal isOpen={isOpen} onOpenChange={changeOpen}>
+    <Button variant="secondary" onPressStart={event=>setAnimate(event.pointerType === 'mouse' || event.pointerType === 'touch' || event.pointerType === 'pen')}>{triggerIcon}{triggerLabel}</Button>
+    {dialog}
   </Modal>;
 }

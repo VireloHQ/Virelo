@@ -58,6 +58,48 @@ async function removeItem(page, title) {
   await page.getByRole('button',{name:'Options for '+title,exact:true}).click();
   await page.getByRole('menuitem',{name:'Remove from playlist',exact:true}).click();
 }
+async function addFromContext(page,mode,base,prefix,label) {
+  await page.goto(base+prefix+'/library');
+  const card=page.locator('.media-card').filter({hasText:'Clip 4'}).first();
+  const open=async()=>{
+    await card.click({button:'right'});
+    const menu=page.getByRole('menu',{name:'Clip 4 actions',exact:true});
+    await menu.waitFor();return menu;
+  };
+  let menu=await open();
+  check(await menu.getByRole('menuitem',{name:'Add to playlist',exact:true}).locator('svg').count()===1,label+' card context has a playlist action with an icon');
+  await menu.getByRole('menuitem',{name:'Add to playlist',exact:true}).click();
+  let dialog=page.getByRole('dialog',{name:'Save to playlist',exact:true});await dialog.waitFor();
+  check(await page.getByRole('menu',{name:'Clip 4 actions',exact:true}).count()===0,label+' playlist dialog replaces the menu without navigating to details');
+  check(new URL(page.url()).pathname===prefix+'/library',label+' dialog clicks do not follow the enclosing video-card link');
+  await page.keyboard.press('Escape');await dialog.waitFor({state:'hidden'});
+  await page.waitForFunction(()=>document.activeElement?.classList.contains('media-card'));
+  check(await card.evaluate(element=>element===document.activeElement),label+' Escape restores focus to the originating video');
+  menu=await open();await menu.press('End');await page.keyboard.press('Enter');
+  dialog=page.getByRole('dialog',{name:'Save to playlist',exact:true});await dialog.waitFor();
+  check(await dialog.evaluate(element=>element.closest('.virelo-confirm-backdrop').dataset.animate==='false'),label+' keyboard playlist action opens without pointer animation');
+  const title='Context '+label;
+  await dialog.getByRole('textbox',{name:'Playlist name',exact:true}).fill(title);
+  await dialog.getByRole('button',{name:'Save',exact:true}).click();await dialog.waitFor({state:'hidden'});
+  await page.waitForFunction(()=>document.activeElement?.classList.contains('media-card'));
+  const saved=(await call(page,mode,'playlists')).find(row=>row.name===title);
+  check(Boolean(saved)&&(await call(page,mode,'playlist',saved.id)).items.map(item=>item.id).join(',')==='4',label+' context action creates a playlist containing the selected video');
+  menu=await open();await menu.getByRole('menuitem',{name:'Add to playlist',exact:true}).click();
+  dialog=page.getByRole('dialog',{name:'Save to playlist',exact:true});await dialog.waitFor();
+  await dialog.getByRole('button',{name:'Playlist',exact:true}).click();await dialog.getByRole('option',{name:title,exact:true}).click();
+  await dialog.getByRole('button',{name:'Save',exact:true}).click();await dialog.waitFor({state:'hidden'});
+  const existing=await call(page,mode,'playlist',saved.id);
+  check(existing.itemCount===1,label+' context action appends to an existing playlist without duplicating a video');
+  await page.locator('.media-card').filter({hasText:'Clip 3'}).first().click({button:'right'});
+  await page.getByRole('menu',{name:'Clip 3 actions',exact:true}).getByRole('menuitem',{name:'Add to playlist',exact:true}).click();
+  dialog=page.getByRole('dialog',{name:'Save to playlist',exact:true});await dialog.waitFor();
+  await dialog.getByRole('button',{name:'Playlist',exact:true}).click();await dialog.getByRole('option',{name:title,exact:true}).click();
+  await dialog.getByRole('button',{name:'Save',exact:true}).click();await dialog.waitFor({state:'hidden'});
+  const appended=await call(page,mode,'playlist',saved.id);
+  check(appended.items.map(item=>item.id).join(',')==='4,3',label+' a different card adds its own video to the existing playlist');
+  check(new URL(page.url()).pathname===prefix+'/library',label+' saving from context leaves the library open');
+  await call(page,mode,'deletePlaylist',appended.id,appended.revision);
+}
 try {
   if(existsSync(join(repo,'dist/server.js'))) {
     process.env.VIRELO_LOG_LEVEL='silent';
@@ -97,6 +139,7 @@ api.mediaSource=async id=>{if(!urls.has(id))urls.set(id,URL.createObjectURL(awai
 `});
       });
     }
+    await addFromContext(page,mode,base,prefix,label);
     await page.goto(base+prefix+'/library');
     if(mode==='web') check(await page.evaluate(async()=>{const item=await(await import('/src/local-library.ts')).getStoredMedia(1);return item.liked===1&&item.progress_position===12;}),label+' upgrading browser storage preserves existing favorites and progress');
     const playlistEntry=page.locator('.heading-controls').getByRole('link',{name:'Playlists',exact:true});
