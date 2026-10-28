@@ -90,12 +90,15 @@ async function addFromContext(page,mode,base,prefix,label) {
   await dialog.getByRole('button',{name:'Save',exact:true}).click();await dialog.waitFor({state:'hidden'});
   const existing=await call(page,mode,'playlist',saved.id);
   check(existing.itemCount===1,label+' context action appends to an existing playlist without duplicating a video');
+  const renamed=title+' updated';
+  await call(page,mode,'updatePlaylist',existing.id,{revision:existing.revision,name:renamed});
   await page.locator('.media-card').filter({hasText:'Clip 3'}).first().click({button:'right'});
   await page.getByRole('menu',{name:'Clip 3 actions',exact:true}).getByRole('menuitem',{name:'Add to playlist',exact:true}).click();
   dialog=page.getByRole('dialog',{name:'Save to playlist',exact:true});await dialog.waitFor();
-  await dialog.getByRole('button',{name:'Playlist',exact:true}).click();await dialog.getByRole('option',{name:title,exact:true}).click();
+  await dialog.getByRole('button',{name:'Playlist',exact:true}).click();await dialog.getByRole('option',{name:renamed,exact:true}).click();
   await dialog.getByRole('button',{name:'Save',exact:true}).click();await dialog.waitFor({state:'hidden'});
   const appended=await call(page,mode,'playlist',saved.id);
+  check(appended.name===renamed,label+' context dialog refreshes a recently cached playlist changed elsewhere');
   check(appended.items.map(item=>item.id).join(',')==='4,3',label+' a different card adds its own video to the existing playlist');
   check(new URL(page.url()).pathname===prefix+'/library',label+' saving from context leaves the library open');
   await call(page,mode,'deletePlaylist',appended.id,appended.revision);

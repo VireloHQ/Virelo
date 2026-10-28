@@ -15,7 +15,7 @@ export function SavePlaylist({ mediaIds, label = 'Add to playlist', initialOpen,
   const client = useQueryClient();
   const [enabled, setEnabled] = useState(Boolean(initialOpen)), [name, setName] = useState(''), [target, setTarget] = useState('new');
   const [notice, setNotice] = useState('');
-  const playlists = useQuery({ queryKey: ['playlists'], queryFn: api.playlists, enabled });
+  const playlists = useQuery({ queryKey: ['playlists'], queryFn: api.playlists, enabled, refetchOnMount: 'always' });
   return <div className="save-playlist" onClick={event=>event.stopPropagation()} onPointerDown={event=>event.stopPropagation()} onContextMenu={event=>event.stopPropagation()}>
     <ConfirmationDialog triggerLabel={t(label)} triggerIcon={<ListPlus aria-hidden="true"/>} title={t("Save to playlist")} confirmLabel={t("Save")} confirmVariant="primary"
       initialOpen={initialOpen} onAfterClose={onClose}
