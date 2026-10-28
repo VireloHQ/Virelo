@@ -47,12 +47,18 @@ async function addFromDetails(page, base, prefix, title, id, label) {
   }),label+' detail copy uses the available horizontal space');
   check(await detail.locator('h1').evaluate(element=>getComputedStyle(element).textWrapStyle!=='balance'),label+' title wraps naturally instead of balancing into short lines');
   await page.getByRole('button',{name:'Add to playlist',exact:true}).click();
+  const before = await page.locator('.save-playlist').boundingBox();
   const dialog=page.getByRole('dialog',{name:'Save to playlist'});
   await dialog.getByRole('button',{name:'Playlist',exact:true}).click();
   await dialog.getByRole('option',{name:title,exact:true}).click();
   await dialog.getByRole('button',{name:'Save',exact:true}).click();
   await dialog.waitFor({state:'hidden'});
   await page.getByText('Saved to '+title+'.',{exact:true}).waitFor();
+  check(await page.locator('.playlist-save-notice').evaluate(element => getComputedStyle(element).position === 'fixed' && !element.closest('.save-playlist')), label+' saved feedback is outside the action row');
+  const after = await page.locator('.save-playlist').boundingBox();
+  check(Math.abs(before.width-after.width)<1 && Math.abs(before.height-after.height)<1, label+' saving does not change the action button layout');
+  await page.locator('.playlist-save-notice').waitFor({state:'hidden',timeout:5000});
+  check(true,label+' playlist save feedback dismisses automatically');
 }
 async function removeItem(page, title) {
   await page.getByRole('button',{name:'Options for '+title,exact:true}).click();
