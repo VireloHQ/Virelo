@@ -63,7 +63,7 @@ async function auditLibraryNames(page,mode,base,prefix,label) {
   check(true,label+' a single registered library can be renamed from its context menu');
   const folders=page.getByRole('navigation',{name:'Folder navigation',exact:true});
   let child=folders.locator('.folder-control').filter({hasText:'Shows'}).first();
-  await child.locator('.folder-options').click();await page.getByRole('menuitem',{name:'Rename',exact:true}).click();
+  await child.locator('.folder-chip').click({button:'right'});await page.getByRole('menuitem',{name:'Rename',exact:true}).click();
   dialog=page.getByRole('dialog',{name:'Rename folder',exact:true});await dialog.waitFor();
   const series='Series '+label;
   await dialog.getByRole('textbox',{name:'Display name',exact:true}).fill(series);await dialog.getByRole('button',{name:'Save',exact:true}).click();await dialog.waitFor({state:'hidden'});

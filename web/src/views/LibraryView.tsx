@@ -3,12 +3,13 @@ import { useMemo, useRef, useState, type ReactNode } from 'react';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { Button, buttonVariants } from '@heroui/react';
-import { CaretRight, FolderSimple, MagnifyingGlass, Play, Queue, SquaresFour, TreeStructure } from '@phosphor-icons/react';
+import { CaretRight, FolderSimple, MagnifyingGlass, Play, Queue } from '@phosphor-icons/react';
 import { api } from '../api';
 import { useUIStore } from '../store';
 import { MediaCard } from '../components/MediaCard';
 import { Select } from '../components/Select';
 import { useRowWheel } from '../hooks/useRowWheel';
+import { useLibraryLayout } from '../hooks/useLibraryLayout';
 import { LibraryFolderButton } from '../components/LibraryFolderButton';
 import { libraryFolderChildren, folderDisplayName } from '../utils/library-folder-children';
 import { LibraryExplorer } from '../components/LibraryExplorer';
@@ -28,7 +29,7 @@ const SORT_OPTIONS = [
 export function LibraryView() {
   useLocale();
   const search = useUIStore((s)=>s.search);
-  const [layout,setLayout]=useState<'grid'|'explorer'>(()=>{try{return localStorage.getItem('virelo.library-layout')==='explorer'?'explorer':'grid';}catch{return 'grid';}});
+  const layout=useLibraryLayout(state=>state.layout);
   const [history,setHistory]=useState<{items:LibraryLocation[];index:number}>({items:[{libraryId:null,folder:null}],index:0});
   const {libraryId,folder}=history.items[history.index];
   const goTo=(next:LibraryLocation)=>setHistory(current=>navigateLibraryHistory(current,next));
@@ -90,11 +91,6 @@ export function LibraryView() {
     <header className="content-heading">
       <div><h1>{title}</h1><p>{mediaQ.isLoading ? t("Loading…") : t('{count} items',{count:media.length+(explorer?(activeLibraryId===null?libraries.length:childFolders.length):0)})}</p></div>
       <div className="heading-controls library-actions">
-        <div className="library-layout-switch" role="group" aria-label={t('Library view')}>
-          {(['grid','explorer'] as const).map(value=><button key={value} type="button" aria-pressed={layout===value} onClick={()=>{if(value==='explorer'&&libraryId===null&&libraries.length===1)goTo({libraryId:libraries[0].id,folder:folder??''});setLayout(value);try{localStorage.setItem('virelo.library-layout',value);}catch{/* Keep the selection for this visit. */}}}>
-            {value==='grid'?<SquaresFour/>:<TreeStructure/>}<span>{t(value==='grid'?'Grid view':'Explorer view')}</span>
-          </button>)}
-        </div>
         <Link to="/playlists" className={buttonVariants({variant:'secondary',className:'library-playlists-link'})}><Queue aria-hidden="true"/><span>{t("Playlists")}</span><CaretRight aria-hidden="true"/></Link>
         <Select label={t("Sort")} value={sort} options={SORT_OPTIONS.map(option=>({...option,label:t(option.label)}))} onChange={(v)=>setSort(v as SortKey)}/>
         {(explorer||folder !== null) && media.length > 0 && <Button className="play-all-btn" onPress={()=>playAll()}><Play weight="fill"/> {t("Play all")}</Button>}
