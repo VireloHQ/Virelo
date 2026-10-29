@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {mkdtemp,mkdir,readFile,writeFile,rm} from 'node:fs/promises';
+import {mkdtemp,mkdir,readFile,realpath,writeFile,rm} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {createVireloServer} from '../dist/server.js';
@@ -76,7 +76,7 @@ test('library and folder display names are scoped, persistent and never rename s
     assert.deepEqual(visible[0].folderLabels,{Shows:'Series','Shows/Season 1':'First season'});
     assert.deepEqual(server.db.folderLabels(libraries[1].id),{});
     const item=server.db.getMedia(libraries[0].mediaId,{userId:1,libraryIds:null});
-    assert.equal(item.path,originals[0][0]);assert.equal(item.folder,'Shows/Season 1');assert.equal(item.liked,1);assert.equal(item.progress_position,37);
+    assert.equal(item.path,await realpath(originals[0][0]));assert.equal(item.folder,'Shows/Season 1');assert.equal(item.liked,1);assert.equal(item.progress_position,37);
     assert.equal((await call('GET','/api/playlists/'+playlist.json().id)).json().items[0].id,item.id);
     server.db.addLibrary(join(libraries[0].path,'Shows','Season 1'),'Private nested library');
     const restricted=(await call('GET','/api/libraries',undefined,delegate)).json();
