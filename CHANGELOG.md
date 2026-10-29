@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Move library layout selection to Appearance settings and keep folder renaming in context menus, with press feedback and long-press access on touch screens.
+
 - Add an optional Explorer library layout with a folder sidebar, address completion, navigation history and paginated video grids.
 
 - Rename library and subfolder display names without changing source paths, and extend vertical queue highlights across the complete video row.
