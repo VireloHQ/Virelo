@@ -12,8 +12,8 @@ const SORT_ORDER: Record<SortKey, string> = {
   title: 'm.sort_title COLLATE NOCASE ASC, m.id ASC',
   newest: 'm.added_at DESC, m.id DESC',
   oldest: 'm.added_at ASC, m.id ASC',
-  year: 'm.year IS NULL, m.year DESC, m.sort_title COLLATE NOCASE ASC',
-  duration: 'm.duration IS NULL, m.duration DESC, m.sort_title COLLATE NOCASE ASC',
+  year: 'm.year IS NULL, m.year DESC, m.sort_title COLLATE NOCASE ASC, m.id ASC',
+  duration: 'm.duration IS NULL, m.duration DESC, m.sort_title COLLATE NOCASE ASC, m.id ASC',
   random: 'RANDOM()'
 };
 const MEDIA_ALIASES=`SELECT id FROM media WHERE path=(SELECT path FROM media WHERE id=?) ${process.platform==='win32'?'COLLATE NOCASE':''}`;
@@ -434,7 +434,7 @@ export class VireloDB {
     for (const row of rows) if (!paths.has(this.pathKey(canonicalMediaPath(row.path)))) del.run(row.id);
   }
 
-  listMedia(options: { search?: string; kind?: MediaKind; limit?: number; offset?: number; libraryId?: number; folder?: string; sort?: SortKey; liked?: boolean } = {}, scope?: CatalogScope) {
+  listMedia(options: { search?: string; kind?: MediaKind; limit?: number; offset?: number; libraryId?: number; folder?: string; sort?: SortKey; seed?:number; liked?: boolean } = {}, scope?: CatalogScope) {
     const clauses: string[] = [];
     const params: SQLInputValue[] = [];
     const visible = this.catalogClause(scope), joins = this.personalJoins(scope);
@@ -449,7 +449,9 @@ export class VireloDB {
     if (options.folder !== undefined) { clauses.push('m.folder=?'); params.push(options.folder); }
     if (options.liked) clauses.push('l.media_id IS NOT NULL');
     const where = clauses.length ? `WHERE ${clauses.join(' AND ')}` : '';
-    const orderBy = SORT_ORDER[options.sort ?? 'title'] ?? SORT_ORDER.title;
+    const seeded=options.sort==='random'&&options.seed!==undefined;
+    const orderBy = seeded?'shorts_rank(m.id, ?), m.id ASC':SORT_ORDER[options.sort ?? 'title'] ?? SORT_ORDER.title;
+    if(seeded)params.push(Number.isFinite(options.seed)?Number(options.seed)>>>0:0);
     const requestedLimit = Number.isFinite(options.limit) ? Number(options.limit) : 100;
     const requestedOffset = Number.isFinite(options.offset) ? Number(options.offset) : 0;
     const limit = Math.min(Math.max(Math.trunc(requestedLimit), 1), 500);

@@ -38,6 +38,7 @@ export interface WatchRouteSearch {
   favorites?: boolean;
   playlistId?: number;
   folder?: string;
+  exactFolder?: boolean;
   libraryId?: number;
   sort?: SortKey;
   search?: string;
@@ -48,8 +49,9 @@ function validateWatchSearch(input: Record<string, unknown>): WatchRouteSearch {
     queue: input.queue === true || input.queue === '1' || input.queue === 'true',
     favorites: input.favorites === true || input.favorites === '1' || input.favorites === 'true',
     playlistId: (typeof input.playlistId === 'number' || typeof input.playlistId === 'string' && /^\d+$/.test(input.playlistId)) && Number.isSafeInteger(Number(input.playlistId)) && Number(input.playlistId) > 0 ? Number(input.playlistId) : undefined,
-    folder: typeof input.folder === 'string' && input.folder !== '' ? input.folder.slice(0, 500) : undefined,
-    libraryId: typeof input.libraryId === 'string' && /^\d+$/.test(input.libraryId) ? Number(input.libraryId) : undefined,
+    folder: typeof input.folder === 'string' ? input.folder.slice(0, 4096) : undefined,
+    exactFolder: input.exactFolder === true || input.exactFolder === '1' || input.exactFolder === 'true' || undefined,
+    libraryId: Number.isSafeInteger(Number(input.libraryId)) && Number(input.libraryId)>0 ? Number(input.libraryId) : undefined,
     sort: (['title', 'newest', 'oldest', 'year', 'duration', 'random'] as string[]).includes(String(input.sort ?? '')) ? input.sort as SortKey : undefined,
     search: typeof input.search === 'string' && input.search !== '' ? input.search.slice(0, 200) : undefined
   };
