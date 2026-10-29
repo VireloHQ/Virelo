@@ -112,6 +112,7 @@ try {
   await input.waitFor();await page.locator('.splash-screen').waitFor({state:'hidden'});
   check(await page.locator('.library-layout-switch,.folder-options').count()===0,label+' layout and folder option controls are absent from the library');
   await page.locator('.explorer-folder-grid .folder-chip').filter({hasText:'Clips'}).click();
+  await page.waitForFunction(()=>document.querySelector('input[role="combobox"]')?.value==='/Clips');
   check(await input.inputValue()==='/Clips',label+' settings-selected Explorer opens the registered root');
   await auditFolderPress(page,context,label,width);
   await page.waitForFunction(()=>document.querySelectorAll('.media-card').length===200);
