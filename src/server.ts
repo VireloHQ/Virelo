@@ -362,7 +362,7 @@ export async function createVireloServer(config: RuntimeConfig, pickFolder: (sig
   app.post('/api/scan', async request => ({ started: await runScan(request.catalogScope!), status: visibleScanStatus(request.account!.isAdmin) }));
   app.get('/api/scan/status', async request => visibleScanStatus(request.account!.isAdmin));
   app.get('/api/home', async request => db.getHome(request.catalogScope!));
-  app.get<{ Querystring: { search?: string; kind?: MediaKind; limit?: string; offset?: string; libraryId?: string; folder?: string; sort?: string; liked?: string } }>('/api/media', async (request) => {
+  app.get<{ Querystring: { search?: string; kind?: MediaKind; limit?: string; offset?: string; libraryId?: string; folder?: string; sort?: string; seed?:string; liked?: string } }>('/api/media', async (request) => {
     const q = request.query;
     return db.listMedia({
       search: q.search?.slice(0, 200),
@@ -370,8 +370,9 @@ export async function createVireloServer(config: RuntimeConfig, pickFolder: (sig
       limit: q.limit ? Number(q.limit) : 100,
       offset: q.offset ? Number(q.offset) : 0,
       libraryId: q.libraryId ? Number(q.libraryId) : undefined,
-      folder: q.folder !== undefined ? q.folder.slice(0, 500) : undefined,
+      folder: q.folder !== undefined ? q.folder.slice(0, 4096) : undefined,
       sort: (SORT_KEYS as string[]).includes(q.sort ?? '') ? q.sort as SortKey : 'title',
+      seed: q.seed===undefined?undefined:Number(q.seed),
       liked: q.liked === '1' || q.liked === 'true'
     }, request.catalogScope!);
   });

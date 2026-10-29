@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add an optional Explorer library layout with a folder sidebar, address completion, navigation history and paginated video grids.
+
 - Rename library and subfolder display names without changing source paths, and extend vertical queue highlights across the complete video row.
 
 - Group playlist videos in a compact bordered list with explicit add/reset controls, clearer row actions, and responsive spacing.

@@ -60,3 +60,4 @@ jobs:
       - run: node scripts/audit-motion.mjs
       - run: node scripts/audit-queue.mjs
       - run: node scripts/audit-playlists.mjs
+      - run: node scripts/audit-library-explorer.mjs

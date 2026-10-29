@@ -28,7 +28,7 @@ export function WatchView() {
   const queueQ = useQuery({
     queryKey: ['watch-queue', searchParams],
     queryFn: () => (searchParams.favorites ? loadFavoriteQueue : loadMediaQueue)((offset, limit) => api.media({
-      liked: searchParams.favorites ? 1 : undefined, search: searchParams.search, folder: searchParams.folder,
+      liked: searchParams.favorites ? 1 : undefined, search: searchParams.search, folder: searchParams.folder, recursive: searchParams.exactFolder?0:undefined,
       libraryId: searchParams.libraryId, sort: searchParams.sort === 'random' ? 'title' : searchParams.sort, offset, limit
     })),
     enabled: queueEnabled && searchParams.playlistId === undefined
