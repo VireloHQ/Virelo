@@ -4,6 +4,7 @@ import { Check } from '@phosphor-icons/react';
 import { t, useLocale } from '../i18n';
 import { useContextMenuPlacement } from '../hooks/useContextMenuPlacement';
 import type { ContextMenuPosition } from '../utils/context-menu';
+import '../player-ui.css';
 
 export type PlayerAction = { label:string; content:ReactNode } | { label:string; icon?:ReactNode; checked?:boolean; disabled?:boolean; action:()=>void };
 

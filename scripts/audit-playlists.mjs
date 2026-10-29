@@ -48,6 +48,8 @@ async function auditLibraryNames(page,mode,base,prefix,label) {
   await page.goto(base+prefix+'/library');
   const library=page.getByRole('navigation',{name:'Library selection',exact:true}).locator('.folder-control').first();
   await library.locator('.folder-chip').click({button:'right'});await page.getByRole('menuitem',{name:'Rename',exact:true}).waitFor();
+  check(await page.getByRole('menu').evaluate(menu=>{const row=menu.querySelector('button'),icon=row.querySelector('svg');return row.getBoundingClientRect().height>=44&&getComputedStyle(row).display==='flex'&&icon.getBoundingClientRect().width>=16;}),label+' folder context actions retain player-menu styling on a direct Library load');
+  await page.getByRole('menu').screenshot({path:join(root,mode+'-'+label.split(' ').at(-1)+'-folder-context.png')});
   await page.keyboard.press('Escape');
   check(await library.locator('.folder-chip').evaluate(element=>element===document.activeElement),label+' folder context menu restores focus on Escape');
   await library.locator('.folder-chip').click({button:'right'});await page.getByRole('menuitem',{name:'Rename',exact:true}).click();
