@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import {auditDropdownJoin,auditExplorerLayout} from './helpers/compact-library-audit.mjs';
 import {createRequire} from 'node:module';
 import {existsSync} from 'node:fs';
 import {mkdtemp,mkdir,writeFile,readFile} from 'node:fs/promises';
@@ -115,12 +116,15 @@ try {
   await page.waitForFunction(()=>document.querySelector('input[role="combobox"]')?.value==='/Clips');
   check(await input.inputValue()==='/Clips',label+' settings-selected Explorer opens the registered root');
   await auditFolderPress(page,context,label,width);
+  await auditExplorerLayout(page,label,width,check);
   await page.waitForFunction(()=>document.querySelectorAll('.media-card').length===200);
   check(await page.locator('.media-card').count()===200,label+' first page excludes nested videos');
   await page.getByRole('button',{name:'Load more',exact:true}).click();
   await page.waitForFunction(()=>document.querySelectorAll('.media-card').length===201);
   check(true,label+' videos beyond the first page remain available');
-  await page.getByRole('button',{name:'Sort',exact:true}).click();await page.getByRole('option',{name:'Random',exact:true}).click();
+  await page.getByRole('button',{name:'Sort',exact:true}).click();
+  await auditDropdownJoin(page,page.locator('.picker').filter({has:page.getByRole('button',{name:'Sort',exact:true})}),label,check);
+  await page.getByRole('option',{name:'Random',exact:true}).click();
   await page.waitForFunction(()=>document.querySelectorAll('.media-card').length===200);
   await page.getByRole('button',{name:'Load more',exact:true}).click();await page.waitForFunction(()=>document.querySelectorAll('.media-card').length===201);
   check(await page.locator('.media-card').evaluateAll(cards=>new Set(cards.map(card=>card.getAttribute('href'))).size===cards.length),label+' random pagination never repeats a video');

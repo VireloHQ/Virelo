@@ -3,6 +3,7 @@ export const MAX_PLAYLIST_ITEMS = 10_000;
 export interface PlaylistSummary {
   id: number; name: string; revision: number; createdAt: number; updatedAt: number;
   itemCount: number; unavailableCount: number;
+  cover?: { mediaId:number; url:string|null }|null;
 }
 export interface PlaylistWrite { name?: string; mediaIds?: number[]; revision: number; append?: boolean }
 export function playlistName(value: unknown): string {

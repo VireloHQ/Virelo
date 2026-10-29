@@ -166,13 +166,13 @@ export function PlaybackQueue({ items, activeIndex, repeatMode, onRepeatChange, 
           <DotsSixVertical/><QueueArtwork item={dragItem}/><strong>{dragItem.title}</strong></div> : null}
       </DragOverlay>, document.body)}
     </DndContext>
-    {(!editing || items.length > 1 || state.notice) && <div className="queue-footer">
-      <div className="queue-feedback"><span role="status">{editing && state.notice ? t("Unsaved playlist changes.") : t(state.notice || "Drag the handle to reorder.")}</span><button type="button" disabled={!state.undo?.ids.length} onClick={() => onEdit(undoQueueEdit)} aria-label={editing ? t("Undo playlist change") : t("Undo queue change")}>{t("Undo")}</button></div>
+    {(state.notice || state.undo?.ids.length || !vertical) ? <div className="queue-footer">
+      <div className="queue-feedback"><span role="status">{editing && state.notice ? t("Unsaved playlist changes.") : state.notice ? t(state.notice) : ''}</span><button type="button" disabled={!state.undo?.ids.length} onClick={() => onEdit(undoQueueEdit)} aria-label={editing ? t("Undo playlist change") : t("Undo queue change")}>{t("Undo")}</button></div>
       {!vertical && <div className="queue-scroll-controls">
         <button type="button" onClick={() => browse(-1)} disabled={!edges.left} aria-label={t("Scroll queue left")}><CaretLeft/></button>
         <button type="button" onClick={() => browse(1)} disabled={!edges.right} aria-label={t("Scroll queue right")}><CaretRight/></button>
       </div>}
-    </div>}
+    </div> : null}
     {menu && (menu.id === null || menuItem) && <PlayerActionMenu position={menu.position} label={menuItem ? t(editing ? '{value0} actions' : '{value0} queue actions',{value0:menuItem.title}) : t("Queue options")} actions={actions} returnFocus={menu.trigger} onClose={() => setMenu(null)}/>}
   </section>;
 }

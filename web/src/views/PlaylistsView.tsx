@@ -7,6 +7,7 @@ import { ListPlus, Play, Queue, Shuffle } from '@phosphor-icons/react';
 import { api } from '../api';
 import { PageSkeleton } from '../components/PageSkeleton';
 import { PlaybackQueue } from '../components/PlaybackQueue';
+import { PlaylistArtwork } from '../components/PlaylistArtwork';
 import { ConfirmationDialog } from '../components/ConfirmationDialog';
 import { usePlaybackQueue } from '../hooks/usePlaybackQueue';
 import { playlistName } from '../utils/playlist-values';
@@ -32,7 +33,7 @@ export function PlaylistsView() {
     {query.isPending ? <p role="status">{t("Loading playlists…")}</p> : query.isError ? <div className="playlist-feedback" role="alert"><p>{t(query.error.message)}</p><Button variant="secondary" onPress={() => void query.refetch()}>{t("Try again")}</Button></div>
       : query.data.length ? <ul className="playlist-collection" aria-label={t("Saved playlists")}>{query.data.map(playlist => <li key={playlist.id}>
         <Link to="/playlists/$playlistId" params={{ playlistId: String(playlist.id) }}>
-          <Queue aria-hidden="true"/><div><h2>{playlist.name}</h2><p>{t('{count} videos',{count:playlist.itemCount})}{playlist.unavailableCount ? ' · '+t('{count} unavailable videos',{count:playlist.unavailableCount}) : ''}</p></div><span>{t("Open")}</span>
+          <PlaylistArtwork playlist={playlist}/><div><h2 title={playlist.name}>{playlist.name}</h2><p>{t('{count} videos',{count:playlist.itemCount})}{playlist.unavailableCount ? ' · '+t('{count} unavailable videos',{count:playlist.unavailableCount}) : ''}</p></div><span>{t("Open")}</span>
         </Link>
       </li>)}</ul> : <div className="playlist-empty"><Queue/><h2>{t("No playlists yet")}</h2><p>{t("Create one above, add a video from its details, or save a playback queue.")}</p></div>}
   </div>;

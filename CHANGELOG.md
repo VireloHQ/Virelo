@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Compact Explorer folders and add a resizable, keyboard-accessible sidebar. Use the first available video as playlist artwork, align creation controls, tighten playlist headings, and join dropdown panels without corner gaps.
+
 - Move library layout selection to Appearance settings and keep folder renaming in context menus, with press feedback and long-press access on touch screens.
 
 - Add an optional Explorer library layout with a folder sidebar, address completion, navigation history and paginated video grids.
