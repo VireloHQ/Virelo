@@ -10,4 +10,3 @@ export function PlaylistArtwork({playlist}:{playlist:PlaylistSummary}) {
     {url&&failed!==url&&<img src={url} alt="" loading="lazy" decoding="async" onError={()=>setFailed(url)}/>}
   </span>;
 }
-

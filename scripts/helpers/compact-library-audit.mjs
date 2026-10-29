@@ -48,4 +48,3 @@ export async function auditPlaylistListLayout(panel,label,check) {
   }),label+' playlist heading and count share a compact row');
   check(await panel.locator('.queue-footer').count()===0,label+' an unchanged vertical playlist does not show a drag instruction or empty footer');
 }
-
