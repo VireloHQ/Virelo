@@ -74,7 +74,8 @@
 .app-shell .button { border-radius:4px; font-weight:600; }
 .app-shell .button:active { transform:none; }
 .app-shell .picker-trigger { border-radius:4px; min-height:44px; font-size:14px; font-weight:500; }
-.app-shell .picker-menu { border-radius:6px; background:var(--surface-2); backdrop-filter:none; }
+.app-shell .picker-menu { border-radius:0 0 4px 4px; background:var(--surface-2); backdrop-filter:none; }
+.app-shell .picker[data-open="true"]>.picker-trigger { background:var(--surface-2); }
 .app-shell .picker-option { font-weight:500; }
 .app-shell .picker-option.selected { background:var(--surface-3); }
 .app-shell .picker-option svg { color:var(--text); }

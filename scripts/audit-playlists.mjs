@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { auditPlaylistField } from './helpers/playlist-field-audit.mjs';
+import { auditPlaylistListLayout } from './helpers/compact-library-audit.mjs';
 import { createRequire } from 'node:module';
 import { existsSync } from 'node:fs';
 import { mkdtemp, mkdir, readFile, writeFile } from 'node:fs/promises';
@@ -14,6 +15,7 @@ await mkdir(media);
 const clip = join(media, 'sample.mp4');
 execFileSync(process.env.FFMPEG_PATH || 'ffmpeg', ['-hide_banner','-loglevel','error','-f','lavfi','-i','color=c=0x354356:s=320x180:r=10','-f','lavfi','-i','sine=frequency=440:sample_rate=48000','-t','120','-c:v','libx264','-preset','ultrafast','-pix_fmt','yuv420p','-c:a','aac','-movflags','+faststart',clip], { windowsHide:true });
 const bytes = await readFile(clip), items = [];
+const thumbnail=execFileSync(process.env.FFMPEG_PATH||'ffmpeg',['-hide_banner','-loglevel','error','-i',clip,'-frames:v','1','-f','image2pipe','-c:v','png','pipe:1'],{windowsHide:true});
 for (let index = 0; index < 4; index++) {
   const folder=index===3?'Shows/Season 1':'';
   const directory=join(media,folder);if(folder)await mkdir(directory,{recursive:true});
@@ -168,6 +170,8 @@ try {
     server.db.updateSettings({libraryWatchEnabled:false,externalMetadataEnabled:false});
     server.db.addLibrary(media,'Test clips');
     for(const item of items) { const {id,source_path,liked,progress_position,added_at,updated_at,...input}=item; server.db.upsertMedia(input); }
+    const artwork=join(root,'data','thumbnails','fixture.png');await writeFile(artwork,thumbnail);
+    for(const id of [1,2])server.db.updateTechnicalMetadata(id,{thumbnail_path:artwork});
     await server.app.listen({host:'127.0.0.1',port:0});modes.push(['npm','http://127.0.0.1:'+server.app.server.address().port]);
   }
   const webRepo=process.env.VIRELO_TEST_WEB_REPO || (!modes.length?repo:null);
@@ -186,9 +190,11 @@ try {
     } else {
       await page.route(base+'/__playlist-seed',route=>route.fulfill({contentType:'text/html',body:'<!doctype html><body></body>'}));
       await page.goto(base+'/__playlist-seed');
+      await page.route(base+'/__playlist-thumbnail.png',route=>route.fulfill({body:thumbnail,contentType:'image/png'}));
+      await page.evaluate(async()=>{window.__playlistThumbnail=await(await fetch('/__playlist-thumbnail.png')).blob();});
       await page.evaluate(async items=>new Promise((resolve,reject)=>{
         const request=indexedDB.open('virelo-web',1);request.onupgradeneeded=()=>{for(const name of ['libraries','media','thumbnails'])request.result.createObjectStore(name,{keyPath:'id'});request.result.createObjectStore('settings');};
-        request.onerror=()=>reject(request.error);request.onsuccess=()=>{const db=request.result,tx=db.transaction(['media','libraries'],'readwrite');items.forEach(item=>tx.objectStore('media').put(item));tx.objectStore('libraries').put({id:1,label:'Test clips',path:'Test clips',created_at:1,persistent:false});tx.oncomplete=()=>{db.close();resolve();};tx.onabort=()=>reject(tx.error);};
+        request.onerror=()=>reject(request.error);request.onsuccess=()=>{const db=request.result,tx=db.transaction(['media','libraries','thumbnails'],'readwrite');items.forEach(item=>tx.objectStore('media').put(item));for(const id of [1,2])tx.objectStore('thumbnails').put({id,blob:window.__playlistThumbnail});tx.objectStore('libraries').put({id:1,label:'Test clips',path:'Test clips',created_at:1,persistent:false});tx.oncomplete=()=>{db.close();resolve();};tx.onabort=()=>reject(tx.error);};
       }),items);
       await page.route(base+'/__playlist-fixture.mp4',route=>route.fulfill({body:bytes,contentType:'video/mp4'}));
       await page.route(url=>url.pathname==='/src/api.ts'&&!url.search,async route=>{
@@ -221,12 +227,20 @@ api.mediaSource=async id=>{if(!urls.has(id))urls.set(id,URL.createObjectURL(awai
     await page.getByRole('heading',{name:'Playlists',exact:true}).waitFor();
     check(true,label+' playlists are reachable from mobile and desktop libraries');
     await auditPlaylistField(page,page.getByRole('textbox',{name:'New playlist name',exact:true}),label+' create',check);
+    const fieldBox=await page.getByRole('textbox',{name:'New playlist name',exact:true}).boundingBox(),createBox=await page.getByRole('button',{name:'Create playlist',exact:true}).boundingBox();
+    check(Math.abs(fieldBox.height-createBox.height)<1,label+' create button and name field have the same height');
     await page.getByRole('textbox',{name:'New playlist name',exact:true}).fill('Weekend');
     await page.getByRole('button',{name:'Create playlist',exact:true}).click();
     await page.getByRole('heading',{name:'Weekend',exact:true}).waitFor();
     await page.waitForURL(/\/playlists\/\d+$/);
     const id=Number(new URL(page.url()).pathname.split('/').pop());
-    check((await call(page,mode,'playlist',id)).itemCount===0,label+' creates an empty named playlist');
+    const empty=await call(page,mode,'playlist',id);
+    check(empty.itemCount===0&&empty.cover===null,label+' creates an empty named playlist without artwork');
+    await page.goto(base+prefix+'/playlists');
+    const emptyRow=page.locator('.playlist-collection a').filter({hasText:'Weekend'});
+    await emptyRow.waitFor();
+    check(await emptyRow.locator('.playlist-artwork svg').isVisible()&&await emptyRow.locator('img').count()===0,label+' empty playlists use a playlist-specific fallback icon');
+    await page.goto(base+prefix+'/playlists/'+id);await page.getByRole('heading',{name:'Weekend',exact:true}).waitFor();
     await auditPlaylistField(page,page.getByRole('textbox',{name:'Playlist name',exact:true}),label+' rename',check);
     await page.getByRole('textbox',{name:'Playlist name',exact:true}).fill(title);
     await page.getByRole('button',{name:'Save changes',exact:true}).click();
@@ -242,6 +256,7 @@ api.mediaSource=async id=>{if(!urls.has(id))urls.set(id,URL.createObjectURL(awai
     check(JSON.stringify(await ids())==='[1,2,3]',label+' reopening and reloading retain order without duplicates');
     check(await page.locator('video').count()===0,label+' editing does not start video playback');
     const panel=page.locator('.playback-queue[data-editing]');
+    await auditPlaylistListLayout(panel,label,check);
     const reset=panel.getByRole('button',{name:'Reset changes',exact:true});
     check(await panel.evaluate(element=>{const style=getComputedStyle(element);return style.borderTopStyle==='solid'&&parseFloat(style.borderTopWidth)>=1&&parseFloat(style.borderRadius)>0;}),label+' playlist videos are grouped inside a bordered panel');
     check(await panel.getByRole('heading',{name:'Playlist videos',exact:true}).isVisible(),label+' the list has its own visible heading');
@@ -267,6 +282,18 @@ api.mediaSource=async id=>{if(!urls.has(id))urls.set(id,URL.createObjectURL(awai
     await page.getByRole('button',{name:'Save changes',exact:true}).waitFor({state:'visible'});
     await page.waitForFunction(()=>document.querySelector('.playlist-management')?.textContent.includes('All changes saved'));
     check(JSON.stringify((await call(page,mode,'playlist',id)).items.map(item=>item.id))==='[2,1,3]',label+' explicitly saves the custom order');
+    const ordered=await call(page,mode,'playlist',id),listed=(await call(page,mode,'playlists')).find(row=>row.id===id);
+    check(ordered.cover.mediaId===2&&listed.cover.mediaId===2,label+' collection artwork follows the first video after reordering');
+    await page.goto(base+prefix+'/playlists');
+    const collectionRow=page.locator('.playlist-collection a').filter({hasText:title}),image=collectionRow.locator('.playlist-artwork img');
+    await image.waitFor();await image.evaluate(element=>element.decode());
+    check(await image.isVisible(),label+' first-video thumbnail remains visible on desktop and mobile');
+    await page.locator('.splash-screen').waitFor({state:'hidden'});
+    await page.screenshot({path:join(root,mode+'-'+name+'-playlist-covers.png')});
+    await image.evaluate(element=>{element.src='/__missing-playlist-cover.png';});
+    await image.waitFor({state:'detached'});
+    check(await collectionRow.locator('.playlist-artwork svg').isVisible(),label+' a failed image falls back to the playlist icon');
+    await page.goto(base+prefix+'/playlists/'+id);await page.getByRole('heading',{name:title,exact:true}).waitFor();
     check(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),label+' editor fits the viewport');
     await page.evaluate(()=>window.scrollTo(0,0));await settle(page);
     await page.screenshot({path:join(root,mode+'-'+name+'-editor.png')});
@@ -335,7 +362,7 @@ api.mediaSource=async id=>{if(!urls.has(id))urls.set(id,URL.createObjectURL(awai
         const db=await local.openDatabase();await new Promise((resolve,reject)=>{const tx=db.transaction('media','readwrite');tx.objectStore('media').delete(4);tx.oncomplete=resolve;tx.onabort=()=>reject(tx.error);});db.close();
         const missing=await api.playlist(saved.id);saved=await api.updatePlaylist(saved.id,{revision:saved.revision,mediaIds:[]});
         await local.saveStoredMedia(fixture);const restored=await api.playlist(saved.id);await api.deletePlaylist(saved.id,restored.revision);
-        return missing.unavailableCount===1&&saved.unavailableCount===1&&restored.items.length===1&&restored.items[0].id===4;
+        return missing.unavailableCount===1&&missing.cover?.mediaId===1&&saved.unavailableCount===1&&saved.cover===null&&restored.items.length===1&&restored.items[0].id===4&&restored.cover?.mediaId===4&&restored.cover.url===null;
       },items[3]),label+' temporarily unavailable browser references survive edits and reappear after restoration');
     }
     check(errors.length===0,label+' no browser exceptions: '+errors.join('; '));

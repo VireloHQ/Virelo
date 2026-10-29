@@ -19,6 +19,7 @@ export function registerPlaylists(app: FastifyInstance, db: VireloDB) {
     CREATE TABLE IF NOT EXISTS playlist_items (
       playlist_id INTEGER NOT NULL REFERENCES playlists(id) ON DELETE CASCADE,
       media_id INTEGER NOT NULL, position INTEGER NOT NULL, PRIMARY KEY(playlist_id,media_id));`);
+  sql.exec('CREATE INDEX IF NOT EXISTS playlist_items_order ON playlist_items(playlist_id,position)');
   const entries = (id: number) => (sql.prepare('SELECT media_id FROM playlist_items WHERE playlist_id=? ORDER BY position').all(id) as { media_id: number }[]).map(row => row.media_id);
   const owner = (id: number, scope: CatalogScope) => {
     if (!Number.isSafeInteger(id) || id <= 0) throw new PlaylistError('Playlist not found.', 404);
@@ -26,12 +27,13 @@ export function registerPlaylists(app: FastifyInstance, db: VireloDB) {
     if (!row) throw new PlaylistError('Playlist not found.', 404);
     return row;
   };
-  const summary = (row: Row, itemCount: number, unavailableCount: number): PlaylistSummary => ({
-    id: row.id, name: row.name, revision: row.revision, createdAt: row.created_at, updatedAt: row.updated_at, itemCount, unavailableCount
+  const cover = (mediaId:number, revision=0) => ({mediaId,url:`/api/media/${mediaId}/artwork/thumbnail?v=${revision}`});
+  const summary = (row: Row, itemCount: number, unavailableCount: number, cover:PlaylistSummary['cover']=null): PlaylistSummary => ({
+    id: row.id, name: row.name, revision: row.revision, createdAt: row.created_at, updatedAt: row.updated_at, itemCount, unavailableCount, cover
   });
   const detail = (id: number, scope: CatalogScope) => {
     const row = owner(id, scope), ids = entries(id), items = db.getMediaByIds(ids, scope);
-    return { ...summary(row, items.length, ids.length - items.length), items };
+    return { ...summary(row, items.length, ids.length - items.length,items[0]?cover(items[0].id,items[0].metadata_revision):null), items };
   };
   const writeEntries = (id: number, ids: number[]) => {
     sql.prepare('DELETE FROM playlist_items WHERE playlist_id=?').run(id);
@@ -54,11 +56,13 @@ export function registerPlaylists(app: FastifyInstance, db: VireloDB) {
   };
   app.get('/api/playlists', async request => {
     const scope = scopeOf(request), libraries = db.visibleLibraries(scope).map(library => library.id);
-    const rows = sql.prepare(`SELECT p.*,COUNT(m.id) AS available,COUNT(e.media_id)-COUNT(m.id) AS unavailable
+    const rows = sql.prepare(`SELECT p.*,COUNT(m.id) AS available,COUNT(e.media_id)-COUNT(m.id) AS unavailable,
+      (SELECT json_array(m2.id,m2.metadata_revision) FROM playlist_items e2 JOIN media m2 ON m2.id=e2.media_id
+       WHERE e2.playlist_id=p.id AND m2.library_id IN (SELECT value FROM json_each(?)) ORDER BY e2.position LIMIT 1) AS cover
       FROM playlists p LEFT JOIN playlist_items e ON e.playlist_id=p.id
       LEFT JOIN media m ON m.id=e.media_id AND m.library_id IN (SELECT value FROM json_each(?))
-      WHERE p.user_id=? GROUP BY p.id ORDER BY p.updated_at DESC,p.id DESC`).all(JSON.stringify(libraries), scope.userId) as Array<Row & { available: number; unavailable: number }>;
-    return rows.map(row => summary(row, row.available, row.unavailable));
+      WHERE p.user_id=? GROUP BY p.id ORDER BY p.updated_at DESC,p.id DESC`).all(JSON.stringify(libraries),JSON.stringify(libraries),scope.userId) as Array<Row & { available: number; unavailable: number; cover:string|null }>;
+    return rows.map(row => summary(row, row.available, row.unavailable,row.cover?cover(...JSON.parse(row.cover) as [number,number]):null));
   });
   app.get<{ Params: { id: string } }>('/api/playlists/:id', async request => detail(Number(request.params.id), scopeOf(request)));
   app.post('/api/playlists', async request => {

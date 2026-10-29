@@ -2,6 +2,7 @@ import { useEffect, useId, useRef, useState, type ReactNode, type RefObject } fr
 import { ArrowLeft, ArrowRight, ArrowUp, CaretDown, CaretRight, FolderSimple, FolderOpen, House, List } from '@phosphor-icons/react';
 import { t, useLocale } from '../i18n';
 import { LibraryFolderButton } from './LibraryFolderButton';
+import { ExplorerDivider } from './ExplorerDivider';
 import { folderKey, libraryAddressSuggestions, resolveLibraryAddress, type ExplorerFolder, type LibraryLocation } from '../utils/library-explorer';
 import './LibraryExplorer.css';
 
@@ -48,6 +49,7 @@ export function LibraryExplorer({roots,nodes,location,canRename,canBack,canForwa
         <button type="button" className={'explorer-home'+(!current?' active':'')} aria-current={!current?'location':undefined} onClick={()=>{onNavigate({libraryId:null,folder:null});setShowFolders(false);}}><House/><span>{t('All libraries')}</span></button>
         <ul>{roots.map(node=><FolderBranch key={node.key} node={node} selected={current?.key} expanded={expanded} onToggle={toggle} onOpen={open} canRename={canRename}/>)}</ul>
       </nav>
+      <ExplorerDivider/>
       <div className="explorer-content">
         <div className="explorer-folder-grid">
           {(current?.children??roots).map(node=><LibraryFolderButton key={node.key} library={node.library} folder={node.folder} label={node.name} canRename={canRename} onClick={()=>open(node)}>
