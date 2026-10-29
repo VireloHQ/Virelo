@@ -17,7 +17,7 @@ const actionNames:Record<string,string>={
   'account.created':'Created a user','account.updated':'Updated a user','account.deleted':'Deleted a user',
   'playback.opened':'Opened a video','playback.started':'Started playback','playback.resumed':'Resumed playback',
   'playback.paused':'Paused playback','playback.stopped':'Stopped playback',
-  'library.added':'Saved a library','library.removed':'Removed a library','library.scanned':'Requested a scan',
+  'library.added':'Saved a library','library.renamed':'Renamed a library folder','library.removed':'Removed a library','library.scanned':'Requested a scan',
   'server.settings_updated':'Changed server settings','server.cache_cleared':'Cleared unused playback cache','server.admin_access_updated':'Changed administrator network access',
   'metadata.cleared_all':'Cleared shared metadata','metadata.cleared':'Cleared video metadata','metadata.refreshed':'Refreshed video metadata',
   'favorites.updated':'Changed a favorite','playlist.created':'Created a playlist','playlist.updated':'Updated a playlist','playlist.deleted':'Deleted a playlist',

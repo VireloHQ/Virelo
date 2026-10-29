@@ -9,6 +9,9 @@ import { useUIStore } from '../store';
 import { MediaCard } from '../components/MediaCard';
 import { Select } from '../components/Select';
 import { useRowWheel } from '../hooks/useRowWheel';
+import { LibraryFolderButton } from '../components/LibraryFolderButton';
+import { libraryFolderChildren, folderDisplayName } from '../utils/library-folder-children';
+import { useAccount } from '../components/AccountSession';
 import type { Library, SortKey } from '../types';
 
 const SORT_OPTIONS = [
@@ -27,6 +30,8 @@ export function LibraryView() {
   const [folder, setFolder] = useState<string|null>(null);
   const [sort, setSort] = useState<SortKey>('title');
   const navigate = useNavigate();
+  const session = useAccount();
+  const canRename = Boolean(session?.user.permissions.manageLibraries);
 
   const librariesQ = useQuery({queryKey:['libraries'],queryFn:api.libraries});
   const foldersQ = useQuery({queryKey:['folders'],queryFn:api.folders});
@@ -41,28 +46,14 @@ export function LibraryView() {
   const segments = folder ? folder.split('/') : [];
   const selected = folderEntries.filter((e)=>libraryId===null||e.library_id===libraryId);
 
-  const children = new Map<string,number>();
-  let rootCount = 0;
-  for (const entry of selected) {
-    if (entry.folder === '') { rootCount += entry.count; continue; }
-    const parts = entry.folder.split('/');
-    if (parts.length <= segments.length) continue;
-    if (segments.length > 0 && !entry.folder.startsWith(`${folder}/`)) continue;
-    const name = parts[segments.length];
-    children.set(name, (children.get(name) ?? 0) + entry.count);
-  }
-  const childFolders = [...children.entries()]
-    .sort((a,b)=>a[0].localeCompare(b[0]))
-    .map(([name,count])=>({name,count}));
-
-  const libraryLabel = libraries.find((l)=>l.id===libraryId)?.label;
-  const title = segments.length ? segments[segments.length-1] : (folder === '' ? t('Root') : libraryLabel ?? t('Library'));
+  const activeLibraryId = libraryId ?? (libraries.length === 1 ? libraries[0].id : null);
+  const currentLibrary = libraries.find(library => library.id === activeLibraryId);
+  const rootCount = selected.filter(entry => entry.folder === '').reduce((total,entry) => total + entry.count,0);
+  const childFolders = libraryFolderChildren(folderEntries,libraries,activeLibraryId,folder);
+  const title = segments.length ? folderDisplayName(currentLibrary,folder!,segments[segments.length-1]) : (folder === '' ? t('Root') : currentLibrary?.label ?? t('Library'));
 
   const jumpTo = (depth:number) => {
     setFolder(depth === 0 ? null : segments.slice(0,depth).join('/'));
-  };
-  const openChild = (name:string) => {
-    setFolder(segments.length ? `${folder}/${name}` : name);
   };
   const playAll = () => {
     const first = media[0];
@@ -86,21 +77,32 @@ export function LibraryView() {
       </div>
     </header>
 
-    {libraries.length > 1 && <nav className="folder-nav" aria-label={t("Library selection")}>
+    {libraries.length > 0 && <nav className="folder-nav" aria-label={t("Library selection")}>
       <FolderRow>
-        <button className={`folder-chip ${libraryId===null ? 'active' : ''}`} onClick={()=>{setLibraryId(null);setFolder(null);}}>{t("All libraries")}</button>
-        {libraries.map((l:Library)=><button key={l.id} className={`folder-chip ${libraryId===l.id ? 'active' : ''}`} onClick={()=>{setLibraryId(l.id);setFolder(null);}}>{l.label}</button>)}
+        {libraries.length > 1 && <button className={`folder-chip ${libraryId===null ? 'active' : ''}`} onClick={()=>{setLibraryId(null);setFolder(null);}}>{t("All libraries")}</button>}
+        {libraries.map((library:Library)=><LibraryFolderButton key={library.id} library={library} label={library.label} active={activeLibraryId===library.id} canRename={canRename}
+          onClick={()=>{setLibraryId(library.id);setFolder(null);}}/>)}
       </FolderRow>
     </nav>}
 
     <nav className="folder-nav" aria-label={t("Folder navigation")}>
       <FolderRow className="crumbs">
         <button className={`folder-chip crumb ${folder===null ? 'active' : ''}`} onClick={()=>jumpTo(0)}>{t("All folders")}</button>
-        {segments.map((segment,i)=><button key={i} className={`folder-chip crumb ${i===segments.length-1 ? 'active' : ''}`} onClick={()=>jumpTo(i+1)}>{segment}</button>)}
+        {segments.map((segment,i)=>{
+          const path=segments.slice(0,i+1).join('/'),label=folderDisplayName(currentLibrary,path,segment);
+          return currentLibrary?<LibraryFolderButton key={path} library={currentLibrary} folder={path} label={label} active={i===segments.length-1} crumb canRename={canRename} onClick={()=>jumpTo(i+1)}/>
+            :<button key={path} className="folder-chip crumb" onClick={()=>jumpTo(i+1)}>{label}</button>;
+        })}
         {folder==='' && <span className="folder-chip crumb active">{t("Root")}</span>}
       </FolderRow>
       {childFolders.length > 0 && <FolderRow>
-        {childFolders.map((child)=><button key={child.name} className="folder-chip" onClick={()=>openChild(child.name)}><FolderSimple/> {child.name} <em>{child.count}</em></button>)}
+        {childFolders.map(child=>{
+          const library=libraries.find(item=>item.id===child.libraryId)!,label=folderDisplayName(library,child.folder,child.name);
+          return <LibraryFolderButton key={child.libraryId+':'+child.folder} library={library} folder={child.folder} label={label} canRename={canRename}
+            onClick={()=>{setLibraryId(child.libraryId);setFolder(child.folder);}}>
+            <FolderSimple/><span>{activeLibraryId===null?library.label+' / ':''}{label}</span><em>{child.count}</em>
+          </LibraryFolderButton>;
+        })}
       </FolderRow>}
       {rootCount > 0 && folder === null && <FolderRow>
         <button className="folder-chip" onClick={()=>setFolder('')}><FolderSimple/> {t("Root")} <em>{rootCount}</em></button>

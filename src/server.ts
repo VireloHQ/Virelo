@@ -28,6 +28,7 @@ import { registerNotifications } from './notifications.js';
 import { mediaScheduler,MediaBusyError } from './media-work.js';
 import { requestHostname, isTrustedHostname } from './request-security.js';
 import { AccountError } from './accounts.js';
+import { libraryName, libraryFolder } from './library-names.js';
 
 const SORT_KEYS: SortKey[] = ['title', 'newest', 'oldest', 'year', 'duration', 'random'];
 
@@ -288,7 +289,31 @@ export async function createVireloServer(config: RuntimeConfig, pickFolder: (sig
     return publicSettings(updatedSettings);
   });
 
-  app.get('/api/libraries', async request => db.visibleLibraries(request.catalogScope!));
+  const namedLibraries = (scope:CatalogScope) => {
+    const allowed = new Map<number,Set<string>>();
+    for (const entry of db.getFolders(scope)) {
+      let paths = allowed.get(entry.library_id);
+      if (!paths) { paths = new Set(); allowed.set(entry.library_id,paths); }
+      const parts = entry.folder.split('/');
+      for (let index=1;index<=parts.length;index++) paths.add(parts.slice(0,index).join('/'));
+    }
+    return db.visibleLibraries(scope).map(library => ({...library,folderLabels:Object.fromEntries(
+      Object.entries(db.folderLabels(library.id)).filter(([folder]) => allowed.get(library.id)?.has(folder))
+    )}));
+  };
+  app.get('/api/libraries', async request => namedLibraries(request.catalogScope!));
+  app.patch<{ Params: { id:string }; Body: { label?:unknown; folder?:unknown } }>('/api/libraries/:id', async (request, reply) => {
+    const user = fresh(request);
+    if (!user.permissions.manageLibraries) return reply.code(403).send({error:'Library management is not allowed.'});
+    const id = Number(request.params.id), scope = accounts.scope(user);
+    const library = Number.isSafeInteger(id) && id > 0 ? db.visibleLibraries(scope).find(item => item.id === id) : undefined;
+    if (!library) return reply.code(404).send({error:'Library not found.'});
+    const label = libraryName(request.body?.label), folder = libraryFolder(request.body?.folder === undefined ? '' : request.body.folder);
+    if (folder && !db.getFolders(scope).some(item => item.library_id === id && (item.folder === folder || item.folder.startsWith(folder+'/'))))
+      return reply.code(404).send({error:'Folder not found.'});
+    db.renameLibrary(id,label,folder);
+    return namedLibraries(scope).find(item => item.id === id);
+  });
   app.post('/api/libraries/pick', async (request, reply) => {
     if (!directLocal(request)) return reply.code(403).send({ error: 'Folder browsing is only available on localhost. Enter a path on the server PC instead.' });
     if (activePicker) return reply.code(409).send({ error: 'A folder selection window is already open on this PC. Finish or cancel that window, then try again.' });

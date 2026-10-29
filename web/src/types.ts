@@ -75,7 +75,7 @@ export interface ShortsFeed {
   startId?: number;
 }
 
-export interface Library { id:number; path:string; label:string; created_at:number; persistent:number }
+export interface Library { id:number; path:string; label:string; created_at:number; persistent:number; folderLabels?:Record<string,string> }
 export interface Settings {
   externalMetadataEnabled: boolean;
   externalImagesEnabled: boolean;

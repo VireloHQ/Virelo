@@ -43,6 +43,12 @@ export class VireloDB {
         label TEXT NOT NULL,
         created_at INTEGER NOT NULL
       );
+      CREATE TABLE IF NOT EXISTS library_folder_names (
+        library_id INTEGER NOT NULL REFERENCES libraries(id) ON DELETE CASCADE,
+        folder TEXT NOT NULL,
+        label TEXT NOT NULL,
+        PRIMARY KEY (library_id, folder)
+      );
       CREATE TABLE IF NOT EXISTS media (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         library_id INTEGER NOT NULL,
@@ -263,6 +269,16 @@ export class VireloDB {
     this.sessionPinned.add(library.id);
     this.reassignMedia();
     return library;
+  }
+
+  folderLabels(id: number): Record<string,string> {
+    const rows = this.db.prepare('SELECT folder,label FROM library_folder_names WHERE library_id=?').all(id) as Array<{folder:string;label:string}>;
+    return Object.fromEntries(rows.map(row => [row.folder,row.label]));
+  }
+
+  renameLibrary(id: number, label: string, folder = '') {
+    if (!folder) this.db.prepare('UPDATE libraries SET label=? WHERE id=?').run(label,id);
+    else this.db.prepare('INSERT INTO library_folder_names(library_id,folder,label) VALUES(?,?,?) ON CONFLICT(library_id,folder) DO UPDATE SET label=excluded.label').run(id,folder,label);
   }
 
   removeLibrary(id: number) {

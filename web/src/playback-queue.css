@@ -21,6 +21,8 @@
 .playback-queue-list:focus-visible { outline:2px solid var(--color-focus); outline-offset:-2px; }
 .playback-queue-list li { min-width:0; scroll-snap-align:none; }
 .playback-queue-tile { border-radius:6px; }
+.playback-queue[data-layout="vertical"] .playback-queue-tile { transition:background-color var(--dur-short) var(--ease-out); }
+.playback-queue[data-layout="vertical"] .playback-queue-tile:focus-within { background:rgba(255,255,255,.06); }
 .playback-queue-tile[data-dragging] { opacity:.3; }
 .playback-queue-item { display:flex; flex-direction:column; align-items:stretch; gap:10px; width:100%; min-height:0; padding:0; border:0; border-radius:6px; background:transparent; color:var(--text); text-align:left; cursor:pointer; box-shadow:none; transition:background-color var(--dur-short) var(--ease-out); }
 .playback-queue-item.active { border:0; background:transparent; box-shadow:none; }
@@ -61,6 +63,8 @@
 .queue-drag-preview>svg { flex:none; width:20px; }
 .queue-drag-preview>strong { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:13px; }
 @media (hover:hover) {
+  .playback-queue[data-layout="vertical"] .playback-queue-tile:hover { background:rgba(255,255,255,.06); }
+  .playback-queue[data-layout="vertical"] .playback-queue-item:hover { background:transparent; }
   :is(.playback-queue-nav,.queue-scroll-controls,.queue-item-actions) button:hover:not(:disabled),.playback-queue-item:hover { background:rgba(255,255,255,.06); }
 }
 @media (min-width:1200px) {
