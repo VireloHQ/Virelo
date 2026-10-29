@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Rename library and subfolder display names without changing source paths, and extend vertical queue highlights across the complete video row.
+
 - Group playlist videos in a compact bordered list with explicit add/reset controls, clearer row actions, and responsive spacing.
 
 - Refresh artwork after library scans, retain folder changes detected during a scan, and dismiss playlist-save feedback without shifting action buttons.

@@ -1,0 +1,11 @@
+.folder-control { position:relative; display:inline-flex; flex:none; }
+.app-shell .folder-control[data-rename]>.folder-chip { padding-inline-end:48px; min-height:44px; }
+.folder-options { position:absolute; inset-block:0; inset-inline-end:0; display:grid; place-items:center; width:40px; min-height:44px; padding:0; border:0; border-radius:0 4px 4px 0; background:transparent; color:var(--text-muted); cursor:pointer; }
+.folder-options svg { width:20px; height:20px; }
+.folder-options:hover,.folder-options[aria-expanded="true"] { background:rgba(255,255,255,.06); }
+.folder-options:focus-visible { outline:2px solid var(--color-focus); outline-offset:-3px; }
+.library-name-field { display:flex; flex-direction:column; gap:8px; min-width:0; font-size:.875rem; font-weight:600; }
+.library-name-field>.input { min-height:44px; border:0; border-radius:6px; box-shadow:none; }
+.library-name-field>.input:is(:focus,[data-focused="true"]) { outline:none; box-shadow:none; background:var(--surface-3); }
+.library-name-field>.input:is(:focus-visible,[data-focus-visible="true"]) { outline:none; box-shadow:inset 0 -2px 0 var(--text-muted); }
+

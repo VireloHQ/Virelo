@@ -15,9 +15,11 @@ const clip = join(media, 'sample.mp4');
 execFileSync(process.env.FFMPEG_PATH || 'ffmpeg', ['-hide_banner','-loglevel','error','-f','lavfi','-i','color=c=0x354356:s=320x180:r=10','-f','lavfi','-i','sine=frequency=440:sample_rate=48000','-t','120','-c:v','libx264','-preset','ultrafast','-pix_fmt','yuv420p','-c:a','aac','-movflags','+faststart',clip], { windowsHide:true });
 const bytes = await readFile(clip), items = [];
 for (let index = 0; index < 4; index++) {
-  const path = join(media, 'Clip-' + (index + 1) + '.mp4'); await writeFile(path, bytes);
+  const folder=index===3?'Shows/Season 1':'';
+  const directory=join(media,folder);if(folder)await mkdir(directory,{recursive:true});
+  const path = join(directory, 'Clip-' + (index + 1) + '.mp4'); await writeFile(path, bytes);
   items.push({ id:index+1,library_id:1,path,source_path:path,filename:'Clip-'+(index+1)+'.mp4',title:'Clip '+(index+1),sort_title:'Clip '+(index+1),kind:'video',
-    duration:120,width:320,height:180,video_codec:'h264',audio_codec:'aac',container:'mp4',folder:'',size:bytes.length,mtime:1,
+    duration:120,width:320,height:180,video_codec:'h264',audio_codec:'aac',container:'mp4',folder,size:bytes.length,mtime:1,
     thumbnail_path:null,poster_path:null,backdrop_path:null,overview:null,genres:null,external_id:null,series_title:null,season:null,episode:null,year:null,
     added_at:1,updated_at:1,liked:index===0?1:0,progress_position:index===0?12:0 });
 }
@@ -32,11 +34,60 @@ async function serveWeb(directory) {
 async function call(page, mode, method, ...args) {
   return page.evaluate(async ({mode,method,args}) => {
     if (mode==='web') return (await import('/src/api.ts')).api[method](...args);
-    const urls={playlists:['GET','/api/playlists'],playlist:['GET','/api/playlists/'+args[0]],
+    const urls={libraries:['GET','/api/libraries'],mediaById:['GET','/api/media/'+args[0]],renameLibrary:['PATCH','/api/libraries/'+args[0],{label:args[1],folder:args[2]??''}],playlists:['GET','/api/playlists'],playlist:['GET','/api/playlists/'+args[0]],
       createPlaylist:['POST','/api/playlists',args[0]],updatePlaylist:['PATCH','/api/playlists/'+args[0],args[1]],deletePlaylist:['DELETE','/api/playlists/'+args[0],{revision:args[1]}]};
     const [verb,url,body]=urls[method], response=await fetch(url,{method:verb,headers:{'content-type':'application/json','x-virelo-request':'1'},...(body?{body:JSON.stringify(body)}:{})});
     if(!response.ok)throw new Error(await response.text());return response.json();
   },{mode,method,args});
+}
+async function auditLibraryNames(page,mode,base,prefix,label) {
+  await call(page,mode,'renameLibrary',1,'Test clips');
+  await call(page,mode,'renameLibrary',1,'Shows','Shows');
+  await call(page,mode,'renameLibrary',1,'Season 1','Shows/Season 1');
+  const before=await call(page,mode,'mediaById',4);
+  await page.goto(base+prefix+'/library');
+  const library=page.getByRole('navigation',{name:'Library selection',exact:true}).locator('.folder-control').first();
+  await library.locator('.folder-chip').click({button:'right'});await page.getByRole('menuitem',{name:'Rename',exact:true}).waitFor();
+  check(await page.getByRole('menu').evaluate(menu=>{const row=menu.querySelector('button'),icon=row.querySelector('svg');return row.offsetHeight>=44&&getComputedStyle(row).display==='flex'&&parseFloat(getComputedStyle(icon).width)>=16;}),label+' folder context actions retain player-menu styling on a direct Library load');
+  await page.getByRole('menu').screenshot({path:join(root,mode+'-'+label.split(' ').at(-1)+'-folder-context.png')});
+  await page.keyboard.press('Escape');
+  check(await library.locator('.folder-chip').evaluate(element=>element===document.activeElement),label+' folder context menu restores focus on Escape');
+  await library.locator('.folder-chip').click({button:'right'});await page.getByRole('menuitem',{name:'Rename',exact:true}).click();
+  let dialog=page.getByRole('dialog',{name:'Rename library',exact:true});await dialog.waitFor();
+  await auditPlaylistField(page,dialog.getByRole('textbox',{name:'Display name',exact:true}),label+' library name',check);
+  await dialog.getByRole('textbox',{name:'Display name',exact:true}).fill('');await dialog.getByRole('button',{name:'Save',exact:true}).click();
+  await dialog.getByText('Enter a name with 1–200 characters.',{exact:true}).waitFor();
+  const rootName='Library '+label;
+  await dialog.getByRole('textbox',{name:'Display name',exact:true}).fill(rootName);await dialog.getByRole('button',{name:'Save',exact:true}).click();await dialog.waitFor({state:'hidden'});
+  await page.getByRole('heading',{name:rootName,exact:true}).waitFor();
+  check(true,label+' a single registered library can be renamed from its context menu');
+  const folders=page.getByRole('navigation',{name:'Folder navigation',exact:true});
+  let child=folders.locator('.folder-control').filter({hasText:'Shows'}).first();
+  await child.locator('.folder-options').click();await page.getByRole('menuitem',{name:'Rename',exact:true}).click();
+  dialog=page.getByRole('dialog',{name:'Rename folder',exact:true});await dialog.waitFor();
+  const series='Series '+label;
+  await dialog.getByRole('textbox',{name:'Display name',exact:true}).fill(series);await dialog.getByRole('button',{name:'Save',exact:true}).click();await dialog.waitFor({state:'hidden'});
+  child=folders.locator('.folder-control').filter({hasText:series}).first();await child.locator('.folder-chip').click();await page.getByRole('heading',{name:series,exact:true}).waitFor();
+  const seasonButton=folders.locator('.folder-control').filter({hasText:'Season 1'}).first().locator('.folder-chip');
+  await seasonButton.waitFor();
+  check(await seasonButton.isVisible(),label+' renamed parent folders retain their nested directory');
+  await seasonButton.focus();await page.keyboard.press('Shift+F10');await page.getByRole('menuitem',{name:'Rename',exact:true}).click();
+  dialog=page.getByRole('dialog',{name:'Rename folder',exact:true});await dialog.waitFor();
+  check(await dialog.evaluate(element=>element.closest('.virelo-confirm-backdrop').dataset.animate==='false'),label+' keyboard folder rename uses the shared dialog without pointer animation');
+  const season='Season '+label;
+  await dialog.getByRole('textbox',{name:'Display name',exact:true}).fill(season);await dialog.getByRole('button',{name:'Save',exact:true}).click();await dialog.waitFor({state:'hidden'});
+  await folders.locator('.folder-control').filter({hasText:season}).first().locator('.folder-chip').click();await page.getByRole('heading',{name:season,exact:true}).waitFor();
+  await page.waitForFunction(()=>document.querySelectorAll('.media-card').length===1);
+  check(await page.locator('.media-card').count()===1,label+' renamed leaf folders retain their physical filter and video membership');
+  check(await folders.locator('.crumb').filter({hasText:series}).count()===1,label+' breadcrumb labels retain physical folder identity');
+  await page.reload();await page.getByRole('heading',{name:rootName,exact:true}).waitFor();
+  check(await folders.locator('.folder-control').filter({hasText:series}).count()===1,label+' display names persist after reload');
+  const renamed=(await call(page,mode,'libraries')).find(library=>library.id===1);
+  check(renamed.folderLabels.Shows===series&&renamed.folderLabels['Shows/Season 1']===season,label+' nested labels are stored per library and original relative path');
+  const after=await call(page,mode,'mediaById',4);
+  check(['id','path','folder','liked','progress_position','progress_duration'].every(key=>before[key]===after[key]),label+' rename preserves video IDs, paths, favorites and progress');
+  check(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),label+' folder controls fit the viewport');
+  await page.locator('.splash-screen').waitFor({state:'hidden'});await page.screenshot({path:join(root,mode+'-'+label.split(' ').at(-1)+'-library-names.png')});
 }
 async function addFromDetails(page, base, prefix, title, id, label) {
   await page.goto(base+prefix+'/title/'+id);
@@ -137,7 +188,7 @@ try {
       await page.goto(base+'/__playlist-seed');
       await page.evaluate(async items=>new Promise((resolve,reject)=>{
         const request=indexedDB.open('virelo-web',1);request.onupgradeneeded=()=>{for(const name of ['libraries','media','thumbnails'])request.result.createObjectStore(name,{keyPath:'id'});request.result.createObjectStore('settings');};
-        request.onerror=()=>reject(request.error);request.onsuccess=()=>{const db=request.result,tx=db.transaction('media','readwrite');items.forEach(item=>tx.objectStore('media').put(item));tx.oncomplete=()=>{db.close();resolve();};tx.onabort=()=>reject(tx.error);};
+        request.onerror=()=>reject(request.error);request.onsuccess=()=>{const db=request.result,tx=db.transaction(['media','libraries'],'readwrite');items.forEach(item=>tx.objectStore('media').put(item));tx.objectStore('libraries').put({id:1,label:'Test clips',path:'Test clips',created_at:1,persistent:false});tx.oncomplete=()=>{db.close();resolve();};tx.onabort=()=>reject(tx.error);};
       }),items);
       await page.route(base+'/__playlist-fixture.mp4',route=>route.fulfill({body:bytes,contentType:'video/mp4'}));
       await page.route(url=>url.pathname==='/src/api.ts'&&!url.search,async route=>{
@@ -148,6 +199,7 @@ api.mediaSource=async id=>{if(!urls.has(id))urls.set(id,URL.createObjectURL(awai
 `});
       });
     }
+    await auditLibraryNames(page,mode,base,prefix,label);
     await addFromContext(page,mode,base,prefix,label);
     await page.goto(base+prefix+'/library');
     if(mode==='web') check(await page.evaluate(async()=>{const item=await(await import('/src/local-library.ts')).getStoredMedia(1);return item.liked===1&&item.progress_position===12;}),label+' upgrading browser storage preserves existing favorites and progress');
@@ -227,6 +279,16 @@ api.mediaSource=async id=>{if(!urls.has(id))urls.set(id,URL.createObjectURL(awai
     await page.getByRole('button',{name:'Play all',exact:true}).click();
     await page.waitForFunction(()=>{const video=document.querySelector('.player video');return video&&!video.paused&&video.currentTime>.2;});
     check(new URL(page.url()).searchParams.get('playlistId')===String(id),label+' Play all opens this playlist rather than the full library');
+    if(name==='desktop'){
+      const vertical=page.getByRole('button',{name:'Use vertical queue',exact:true});
+      if(await vertical.count())await vertical.click();
+      for(const index of [0,1]){
+        const row=page.locator('.playback-queue-tile').nth(index);await row.locator('.playback-queue-item').hover();
+        const colors=await row.evaluate(element=>({row:getComputedStyle(element).backgroundColor,button:getComputedStyle(element.querySelector('.playback-queue-item')).backgroundColor}));
+        check(colors.row!=='rgba(0, 0, 0, 0)'&&colors.button==='rgba(0, 0, 0, 0)',label+' current/upcoming hover fills the entire row without an inner block: '+JSON.stringify(colors));
+      }
+      await page.getByRole('button',{name:'Use horizontal queue',exact:true}).click();
+    }
     await page.locator('.player video').evaluate(video=>{window.__playlistVideo=video;window.__playlistSource=video.currentSrc;});
     await page.getByRole('button',{name:'Options for Clip 3',exact:true}).click();await page.getByRole('menuitem',{name:'Remove from queue',exact:true}).click();
     await page.getByRole('button',{name:'Save current order',exact:true}).click();

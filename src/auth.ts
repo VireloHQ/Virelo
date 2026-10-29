@@ -128,7 +128,7 @@ export function registerAccounts(app: FastifyInstance, db: VireloDB, isPublicHos
     if(!request.account||!request.activityAcknowledged||reply.statusCode>=400)return;
     const route=request.routeOptions.url??'',key=request.method+' '+route;
     const actions:Record<string,string>={
-      'POST /api/libraries':'library.added','DELETE /api/libraries/:id':'library.removed','POST /api/scan':'library.scanned',
+      'POST /api/libraries':'library.added','PATCH /api/libraries/:id':'library.renamed','DELETE /api/libraries/:id':'library.removed','POST /api/scan':'library.scanned',
       'POST /api/settings':'server.settings_updated','DELETE /api/data/cache':'server.cache_cleared',
       'DELETE /api/metadata':'metadata.cleared_all','DELETE /api/media/:id/metadata':'metadata.cleared','POST /api/media/:id/metadata/refresh':'metadata.refreshed',
       'POST /api/media/:id/like':'favorites.updated','POST /api/playlists':'playlist.created','PATCH /api/playlists/:id':'playlist.updated','DELETE /api/playlists/:id':'playlist.deleted'
