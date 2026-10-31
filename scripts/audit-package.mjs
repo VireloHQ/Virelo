@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
+import { createRequire } from 'node:module';
 import { mkdtemp, mkdir, readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -13,7 +14,10 @@ const npm = (args, cwd = repo) => execFileSync(process.execPath, [process.env.np
 const root = await mkdtemp(join(tmpdir(), 'virelo-package-audit-'));
 console.log('Package audit fixtures:', root);
 const expected = JSON.parse(await readFile(join(repo, 'package.json'), 'utf8'));
-const [archive] = JSON.parse(npm(['pack', '--json', '--pack-destination', root]));
+const sourceAudit = JSON.parse(npm(['audit', '--json']));
+assert.equal(sourceAudit.metadata.vulnerabilities.total, 0, 'build and production dependencies have no known npm advisories');
+const packed = JSON.parse(npm(['pack', '--json', '--pack-destination', root]));
+const archive = Array.isArray(packed) ? packed[0] : packed[expected.name] ?? packed;
 assert.equal(archive.filename, `virelo-${expected.version}.tgz`);
 const install = join(root, 'install');
 npm(['install', '--prefix', install, '--omit=dev', '--ignore-scripts', '--no-fund', '--no-audit', join(root, archive.filename)]);
@@ -24,6 +28,19 @@ const metadata = JSON.parse(await readFile(join(installed, 'package.json'), 'utf
 assert.equal(metadata.version, expected.version);
 assert.equal(metadata.engines.node, expected.engines.node);
 assert.equal(metadata.license, expected.license);
+const fromInstalled = createRequire(join(installed, 'package.json'));
+const staticManifest = fromInstalled.resolve('@fastify/static/package.json');
+const fromStatic = createRequire(staticManifest);
+const globManifest = fromStatic.resolve('glob/package.json');
+const glob = fromStatic('glob/package.json');
+const minimatch = createRequire(globManifest)('minimatch/package.json');
+const locked = JSON.parse(await readFile(join(repo, 'package-lock.json'), 'utf8'));
+const localStatic = JSON.parse(await readFile(join(repo, 'node_modules/@fastify/static/package.json'), 'utf8'));
+assert.equal(localStatic.dependencies.glob, locked.packages['node_modules/@fastify/static'].dependencies.glob, 'postpack restores the development dependency manifest');
+assert.equal(glob.version, locked.packages['node_modules/glob'].version, 'consumer installation retains the patched glob');
+assert.equal(minimatch.version, locked.packages['node_modules/minimatch'].version, 'consumer installation retains the patched minimatch');
+assert.ok(archive.files.some(file => file.path.endsWith('node_modules/minimatch/LICENSE.md')), 'bundled dependency licenses are preserved');
+npm(['ls', '--omit=dev', '--all', '--json'], install);
 const cli = join(installed, 'dist/cli.js');
 const runCli = flag => execFileSync(process.execPath, [cli, flag], { cwd: install, encoding: 'utf8', timeout: 15000, windowsHide: true });
 assert.equal(runCli('--version').trim(), expected.version);

@@ -28,6 +28,9 @@ interface PlaybackQueueProps {
   onEdit: (change: (current: QueueState) => QueueState) => void;
   editing?: boolean;
   headerActions?: ReactNode;
+  heading?: ReactNode;
+  menuActions?: PlayerAction[];
+  feedback?: ReactNode;
 }
 const reducedQuery = () => window.matchMedia('(prefers-reduced-motion: reduce)');
 const subscribeMotion = (notify: () => void) => {
@@ -35,7 +38,7 @@ const subscribeMotion = (notify: () => void) => {
   return () => query.removeEventListener('change', notify);
 };
 
-export function PlaybackQueue({ items, activeIndex, repeatMode, onRepeatChange, onSelect, state, onEdit, editing = false, headerActions }: PlaybackQueueProps) {
+export function PlaybackQueue({ items, activeIndex, repeatMode, onRepeatChange, onSelect, state, onEdit, editing = false, headerActions, heading, menuActions = [], feedback }: PlaybackQueueProps) {
   useLocale();
   const { layout: savedLayout, setLayout } = useQueueLayout();
   const layout = editing ? 'vertical' : savedLayout;
@@ -91,6 +94,7 @@ export function PlaybackQueue({ items, activeIndex, repeatMode, onRepeatChange, 
   const menuItem = items[menuIndex];
   const canReset = state.shuffled || state.ids.length !== state.sourceIds.length || state.ids.some((id, index) => id !== state.sourceIds[index]);
   const actions: PlayerAction[] = menu?.id == null ? [
+    ...menuActions,
     { label: t("Show now playing"), icon: <Play/>, action: () => showCurrent(Boolean(menu?.position.keyboard)) },
     { label: t("Clear upcoming"), icon: <X/>, disabled: activeIndex === items.length - 1, action: () => onEdit(clearUpcoming) },
     { label: t("Reset queue"), icon: <ArrowCounterClockwise/>, action: () => onEdit(resetQueue) }
@@ -104,7 +108,7 @@ export function PlaybackQueue({ items, activeIndex, repeatMode, onRepeatChange, 
   ];
   return <section className="playback-queue" data-layout={layout} data-editing={editing || undefined} aria-labelledby="playback-queue-title">
     <header className="playback-queue-head">
-      <div className="playback-queue-title"><QueueIcon/><div><h2 id="playback-queue-title">{editing ? t("Playlist videos") : t("Queue")}</h2><span>{editing ? t('{count} videos',{count:items.length}) : t("{value0} of {value1}", { value0: activeIndex + 1, value1: items.length })}</span></div></div>
+      <div className="playback-queue-title"><QueueIcon/><div><h2 id="playback-queue-title">{heading ?? (editing ? t("Playlist videos") : t("Queue"))}</h2><span>{editing ? t('{count} videos',{count:items.length}) : t("{value0} of {value1}", { value0: activeIndex + 1, value1: items.length })}</span></div></div>
       <div className="playback-queue-nav">
         {headerActions}
         {!editing && <>
@@ -116,6 +120,7 @@ export function PlaybackQueue({ items, activeIndex, repeatMode, onRepeatChange, 
           : <button type="button" aria-label={t("Queue options")} aria-haspopup="menu" aria-expanded={menu?.id === null} onClick={event => openMenu(null, event.currentTarget, undefined, event.detail === 0)}><DotsThree weight="bold"/></button>}
       </div>
     </header>
+    {feedback}
     {editing && !items.length && <p className="playlist-empty-copy">{t("No available videos. Add a video from its details or save a queue to this playlist.")}</p>}
     <DndContext sensors={sensors} collisionDetection={args => {
       const point = args.pointerCoordinates, bounds = queueList.current?.getBoundingClientRect();

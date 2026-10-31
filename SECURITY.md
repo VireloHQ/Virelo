@@ -4,6 +4,18 @@
 
 Do not open a public issue for a suspected vulnerability. Use GitHub private vulnerability reporting for the `VireloHQ/Virelo` repository and include the affected version, reproduction steps, and expected impact.
 
+## Packaged static-file dependencies
+
+The CLI bundles the tested `@fastify/static` dependency tree so a registry install
+retains the patched glob/minimatch versions. A root-only npm override would not
+protect installations in other projects. `prepack` aligns the bundled plugin's
+glob requirement with this tested override; its implementation and license are
+otherwise unchanged. Remove this temporary packaging adjustment once the upstream
+plugin supports glob 14 or later. `postpack` restores the development manifest.
+When updating dependencies, run `npm run check`
+and `npm run audit:package`; the latter verifies an independent tarball install,
+resolved versions, dependency metadata, licenses and known production advisories.
+
 ## Runtime security updates
 
 Virelo supports stable Node.js 22.23.4+, 24.22.1+ and 26.12.1+ within those release
