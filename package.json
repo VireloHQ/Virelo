@@ -56,7 +56,7 @@
   },
   "dependencies": {
     "@fastify/static": "^10.1.8",
-    "chokidar": "^5.0.0",
+    "chokidar": "^6.0.0",
     "fastify": "^5.10.0",
     "open": "^11.0.0"
   },
@@ -83,7 +83,7 @@
     "@vitejs/plugin-react": "^6.0.4",
     "hls.js": "^1.6.16",
     "jsqr": "1.4.0",
-    "playwright": "1.62.1",
+    "playwright": "1.64.1",
     "qrcode-generator": "2.0.4",
     "react": "^19.2.8",
     "react-aria": "^3.52.1",
