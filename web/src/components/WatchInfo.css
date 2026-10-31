@@ -35,6 +35,10 @@
 @media(min-width:901px) {
   .watch-info-body:not(:has(.watch-editorial)) .watch-source-file { flex:1; }
 }
+@media(max-width:600px) {
+  .watch-info-actions { gap:8px; }
+  .watch-info-actions :is(.button,.favorite-button) { padding-inline:12px; font-size:14px; }
+}
 @media(max-width:900px) {
   .watch-copy.watch-info { padding:20px 16px 24px; }
   .watch-info-heading { flex-direction:column; gap:16px; }
