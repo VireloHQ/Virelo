@@ -4,7 +4,7 @@ import { PageSkeleton } from '../components/PageSkeleton';
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useParams, useSearch } from '@tanstack/react-router';
-import { Button } from '@heroui/react';
+import { FloppyDisk, ListPlus } from '@phosphor-icons/react';
 import { api } from '../api';
 import { PlaybackQueue } from '../components/PlaybackQueue';
 import { SavePlaylist } from '../components/SavePlaylist';
@@ -54,6 +54,13 @@ function QueuedWatch({ source, initialId, behavior, shuffle, playlist, refreshEr
   const { queue, items, activeIndex, update, select } = usePlaybackQueue(source, initialId, shuffle);
   const layout = useQueueLayout(state => state.layout);
   const [repeatOverride, setRepeatOverride] = useState<RepeatMode | null>(null);
+  const [saveOpen, setSaveOpen] = useState<'pointer' | 'keyboard' | null>(null);
+  const client = useQueryClient();
+  const save = useMutation({
+    mutationFn: () => api.updatePlaylist(playlist!.id, { revision: playlist!.revision, mediaIds: items.map(item => item.id) }),
+    onSuccess: saved => { client.setQueryData(['playlist', saved.id], saved); void client.invalidateQueries({ queryKey: ['playlists'] }); }
+  });
+  const dirty = playlist && (items.length !== playlist.items.length || items.some((item, index) => item.id !== playlist.items[index]?.id));
   const repeat = repeatOverride ?? (behavior === 'loop' ? 'queue' : 'off');
   const current = items[activeIndex];
   if (!current) return <div className="watch-empty"><h1>{playlist ? t("No available videos in this playlist") : t("No videos in this queue")}</h1><p>{playlist ? t("Restore library access or add more videos to continue.") : t("The current filter matches no available videos.")}</p>{playlist && <Link to="/playlists/$playlistId" params={{playlistId:String(playlist.id)}}>{t("Open playlist")}</Link>}</div>;
@@ -68,29 +75,22 @@ function QueuedWatch({ source, initialId, behavior, shuffle, playlist, refreshEr
         onNext={() => advance(1)} onPrev={() => advance(-1)}
         canGoNext={items.length > 1 && (activeIndex < items.length - 1 || wraps)} canGoPrev={items.length > 1 && (activeIndex > 0 || wraps)}
         repeatMode={repeat} onRepeatChange={setRepeatOverride} shuffled={queue.shuffled} onShuffle={()=>update(toggleQueueShuffle)} autoPlay/>
-      <WatchInfo item={current} actions={<PlaylistQueueActions items={items} playlist={playlist}/>}>
+      <WatchInfo item={current} actions={<SavePlaylist mediaIds={[current.id]}/>}>
         {refreshError && <p className="error-copy" role="alert"><Trans message="Could not refresh the queue. {value0} {value1}" values={{value0:t(refreshError),value1:<button type="button" onClick={onRetry}>{t("Try again")}</button>}}/></p>}
       </WatchInfo>
     </div>
     <PlaybackQueue items={items} activeIndex={activeIndex} repeatMode={repeat} onRepeatChange={setRepeatOverride}
-      onSelect={select} state={queue} onEdit={update}/>
+      onSelect={select} state={queue} onEdit={update}
+      heading={playlist && <Link to="/playlists/$playlistId" params={{playlistId:String(playlist.id)}} title={playlist.name}>{playlist.name}</Link>}
+      menuActions={[
+        ...(playlist ? [{label:t("Save current order"),icon:<FloppyDisk/>,disabled:!dirty || save.isPending,action:()=>save.mutate()}] : []),
+        {label:t("Save queue as playlist"),icon:<ListPlus/>,action:()=>setSaveOpen(document.activeElement?.matches(':focus-visible') ? 'keyboard' : 'pointer')}
+      ]}
+      feedback={<>
+        {save.error && <p className="queue-save-error error-copy" role="alert">{t(save.error.message)}</p>}
+        <span className="sr-only" role="status">{save.isPending ? t("Working…") : save.isSuccess && !dirty ? t("Saved") : ''}</span>
+        {saveOpen && <SavePlaylist mediaIds={items.map(item=>item.id)} initialOpen={saveOpen} onClose={()=>setSaveOpen(null)}/>}
+      </>}/>
     <WatchRecommendations item={current}/>
-  </div>;
-}
-
-function PlaylistQueueActions({ items, playlist }: { items: MediaItem[]; playlist?: PlaylistDetail }) {
-  useLocale();
-  const client = useQueryClient();
-  const save = useMutation({
-    mutationFn: () => api.updatePlaylist(playlist!.id, { revision: playlist!.revision, mediaIds: items.map(item => item.id) }),
-    onSuccess: saved => { client.setQueryData(['playlist', saved.id], saved); void client.invalidateQueries({ queryKey: ['playlists'] }); }
-  });
-  const dirty = playlist && (items.length !== playlist.items.length || items.some((item, index) => item.id !== playlist.items[index]?.id));
-  return <div className="playlist-watch-actions">
-    {playlist && <><Link to="/playlists/$playlistId" params={{ playlistId: String(playlist.id) }}>{playlist.name}</Link>
-      <Button variant="secondary" isPending={save.isPending} isDisabled={!dirty || save.isPending} onPress={() => save.mutate()}>{t("Save current order")}</Button></>}
-    <SavePlaylist mediaIds={items.map(item => item.id)} label={t("Save queue as playlist")}/>
-    {save.error && <p className="error-copy" role="alert">{t(save.error.message)}</p>}
-    {save.isSuccess && !dirty && <span className="playlist-notice" role="status">{t("Saved")}</span>}
   </div>;
 }

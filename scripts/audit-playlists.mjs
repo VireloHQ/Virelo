@@ -29,6 +29,23 @@ const children = [], modes = [];
 let server, browser, lastPage, checks = 0;
 const check = (value, label) => { assert.ok(value,label); checks++; console.log('PASS',label); };
 const settle = page => page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+async function auditWatchActions(page, label) {
+  const bar=page.locator('.watch-info-actions'), queue=page.locator('.playback-queue');
+  check(await bar.getByRole('button',{name:'Add to playlist',exact:true}).count()===1,label+' the video has its own Add to playlist action');
+  check(await bar.getByText(/Save current order|Save queue as playlist/).count()===0,label+' queue-wide saves do not crowd the video action bar');
+  check(await bar.locator('button').evaluateAll(buttons=>{
+    const rows=new Set(buttons.map(button=>Math.round(button.getBoundingClientRect().top)));
+    return rows.size<=2 && buttons.every(button=>{
+      const rect=button.getBoundingClientRect();return rect.height===48 && rect.left>=0 && rect.right<=innerWidth;
+    });
+  }),label+' video actions have equal heights and fit in at most two rows');
+  check(await queue.locator('h2 a').count()===1,label+' the playlist link belongs to the queue heading');
+  check(await queue.locator('h2 a').evaluate(link=>{
+    const rect=link.getBoundingClientRect(),parent=link.closest('.playback-queue-head').getBoundingClientRect();
+    return rect.left>=parent.left && rect.right<=parent.right && rect.width>0;
+  }),label+' the playlist heading fits beside the queue controls');
+  check(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),label+' watch layout has no horizontal overflow');
+}
 async function serveWeb(directory) {
   const child=spawn(process.execPath,[join(directory,'node_modules/vite/bin/vite.js'),'--host','127.0.0.1','--port','0'],{cwd:directory,windowsHide:true,stdio:['ignore','pipe','pipe']}); children.push(child);
   return new Promise((resolve,reject)=>{let log='';const timer=setTimeout(()=>reject(new Error(log)),20000);child.once('error',reject);child.stderr.on('data',data=>{log+=data;});child.stdout.on('data',data=>{log+=String(data).replace(/\x1b\[[0-9;]*m/g,'');const url=log.match(/http:\/\/127\.0\.0\.1:\d+/)?.[0];if(url){clearTimeout(timer);resolve(url);}});});
@@ -306,29 +323,46 @@ api.mediaSource=async id=>{if(!urls.has(id))urls.set(id,URL.createObjectURL(awai
     await page.getByRole('button',{name:'Play all',exact:true}).click();
     await page.waitForFunction(()=>{const video=document.querySelector('.player video');return video&&!video.paused&&video.currentTime>.2;});
     check(new URL(page.url()).searchParams.get('playlistId')===String(id),label+' Play all opens this playlist rather than the full library');
+    await auditWatchActions(page,label+' horizontal');
+    await page.getByRole('button',{name:'Queue options',exact:true}).click();
+    check(await page.getByRole('menuitem',{name:'Save current order',exact:true}).isDisabled(),label+' an unchanged order cannot be saved again');
+    await page.keyboard.press('Escape');
+    await page.locator('.watch-info-actions').getByRole('button',{name:'Add to playlist',exact:true}).click();
+    const singleDialog=page.getByRole('dialog',{name:'Save to playlist',exact:true});
+    await singleDialog.getByRole('textbox',{name:'Playlist name',exact:true}).fill('Single video');
+    await singleDialog.getByRole('button',{name:'Save',exact:true}).click();await singleDialog.waitFor({state:'hidden'});
+    const single=(await call(page,mode,'playlists')).find(row=>row.name==='Single video');
+    check(single?.itemCount===1&&(await call(page,mode,'playlist',single.id)).items[0].id===2,label+' Add to playlist saves only the current video, not the whole queue');
+    await call(page,mode,'deletePlaylist',single.id,single.revision);
+    await page.getByRole('button',{name:'Use vertical queue',exact:true}).click();
+    await auditWatchActions(page,label+' vertical');
+    await page.screenshot({path:join(root,mode+'-'+name+'-watch-actions.png')});
     if(name==='desktop'){
-      const vertical=page.getByRole('button',{name:'Use vertical queue',exact:true});
-      if(await vertical.count())await vertical.click();
       for(const index of [0,1]){
         const row=page.locator('.playback-queue-tile').nth(index);await row.locator('.playback-queue-item').hover();
         const colors=await row.evaluate(element=>({row:getComputedStyle(element).backgroundColor,button:getComputedStyle(element.querySelector('.playback-queue-item')).backgroundColor}));
         check(colors.row!=='rgba(0, 0, 0, 0)'&&colors.button==='rgba(0, 0, 0, 0)',label+' current/upcoming hover fills the entire row without an inner block: '+JSON.stringify(colors));
       }
-      await page.getByRole('button',{name:'Use horizontal queue',exact:true}).click();
     }
+    await page.getByRole('button',{name:'Use horizontal queue',exact:true}).click();
     await page.locator('.player video').evaluate(video=>{window.__playlistVideo=video;window.__playlistSource=video.currentSrc;});
     await page.getByRole('button',{name:'Options for Clip 3',exact:true}).click();await page.getByRole('menuitem',{name:'Remove from queue',exact:true}).click();
-    await page.getByRole('button',{name:'Save current order',exact:true}).click();
-    await page.locator('.playlist-notice').filter({hasText:/^Saved$/}).waitFor();
+    await page.getByRole('button',{name:'Queue options',exact:true}).click();
+    await page.getByRole('menuitem',{name:'Save current order',exact:true}).click();
+    await page.waitForFunction(()=>[...document.querySelectorAll('.playback-queue [role="status"]')].some(status=>status.textContent==='Saved'));
     check(await page.locator('.player video').evaluate(video=>video===window.__playlistVideo&&video.currentSrc===window.__playlistSource&&!video.paused),label+' saving a changed playback queue does not reload the current video');
     check((await call(page,mode,'playlist',id)).itemCount===2,label+' saving queue edits updates only this playlist');
-    await page.getByRole('button',{name:'Save queue as playlist',exact:true}).click();
+    const queueOptions=page.getByRole('button',{name:'Queue options',exact:true});
+    await queueOptions.focus();await page.keyboard.press('Enter');
+    const saveCopy=page.getByRole('menuitem',{name:'Save queue as playlist',exact:true});
+    await saveCopy.focus();await page.keyboard.press('Enter');
     const copyDialog=page.getByRole('dialog',{name:'Save to playlist'});
     await auditPlaylistField(page,copyDialog.getByRole('textbox',{name:'Playlist name',exact:true}),label+' save dialog',check);
     await copyDialog.getByRole('textbox',{name:'Playlist name',exact:true}).fill('Travel');
     await copyDialog.getByRole('textbox',{name:'Playlist name',exact:true}).press('Enter');await copyDialog.waitFor({state:'hidden'});
     const copy=(await call(page,mode,'playlists')).find(row=>row.name==='Travel');
     check(copy?.itemCount===2,label+' saves the current queue as a separate named playlist');
+    check(await queueOptions.evaluate(button=>button===document.activeElement),label+' saving from Queue options returns keyboard focus to the queue');
     await page.goto(base+prefix+'/playlists/'+id);
     await page.getByRole('textbox',{name:'Playlist name',exact:true}).fill('Local draft');
     stored=await call(page,mode,'playlist',id);await call(page,mode,'updatePlaylist',id,{revision:stored.revision,name:'Changed elsewhere'});
