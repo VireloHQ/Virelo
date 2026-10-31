@@ -14,6 +14,8 @@ const npm = (args, cwd = repo) => execFileSync(process.execPath, [process.env.np
 const root = await mkdtemp(join(tmpdir(), 'virelo-package-audit-'));
 console.log('Package audit fixtures:', root);
 const expected = JSON.parse(await readFile(join(repo, 'package.json'), 'utf8'));
+const sourceAudit = JSON.parse(npm(['audit', '--json']));
+assert.equal(sourceAudit.metadata.vulnerabilities.total, 0, 'build and production dependencies have no known npm advisories');
 const packed = JSON.parse(npm(['pack', '--json', '--pack-destination', root]));
 const archive = Array.isArray(packed) ? packed[0] : packed[expected.name] ?? packed;
 assert.equal(archive.filename, `virelo-${expected.version}.tgz`);
