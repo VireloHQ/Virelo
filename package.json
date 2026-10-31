@@ -26,6 +26,7 @@
     "dev:server": "npm run build:server && node --watch dist/cli.js --no-open",
     "prepublishOnly": "npm run check",
     "prepack": "node scripts/prepare-static-bundle.mjs",
+    "postpack": "node scripts/prepare-static-bundle.mjs --restore",
     "pack:check": "npm pack --dry-run",
     "audit:package": "node scripts/audit-package.mjs",
     "test": "node --disable-warning=ExperimentalWarning --test --test-concurrency=4 tests/*.test.mjs",
