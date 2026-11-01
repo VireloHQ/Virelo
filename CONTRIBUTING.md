@@ -107,3 +107,4 @@ supported runtime, and test dependency updates before merging.
 
 The npm package is published separately from Git pushes. Do not publish or
 create a release tag as part of ordinary development.
+See [Releasing](docs/releasing.md) for the manual publication checklist.
