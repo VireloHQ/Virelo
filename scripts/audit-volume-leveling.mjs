@@ -6,7 +6,8 @@ import {fileURLToPath} from 'node:url';
 
 const repo=fileURLToPath(new URL('../',import.meta.url));
 const {chromium}=createRequire(process.env.VIRELO_TEST_NODE_PACKAGE||join(repo,'package.json'))('playwright');
-const modes=[['npm',repo]];
+const mode=JSON.parse(await readFile(join(repo,'package.json'),'utf8')).name==='virelo-web'?'web':'npm';
+const modes=[[mode,repo]];
 if(process.env.VIRELO_TEST_WEB_REPO)modes.push(['web',resolve(process.env.VIRELO_TEST_WEB_REPO)]);
 const moduleUrl=source=>'data:text/javascript;base64,'+Buffer.from(source).toString('base64');
 const browser=await chromium.launch({headless:true,executablePath:process.env.VIRELO_TEST_CHROMIUM});
@@ -35,16 +36,74 @@ try{
           return {rms:Math.sqrt(energy/(Math.floor(end*sampleRate)-Math.floor(start*sampleRate))),peak};
         };
         let first=0;while(first<samples.length&&Math.abs(samples[first])<.00001)first++;
-        return {first:measure(transition ? .25+LEVELING_LOOKAHEAD+.006 : LEVELING_LOOKAHEAD+.006,transition ? .35+LEVELING_LOOKAHEAD+.006 : LEVELING_LOOKAHEAD+.106),steady:measure(.65,.85),all:measure(0,1),start:first/sampleRate};
+        const harmonicAmplitude=hz=>{
+          let real=0,imaginary=0;
+          const start=Math.round(.5*sampleRate),end=Math.round(.9*sampleRate);
+          for(let index=start;index<end;index++){
+            const phase=2*Math.PI*hz*index/sampleRate;
+            real+=samples[index]*Math.cos(phase);imaginary+=samples[index]*Math.sin(phase);
+          }
+          return 2*Math.hypot(real,imaginary)/(end-start);
+        };
+        let harmonicEnergy=0;
+        if(!transition&&!noise&&!impulse)for(let harmonic=2;harmonic<=10;harmonic++)harmonicEnergy+=harmonicAmplitude(frequency*harmonic)**2;
+        const distortion=Math.sqrt(harmonicEnergy)/harmonicAmplitude(frequency);
+        return {first:measure(transition ? .25+LEVELING_LOOKAHEAD+.006 : LEVELING_LOOKAHEAD+.006,transition ? .35+LEVELING_LOOKAHEAD+.006 : LEVELING_LOOKAHEAD+.106),steady:measure(.65,.85),all:measure(0,1),start:first/sampleRate,distortion};
       };
+      const timingContext=new OfflineAudioContext(2,48000,48000),timingSource=timingContext.createBufferSource();
+      const timingGraph=createLevelingGraph(timingContext,timingSource);
+      const detector=timingGraph.nodes.find(node=>node instanceof BiquadFilterNode&&node.type==='lowpass');
+      const timing={detectorHz:detector.frequency.value,attack:timingGraph.limiter.attack.value,release:timingGraph.limiter.release.value};
+      timingGraph.nodes.forEach(node=>node.disconnect());
+      const holdTiming=[];
+      for(const [from,to] of [[.8,.2],[.2,.8]]){
+        const context=new OfflineAudioContext(1,24000,48000),source=context.createBufferSource();
+        const nodes=createLevelingGraph(context,source),signal=context.createConstantSource();
+        nodes.output.disconnect();
+        nodes.nodes.find(node=>node instanceof BiquadFilterNode&&node.type==='lowpass').disconnect();
+        const response=nodes.nodes.find(node=>node instanceof WaveShaperNode&&node.curve.length===262145);
+        response.curve=new Float32Array([-1,1]);
+        signal.offset.value=from;signal.offset.setValueAtTime(to,.25);signal.connect(response);signal.start();
+        nodes.nodes.at(-1).connect(context.destination);
+        const samples=(await context.startRendering()).getChannelData(0);
+        let changed=11520;
+        while(changed<samples.length&&(samples[changed]-.5)*(to-from)<=0)changed++;
+        holdTiming.push(changed/48000);
+      }
+      const burstContext=new OfflineAudioContext(2,48000,48000),burst=burstContext.createBuffer(2,48000,48000);
+      for(let index=0;index<48000;index++){
+        const time=index/48000;
+        const bass=time<.25?0:.7*Math.exp(-(time-.25)/.12)*Math.sin(2*Math.PI*40*(time-.25));
+        for(let channel=0;channel<2;channel++)burst.getChannelData(channel)[index]=.04*Math.sin(2*Math.PI*500*time)+bass;
+      }
+      const burstSource=burstContext.createBufferSource();burstSource.buffer=burst;
+      const burstGraph=createLevelingGraph(burstContext,burstSource),monitor=burstContext.createChannelMerger(2);
+      burstGraph.volume(1,false);burstGraph.enable(true);burstGraph.output.disconnect();
+      burstGraph.output.connect(monitor,0,0);
+      // Observe the control signal separately; never send it to a real audio device.
+      burstGraph.nodes.at(-1).connect(monitor,0,1);monitor.connect(burstContext.destination);burstSource.start();
+      const burstResult=await burstContext.startRendering(),envelope=burstResult.getChannelData(1);
+      let downward=0,upward=0,previous=envelope[19200],burstPeak=0;
+      for(let index=19248;index<38400;index+=48){
+        const change=envelope[index]-previous;
+        if(change<0)downward-=change;else upward+=change;
+        previous=envelope[index];
+      }
+      for(const sample of burstResult.getChannelData(0))burstPeak=Math.max(burstPeak,Math.abs(sample));
+      let attenuated=12000;
+      while(attenuated<48000&&envelope[attenuated]>1)attenuated++;
+      const burstRecovery={downward,upward,ratio:downward/upward,peak:burstPeak,attack:attenuated/48000-.25};
       return {
         loud:await render(),medium:await render({amplitude:.1}),quiet:await render({amplitude:.02}),
         silence:await render({transition:[0,.9]}),jump:await render({transition:[.04,.9]}),
         tailQuiet:await render({transition:[.9,.04]}),tailSilence:await render({transition:[.9,0]}),impulse:await render({impulse:true}),
-        bass:await render({frequency:40}),noise:await render({noise:true}),
+        bass:await render({frequency:40}),bass30:await render({frequency:30}),bass45:await render({frequency:45}),
+        bass60:await render({frequency:60}),bass75:await render({frequency:75}),bass100:await render({frequency:100}),noise:await render({noise:true}),
         half:await render({volume:.5}),antiphase:await render({antiphase:true}),
         muted:await render({muted:true}),off:await render({enabled:false}),
-        rate44100:await render({sampleRate:44100}),rate96000:await render({sampleRate:96000})
+        rate44100:await render({sampleRate:44100}),rate96000:await render({sampleRate:96000}),
+        bass44100:await render({frequency:40,sampleRate:44100}),bass96000:await render({frequency:40,sampleRate:96000}),
+        lookahead:LEVELING_LOOKAHEAD,timing,holdTiming,burstRecovery
       };
     },graph);
     for(const name of ['loud','medium','quiet','silence','jump','bass','noise','rate44100','rate96000']){
@@ -60,6 +119,21 @@ try{
     assert.ok(results.loud.start>=.029&&results.loud.start<.045,'bounded lookahead does not add a long playback delay');
     for(const name of ['tailQuiet','tailSilence'])assert.ok(results[name].all.peak<.4,mode+' '+name+' does not boost the queued loud tail: '+results[name].all.peak);
     assert.ok(results.impulse.all.peak<=1,mode+' transient limiter prevents clipping: '+results.impulse.all.peak);
+    assert.equal(results.lookahead,.03,'audible lookahead remains 30ms');
+    assert.equal(results.timing.detectorHz,25,'detector response speed is unchanged');
+    assert.ok(Math.abs(results.timing.attack-.003)<1e-8&&Math.abs(results.timing.release-.15)<1e-7,'limiter attack/release timing is unchanged');
+    assert.ok(Math.abs(results.holdTiming[0]-.25)<2/48000,'gain attenuation is not delayed by the denser hold');
+    assert.ok(Math.abs(results.holdTiming[1]-.28)<2/48000,'gain recovery retains the existing 30ms hold');
+    for(const name of ['loud','rate44100','rate96000'])assert.ok(results[name].start>=.029&&results[name].start<.045,mode+' '+name+' adds no playback latency');
+    for(const name of ['bass30','bass','bass45','bass60','bass75','bass100','bass44100','bass96000']){
+      console.log('MEASURE',mode,name,'distortion',(results[name].distortion*100).toFixed(4)+'%');
+      assert.ok(results[name].distortion<.001,mode+' '+name+' gain tracking does not distort steady bass: '+results[name].distortion);
+    }
+    console.log('MEASURE',mode,'bass-burst recovery',JSON.stringify(results.burstRecovery));
+    assert.ok(results.burstRecovery.upward>1,'gain recovers after a loud decaying bass burst');
+    assert.ok(results.burstRecovery.ratio<.001,'gain recovery does not repeatedly dip and pump after a bass burst');
+    assert.ok(results.burstRecovery.attack<.015,'a bass burst is attenuated within the existing lookahead');
+    assert.ok(results.burstRecovery.peak<.4,'a bass burst does not cause an opening or recovery blast');
     console.log('PASS',mode,'manual volume, stereo, mute, bypass and bounded lookahead');
     await page.close();
   }

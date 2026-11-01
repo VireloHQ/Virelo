@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.5.2 — 2026-11-01
+
+- Reduce bass distortion and gain flutter after loud sounds by covering the existing gain-hold window instead of sampling only its endpoints. Preserve the 30ms lookahead, detector response and limiter attack/release settings.
+- Add browser audio regressions for harmonic distortion, bass-burst recovery, startup bursts, mute, manual volume and multiple sample rates in both editions.
+
 ## 0.5.1 — 2026-11-01
 
 - Return explicit non-cacheable 404s for asset-directory requests, avoiding duplicate static fallback responses.
