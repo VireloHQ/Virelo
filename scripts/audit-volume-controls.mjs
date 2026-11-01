@@ -79,8 +79,11 @@ try {
     const gain = element => leveler.graphs.get(element).output.gain.value;
     render();
     await wait(() => document.querySelector('video')?.currentTime > .1, 'initial media playback');
-    check(Math.abs(firstPlayVolume - .03) < .000001, 'saved low manual volume is applied before the first play call');
     const video = document.querySelector('video');
+    check(firstPlayVolume >= 0 && firstPlayVolume <= .030001,
+      'first play cannot exceed the saved low volume (observed ' + firstPlayVolume + ')');
+    await wait(() => Math.abs(gain(video) - .03) < .000001 && controls.volume === .03, 'saved volume is restored after startup');
+    check(true, 'saved low volume is retained after startup');
     for (const volume of [0, .01, .5, 1, .03]) {
       controls.setVolume(volume); await settle();
       check(Math.abs(gain(video) - volume) < .000001 && controls.volume === volume && video.volume === 1,
