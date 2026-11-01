@@ -26,6 +26,8 @@ test('leveling uses bounded gain, ignores silence and preserves manual volume',(
   for(const value of [NaN,Infinity,-Infinity])assert.equal(levelingGainDb(value,-10),null);
   assert.equal(levelingGainDb(-6),-12);
   assert.equal(levelingGainDb(-30),12);
+  assert.equal(levelingGainDb(-50),24,'quiet recordings can reach the bounded 24dB boost');
+  assert.equal(levelingGainDb(12),-24,'hot recordings retain the attenuation limit');
 });
 test('blocked storage keeps leveling disabled by default and preserves the session choice',()=>{
   globalThis.localStorage={getItem(){throw Error('blocked');},setItem(){throw Error('blocked');}};

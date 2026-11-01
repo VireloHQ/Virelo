@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.5.3 — 2026-11-02
+
+- Apply manual volume after leveling so gain detection cannot counteract the volume slider or leave a loud buffered tail after lowering it. Keep saved volume, mute and selected audio in sync before playback.
+- Improve quiet-recording detection and bounded amplification to reduce differences between differently mastered videos. Preserve the 30ms lookahead, detector response and limiter timing.
+- Test actual media output, rapid volume changes, quiet/loud recordings and playback-control state in Chromium, in addition to offline distortion and recovery checks.
+
 ## 0.5.2 — 2026-11-01
 
 - Reduce bass distortion and gain flutter after loud sounds by covering the existing gain-hold window instead of sampling only its endpoints. Preserve the 30ms lookahead, detector response and limiter attack/release settings.

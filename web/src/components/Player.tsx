@@ -98,9 +98,10 @@ export function Player({item,queue,queueIndex,shuffled,onShuffle,onEnded,onNext,
   const [buffering,setBuffering] = useState(false);
   const [current,setCurrent] = useState(0);
   const [duration,setDuration] = useState(item.duration || 0);
-  const {volume,setVolume,muted,setMuted} = usePlaybackVolume();
+  const volumeControls = usePlaybackVolume();
+  const {volume,setVolume,muted,setMuted} = volumeControls;
   const {speed,changeSpeed} = usePlaybackSpeed(videoRef,audioRef,item.id,externalAudioUrl);
-  const {leveling,setLeveling,levelingError,levelingSupported}=useVolumeLeveling(videoRef,audioRef,externalAudioUrl);
+  const {leveling,setLeveling,levelingError,levelingSupported,onVolumeChange}=useVolumeLeveling(videoRef,audioRef,externalAudioUrl,volumeControls);
   const [pip,setPip] = useState(false);
   const [pipSupported,setPipSupported] = useState(false);
   const [singleRepeat,setSingleRepeat] = useState<RepeatMode>('off');
@@ -239,15 +240,6 @@ export function Player({item,queue,queueIndex,shuffled,onShuffle,onEnded,onNext,
   useEffect(()=>{if(fallback==='active'){sourceTransition.current=false;setPlaybackReady(true);}},[fallback]);
 
   useEffect(()=>{setActiveCaption('');},[item.id,selectedSubtitle]);
-
-  useEffect(()=>{
-    const video=videoRef.current;
-    const audio=audioRef.current;
-    if(!video)return;
-    video.muted=externalAudioUrl?true:muted;
-    video.volume=volume;
-    if(audio){audio.volume=volume;audio.muted=muted;}
-  },[externalAudioUrl,muted,volume]);
 
   useEffect(()=>{
     const audio=audioRef.current;
@@ -601,7 +593,7 @@ export function Player({item,queue,queueIndex,shuffled,onShuffle,onEnded,onNext,
       if(shouldResume)window.setTimeout(()=>{
         if(token!==audioToken.current||!wantsPlayback.current)return;
         const nextVideo=videoRef.current;
-        if(nextVideo){nextVideo.muted=muted;nextVideo.volume=volume;void nextVideo.play().catch(()=>{});}
+        if(nextVideo)void nextVideo.play().catch(()=>{});
       },0);
       return;
     }
@@ -732,7 +724,7 @@ export function Player({item,queue,queueIndex,shuffled,onShuffle,onEnded,onNext,
       autoPlay={false}
       crossOrigin="anonymous"
       onClick={handleVideoClick}
-      onVolumeChange={(event)=>{if(!externalAudioUrl){setMuted(event.currentTarget.muted);setVolume(event.currentTarget.volume);}}}
+      onVolumeChange={event=>onVolumeChange(event.currentTarget)}
       onPlay={()=>{if(playbackBlocked.current){videoRef.current?.pause();return;}sourceTransition.current=false;setPlaying(true);syncExternalAudio(true);requestExternalAudioPlayback();revealControls();scheduleControlsHide();}}
       onPlaying={handlePlaying}
       onWaiting={handleWaiting}
@@ -769,7 +761,7 @@ export function Player({item,queue,queueIndex,shuffled,onShuffle,onEnded,onNext,
         onText={setActiveCaption}
       />}
     </video>
-    <audio ref={audioRef} preload="auto" onTimeUpdate={event=>reportBackgroundAudio(event.currentTarget)}/>
+    <audio ref={audioRef} preload="auto" onVolumeChange={event=>onVolumeChange(event.currentTarget)} onTimeUpdate={event=>reportBackgroundAudio(event.currentTarget)}/>
     <DraggableCaption key={`${item.id}:${selectedSubtitle}`} text={activeCaption} controlsVisible={controlsVisible} containerRef={containerRef} onDraggingChange={(dragging)=>{if(dragging)revealControls();else window.setTimeout(scheduleControlsHide,0);}}/>
     {qualityState==='starting'&&playRequested&&(!playing||buffering)&&<div className="player-status"><LoadingSpinner/><strong>{seekingPosition!==null?t("Seeking…"):selectedQuality===null?t("Buffering…"):t("Switching to {value0}…", { value0: qualityLabel(selectedQuality) })}</strong></div>}
     {audioPreparing&&playRequested&&<div className="player-status"><LoadingSpinner/><strong>{t("Preparing audio…")}</strong></div>}

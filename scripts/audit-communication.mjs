@@ -222,7 +222,8 @@ try{
     };
     const Native=window.AudioContext;
     window.AudioContext=class extends Native{
-      constructor(...args){super(...args);this.__limiters=[];this.__sources=[];window.__contexts.push(this);}
+      constructor(...args){super(...args);this.__limiters=[];this.__sources=[];this.__outputs=[];window.__contexts.push(this);}
+      createGain(){const node=super.createGain(),connect=node.connect.bind(node);node.connect=(destination,...args)=>{if(destination===this.destination)this.__outputs.push(node);return connect(destination,...args);};return node;}
       createDynamicsCompressor(){const node=super.createDynamicsCompressor();this.__limiters.push(node);return node;}
       createMediaElementSource(element){const node=super.createMediaElementSource(element);this.__sources.push(element);return node;}
     };
@@ -399,7 +400,8 @@ api.mediaSource=async id=>{if(!auditUrls.has(id))auditUrls.set(id,URL.createObje
   }
   const sample=page=>page.evaluate(async()=>{
     const context=window.__contexts.filter(item=>item.state!=='closed'&&item.__limiters.length).at(-1);
-    const output=context.__limiters[0],meter=context.createAnalyser();meter.fftSize=2048;output.connect(meter);
+    const active=[...document.querySelectorAll('.player video,.player audio')].find(element=>element.currentSrc&&!element.paused&&!element.muted)||document.querySelector('.player video');
+    const output=context.__outputs[context.__sources.indexOf(active)],meter=context.createAnalyser();meter.fftSize=2048;output.connect(meter);
     const data=new Float32Array(2048);let power=0;
     try{for(let n=0;n<6;n++){await new Promise(done=>setTimeout(done,50));meter.getFloatTimeDomainData(data);power+=data.reduce((sum,value)=>sum+value*value,0)/data.length;}}finally{output.disconnect(meter);}
     return {rms:Math.sqrt(power/6),sources:context.__sources.length,state:context.state,volume:document.querySelector('.player video').volume};
@@ -408,17 +410,36 @@ api.mediaSource=async id=>{if(!auditUrls.has(id))auditUrls.set(id,URL.createObje
     const prefix=mode==='web'?'/app':'';
     if(process.env.VIRELO_TEST_SKIP_LOCALIZATION!=='1')await auditLocalization({page:current,context:ctx,mode,base,items,artifacts:root,browser});
     await ctx.addInitScript(()=>{
-      localStorage.setItem('virelo-volume-leveling:v1','true');
+      if(!sessionStorage.getItem('virelo-audit-volume-seeded')){
+        localStorage.setItem('virelo-volume-leveling:v1','true');
+        localStorage.setItem('virelo-playback-volume:v1',JSON.stringify({volume:.03,muted:false}));
+        sessionStorage.setItem('virelo-audit-volume-seeded','true');
+      }
       window.__levelingBeforePlay=[];
+      window.__volumeBeforePlay=[];
       const play=HTMLMediaElement.prototype.play;
       HTMLMediaElement.prototype.play=function(){
-        if(this.matches('.player video'))window.__levelingBeforePlay.push(window.__contexts.some(context=>context.__sources.includes(this)));
+        if(this.matches('.player video')){
+          const context=window.__contexts.find(context=>context.__sources.includes(this));
+          window.__levelingBeforePlay.push(Boolean(context));
+          window.__volumeBeforePlay.push(context?.__outputs[context.__sources.indexOf(this)]?.gain.value);
+        }
         return play.call(this);
       };
     });
     await current.goto(base+prefix+'/watch/'+items[0].id+'?queue=false');
     await current.waitForFunction(()=>{const v=document.querySelector('.player video');return v&&!v.paused&&v.currentTime>.2;});
     check(await current.evaluate(()=>window.__levelingBeforePlay.length>0&&window.__levelingBeforePlay.every(Boolean)),mode+' saved leveling is bound before the first video play call');
+    const startupVolume=await current.evaluate(()=>({before:window.__volumeBeforePlay,saved:localStorage.getItem('virelo-playback-volume:v1')}));
+    console.log('STARTUP_VOLUME',mode,JSON.stringify(startupVolume));
+    check(startupVolume.before.length>0&&startupVolume.before.every(volume=>volume>=0&&volume<=.030001)&&startupVolume.before.some(volume=>Math.abs(volume-.03)<.000001),mode+' first playback stays muted or at the saved low output level');
+    const setFullVolume=async()=>{
+      await current.locator('.player').hover();await current.getByRole('button',{name:'Volume',exact:true}).click();
+      await current.locator('.volume-slider').press('End');
+      await current.waitForFunction(()=>JSON.parse(localStorage.getItem('virelo-playback-volume:v1')).volume===1);
+      await current.keyboard.press('Escape');
+    };
+    await setFullVolume();
     check(await current.evaluate(()=>window.__contexts.some(context=>context.__sources.includes(document.querySelector('.player audio')))),mode+' selected/external audio is already routed through the same protected graph');
     const shareLabel=mode==='npm'?'Share video':'Share Virelo';
     await current.locator('.watch-info-actions').waitFor();
@@ -448,13 +469,23 @@ api.mediaSource=async id=>{if(!auditUrls.has(id))auditUrls.set(id,URL.createObje
     const before=await sample(current);check(before.rms>0,mode+' disabling leveling leaves audio audible');
     await current.getByRole('menuitemcheckbox',{name:/Volume leveling/}).click();await current.keyboard.press('Escape');await current.keyboard.press('Escape');
     await current.waitForTimeout(5000);const quiet=await sample(current);check(quiet.rms>before.rms*1.5,mode+' quiet audio is lifted smoothly');
-    await current.locator('.player video').evaluate(video=>{video.volume=.5;});await current.waitForTimeout(1500);const lower=await sample(current);
+    await current.locator('.player').hover();await current.getByRole('button',{name:'Volume',exact:true}).click();
+    const range=await current.locator('.volume-slider').boundingBox();
+    await current.locator('.volume-slider').click({position:{x:range.width/2,y:range.height/2}});
+    await current.waitForTimeout(300);const lower=await sample(current);
     check(lower.rms/quiet.rms>.35&&lower.rms/quiet.rms<.65,mode+' leveling does not undo manual volume');
-    await current.locator('.player video').evaluate(video=>{video.muted=true;});await current.waitForTimeout(300);check((await sample(current)).rms<.00001,mode+' mute remains silent');
-    await current.locator('.player video').evaluate(video=>{video.muted=false;video.volume=1;video.currentTime=2;});await current.waitForTimeout(1500);
+    await current.locator('.player').hover();
+    if(!await current.locator('.player-volume-dialog').isVisible())await current.getByRole('button',{name:'Volume',exact:true}).click();
+    await current.locator('.player-volume-dialog').getByRole('button',{name:'Mute',exact:true}).press('Space');await current.waitForTimeout(100);check((await sample(current)).rms<.00001,mode+' mute remains silent');
+    await current.locator('.player').hover();
+    if(!await current.locator('.player-volume-dialog').isVisible())await current.getByRole('button',{name:'Volume',exact:true}).click();
+    await current.locator('.player-volume-dialog').getByRole('button',{name:'Unmute',exact:true}).press('Space');
+    await current.locator('.volume-slider').press('End');await current.keyboard.press('Escape');
+    await current.locator('.player video').evaluate(video=>{video.currentTime=2;});await current.waitForTimeout(300);
     check((await sample(current)).rms>0,mode+' seeking keeps normalized audio audible');
     await current.goto(base+prefix+'/watch/'+items[1].id+'?queue=false');await current.waitForFunction(()=>{const v=document.querySelector('.player video');return v&&!v.paused&&v.currentTime>5;});
     const loud=await sample(current);const difference=20*Math.log10(loud.rms/quiet.rms);
+    console.log('OUTPUT_LEVELS',mode,JSON.stringify({quiet,loud,differenceDb:difference,saved:await current.evaluate(()=>localStorage.getItem('virelo-playback-volume:v1'))}));
     check(Math.abs(difference)<3,mode+' differently mastered clips converge within 3 dB');
     await current.goto(base+prefix+'/shorts?startId='+items[2].id);await current.waitForFunction(()=>{const v=document.querySelector('.short-player video');return v&&!v.paused&&v.currentTime>1;});
     check(await current.evaluate(()=>window.__levelingBeforePlay.length>0&&window.__levelingBeforePlay.every(Boolean)),mode+' Shorts binds leveling before playback too');
