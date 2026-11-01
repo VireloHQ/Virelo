@@ -31,6 +31,7 @@ export function Header() {
     const nextOpen = !searchOpen;
     setMobileSearchOpen(nextOpen);
     if (nextOpen) void navigate({to:searchDestination});
+    else setSearch('');
   };
   return (
     <header className={'topbar'+(isHome?' home-header':'')}>
@@ -52,7 +53,7 @@ export function Header() {
           <div className={`header-search-shell ${searchOpen ? 'open' : ''}`} data-animate={animateSearch}
             onKeyDownCapture={event=>{
               if(event.key==='Escape'&&searchOpen){
-                event.preventDefault();event.stopPropagation();setAnimateSearch(false);setMobileSearchOpen(false);
+                event.preventDefault();event.stopPropagation();setAnimateSearch(false);setMobileSearchOpen(false);setSearch('');
                 searchToggleRef.current?.focus({preventScroll:true});
               }
             }}>
