@@ -43,7 +43,7 @@ try{
     const settling=frames.filter(frame=>frame.time>changedAt+.006&&frame.time<changedAt+.07);
     const peakAfterLowering=Math.max(...settling.map(frame=>frame.peak));
     const mastering=[];leveler.volume(video,.1,false);
-    for(const amplitude of [.01,.02,.05,.2,.8]){video.src=wav(amplitude);await video.play();await new Promise(done=>setTimeout(done,180));mastering.push({amplitude,rms:await sample()});}
+    for(const amplitude of [.01,.02,.05,.2,.8,.2,.05,.02,.01,.8]){video.src=wav(amplitude);await video.play();await new Promise(done=>setTimeout(done,180));mastering.push({amplitude,rms:await sample()});}
     leveler.volume(video,.01,true);const muted=await sample();
     leveler.volume(video,.01,false);const unmuted=await sample();
     leveler.enable(false);const bypass=await sample();

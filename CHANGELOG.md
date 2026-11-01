@@ -2,6 +2,9 @@
 
 ## 0.5.3 — 2026-11-02
 
+- Prevent volume leveling from making every sound tremble when voices and music overlap: hold recovery across short gaps, then bound increases to 3dB per second. Initial attenuation, 30ms audio lookahead and limiter timing are unchanged.
+- Reset detector and recovery history together on source changes and seeks, avoiding stale gain when moving from a loud video to a quiet one. Add mixed-tone modulation and bidirectional video-switching regressions.
+
 - Apply manual volume after leveling so gain detection cannot counteract the volume slider or leave a loud buffered tail after lowering it. Keep saved volume, mute and selected audio in sync before playback.
 - Improve quiet-recording detection and bounded amplification to reduce differences between differently mastered videos. Preserve the 30ms lookahead, detector response and limiter timing.
 - Test actual media output, rapid volume changes, quiet/loud recordings and playback-control state in Chromium, in addition to offline distortion and recovery checks.

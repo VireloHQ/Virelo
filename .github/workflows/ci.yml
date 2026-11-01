@@ -48,6 +48,7 @@ jobs:
       - run: npm ci
       - run: npx playwright install --with-deps chromium
       - run: node scripts/audit-volume-leveling.mjs
+      - run: node scripts/audit-volume-modulation.mjs
       - run: node scripts/audit-volume-integration.mjs
       - run: node scripts/audit-volume-controls.mjs
       - run: npm run check
