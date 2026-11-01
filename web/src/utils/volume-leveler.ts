@@ -26,13 +26,9 @@ export function createLevelingGraph(context: BaseAudioContext, source: AudioNode
   const mix = context.createGain(), highpass = context.createBiquadFilter(), shelf = context.createBiquadFilter();
   const split = context.createChannelSplitter(2), mean = context.createGain(), smooth = context.createBiquadFilter();
   const response = context.createWaveShaper(), control = context.createGain();
-  const hold = context.createDelay(.1), minimum = context.createGain(), negate = context.createGain();
-  const difference = context.createGain(), absolute = context.createWaveShaper(), restore = context.createGain();
+  const windowNodes: AudioNode[] = [];
   const squares = [context.createWaveShaper(), context.createWaveShaper()];
   delay.delayTime.value = LEVELING_LOOKAHEAD;
-  hold.delayTime.value = LEVELING_LOOKAHEAD;
-  minimum.gain.value = .5; negate.gain.value = -1; difference.gain.value = .125; restore.gain.value = -8;
-  absolute.curve = curves.absolute;
   gain.gain.value = 0; gate.gain.value = 0;
   compensation.gain.value = .5;
   mix.channelCount = 2; mix.channelCountMode = 'explicit'; mix.channelInterpretation = 'speakers';
@@ -48,11 +44,21 @@ export function createLevelingGraph(context: BaseAudioContext, source: AudioNode
   source.connect(compensation); compensation.connect(mix); mix.connect(highpass); highpass.connect(shelf); shelf.connect(split);
   squares.forEach((square, index) => { square.curve = curves.square; split.connect(square, index); square.connect(mean); });
   mean.connect(smooth); smooth.connect(response);
-  // min(current, delayed gain) prevents a release from boosting loud samples still in the delay.
-  response.connect(minimum); response.connect(hold); hold.connect(minimum);
-  response.connect(difference); hold.connect(negate); negate.connect(difference);
-  difference.connect(absolute); absolute.connect(restore); restore.connect(minimum);
-  minimum.connect(control); control.connect(gain.gain);
+  // Cover the existing 30ms hold at 1ms intervals instead of only its endpoints.
+  let envelope: AudioNode = response;
+  for (const seconds of [.001, .002, .004, .008, LEVELING_LOOKAHEAD - .015]) {
+    const hold = context.createDelay(.1), minimum = context.createGain(), negate = context.createGain();
+    const difference = context.createGain(), absolute = context.createWaveShaper(), restore = context.createGain();
+    hold.delayTime.value = seconds;
+    minimum.gain.value = .5; negate.gain.value = -1; difference.gain.value = .125; restore.gain.value = -8;
+    absolute.curve = curves.absolute;
+    envelope.connect(minimum); envelope.connect(hold); hold.connect(minimum);
+    envelope.connect(difference); hold.connect(negate); negate.connect(difference);
+    difference.connect(absolute); absolute.connect(restore); restore.connect(minimum);
+    windowNodes.push(hold, minimum, negate, difference, absolute, restore);
+    envelope = minimum;
+  }
+  envelope.connect(control); control.connect(gain.gain);
   const reset = () => {
     const now = context.currentTime;
     gate.gain.cancelScheduledValues(now);
@@ -62,7 +68,7 @@ export function createLevelingGraph(context: BaseAudioContext, source: AudioNode
   reset();
   return {
     limiter, output: mute,
-    nodes: [source, delay, gain, limiter, gate, mute, compensation, mix, highpass, shelf, split, ...squares, mean, smooth, response, hold, minimum, negate, difference, absolute, restore, control],
+    nodes: [source, delay, gain, limiter, gate, mute, compensation, mix, highpass, shelf, split, ...squares, mean, smooth, response, ...windowNodes, control],
     reset,
     volume(volume: number, muted: boolean) {
       const now = context.currentTime;
