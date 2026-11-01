@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.5.1 — 2026-11-01
+
+- Update folder monitoring to Chokidar 6, retaining the existing Node.js requirements and native Windows watcher.
+- Update query, routing, state and build/test dependencies. Accounts, libraries and source video files are unchanged.
+
 ## 0.5.0 — 2026-11-01
 
 ### Highlights
