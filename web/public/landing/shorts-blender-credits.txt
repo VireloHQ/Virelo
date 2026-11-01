@@ -14,7 +14,7 @@ Big Buck Bunny (2008)
   The 10-second sample was muted, scaled to 1280 pixels wide, resampled
   to 30 fps and repeated into an 18-second working file. Its first
   10 seconds were cropped to portrait (center framing), resized to
-  540 x 960 and resampled to 24 fps for playback in the Virelo UI.
+  540 x 960 and resampled to 30 fps for playback in the Virelo UI.
 
 Sintel (2010)
   (c) copyright Blender Foundation | durian.blender.org
@@ -24,12 +24,14 @@ Sintel (2010)
   Source: https://download.blender.org/durian/movies/Sintel.2010.1080p.mkv
   The original 02:40–02:58 excerpt was muted, scaled to 1280 pixels
   wide and resampled to 30 fps as an 18-second working file.
-  Two 10-second clips (working-file offsets 00:08 and 00:00) were
-  cropped to portrait, resized to 540 x 960 and resampled to 24 fps.
-  The first is reframed toward the left; the other uses center framing.
+  One 6-second clip (working-file offset 00:12) and one 10-second clip
+  (offset 00:00) were cropped to portrait, resized to 540 x 960 and
+  resampled to 30 fps. The first is reframed slightly left of center;
+  the other uses center framing.
 
-The demo records actual Virelo Shorts playback, a favorite action and
-vertical scrolling through these three clips in isolated browser storage.
+The demo records the current, unmodified Virelo Shorts interface, a favorite
+action and native vertical scrolling through these three clips with an isolated
+demonstration catalog. It returns to the first clip before looping.
 The final recording is resized to 390 x 820 and encoded as silent H.264
 at 30 fps. The poster is a frame captured from the same Virelo UI.
 No full movie, third-party soundtrack or downloaded social-media footage

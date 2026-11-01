@@ -46,9 +46,9 @@ function LandingContent() {
         <div className="landing-hero-shade"/>
         <div className="landing-hero-content landing-container">
           <h1 id="landing-title">{t("Your collection.")}<br/>{t("Now showing.")}</h1>
-          <p>{t("Turn the video folders on your device into your own streaming library. No uploads. No account needed for the web player.")}</p>
+          <p>{t("Your video folders, ready to watch in your browser. No account, uploads or installation required.")}</p>
           <div className="landing-hero-actions"><Link to="/app" className="landing-button landing-button-primary"><Play weight="fill"/>{t("Open web player")}</Link><a href="#start" className="landing-button landing-button-secondary" onClick={()=>{setMode('cli');setCopyState('idle');}}><TerminalWindow/>{t("Run locally")}</a></div>
-          <p className="landing-hero-note">{t("Free to use. Built for the videos you already have.")}</p>
+          <p className="landing-hero-note">{t("Free and open source.")}</p>
         </div>
       </section>
 
@@ -59,12 +59,15 @@ function LandingContent() {
         </div>
         <figure className="landing-preview" id="landing-preview" role="tabpanel" aria-labelledby={'preview-tab-'+preview} tabIndex={0}>
           <picture><source media="(max-width: 600px)" srcSet={preview==='home'?'/landing/library-mobile.webp':'/landing/player-mobile.webp'}/><img src={preview==='home'?'/landing/library-desktop.webp':'/landing/player-desktop.webp'} alt={preview==='home'?t("The actual Virelo Home screen with a featured video, Continue watching and personal library shelves."):t("The actual Virelo player with playback controls and a video queue.")} width="1440" height="1050" loading="lazy"/></picture>
-          <figcaption><p>{t(previewCopy[preview])}</p><span>{t("Actual Virelo UI, shown with sample videos.")}</span></figcaption>
+          <figcaption><p>{t(previewCopy[preview])}</p><span>{t("Actual Virelo UI, shown with sample videos.")} <a href="/landing/library-credits.txt" target="_blank" rel="noreferrer">{t("Sample film credits")}</a></span></figcaption>
         </figure>
         <div className="landing-editorial-features">
-          <article><h3>{t("Find your next watch.")}</h3><p>{t("Movies, series, favorites, and saved progress. Your collection, with a place for everything.")}</p></article>
-          <article><h3>{t("Make it a double feature.")}</h3><p>{t("Queue a folder, skip between titles, or repeat the whole queue. Your playback, your choice.")}</p></article>
+          <article><h3>{t("Browse your way.")}</h3><p>{t("Search your collection or switch to Explorer for a folder tree and an address bar with path completion.")}</p></article>
+          <article><h3>{t("Your playlists. Your order.")}</h3><p>{t("Save named playlists, drag videos into order, shuffle, or keep a vertical queue beside the player.")}</p></article>
+          <article><h3>{t("A more comfortable volume.")}</h3><p>{t("Reduce sudden volume jumps between videos with optional volume leveling.")}</p></article>
           <article><h3>{t("Keep your place.")}</h3><p>{t("Come back to a video without starting over. Your watch progress stays with your library.")}</p></article>
+          <article><h3>{t("Make it feel like yours.")}</h3><p>{t("Choose from four player styles, set an accent color, and use Virelo in five languages.")}</p></article>
+          <article><h3>{t("Original quality. More control.")}</h3><p>{t("Keep the original quality, choose audio and subtitles, change speed, or fine-tune the picture.")}</p></article>
         </div>
       </section>
 
@@ -85,7 +88,25 @@ function LandingContent() {
           <div className="landing-start-options">
             <div className="landing-tabs" role="tablist" aria-label={t("Choose how to use Virelo")}>{(['web','cli'] as const).map((value,index)=><button key={value} id={'start-tab-'+value} type="button" role="tab" aria-selected={mode===value} aria-controls="landing-start-panel" tabIndex={mode===value?0:-1} ref={node=>{modeTabs.current[index]=node;}} onClick={()=>{setMode(value);setCopyState('idle');}} onKeyDown={event=>tabKey(event,index,modeTabs.current,next=>{setMode(next===0?'web':'cli');setCopyState('idle');})}>{value==='web'?t("In your browser"):t("Run locally")}</button>)}</div>
             <div className="landing-start-panel" id="landing-start-panel" role="tabpanel" aria-labelledby={'start-tab-'+mode} tabIndex={0}>
-              {mode==='web'?<><h3>{t("No install. Just your videos.")}</h3><p>{t("Choose a video folder in the web player. Virelo builds your library on this device and remembers your watch progress.")}</p><ol className="landing-steps"><li>{t("Open the web player.")}</li><li>{t("Choose a folder and allow read access.")}</li><li>{t("Pick something to watch.")}</li></ol><Link to="/app" className="landing-button landing-button-primary"><Play weight="fill"/>{t("Open web player")}</Link><p className="landing-small">{t("Folder access and playback support depend on your browser.")}</p></>:<><h3>{t("One command. Your home cinema.")}</h3><p>{t("Open a terminal in your video folder and start Virelo. Keep it local, or enable access from devices on your trusted network.")}</p><div className="landing-command"><code>npx virelo</code><button type="button" onClick={()=>void copyCommand()} aria-label={t("Copy npx virelo command")}>{copyState==='copied'?<Check weight="bold"/>:<Copy/>}<span>{copyState==='copied'?t("Copied"):t("Copy")}</span></button></div><p className="landing-copy-status" role="status">{copyState==='error'?t("Copy isn’t available here. Select the command above and copy it manually."):copyState==='copied'?t("Command copied. Open a terminal in your video folder and paste it."):''}</p><Link to="/setup" className="landing-text-link">{t("Setup and network guide")}</Link><p className="landing-small">{t("Requires Node.js 22.23.4+, 24.22.1+ or 26.12.1+ within those release lines. Windows, macOS, Linux and Android via Termux. Network access is opt-in; don’t expose Virelo directly to the public internet.")}</p></>}
+              {mode==='web'?<>
+                <h3>{t("No install. Just your videos.")}</h3>
+                <p>{t("Choose a folder and start watching. Use Virelo in a browser, or add it to your home screen as a PWA where supported.")}</p>
+                <ol className="landing-steps"><li>{t("Open the web player.")}</li><li>{t("Choose a folder and allow read access.")}</li><li>{t("Pick something to watch.")}</li></ol>
+                <Link to="/app" className="landing-button landing-button-primary"><Play weight="fill"/>{t("Open web player")}</Link>
+                <p className="landing-small">{t("Folder access and playback support depend on your browser.")}</p>
+              </>:<>
+                <h3>{t("One command. Your home cinema.")}</h3>
+                <p>{t("Open a terminal in your video folder and start Virelo. Keep it local, or enable access from devices on your trusted network.")}</p>
+                <ul className="landing-cli-features">
+                  <li>{t("Movie and series info, posters and backdrops, matched automatically.")}</li>
+                  <li>{t("Separate accounts, personal playlists and library permissions.")}</li>
+                  <li>{t("Private announcements and optional, disclosed activity monitoring.")}</li>
+                </ul>
+                <div className="landing-command"><code>npx virelo</code><button type="button" onClick={()=>void copyCommand()} aria-label={t("Copy npx virelo command")}>{copyState==='copied'?<Check weight="bold"/>:<Copy/>}<span>{copyState==='copied'?t("Copied"):t("Copy")}</span></button></div>
+                <p className="landing-copy-status" role="status">{copyState==='error'?t("Copy isn’t available here. Select the command above and copy it manually."):copyState==='copied'?t("Command copied. Open a terminal in your video folder and paste it."):''}</p>
+                <Link to="/setup" className="landing-text-link">{t("Setup and network guide")}</Link>
+                <p className="landing-small">{t("Requires Node.js 22.23.4+, 24.22.1+ or 26.12.1+ within those release lines. Windows, macOS, Linux and Android via Termux. Network access is opt-in; don’t expose Virelo directly to the public internet.")}</p>
+              </>}
             </div>
           </div>
         </div>

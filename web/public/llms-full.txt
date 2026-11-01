@@ -17,7 +17,7 @@ The browser-only web player needs no account. The CLI server is a separate appli
 
 ## Web player
 
-Open https://virelo.riyo.me/app and choose a folder. The browser builds the library on the device. Browser file-system support varies, so users should use a current browser that supports directory selection.
+Open https://virelo.riyo.me/app and choose a folder. The browser builds the library on the device without installation. Supported browsers can optionally add Virelo to the home screen as a PWA. Browser file-system support varies, so users should use a current browser that supports directory selection.
 
 ## CLI quick start
 
@@ -46,9 +46,18 @@ The Virelo CLI setup guide covers Windows, macOS, Linux, and Android through Ter
 - Browse videos through Home, Library, Details, Player, and Shorts views.
 - Search selected folders and mark videos as favorites.
 - Resume videos from saved watch progress.
-- Queue and play a folder in sequence.
+- Save named playlists, reorder videos, shuffle and edit horizontal or vertical queues.
+- Browse with an Explorer folder tree, address completion and customizable display names without renaming source folders.
+- Reduce loudness differences with optional live volume leveling. It is not full-file integrated LUFS normalization and is unavailable on Safari/iOS WebKit.
+- Choose four controller styles, accent colors and English, Japanese, Simplified Chinese, Korean or Russian.
 - Play portrait clips in a responsive Shorts-style feed.
 - Keep selected files and library state on the user's device.
+
+## Self-hosted features
+
+The CLI server can automatically match movie and series information and cache posters, backdrops and episode artwork. This is not available in the browser-only player. Filename queries or media identifiers may be sent to metadata providers; source video files are not uploaded to them.
+
+Each server account has its own playlists, favorites, watch progress and appearance preferences. Administrators control library access and operation permissions, send private in-app announcements and can enable visibly disclosed activity monitoring. Monitoring is off by default and requires the current notice to be acknowledged. None of these administrative features exist in the browser-only player.
 
 ## Help and source
 

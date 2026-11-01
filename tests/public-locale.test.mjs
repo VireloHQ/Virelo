@@ -45,6 +45,23 @@ test('localized command labels interpolate without translating executable comman
   assert.notEqual(t('ja', 'Start with'), t('ja', 'Start Virelo with'));
 });
 
+test('launch copy covers current features in all five languages and scopes server-only claims', async () => {
+  const landing = await readFile(new URL('../web/src/views/LandingView.tsx',import.meta.url),'utf8');
+  for (const message of [
+    'Browse your way.', 'Your playlists. Your order.', 'A more comfortable volume.',
+    'Make it feel like yours.', 'Original quality. More control.',
+    'Choose a folder and start watching. Use Virelo in a browser, or add it to your home screen as a PWA where supported.',
+    'Movie and series info, posters and backdrops, matched automatically.',
+    'Separate accounts, personal playlists and library permissions.'
+  ]) {
+    assert.ok(landing.includes('t('+JSON.stringify(message)+')'),message);
+    for (const locale of ['ja','ko','zh-CN','ru']) assert.notEqual(t(locale,message),message,locale+': '+message);
+  }
+  const serverFeatures=landing.match(/<ul className="landing-cli-features">([\s\S]*?)<\/ul>/)?.[1];
+  assert.ok(serverFeatures?.includes('Movie and series info'));
+  assert.ok(serverFeatures?.includes('Separate accounts'));
+});
+
 test('Shorts are named as a video format, not just short-duration videos', async () => {
   assert.equal(t('en', 'Shorts.'), 'Shorts.');
   assert.equal(t('ja', 'Shorts.'), 'ショート動画も、');

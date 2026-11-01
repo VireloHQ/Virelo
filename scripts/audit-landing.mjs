@@ -37,13 +37,15 @@ try {
   }
   await page.setViewportSize({width:1440,height:1000});
   await page.getByRole('tab',{name:'Library',exact:true}).focus();await page.keyboard.press('ArrowRight');
+  await page.locator('#preview-tab-player[aria-selected="true"]').waitFor();
   check(await page.getByRole('tab',{name:'Player',exact:true}).getAttribute('aria-selected')==='true','keyboard changes screenshot');
   await imageReady();check(await page.locator('.landing-preview img').getAttribute('src')==='/landing/player-desktop.webp','player screenshot loads');
-  await page.keyboard.press('Home');check(await page.getByRole('tab',{name:'Library',exact:true}).getAttribute('aria-selected')==='true','Home returns to library tab');
+  await page.keyboard.press('Home');await page.locator('#preview-tab-home[aria-selected="true"]').waitFor();check(await page.getByRole('tab',{name:'Library',exact:true}).getAttribute('aria-selected')==='true','Home returns to library tab');
   await page.getByRole('link',{name:'Run locally',exact:true}).click();
   check(await page.getByRole('tab',{name:'Run locally',exact:true}).getAttribute('aria-selected')==='true','local launch CTA opens the command panel');
   await page.getByRole('tab',{name:'In your browser',exact:true}).click();
   await page.getByRole('tab',{name:'In your browser',exact:true}).focus();await page.keyboard.press('ArrowRight');
+  await page.locator('#start-tab-cli[aria-selected="true"]').waitFor();
   check(await page.getByRole('tab',{name:'Run locally',exact:true}).getAttribute('aria-selected')==='true','keyboard changes install mode');
   await page.getByRole('button',{name:'Copy npx virelo command'}).click();
   await page.getByRole('status').filter({hasText:'Command copied'}).waitFor();

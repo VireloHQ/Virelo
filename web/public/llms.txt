@@ -20,4 +20,7 @@
 - Virelo CLI 0.4+ requires sign-in. Create the first administrator on the server device using localhost.
 - The web player runs client-side in the browser.
 - The CLI can serve a local video folder with `npx virelo`.
-- Virelo includes search, favorites, watch progress, folder queues, and a swipeable Shorts feed for portrait videos.
+- The web player needs no installation; supported browsers can optionally install it as a PWA.
+- Virelo includes Explorer navigation, named playlists, editable queues, optional volume leveling and a swipeable Shorts feed for portrait videos.
+- Four controller styles, custom accent colors and five interface languages are available.
+- Automatic movie/series information and artwork, accounts, library permissions and administrator announcements require the self-hosted server, not the browser-only player.

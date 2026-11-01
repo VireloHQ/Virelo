@@ -215,7 +215,7 @@ try {
       }),items);
       await page.route(base+'/__playlist-fixture.mp4',route=>route.fulfill({body:bytes,contentType:'video/mp4'}));
       await page.route(url=>url.pathname==='/src/api.ts'&&!url.search,async route=>{
-        const response=await route.fetch();await route.fulfill({response,body:await response.text()+`
+        const response=await route.fetch({maxRetries:2});await route.fulfill({response,body:await response.text()+`
 const files=new Map(),urls=new Map();
 api.mediaFile=async id=>{if(!files.has(id))files.set(id,fetch('/__playlist-fixture.mp4').then(r=>r.blob()).then(b=>new File([b],'clip-'+id+'.mp4',{type:'video/mp4',lastModified:1})));return files.get(id);};
 api.mediaSource=async id=>{if(!urls.has(id))urls.set(id,URL.createObjectURL(await api.mediaFile(id)));return urls.get(id);};
@@ -400,6 +400,7 @@ api.mediaSource=async id=>{if(!urls.has(id))urls.set(id,URL.createObjectURL(awai
       },items[3]),label+' temporarily unavailable browser references survive edits and reappear after restoration');
     }
     check(errors.length===0,label+' no browser exceptions: '+errors.join('; '));
+    await page.unrouteAll({behavior:'wait'});
     await context.close();
   }
   for(const item of items)assert.deepEqual(await readFile(item.path),bytes,'original fixture file stays unchanged');

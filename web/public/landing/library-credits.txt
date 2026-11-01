@@ -1,0 +1,36 @@
+Virelo library and player preview credits
+
+The previews show the current Virelo interface with an isolated demonstration
+library. Watch progress and favorites are synthetic. Virelo does not include a
+movie catalog or distribute these films as part of the player.
+
+Sintel
+Copyright Blender Foundation | durian.blender.org
+Official sharing statement: https://durian.blender.org/sharing/
+Source: https://download.blender.org/durian/movies/Sintel.2010.1080p.mkv
+Creative Commons Attribution 3.0: https://creativecommons.org/licenses/by/3.0/
+
+Big Buck Bunny
+Copyright 2008, Blender Foundation / www.bigbuckbunny.org
+Official attribution: https://peach.blender.org/about/
+Creative Commons Attribution 3.0: https://creativecommons.org/licenses/by/3.0/
+
+Spring
+Copyright Blender Foundation / cloud.blender.org/spring
+Official film license: https://studio.blender.org/projects/spring/pages/about/
+Creative Commons Attribution 4.0: https://creativecommons.org/licenses/by/4.0/
+
+Caminandes 3: Llamigos
+Copyright Blender Foundation / Blender Studio
+Official film: https://studio.blender.org/projects/caminandes-3/?asset=2417
+Creative Commons Attribution 4.0: https://creativecommons.org/licenses/by/4.0/
+
+Cosmos Laundromat: First Cycle
+(CC) Blender Foundation / gooseberry.blender.org
+Official sharing statement: https://gooseberry.blender.org/sharing/
+Creative Commons Attribution 3.0: https://creativecommons.org/licenses/by/3.0/
+
+Edits: extracted stills, resized and shown within screenshots of Virelo. The
+Sintel player preview is a still from a 64-second working excerpt beginning at
+02:40. No soundtrack or full film is included in these screenshot assets.
+The original films and their creators do not endorse Virelo.

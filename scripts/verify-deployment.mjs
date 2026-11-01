@@ -22,9 +22,12 @@ assert.ok(landing,'Production app must include the landing route');
 const route = await get('/assets/'+landing);
 assert.equal(route.status,200);
 const code = await route.text();
-for (const name of ['hero-coast.webp','shorts-blender-demo.mp4']) assert.ok(code.includes(name),'Landing route uses '+name);
+for (const name of ['hero-coast.webp','shorts-blender-demo.mp4','library-credits.txt']) assert.ok(code.includes(name),'Landing route uses '+name);
+for (const message of ['Your playlists. Your order.','A more comfortable volume.','Movie and series info, posters and backdrops, matched automatically.']) {
+  assert.ok(code.includes(message),'Deployed landing includes current feature: '+message);
+}
 
-await Promise.all(['hero-coast.webp','shorts-blender-demo.mp4','shorts-blender-demo.webp','shorts-blender-credits.txt'].map(async name=>{
+await Promise.all(['hero-coast.webp','library-desktop.webp','library-mobile.webp','player-desktop.webp','player-mobile.webp','library-credits.txt','shorts-blender-demo.mp4','shorts-blender-demo.webp','shorts-blender-credits.txt'].map(async name=>{
   const deployed = await get('/landing/'+name);
   assert.equal(deployed.status,200,name);
   const actual = Buffer.from(await deployed.arrayBuffer());

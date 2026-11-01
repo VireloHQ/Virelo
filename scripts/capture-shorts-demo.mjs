@@ -1,139 +1,97 @@
-// Record the real Shorts UI using verified, CC BY 3.0 Blender film excerpts.
 import assert from 'node:assert/strict';
-import { spawn, execFileSync } from 'node:child_process';
-import { createHash } from 'node:crypto';
-import { createRequire } from 'node:module';
-import { mkdir, readFile, stat } from 'node:fs/promises';
-import { fileURLToPath } from 'node:url';
-import { join } from 'node:path';
+import {createHash} from 'node:crypto';
+import {createRequire} from 'node:module';
+import {execFileSync} from 'node:child_process';
+import {mkdtemp,readFile} from 'node:fs/promises';
+import {tmpdir} from 'node:os';
+import {join,resolve} from 'node:path';
+import {createServer} from 'vite';
 
-const repo = fileURLToPath(new URL('../', import.meta.url));
-const cache = join(repo, 'node_modules/.cache/shorts-blender');
-const sourceDirectory = process.env.VIRELO_DEMO_MEDIA_DIR || join(cache, 'sources');
-const output = join(repo, 'web/public/landing');
-const ffmpeg = process.env.VIRELO_TEST_FFMPEG || 'ffmpeg';
-const { chromium } = createRequire(import.meta.url)(process.env.VIRELO_TEST_PLAYWRIGHT || 'playwright');
-await mkdir(cache, { recursive: true });
-const run = args => execFileSync(ffmpeg, ['-hide_banner', '-loglevel', 'error', ...args], { windowsHide: true });
-const sources = {
-  sintel: '151f543969ebd4643aa0cde14e000d8d0559586f1e9ad693d427cf4179e4c8e2',
-  bunny: '9695b70ed5e4ae939b230dd50422ce5aed24bcc49c0e37c02f2e51365c60d1d7'
-};
-for (const [name, checksum] of Object.entries(sources)) {
-  const bytes = await readFile(join(sourceDirectory, name + '.mp4'));
-  assert.equal(createHash('sha256').update(bytes).digest('hex'), checksum,
-    'Use the documented Blender excerpts; see ASSETS.md for sources and checksums.');
-}
-const scenes = [
-  { title: 'Sintel', source: 'sintel', start: 8, framing: 0.35 },
-  { title: 'Big Buck Bunny', source: 'bunny', start: 0, framing: 0.5 },
-  { title: 'Sintel — Rooftops', source: 'sintel', start: 0, framing: 0.5 }
-];
-const footage = new Map();
-for (const [index, scene] of scenes.entries()) {
-  const path = join(cache, `scene-${index + 1}.mp4`);
-  run(['-ss', String(scene.start), '-i', join(sourceDirectory, scene.source + '.mp4'), '-t', '10', '-vf',
-    `scale=-2:1280,crop=720:1280:(iw-ow)*${scene.framing}:(ih-oh)/2,scale=540:960,fps=24`,
-    '-an', '-c:v', 'libx264', '-preset', 'fast', '-crf', '21', '-pix_fmt', 'yuv420p',
-    '-movflags', '+faststart', '-map_metadata', '-1', '-y', path]);
-  footage.set(index + 1, await readFile(path));
-}
+const {chromium}=createRequire(process.env.VIRELO_TEST_NODE_PACKAGE||import.meta.url)(process.env.VIRELO_TEST_PLAYWRIGHT||'playwright');
+const media=resolve(process.env.VIRELO_DEMO_MEDIA_DIR||'node_modules/.cache/shorts-blender/sources');
+const output=resolve('web/public/landing');
+const temporary=await mkdtemp(join(tmpdir(),'virelo-shorts-preview-'));
+const ffmpeg=(args)=>execFileSync(process.env.VIRELO_TEST_FFMPEG||'ffmpeg',['-hide_banner','-loglevel','error',...args],{windowsHide:true});
+for(const [name,expected] of [
+  ['sintel.mp4','151f543969ebd4643aa0cde14e000d8d0559586f1e9ad693d427cf4179e4c8e2'],
+  ['bunny.mp4','9695b70ed5e4ae939b230dd50422ce5aed24bcc49c0e37c02f2e51365c60d1d7']
+]) assert.equal(createHash('sha256').update(await readFile(join(media,name))).digest('hex'),expected,'Use the licensed working source: '+name);
 
-const server = spawn(process.execPath, [join(repo, 'node_modules/vite/bin/vite.js'), '--host', '127.0.0.1', '--port', '0'],
-  { cwd: repo, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
-let browser;
+const clips=[];
+for(const [index,[name,start,title,framing]] of [
+  ['sintel.mp4',12,'Sintel',.35],['bunny.mp4',0,'Big Buck Bunny',.5],['sintel.mp4',0,'Sintel — The journey',.5]
+].entries()) {
+  const file=join(temporary,`portrait-${index+1}.mp4`);
+  ffmpeg(['-ss',String(start),'-i',join(media,name),'-t','10','-vf',`crop=trunc(ih*9/16/2)*2:ih:(iw-ow)*${framing}:0,scale=540:960,setsar=1`,'-an','-r','30','-c:v','libx264','-preset','fast','-crf','20','-threads','2','-pix_fmt','yuv420p','-movflags','+faststart','-map_metadata','-1',file]);
+  clips.push({id:index+1,title,file,bytes:await readFile(file)});
+}
+const items=clips.map(({id,title,bytes})=>({id,library_id:1,path:`portrait-${id}.mp4`,filename:`${title}.mp4`,title,sort_title:title,
+  kind:'video',series_title:null,season:null,episode:null,year:null,duration:10,width:540,height:960,video_codec:'h264',audio_codec:null,
+  container:'mp4',folder:'Shorts',size:bytes.length,mtime:id,thumbnail_path:null,poster_path:null,backdrop_path:null,
+  overview:null,genres:null,external_id:null,added_at:1,updated_at:1,liked:0}));
+const server=await createServer({server:{host:'127.0.0.1',port:0,open:false}});
+let browser,context;
 try {
-  const base = await new Promise((resolve, reject) => {
-    let output = '';
-    const timer = setTimeout(() => reject(new Error('Vite did not start: ' + output)), 20000);
-    server.once('error', error => { clearTimeout(timer); reject(error); });
-    server.stderr.on('data', chunk => { output += chunk; });
-    server.stdout.on('data', chunk => {
-      output += String(chunk).replace(/\x1b\[[0-9;]*m/g, '');
-      const url = output.match(/http:\/\/127\.0\.0\.1:\d+/)?.[0];
-      if (url) { clearTimeout(timer); resolve(url); }
-    });
+  await server.listen();
+  const base='http://127.0.0.1:'+server.httpServer.address().port;
+  browser=await chromium.launch({headless:true,executablePath:process.env.VIRELO_TEST_CHROMIUM,args:['--autoplay-policy=no-user-gesture-required']});
+  context=await browser.newContext({viewport:{width:390,height:820},locale:'en-US',hasTouch:true,isMobile:true,deviceScaleFactor:1,
+    serviceWorkers:'block',recordVideo:{dir:temporary,size:{width:390,height:820}}});
+  const started=Date.now(),page=await context.newPage(),errors=[];
+  page.on('pageerror',error=>errors.push(error.message));
+  await page.addInitScript(()=>localStorage.setItem('virelo.language.v1','en'));
+  await page.route(url=>url.pathname==='/src/api.ts'&&!url.search,async route=>{
+    const response=await route.fetch();
+    await route.fulfill({response,body:await response.text()+`\nconst demo=${JSON.stringify(items)};
+      api.shorts=async()=>({items:demo.map(item=>({...item})),total:demo.length});
+      api.mediaById=async id=>({...demo.find(item=>item.id===id)});
+      api.mediaSource=async id=>'/__landing-short/'+id+'.mp4';
+      api.mediaFile=async id=>new File([await(await fetch('/__landing-short/'+id+'.mp4')).blob()],'portrait-'+id+'.mp4',{type:'video/mp4'});
+      api.progress=async()=>{};
+      api.setLike=async(id,liked)=>{demo.find(item=>item.id===id).liked=liked?1:0;return {ok:true,liked};};
+    `});
   });
-  browser = await chromium.launch({ headless: true, executablePath: process.env.VIRELO_TEST_CHROMIUM });
-  const context = await browser.newContext({ viewport: { width: 390, height: 820 }, deviceScaleFactor: 1,
-    isMobile: true, hasTouch: true, serviceWorkers: 'block', recordVideo: { dir: cache, size: { width: 390, height: 820 } } });
-  const page = await context.newPage(), errors = [];
-  page.on('pageerror', error => errors.push(error.message));
-  await page.route('**/__shorts-blender/*.mp4', route => {
-    const id = Number(new URL(route.request().url()).pathname.match(/(\d+)\.mp4$/)?.[1]);
-    const body = footage.get(id);
-    assert.ok(body, 'Only the three verified Blender excerpts can be requested');
-    const range = route.request().headers().range?.match(/^bytes=(\d+)-(\d*)$/);
-    if (!range) return route.fulfill({ body, contentType: 'video/mp4' });
-    const start = Number(range[1]), end = range[2] ? Math.min(Number(range[2]), body.length - 1) : body.length - 1;
-    return route.fulfill({ status: 206, body: body.subarray(start, end + 1), contentType: 'video/mp4',
-      headers: { 'Accept-Ranges': 'bytes', 'Content-Range': `bytes ${start}-${end}/${body.length}` } });
+  await page.route('**/__landing-short/*.mp4',route=>{
+    const clip=clips.find(clip=>route.request().url().endsWith('/'+clip.id+'.mp4'));
+    assert.ok(clip);
+    const range=route.request().headers().range?.match(/^bytes=(\d+)-(\d*)$/);
+    const start=Number(range?.[1]||0),end=range?.[2]?Math.min(Number(range[2]),clip.bytes.length-1):clip.bytes.length-1;
+    return route.fulfill({status:range?206:200,contentType:'video/mp4',body:clip.bytes.subarray(start,end+1),headers:{'Accept-Ranges':'bytes',...(range?{'Content-Range':`bytes ${start}-${end}/${clip.bytes.length}`}:{})}});
   });
-  await page.route(url => url.pathname === '/src/api.ts' && !url.search, async route => {
-    const response = await route.fetch();
-    await route.fulfill({ response, body: await response.text() +
-      "\napi.mediaSource = async id => '/__shorts-blender/' + id + '.mp4';" });
-  });
-  await page.goto(base + '/app/settings');
-  await page.locator('.settings-heading').waitFor();
-  await page.locator('.splash-screen').waitFor({ state: 'hidden' });
-  await page.evaluate(async scenes => {
-    const { saveStoredMedia } = await import('/src/local-library.ts');
-    for (const [index, { title }] of scenes.entries()) await saveStoredMedia({
-      id: index + 1, library_id: 1, title, sort_title: title, path: `${title}.mp4`, filename: `${title}.mp4`,
-      folder: 'Demo', kind: 'movie', duration: 10, width: 540, height: 960, size: 1, mtime: 0,
-      added_at: 0, updated_at: 0, liked: 0, progress_position: 0, progress_completed: 0,
-      thumbnail_path: null, poster_path: null, backdrop_path: null, year: null,
-      series_title: null, season: null, episode: null, overview: null, genres: null
-    });
-  }, scenes);
-  await page.goto(base + '/app/shorts?startId=1');
-  await page.locator('.splash-screen').waitFor({ state: 'hidden' });
-  await page.waitForFunction(() => document.querySelector('.short-video')?.readyState >= 2);
-  await page.evaluate(() => document.fonts.ready);
-  await page.mouse.move(0, 0);
-  await page.locator('.short-video').first().evaluate(async element => {
-    element.pause();
-    await new Promise(resolve => { element.addEventListener('seeked', resolve, { once: true }); element.currentTime = 7; });
-  });
-  await page.screenshot({ path: join(cache, 'poster.png') });
-  await page.locator('.short-video').first().evaluate(async element => {
-    await new Promise(resolve => { element.addEventListener('seeked', resolve, { once: true }); element.currentTime = 0; });
-    await element.play();
-  });
-  const seen = new Set([await page.locator('.short-info h2').textContent()]);
-  await page.waitForTimeout(4000); // Deliberate real-time viewing holds for the recording.
-  await page.getByRole('button', { name: 'Add to favorites', exact: true }).first().click();
-  await page.getByRole('button', { name: 'Remove from favorites', exact: true }).first().waitFor();
-  await page.waitForTimeout(1000);
-  for (let index = 1; index <= 2; index++) {
-    const previous = await page.locator('.short-info h2').textContent();
-    await page.locator('.shorts-scroller').evaluate((element, index) => {
-      element.scrollTo({ top: element.clientHeight * index, behavior: 'smooth' });
-    }, index);
-    await page.waitForFunction(previous => document.querySelector('.short-info h2')?.textContent !== previous, previous);
-    seen.add(await page.locator('.short-info h2').textContent());
-    await page.waitForTimeout(5000);
+  await page.goto(base+'/app/shorts?startId=1');
+  await page.locator('.splash-screen').waitFor({state:'hidden'});
+  const playing=()=>page.waitForFunction(()=>{const video=document.querySelector('.short-player video');return video&&video.readyState>=2&&!video.paused&&video.currentTime>.2;});
+  await playing();
+  await page.evaluate(()=>document.fonts.ready);
+  const first=(Date.now()-started)/1000;
+  await page.waitForTimeout(1800);
+  await page.locator('.short-actions button').nth(1).click();
+  await page.getByRole('button',{name:'Remove from favorites',exact:true}).waitFor();
+  await page.waitForTimeout(1100);
+  for(let index=1;index<3;index++) {
+    await page.getByRole('button',{name:'Next short',exact:true}).click();
+    await page.waitForFunction(title=>document.querySelector('.short-info h2')?.textContent===title,items[index].title);
+    await playing();
+    await page.waitForTimeout(2300);
   }
-  assert.deepEqual([...seen].sort(), scenes.map(scene => scene.title).sort(), 'All three clips appear in the swipe recording');
-  assert.deepEqual(errors, [], 'The real Shorts screen must not raise runtime errors');
-  const recording = page.video();
-  await context.close();
-  const videoPath = join(output, 'shorts-blender-demo.mp4');
-  run(['-sseof', '-15', '-i', await recording.path(), '-t', '15', '-an', '-vf', 'fps=30,format=yuv420p',
-    '-c:v', 'libx264', '-preset', 'slow', '-crf', '22', '-movflags', '+faststart', '-map_metadata', '-1', '-y', videoPath]);
-  run(['-i', join(cache, 'poster.png'), '-frames:v', '1', '-c:v', 'libwebp', '-quality', '85', '-y', join(output, 'shorts-blender-demo.webp')]);
-  const probe = JSON.parse(execFileSync(process.env.VIRELO_TEST_FFPROBE || 'ffprobe',
-    ['-v', 'error', '-show_streams', '-show_format', '-of', 'json', videoPath], { encoding: 'utf8', windowsHide: true }));
-  assert.equal(probe.streams.length, 1, 'No third-party audio or soundtrack');
-  assert.equal(probe.streams[0].codec_name, 'h264');
-  assert.equal(probe.streams[0].width, 390);
-  assert.equal(probe.streams[0].height, 820);
-  assert.ok(Math.abs(Number(probe.format.duration) - 15) < 0.1);
-  assert.ok((await stat(videoPath)).size < 25 * 1024 * 1024);
-  run(['-i', videoPath, '-f', 'null', '-']);
-  console.log('PASS: 15-second Blender Shorts capture, real UI, three verified excerpts, no audio, H.264, full decode.');
-} finally {
-  if (browser) await browser.close();
-  server.kill();
-}
+  await page.evaluate(()=>document.activeElement?.blur());
+  await page.keyboard.press('Home');
+  await playing();
+  await page.waitForTimeout(1500);
+  assert.deepEqual(errors,[],'Capture must not hide application errors');
+  const duration=(Date.now()-started)/1000-first;
+  const recording=page.video();
+  await context.close();context=null;
+  const raw=await recording.path();
+  ffmpeg(['-y','-ss',String(first),'-i',raw,'-t',String(duration),'-an','-r','30','-c:v','libx264','-crf','20','-preset','fast','-threads','2','-pix_fmt','yuv420p','-movflags','+faststart','-map_metadata','-1',join(output,'shorts-blender-demo.mp4')]);
+  ffmpeg(['-y','-ss','1','-i',join(output,'shorts-blender-demo.mp4'),'-frames:v','1','-c:v','libwebp','-quality','88',join(output,'shorts-blender-demo.webp')]);
+  ffmpeg(['-i',join(output,'shorts-blender-demo.mp4'),'-f','null','-']);
+  const encoded=JSON.parse(execFileSync(process.env.VIRELO_TEST_FFPROBE||'ffprobe',['-v','error','-show_streams','-show_format','-of','json',join(output,'shorts-blender-demo.mp4')],{encoding:'utf8',windowsHide:true}));
+  assert.equal(encoded.streams.length,1);
+  assert.equal(encoded.streams[0].codec_name,'h264');
+  assert.equal(encoded.streams[0].width,390);assert.equal(encoded.streams[0].height,820);
+  assert.equal(encoded.streams[0].r_frame_rate,'30/1');
+  assert.ok(Number(encoded.format.duration)>8&&Number(encoded.format.duration)<30);
+  assert.ok(Number(encoded.format.size)<25*1024*1024);
+  console.log(JSON.stringify({temporary,duration,clips:clips.length,ui:'current, unmodified',width:390,height:820,audio:false}));
+} finally {await context?.close();await browser?.close();await server.close();}

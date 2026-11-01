@@ -1,4 +1,4 @@
-import { createRequire, stripTypeScriptTypes } from 'node:module';
+import { createRequire } from 'node:module';
 import { spawn } from 'node:child_process';
 import { readFile, mkdtemp } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -8,15 +8,16 @@ import assert from 'node:assert/strict';
 
 const repo = fileURLToPath(new URL('../', import.meta.url));
 const { chromium } = createRequire(process.env.VIRELO_TEST_NODE_PACKAGE || import.meta.url)('playwright');
-const source = await readFile(join(repo, 'web/src/i18n/public-messages.ts'), 'utf8');
-const { publicMessages } = await import('data:text/javascript;base64,' + Buffer.from(stripTypeScriptTypes(source)).toString('base64'));
 const languages = [
-  { browser: 'en-US', code: 'en', name: 'English', index: -1 },
-  { browser: 'ja-JP', code: 'ja', name: '日本語', index: 0 },
-  { browser: 'ko-KR', code: 'ko', name: '한국어', index: 1 },
-  { browser: 'zh-CN', code: 'zh-CN', name: '简体中文', index: 2 }
+  { browser: 'en-US', code: 'en', name: 'English' },
+  { browser: 'ja-JP', code: 'ja', name: '日本語' },
+  { browser: 'ko-KR', code: 'ko', name: '한국어' },
+  { browser: 'zh-CN', code: 'zh-CN', name: '简体中文' },
+  { browser: 'ru-RU', code: 'ru', name: 'Русский' }
 ];
-const text = (locale, message) => locale.index < 0 ? message : publicMessages[message][locale.index];
+const catalogs = Object.fromEntries(await Promise.all(languages.map(async locale => [locale.code,
+  JSON.parse(await readFile(join(repo,'web/src/i18n/messages',locale.code+'.json'),'utf8'))])));
+const text = (locale, message) => catalogs[locale.code][message];
 const screenshots = await mkdtemp(join(tmpdir(), 'virelo-locales-'));
 const server = spawn(process.execPath, [join(repo, 'node_modules/vite/bin/vite.js'), 'preview', '--host', '127.0.0.1', '--port', '0'],
   { cwd: repo, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
@@ -65,6 +66,11 @@ try {
         const graph = await page.locator('script[type="application/ld+json"]').evaluate(node => JSON.parse(node.textContent)['@graph']);
         check(graph.find(entity => entity['@type'] === 'WebPage').inLanguage === locale.code, 'structured page language');
         if (path === '/') {
+          const features = page.locator('.landing-editorial-features');
+          check(await features.locator('article').count() === 6, 'six current feature highlights');
+          check((await features.textContent()).includes(text(locale, 'A more comfortable volume.')), 'localized volume leveling');
+          check((await page.locator('.landing-start-panel').textContent()).includes(text(locale,'Choose a folder and start watching. Use Virelo in a browser, or add it to your home screen as a PWA where supported.')), 'optional PWA and browser-only use');
+          check(await page.getByRole('link',{name:text(locale,'Sample film credits'),exact:true}).getAttribute('href')==='/landing/library-credits.txt','visible screenshot credits');
           check(await page.locator('#landing-title').textContent() === text(locale, 'Your collection.') + text(locale, 'Now showing.'), 'localized headline');
           if (width === 320 || width === 390) {
             await page.locator('.public-language-select .picker-trigger').click();
@@ -72,6 +78,10 @@ try {
             check(menu.x >= 0 && menu.x + menu.width <= width, 'language choices fit the mobile viewport');
             if (width === 390) await page.screenshot({ path: join(screenshots, locale.code + '-language-menu.png') });
             await page.keyboard.press('Escape');
+            await page.getByRole('listbox').waitFor({state:'hidden'});
+            // Select restores trigger focus on the next animation frame.
+            await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(resolve)));
+            await page.waitForFunction(()=>document.activeElement===document.querySelector('.public-language-select .picker-trigger'));
           }
           const faq = await page.locator('.landing-faq details').evaluateAll(nodes => nodes.map(node => ({
             name: node.querySelector('summary').textContent, answer: node.querySelector('p').textContent
@@ -84,8 +94,10 @@ try {
           check(cta.y + cta.height <= (width > 760 ? 1000 : 844), locale.code + ' primary action in first screen');
           await page.getByRole('tab', { name: text(locale, 'Library'), exact: true }).focus();
           await page.keyboard.press('ArrowRight');
+          await page.locator('#preview-tab-player[aria-selected="true"]').waitFor();
           check(await page.getByRole('tab', { name: text(locale, 'Player'), exact: true }).getAttribute('aria-selected') === 'true', 'localized keyboard preview');
           await page.getByRole('tab', { name: text(locale, 'Run locally'), exact: true }).click();
+          check(await page.locator('.landing-cli-features li').count() === 3, 'server-only features belong to the CLI panel');
           check(await page.locator('.landing-command code').textContent() === 'npx virelo', 'executable command remains unchanged');
           for (const version of ['22.23.4', '24.22.1', '26.12.1']) check((await page.locator('.landing-start-panel').textContent()).includes(version), 'localized CLI requirement: ' + version);
           await page.locator('.landing-command button').click();
@@ -136,7 +148,7 @@ try {
     await page.locator('#landing-title').waitFor();
     const selected = locale.code === 'ja' ? languages[2] : languages[1];
     await choose(page, selected);
-    check(await page.evaluate(() => localStorage.getItem('virelo-public-locale:v1')) === selected.code, 'explicit language saved');
+    check(await page.evaluate(() => localStorage.getItem('virelo.language.v1')) === selected.code, 'explicit language saved');
     await page.locator('.landing-nav a[href="/setup"]').click();
     await page.locator('#setup-title').waitFor();
     check(await page.locator('#setup-title').textContent() === text(selected, 'Run Virelo locally.'), 'selection survives client-side guide navigation');
@@ -145,14 +157,14 @@ try {
     check(true, 'selection survives reload');
     await page.locator('.landing-header-actions a[href="/app"]').click();
     await page.locator('.app-shell').waitFor();
-    check(await page.evaluate(() => document.documentElement.lang) === 'en', 'English app is not mislabeled as translated');
+    check(await page.evaluate(() => document.documentElement.lang) === selected.code, 'app and landing share the selected language');
     await page.goto(base);
     await page.waitForFunction(code => document.documentElement.lang === code, selected.code);
     const trigger = page.locator('.public-language-select .picker-trigger');
     await trigger.focus(); await page.keyboard.press('Enter');
-    check(await page.getByRole('option').count() === 4, 'custom language menu has four options');
+    check(await page.getByRole('option').count() === 5, 'custom language menu has five options');
     await page.keyboard.press('End'); await page.keyboard.press('Enter');
-    await page.waitForFunction(() => document.documentElement.lang === 'zh-CN');
+    await page.waitForFunction(() => document.documentElement.lang === 'ru');
     check(true, 'language menu supports keyboard selection');
     const second = await context.newPage();
     await second.goto(base + '/setup'); await second.locator('#setup-title').waitFor();
