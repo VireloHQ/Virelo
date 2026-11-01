@@ -470,8 +470,9 @@ api.mediaSource=async id=>{if(!auditUrls.has(id))auditUrls.set(id,URL.createObje
     await current.getByRole('menuitemcheckbox',{name:/Volume leveling/}).click();await current.keyboard.press('Escape');await current.keyboard.press('Escape');
     await current.waitForTimeout(5000);const quiet=await sample(current);check(quiet.rms>before.rms*1.5,mode+' quiet audio is lifted smoothly');
     await current.locator('.player').hover();await current.getByRole('button',{name:'Volume',exact:true}).click();
-    const range=await current.locator('.volume-slider').boundingBox();
-    await current.locator('.volume-slider').click({position:{x:range.width/2,y:range.height/2}});
+    await current.locator('.volume-slider').press('End');
+    for(let step=0;step<5;step++)await current.locator('.volume-slider').press('PageDown');
+    assert.equal(await current.locator('.volume-slider').inputValue(),'0.5','keyboard volume changes reach the midpoint');
     await current.waitForTimeout(300);const lower=await sample(current);
     check(lower.rms/quiet.rms>.35&&lower.rms/quiet.rms<.65,mode+' leveling does not undo manual volume');
     await current.locator('.player').hover();

@@ -30,7 +30,8 @@ try {
       const source = context.createBufferSource(); source.buffer = buffer;
       const nodes = createLevelingGraph(context, source); nodes.volume(1, false); nodes.enable(true); nodes.output.disconnect();
       const monitor = context.createChannelMerger(2); nodes.output.connect(monitor, 0, 0); nodes.nodes.at(-1).connect(monitor, 0, 1); monitor.connect(context.destination); source.start();
-      const output = await context.startRendering(), control = output.getChannelData(1);
+      const started = performance.now(), output = await context.startRendering(), control = output.getChannelData(1);
+      const renderMs = Math.round(performance.now() - started);
       const gainDb = [];
       for (let index = rate; index < 3 * rate; index += 48) gainDb.push(20 * Math.log10(Math.max(1e-8, control[index])));
       const mean = gainDb.reduce((sum, value) => sum + value, 0) / gainDb.length;
@@ -44,7 +45,7 @@ try {
         }
         voiceDb.push(20 * Math.log10(2 * Math.hypot(real, imaginary) / weights));
       }
-      results.push({ beat, rate, amplitude, center, speech, modulationDb: modulation, rangeDb: Math.max(...gainDb) - Math.min(...gainDb), voiceRangeDb: Math.max(...voiceDb) - Math.min(...voiceDb) });
+      results.push({ beat, rate, amplitude, center, speech, renderMs, modulationDb: modulation, rangeDb: Math.max(...gainDb) - Math.min(...gainDb), voiceRangeDb: Math.max(...voiceDb) - Math.min(...voiceDb) });
       nodes.dispose(); nodes.nodes.forEach(node => node.disconnect());
     }
     return results;
