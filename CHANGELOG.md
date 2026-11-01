@@ -1,6 +1,24 @@
 # Changelog
 
-## Unreleased
+## 0.5.0 — 2026-11-01
+
+### Highlights
+
+- Personal named playlists, editable horizontal/vertical queues, drag sorting, shuffle and queue saving.
+- Live volume leveling, faster quality/audio switching, expanded playback controls and unobtrusive Shorts controls.
+- Explorer library navigation, path completion, resizable folders and display names that leave source paths untouched.
+- Per-account appearance and five interface languages: English, Japanese, Simplified Chinese, Korean and Russian.
+- Compact account administration, optional disclosed activity monitoring, private announcements and link/QR sharing.
+
+### Upgrade notes
+
+- Existing accounts, libraries, favorites and watch history are retained. Playlist and appearance settings belong to each account; volume leveling remains a device-local option and is unavailable on Safari/iOS WebKit.
+- The supported Node.js versions remain 22.23.4+, 24.22.1+ and 26.12.1+ within those release lines. Source video files are never modified by this upgrade.
+
+### Changes
+
+- Bundle the patched static-file dependency tree so fresh production installations retain the glob and minimatch security fixes, not just development checkouts.
+- Separate watch-page video actions from queue management so controls remain aligned at desktop and mobile widths.
 
 - Compact Explorer folders and add a resizable, keyboard-accessible sidebar. Use the first available video as playlist artwork, align creation controls, tighten playlist headings, and join dropdown panels without corner gaps.
 
