@@ -410,8 +410,11 @@ api.mediaSource=async id=>{if(!auditUrls.has(id))auditUrls.set(id,URL.createObje
     const prefix=mode==='web'?'/app':'';
     if(process.env.VIRELO_TEST_SKIP_LOCALIZATION!=='1')await auditLocalization({page:current,context:ctx,mode,base,items,artifacts:root,browser});
     await ctx.addInitScript(()=>{
-      localStorage.setItem('virelo-volume-leveling:v1','true');
-      localStorage.setItem('virelo-playback-volume:v1',JSON.stringify({volume:.03,muted:false}));
+      if(!sessionStorage.getItem('virelo-audit-volume-seeded')){
+        localStorage.setItem('virelo-volume-leveling:v1','true');
+        localStorage.setItem('virelo-playback-volume:v1',JSON.stringify({volume:.03,muted:false}));
+        sessionStorage.setItem('virelo-audit-volume-seeded','true');
+      }
       window.__levelingBeforePlay=[];
       window.__volumeBeforePlay=[];
       const play=HTMLMediaElement.prototype.play;
@@ -482,6 +485,7 @@ api.mediaSource=async id=>{if(!auditUrls.has(id))auditUrls.set(id,URL.createObje
     check((await sample(current)).rms>0,mode+' seeking keeps normalized audio audible');
     await current.goto(base+prefix+'/watch/'+items[1].id+'?queue=false');await current.waitForFunction(()=>{const v=document.querySelector('.player video');return v&&!v.paused&&v.currentTime>5;});
     const loud=await sample(current);const difference=20*Math.log10(loud.rms/quiet.rms);
+    console.log('OUTPUT_LEVELS',mode,JSON.stringify({quiet,loud,differenceDb:difference,saved:await current.evaluate(()=>localStorage.getItem('virelo-playback-volume:v1'))}));
     check(Math.abs(difference)<3,mode+' differently mastered clips converge within 3 dB');
     await current.goto(base+prefix+'/shorts?startId='+items[2].id);await current.waitForFunction(()=>{const v=document.querySelector('.short-player video');return v&&!v.paused&&v.currentTime>1;});
     check(await current.evaluate(()=>window.__levelingBeforePlay.length>0&&window.__levelingBeforePlay.every(Boolean)),mode+' Shorts binds leveling before playback too');
