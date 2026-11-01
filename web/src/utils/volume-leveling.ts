@@ -1,4 +1,5 @@
 export const LEVELING_KEY='virelo-volume-leveling:v1';
+export const LEVELING_MAX_BOOST_DB=24;
 export function supportsVolumeLeveling(userAgent:string,platform='',touches=0){
   // Native WebKit HLS cannot reliably feed MediaElementAudioSourceNode (WebKit bug 306493).
   return !(/AppleWebKit/.test(userAgent)&&(!/(?:Chrome|Chromium|Edg|OPR)\//.test(userAgent)||/iP(?:hone|ad|od)/.test(userAgent)||platform==='MacIntel'&&touches>1));
@@ -24,5 +25,5 @@ export function subscribeLeveling(listener:()=>void){
 // shortcut: live stereo estimation; use full-file EBU R128 analysis when exact integrated LUFS is needed.
 export function levelingGainDb(level:number,peak?:number):number|null {
   if(!Number.isFinite(level)||peak!==undefined&&!Number.isFinite(peak)||level < -55)return null;
-  return Math.max(-24,Math.min(12,-18-level,peak===undefined?Infinity:-3-peak));
+  return Math.max(-24,Math.min(LEVELING_MAX_BOOST_DB,-18-level,peak===undefined?Infinity:-3-peak));
 }
