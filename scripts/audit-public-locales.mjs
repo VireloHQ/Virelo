@@ -76,6 +76,12 @@ try {
             await page.locator('.public-language-select .picker-trigger').click();
             const menu = await page.getByRole('listbox').boundingBox();
             check(menu.x >= 0 && menu.x + menu.width <= width, 'language choices fit the mobile viewport');
+            const selected = page.getByRole('option',{selected:true});
+            check(await selected.evaluate(node=>getComputedStyle(node).backgroundColor)==='rgb(42, 42, 42)','language selection uses a neutral gray surface');
+            check(await selected.locator('svg').evaluate(node=>getComputedStyle(node).color)==='rgb(245, 245, 245)','language checkmark follows the neutral text color');
+            const trigger = page.locator('.public-language-select .picker-trigger');
+            await page.waitForFunction(()=>getComputedStyle(document.querySelector('.public-language-select .picker-trigger')).backgroundColor==='rgb(23, 23, 23)');
+            check(await trigger.evaluate(node=>getComputedStyle(node).backgroundColor)==='rgb(23, 23, 23)','expanded language trigger matches the menu surface');
             if (width === 390) await page.screenshot({ path: join(screenshots, locale.code + '-language-menu.png') });
             await page.keyboard.press('Escape');
             await page.getByRole('listbox').waitFor({state:'hidden'});
