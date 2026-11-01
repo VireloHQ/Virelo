@@ -24,7 +24,7 @@ try{
         for(let index=0;index<sampleRate;index++){
           seed=(Math.imul(seed,1664525)+1013904223)>>>0;
           const level=transition&&index<sampleRate*.25?transition[0]:transition?transition[1]:amplitude;
-          const sample=(impulse?(index===Math.floor(sampleRate*.25)?1:0):noise?seed/4294967296*2-1:Math.sin(index/sampleRate*2*Math.PI*frequency))*level*volume;
+          const sample=(impulse?(index===Math.floor(sampleRate*.25)?1:0):noise?seed/4294967296*2-1:Math.sin(index/sampleRate*2*Math.PI*frequency))*level;
           buffer.getChannelData(0)[index]=sample;buffer.getChannelData(1)[index]=sample*(antiphase?-1:1);
         }
         const source=context.createBufferSource();source.buffer=buffer;

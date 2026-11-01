@@ -90,9 +90,10 @@ export function Player({item,queue,queueIndex,shuffled,onShuffle,onEnded,onNext,
   const [playing,setPlaying] = useState(false);
   const [current,setCurrent] = useState(0);
   const [duration,setDuration] = useState(item.duration || 0);
-  const {volume,setVolume,muted,setMuted} = usePlaybackVolume();
+  const volumeControls = usePlaybackVolume();
+  const {volume,setVolume,muted,setMuted} = volumeControls;
   const {speed,changeSpeed} = usePlaybackSpeed(videoRef,audioRef,item.id,externalAudioUrl);
-  const {leveling,setLeveling,levelingError,levelingSupported}=useVolumeLeveling(videoRef,audioRef,externalAudioUrl);
+  const {leveling,setLeveling,levelingError,levelingSupported,onVolumeChange}=useVolumeLeveling(videoRef,audioRef,externalAudioUrl,volumeControls);
   const [pip,setPip] = useState(false);
   const [pipSupported,setPipSupported] = useState(false);
   const [singleRepeat,setSingleRepeat] = useState<RepeatMode>('off');
@@ -199,15 +200,6 @@ export function Player({item,queue,queueIndex,shuffled,onShuffle,onEnded,onNext,
   },[autoPlay,item.id]);
 
   useEffect(()=>{setActiveCaption('');},[item.id,selectedSubtitle]);
-
-  useEffect(()=>{
-    const video=videoRef.current;
-    const audio=audioRef.current;
-    if(!video)return;
-    video.muted=externalAudioUrl?true:muted;
-    video.volume=volume;
-    if(audio){audio.volume=volume;audio.muted=muted;}
-  },[externalAudioUrl,muted,volume]);
 
   useEffect(()=>{
     const video=videoRef.current;
@@ -382,8 +374,8 @@ export function Player({item,queue,queueIndex,shuffled,onShuffle,onEnded,onNext,
     setCurrent(value);
   }
   function seekBy(seconds:number){const v=videoRef.current;if(!v)return;seek(Math.max(0,Math.min(v.duration || duration,current + seconds)));}
-  function toggleMute(){const next=!muted;setMuted(next);if(externalAudioUrl){if(audioRef.current)audioRef.current.muted=next;}else if(videoRef.current)videoRef.current.muted=next;}
-  function setVol(value:number){const v=videoRef.current;if(v)v.volume=value;if(audioRef.current)audioRef.current.volume=value;setMuted(false);setVolume(value);}
+  function toggleMute(){setMuted(value=>!value);}
+  function setVol(value:number){setMuted(false);setVolume(value);}
   async function fullscreen(){const container=containerRef.current;const video=videoRef.current;if(!container||!video)return;await toggleFullscreen(container,video);}
   async function togglePip(){const v=videoRef.current;if(!v||!pipSupported)return;if(document.pictureInPictureElement)await document.exitPictureInPicture();else await v.requestPictureInPicture().catch(()=>{});}
   async function prepareAudio(stream:number,file=mediaFile,info=playbackInfo,initial=false,resumeAt?:number){
@@ -408,7 +400,7 @@ export function Player({item,queue,queueIndex,shuffled,onShuffle,onEnded,onNext,
       setExternalAudioUrl('');
       setPreparing(null);
       setPlaybackReady(true);
-      if(video){video.muted=muted;video.currentTime=position;}
+      if(video)video.currentTime=position;
       if(shouldResume)queueMicrotask(()=>{if(token===audioPreparationToken.current&&wantsPlayback.current)requestVideoPlayback();});
       return;
     }
@@ -522,7 +514,7 @@ export function Player({item,queue,queueIndex,shuffled,onShuffle,onEnded,onNext,
     if(!pending||pending.token!==audioPreparationToken.current||!video||audio.readyState<HTMLMediaElement.HAVE_METADATA)return;
     try{audio.currentTime=pending.position;}catch{return;}
     video.currentTime=pending.position;
-    audio.volume=volume;audio.muted=muted;audio.playbackRate=video.playbackRate;
+    audio.playbackRate=video.playbackRate;
     pendingAudio.current=null;
     setPreparing(null);
     sourceTransition.current=false;
@@ -584,7 +576,7 @@ export function Player({item,queue,queueIndex,shuffled,onShuffle,onEnded,onNext,
       preload={typeof readQualityPreference(false)==='number'?'none':autoPlay?'auto':'metadata'}
       autoPlay={false}
       onClick={handleVideoClick}
-      onVolumeChange={(event)=>{if(!externalAudioUrl){setMuted(event.currentTarget.muted);setVolume(event.currentTarget.volume);}}}
+      onVolumeChange={event=>onVolumeChange(event.currentTarget)}
       onPlay={()=>{if(qualityBlocked.current){videoRef.current?.pause();return;}sourceTransition.current=false;setPlaying(true);syncExternalAudio(true);requestExternalAudioPlayback();revealControls();scheduleControlsHide();}}
       onPlaying={()=>syncExternalAudio(true)}
       onWaiting={()=>{if(!background.audioIsClock())audioRef.current?.pause();}}
@@ -610,7 +602,7 @@ export function Player({item,queue,queueIndex,shuffled,onShuffle,onEnded,onNext,
         onText={setActiveCaption}
       />}
     </video>
-    <audio key={externalAudioUrl||'native-audio'} ref={audioRef} src={externalAudioUrl||undefined} preload="auto" onTimeUpdate={event=>reportBackgroundAudio(event.currentTarget)} onLoadedMetadata={(event)=>finishPreparedAudio(event.currentTarget)} onCanPlay={(event)=>finishPreparedAudio(event.currentTarget)}/>
+    <audio key={externalAudioUrl||'native-audio'} ref={audioRef} src={externalAudioUrl||undefined} preload="auto" onVolumeChange={event=>onVolumeChange(event.currentTarget)} onTimeUpdate={event=>reportBackgroundAudio(event.currentTarget)} onLoadedMetadata={(event)=>finishPreparedAudio(event.currentTarget)} onCanPlay={(event)=>finishPreparedAudio(event.currentTarget)}/>
     <DraggableCaption key={`${item.id}:${selectedSubtitle}`} text={activeCaption} controlsVisible={controlsVisible} containerRef={containerRef} onDraggingChange={(dragging)=>{if(dragging)revealControls();else window.setTimeout(scheduleControlsHide,0);}}/>
     {source.loading && <div className="player-status"><LoadingSpinner/><strong>{t("Opening video…")}</strong><span>{t("Reading the selected local file.")}</span></div>}
     {aviSource&&!playbackInfo&&!source.loading&&!source.error&&!playbackError&&<div className="player-status"><LoadingSpinner/><strong>{t("Preparing AVI playback…")}</strong></div>}
