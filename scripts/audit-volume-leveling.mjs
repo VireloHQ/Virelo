@@ -55,6 +55,21 @@ try{
       const detector=timingGraph.nodes.find(node=>node instanceof BiquadFilterNode&&node.type==='lowpass');
       const timing={detectorHz:detector.frequency.value,attack:timingGraph.limiter.attack.value,release:timingGraph.limiter.release.value};
       timingGraph.nodes.forEach(node=>node.disconnect());
+      const holdTiming=[];
+      for(const [from,to] of [[.8,.2],[.2,.8]]){
+        const context=new OfflineAudioContext(1,24000,48000),source=context.createBufferSource();
+        const nodes=createLevelingGraph(context,source),signal=context.createConstantSource();
+        nodes.output.disconnect();
+        nodes.nodes.find(node=>node instanceof BiquadFilterNode&&node.type==='lowpass').disconnect();
+        const response=nodes.nodes.find(node=>node instanceof WaveShaperNode&&node.curve.length===262145);
+        response.curve=new Float32Array([-1,1]);
+        signal.offset.value=from;signal.offset.setValueAtTime(to,.25);signal.connect(response);signal.start();
+        nodes.nodes.at(-1).connect(context.destination);
+        const samples=(await context.startRendering()).getChannelData(0);
+        let changed=11520;
+        while(changed<samples.length&&(samples[changed]-.5)*(to-from)<=0)changed++;
+        holdTiming.push(changed/48000);
+      }
       const burstContext=new OfflineAudioContext(2,48000,48000),burst=burstContext.createBuffer(2,48000,48000);
       for(let index=0;index<48000;index++){
         const time=index/48000;
@@ -88,7 +103,7 @@ try{
         muted:await render({muted:true}),off:await render({enabled:false}),
         rate44100:await render({sampleRate:44100}),rate96000:await render({sampleRate:96000}),
         bass44100:await render({frequency:40,sampleRate:44100}),bass96000:await render({frequency:40,sampleRate:96000}),
-        lookahead:LEVELING_LOOKAHEAD,timing,burstRecovery
+        lookahead:LEVELING_LOOKAHEAD,timing,holdTiming,burstRecovery
       };
     },graph);
     for(const name of ['loud','medium','quiet','silence','jump','bass','noise','rate44100','rate96000']){
@@ -107,6 +122,8 @@ try{
     assert.equal(results.lookahead,.03,'audible lookahead remains 30ms');
     assert.equal(results.timing.detectorHz,25,'detector response speed is unchanged');
     assert.ok(Math.abs(results.timing.attack-.003)<1e-8&&Math.abs(results.timing.release-.15)<1e-7,'limiter attack/release timing is unchanged');
+    assert.ok(Math.abs(results.holdTiming[0]-.25)<2/48000,'gain attenuation is not delayed by the denser hold');
+    assert.ok(Math.abs(results.holdTiming[1]-.28)<2/48000,'gain recovery retains the existing 30ms hold');
     for(const name of ['loud','rate44100','rate96000'])assert.ok(results[name].start>=.029&&results[name].start<.045,mode+' '+name+' adds no playback latency');
     for(const name of ['bass30','bass','bass45','bass60','bass75','bass100','bass44100','bass96000']){
       console.log('MEASURE',mode,name,'distortion',(results[name].distortion*100).toFixed(4)+'%');
