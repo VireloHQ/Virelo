@@ -28,12 +28,12 @@ during preparation: both can publish automatically.
 ## Publish manually
 
 Sign in with an account that can publish `virelo`, then publish the newly checked
-archive. For 0.5.0:
+archive. For 0.5.1:
 
 ```sh
 npm login --registry=https://registry.npmjs.org/
 npm whoami --registry=https://registry.npmjs.org/
-npm publish ./virelo-0.5.0.tgz --access public --registry=https://registry.npmjs.org/
+npm publish ./virelo-0.5.1.tgz --access public --registry=https://registry.npmjs.org/
 ```
 
 Complete any npm authentication or two-factor prompt yourself. Never put a token
@@ -41,5 +41,5 @@ or one-time password in source files, logs or release notes. A dry run does not
 prove publication permission. Published name/version pairs cannot be reused.
 
 After publication, check `npm view virelo version` and
-`npx --yes virelo@0.5.0 --version` before announcing the npm release. A previously
+`npx --yes virelo@0.5.1 --version` before announcing the npm release. A previously
 cached `npx virelo` installation may need `npx virelo@latest` to pick up the update.

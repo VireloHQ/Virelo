@@ -6,6 +6,13 @@ async function audioFrequency(page) {
     const audio = document.querySelector('.player audio'), video = document.querySelector('.player:not(.short-player) video');
     return !video.paused && !video.seeking && video.readyState >= 2 && (!audio.hasAttribute('src')
       || (!audio.paused && !audio.seeking && audio.readyState >= 2 && Math.abs(audio.currentTime - video.currentTime) < .5));
+  }).catch(async error => {
+    console.error('AUDIO_FREQUENCY_STATE', await page.locator('.player').first().evaluate(player => {
+      const state = media => media && ({source:media.currentSrc,time:media.currentTime,paused:media.paused,seeking:media.seeking,
+        ready:media.readyState,error:media.error?.message,buffered:Array.from({length:media.buffered.length},(_,i)=>[media.buffered.start(i),media.buffered.end(i)])});
+      return {video:state(player.querySelector('video')),audio:state(player.querySelector('audio'))};
+    }));
+    throw error;
   });
   return page.evaluate(async () => {
     const audio = document.querySelector('.player audio'), video = document.querySelector('.player:not(.short-player) video');
@@ -36,6 +43,17 @@ async function audioFrequency(page) {
   });
 }
 
+async function selectConvertedAudio(page, index) {
+  const previousSource = await page.locator('.player audio').evaluate(audio => audio.currentSrc);
+  await page.getByRole('menu', {name:'Audio',exact:true}).getByRole('menuitemradio').nth(index).click();
+  // A ready, synchronized old track is not evidence that the selection finished.
+  await page.waitForFunction(previous => {
+    const audio = document.querySelector('.player audio'), video = document.querySelector('.player:not(.short-player) video');
+    return audio.currentSrc && audio.currentSrc !== previous && audio.readyState >= 2 && !audio.seeking
+      && Math.abs(audio.currentTime - video.currentTime) < .5;
+  }, previousSource);
+}
+
 export async function auditPlayerSwitching(page, label, check) {
   const video = page.locator('.player:not(.short-player) video');
   await video.evaluate(element => { element.pause(); element.currentTime = 1; });
@@ -54,12 +72,7 @@ export async function auditPlayerSwitching(page, label, check) {
   });
   const audioStart = Date.now();
   await openPlaybackSetting(page, 'Audio');
-  const choices = page.getByRole('menu', { name: 'Audio', exact: true }).getByRole('menuitemradio');
-  await choices.nth(1).click();
-  await page.waitForFunction(() => {
-    const audio = document.querySelector('.player audio'), video = document.querySelector('.player:not(.short-player) video');
-    return audio && audio.currentSrc && audio.readyState >= 2 && Math.abs(audio.currentTime - video.currentTime) < .5;
-  }, undefined, { timeout: 30000 }).catch(async error => {
+  await selectConvertedAudio(page, 1).catch(async error => {
     console.error('AUDIO_SWITCH', label, await page.locator('.player audio').evaluate(audio => ({ source: audio.currentSrc, time: audio.currentTime, ready: audio.readyState, paused: audio.paused, error: audio.error?.message, buffered: Array.from({length:audio.buffered.length},(_,i)=>[audio.buffered.start(i),audio.buffered.end(i)]) })));
     throw error;
   });
@@ -87,11 +100,7 @@ export async function auditPlayerSwitching(page, label, check) {
   check(Math.abs(forwardHz - 660) < 35, label + ' forward seek retains the actual selected alternate audio (' + Math.round(forwardHz) + 'Hz)');
   await video.evaluate(element => element.pause());
   await openPlaybackSetting(page, 'Audio');
-  await page.getByRole('menu', { name: 'Audio', exact: true }).getByRole('menuitemradio').first().click();
-  await page.waitForFunction(() => {
-    const audio = document.querySelector('.player audio'), video = document.querySelector('.player:not(.short-player) video');
-    return audio.readyState >= 2 && !audio.seeking && Math.abs(audio.currentTime - video.currentTime) < .5;
-  });
+  await selectConvertedAudio(page, 0);
   await video.evaluate(element => { element.currentTime = 2; });
   await page.waitForFunction(() => {
     const video = document.querySelector('.player:not(.short-player) video');
@@ -103,11 +112,7 @@ export async function auditPlayerSwitching(page, label, check) {
   check(Math.abs(backwardHz - 440) < 35, label + ' backward seek uses the latest selected audio rather than a stale conversion (' + Math.round(backwardHz) + 'Hz)');
   await video.evaluate(element => element.pause());
   await openPlaybackSetting(page, 'Audio');
-  await page.getByRole('menu', { name: 'Audio', exact: true }).getByRole('menuitemradio').nth(1).click();
-  await page.waitForFunction(() => {
-    const audio = document.querySelector('.player audio'), video = document.querySelector('.player:not(.short-player) video');
-    return audio.readyState >= 2 && !audio.seeking && Math.abs(audio.currentTime - video.currentTime) < .5;
-  });
+  await selectConvertedAudio(page, 1);
   await video.evaluate(element => { element.pause(); element.currentTime = 5; });
   await openPlaybackSetting(page, 'Quality');
   await page.getByRole('menuitemradio', { name: /^Original Quality/ }).click();

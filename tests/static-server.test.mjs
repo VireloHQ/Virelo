@@ -66,6 +66,8 @@ test('static serving keeps deployment shell fresh and missing resources out of S
   });
 
   await t.test('absent assets are real non-cacheable 404s including retry URLs', async () => {
+    for(const url of ['/assets','/assets/']) for(const method of ['GET','HEAD'])
+      assert.deepEqual(Object.keys(app.findRoute({method,url}).params),[],'asset directories bypass the asynchronous static-directory fallback');
     for (const url of ['/assets', '/assets/', '/assets/absent.js', '/assets/absent.js?virelo-retry=1', '/assets/absent.css', '/assets/absent.woff2']) {
       for (const method of ['GET', 'HEAD']) {
         const result = await inject({ method, url });
