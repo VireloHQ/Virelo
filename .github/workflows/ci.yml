@@ -47,6 +47,7 @@ jobs:
           sudo apt-get install --yes --no-install-recommends ffmpeg
       - run: npm ci
       - run: npx playwright install --with-deps chromium
+      - run: node scripts/audit-volume-leveling.mjs
       - run: npm run check
       - run: npm run audit:package
       - run: node scripts/audit-multiuser.mjs
