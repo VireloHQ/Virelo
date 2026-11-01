@@ -217,10 +217,11 @@ test('generated file checks permit ancestor aliases but reject links at or below
 test('alias-configured servers serve original streams and offline generated artwork without changing root grants', async t => {
   const context = await fixture(t), { actual, alias } = context;
   const server = context.server = await createVireloServer({ dataDir: join(alias, 'data'), mediaPaths: [join(alias, 'media')], host: '127.0.0.1', port: 0 });
-  server.db.updateSettings({ libraryWatchEnabled: false, externalMetadataEnabled: false });
   const path = join(alias, 'media', 'Show', 'source.mp4'); await writeFile(path, 'original video');
   const item = server.db.upsertMedia(media(server.db.visibleLibraries()[0], path));
   const owner = server.accounts.save({ username: 'owner' }, 'fixture-only', undefined, true), cookie = 'virelo_session=' + server.accounts.createSession(owner);
+  assert.equal((await server.app.inject({method:'POST',url:'/api/settings',headers:{host:'localhost',cookie,'x-virelo-request':'1'},
+    payload:{libraryWatchEnabled:false,externalMetadataEnabled:false}})).statusCode,200);
   const call = url => server.app.inject({ url, headers: { host: 'localhost', cookie } });
   assert.equal((await call(`/api/media/${item.id}/stream`)).body, 'original video');
   const artwork = join(alias, 'data', 'thumbnails', 'offline.jpg'); await writeFile(artwork, 'cached generated artwork');

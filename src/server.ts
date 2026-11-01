@@ -581,6 +581,10 @@ export async function createVireloServer(config: RuntimeConfig, pickFolder: (sig
       try{mediaResource(request);generatedFileInfo(resolve(root,'.'+pathname),resolve(config.dataDir,'cache'));return true;}catch{return false;}
     }
   });
+  for(const url of ['/assets','/assets/']) app.route({
+    method:['GET','HEAD'],url,
+    handler:(_request,reply)=>reply.code(404).header('Cache-Control','no-store').send({error:'Not found'})
+  });
   await app.register(fastifyStatic, {
     root: webRoot, prefix: '/', wildcard: true, decorateReply: true,
     setHeaders(reply, path) {
