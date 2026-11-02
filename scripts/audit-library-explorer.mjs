@@ -57,6 +57,7 @@ async function auditFolderPress(page,context,label,width) {
  check(await page.getByRole('menu').count()===0,label+' multi-touch cancels the hold');
  await folder.tap();await page.getByRole('heading',{name:'Shows',exact:true}).waitFor();
  check(await page.getByRole('menu').count()===0,label+' a short tap still opens the folder');
+ await page.waitForFunction(()=>document.querySelector('input[role="combobox"]')?.value==='/Clips/Shows');
  const input=page.getByRole('combobox',{name:'Path',exact:true});await input.fill('/Clips');await input.press('Enter');
  await page.getByRole('heading',{name:'Clips',exact:true}).waitFor();
  await client.detach();
