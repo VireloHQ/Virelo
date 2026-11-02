@@ -2,6 +2,7 @@
 
 ## 0.5.3 — 2026-11-02
 
+- Use the same HLS engine for converted audio and video when Media Source Extensions are supported, avoiding native-HLS backward-seek failures. Keep native playback as a fallback.
 - Search all accessible libraries and subfolders from either library layout. Clearing search restores the current folder, and Play all keeps the search result scope.
 - Clear the search text and active filter when closing the header search or pressing Escape.
 

@@ -81,6 +81,10 @@ export async function auditPlayerSwitching(page, label, check) {
   check(await video.evaluate((element, source) => element.currentSrc === source, before.source)
     && await page.evaluate(() => window.__switchLoads === 0), label + ' audio-only change does not reload or re-encode the video');
   check(Math.abs(await video.evaluate(element => element.currentTime) - before.time) < .4, label + ' audio-only change keeps the playback position');
+  if(label.startsWith('npm ')){
+    check(await page.locator('.player audio').evaluate(audio=>audio.currentSrc.startsWith('blob:')),
+      label + ' converted audio uses MSE even when native HLS is advertised');
+  }
   check(await page.evaluate(()=>window.__switchRequests.filter(request=>request.url.includes('/quality/start')).length)===before.qualityRequests, label + ' audio-only change sends no video conversion request');
   console.log('SWITCH_TIMING', JSON.stringify({ label, qualityMs: audioStart - qualityStart, audioMs: Date.now() - audioStart }));
   await page.getByRole('button', { name: 'Play', exact: true }).click();
