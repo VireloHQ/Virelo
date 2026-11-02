@@ -281,18 +281,15 @@ export function Player({item,queue,queueIndex,shuffled,onShuffle,onEnded,onNext,
       audio.removeEventListener('loadedmetadata',handleReady);
       audio.removeEventListener('canplay',handleReady);
     };
-    if(audio.canPlayType('application/vnd.apple.mpegurl')){
-      audio.src=externalAudioUrl;
-      audio.load();
-      return()=>{
-        disposed=true;
-        audio.removeEventListener('loadedmetadata',handleReady);
-        audio.removeEventListener('canplay',handleReady);
-      };
-    }
     void import('hls.js/light').then(({default:Hls})=>{
       if(disposed||sourceToken!==audioSourceToken.current)return;
-      if(!Hls.isSupported())throw new Error('This browser cannot play converted audio.');
+      // Match video playback: native HLS may advertise support but fail on a backward seek.
+      if(!Hls.isSupported()){
+        if(!audio.canPlayType('application/vnd.apple.mpegurl'))throw new Error('This browser cannot play converted audio.');
+        audio.src=externalAudioUrl;
+        audio.load();
+        return;
+      }
       const position=audioResumeAt.current??videoRef.current?.currentTime??0;
       const hls=new Hls({enableWorker:true,lowLatencyMode:false,maxBufferLength:20,startPosition:position,autoStartLoad:false});
       audioHlsRef.current=hls;

@@ -9,9 +9,9 @@ import './LibraryExplorer.css';
 interface Props {
   roots:ExplorerFolder[]; nodes:Map<string,ExplorerFolder>; location:LibraryLocation; canRename:boolean;
   canBack:boolean; canForward:boolean; onBack:()=>void; onForward:()=>void; onNavigate:(next:LibraryLocation)=>void;
-  children:ReactNode;
+  children:ReactNode; searching?:boolean;
 }
-export function LibraryExplorer({roots,nodes,location,canRename,canBack,canForward,onBack,onForward,onNavigate,children}:Props) {
+export function LibraryExplorer({roots,nodes,location,canRename,canBack,canForward,onBack,onForward,onNavigate,children,searching=false}:Props) {
   useLocale();
   const current=location.libraryId===null?undefined:nodes.get(folderKey(location.libraryId,location.folder??''));
   const address=current?.address??'/';
@@ -51,11 +51,11 @@ export function LibraryExplorer({roots,nodes,location,canRename,canBack,canForwa
       </nav>
       <ExplorerDivider/>
       <div className="explorer-content">
-        <div className="explorer-folder-grid">
+        {!searching&&<div className="explorer-folder-grid">
           {(current?.children??roots).map(node=><LibraryFolderButton key={node.key} library={node.library} folder={node.folder} label={node.name} canRename={canRename} onClick={()=>open(node)}>
             <FolderSimple/><span>{node.name}</span><em>{node.count}</em>
           </LibraryFolderButton>)}
-        </div>
+        </div>}
         {children}
       </div>
     </div>

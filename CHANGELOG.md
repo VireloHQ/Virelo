@@ -2,6 +2,10 @@
 
 ## 0.5.3 — 2026-11-02
 
+- Use the same HLS engine for converted audio and video when Media Source Extensions are supported, avoiding native-HLS backward-seek failures. Keep native playback as a fallback.
+- Search all accessible libraries and subfolders from either library layout. Clearing search restores the current folder, and Play all keeps the search result scope.
+- Clear the search text and active filter when closing the header search or pressing Escape.
+
 - Prevent volume leveling from making every sound tremble when voices and music overlap: hold recovery across short gaps, then bound increases to 3dB per second. Initial attenuation, 30ms audio lookahead and limiter timing are unchanged.
 - Reset detector and recovery history together on source changes and seeks, avoiding stale gain when moving from a loud video to a quiet one. Add mixed-tone modulation and bidirectional video-switching regressions.
 

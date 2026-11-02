@@ -29,6 +29,8 @@ const SORT_OPTIONS = [
 export function LibraryView() {
   useLocale();
   const search = useUIStore((s)=>s.search);
+  const searchQuery = search.trim();
+  const searching = searchQuery.length > 0;
   const layout=useLibraryLayout(state=>state.layout);
   const [history,setHistory]=useState<{items:LibraryLocation[];index:number}>({items:[{libraryId:null,folder:null}],index:0});
   const {libraryId,folder}=history.items[history.index];
@@ -45,12 +47,15 @@ export function LibraryView() {
   const libraries = librariesQ.data ?? [];
   const explorer=layout==='explorer';
   const activeLibraryId = libraryId ?? (!explorer&&libraries.length === 1 ? libraries[0].id : null);
+  const mediaLibraryId = searching ? undefined : (explorer ? activeLibraryId : libraryId) ?? undefined;
+  const mediaFolder = searching ? undefined : explorer ? folder ?? '' : folder ?? undefined;
+  const exactFolder = explorer && !searching;
   const mediaQ = useInfiniteQuery({
-    queryKey:['media',search,libraryId,folder,sort,layout,sort==='random'?sortSeed:0],
+    queryKey:['media',searchQuery,mediaLibraryId,mediaFolder,sort,layout,sort==='random'?sortSeed:0],
     initialPageParam:0,
-    queryFn:({pageParam})=>api.media({search,limit:200,offset:pageParam,libraryId:(explorer?activeLibraryId:libraryId) ?? undefined,folder:explorer?(folder??''):(folder??undefined),recursive:explorer?0:undefined,sort,seed:sort==='random'?sortSeed:undefined}),
+    queryFn:({pageParam})=>api.media({search:searchQuery,limit:200,offset:pageParam,libraryId:mediaLibraryId,folder:mediaFolder,recursive:exactFolder?0:undefined,sort,seed:sort==='random'?sortSeed:undefined}),
     getNextPageParam:(last,pages)=>last.length===200?pages.length*200:undefined,
-    enabled:!explorer||activeLibraryId!==null
+    enabled:searching||!explorer||activeLibraryId!==null
   });
   const media = mediaQ.data?.pages.flat() ?? [];
   const folderEntries = foldersQ.data ?? [];
@@ -72,38 +77,38 @@ export function LibraryView() {
     if (!first) return;
     void navigate({to:'/watch/$mediaId',params:{mediaId:String(first.id)},search:{
       queue: true,
-      folder: explorer?(folder??''):(folder??undefined),
-      libraryId: (explorer?activeLibraryId:libraryId) ?? undefined,
-      exactFolder: explorer||undefined,
+      folder: mediaFolder,
+      libraryId: mediaLibraryId,
+      exactFolder: exactFolder||undefined,
       sort,
-      search: search || undefined
+      search: searchQuery || undefined
     }});
   };
 
   const videos=<>
     {mediaQ.isError&&!mediaQ.data?<div className="search-empty" role="alert"><h2>{t('Could not load videos')}</h2><p>{t(mediaQ.error.message)}</p><Button onPress={()=>void mediaQ.refetch()}>{t('Try again')}</Button></div>:
       mediaQ.isLoading ? <div className="media-grid" role="status" aria-label={t("Loading videos")} aria-busy="true">{Array.from({length:12},(_,i)=><div className="skeleton grid-skeleton" key={i}/>)}</div> :
-      media.length ? <div className="media-grid">{media.map(item=><MediaCard key={item.id} item={item}/>)}</div> : (!explorer||activeLibraryId!==null)&&!childFolders.length&&<div className="search-empty"><MagnifyingGlass/><h2>{t("No matches")}</h2><p>{t("Try another title, folder or file name.")}</p></div>}
+      media.length ? <div className="media-grid">{media.map(item=><MediaCard key={item.id} item={item}/>)}</div> : (searching||(!explorer||activeLibraryId!==null)&&!childFolders.length)&&<div className="search-empty"><MagnifyingGlass/><h2>{t("No matches")}</h2><p>{t("Try another title, folder or file name.")}</p></div>}
     {mediaQ.isError&&mediaQ.data&&<p className="error-copy" role="alert">{t('Could not load videos')}</p>}
     {mediaQ.hasNextPage&&<div className="library-more"><Button variant="secondary" isPending={mediaQ.isFetchingNextPage} onPress={()=>void mediaQ.fetchNextPage()}>{t(mediaQ.isFetchNextPageError?'Try again':'Load more')}</Button></div>}
   </>;
   return <div className="content-view library-view" data-layout={layout}>
     <header className="content-heading">
-      <div><h1>{title}</h1><p>{mediaQ.isLoading ? t("Loading…") : t('{count} items',{count:media.length+(explorer?(activeLibraryId===null?libraries.length:childFolders.length):0)})}</p></div>
+      <div><h1>{searching ? t('Search') : title}</h1><p>{mediaQ.isLoading ? t("Loading…") : t('{count} items',{count:media.length+(!searching&&explorer?(activeLibraryId===null?libraries.length:childFolders.length):0)})}</p></div>
       <div className="heading-controls library-actions">
         <Link to="/playlists" className={buttonVariants({variant:'secondary',className:'library-playlists-link'})}><Queue aria-hidden="true"/><span>{t("Playlists")}</span><CaretRight aria-hidden="true"/></Link>
         <Select label={t("Sort")} value={sort} options={SORT_OPTIONS.map(option=>({...option,label:t(option.label)}))} onChange={(v)=>setSort(v as SortKey)}/>
-        {(explorer||folder !== null) && media.length > 0 && <Button className="play-all-btn" onPress={()=>playAll()}><Play weight="fill"/> {t("Play all")}</Button>}
+        {(searching||explorer||folder !== null) && media.length > 0 && <Button className="play-all-btn" onPress={()=>playAll()}><Play weight="fill"/> {t("Play all")}</Button>}
       </div>
     </header>
 
     {(librariesQ.isError||foldersQ.isError)&&<div className="error-copy" role="alert"><p>{librariesQ.error?t('Could not load libraries. {value0}',{value0:t(librariesQ.error.message)}):t('Could not load folders. {value0}',{value0:t(foldersQ.error!.message)})}</p><Button variant="secondary" onPress={()=>void Promise.all([librariesQ.refetch(),foldersQ.refetch()])}>{t('Try again')}</Button></div>}
-    {explorer?<LibraryExplorer roots={tree.roots} nodes={tree.nodes} location={{libraryId:activeLibraryId,folder}} canRename={canRename}
+    {explorer?<LibraryExplorer roots={tree.roots} nodes={tree.nodes} location={{libraryId:activeLibraryId,folder}} canRename={canRename} searching={searching}
       canBack={history.index>0} canForward={history.index<history.items.length-1}
       onBack={()=>setHistory(current=>({...current,index:Math.max(0,current.index-1)}))}
       onForward={()=>setHistory(current=>({...current,index:Math.min(current.items.length-1,current.index+1)}))}
       onNavigate={goTo}>{videos}</LibraryExplorer>:<>
-    {libraries.length > 0 && <nav className="folder-nav" aria-label={t("Library selection")}>
+    {!searching&&libraries.length > 0 && <nav className="folder-nav" aria-label={t("Library selection")}>
       <FolderRow>
         {libraries.length > 1 && <button className={`folder-chip ${libraryId===null ? 'active' : ''}`} onClick={()=>goTo({libraryId:null,folder:null})}>{t("All libraries")}</button>}
         {libraries.map((library:Library)=><LibraryFolderButton key={library.id} library={library} label={library.label} active={activeLibraryId===library.id} canRename={canRename}
@@ -111,7 +116,7 @@ export function LibraryView() {
       </FolderRow>
     </nav>}
 
-    <nav className="folder-nav" aria-label={t("Folder navigation")}>
+    {!searching&&<nav className="folder-nav" aria-label={t("Folder navigation")}>
       <FolderRow className="crumbs">
         <button className={`folder-chip crumb ${folder===null ? 'active' : ''}`} onClick={()=>jumpTo(0)}>{t("All folders")}</button>
         {segments.map((segment,i)=>{
@@ -133,7 +138,7 @@ export function LibraryView() {
       {rootCount > 0 && folder === null && <FolderRow>
         <button className="folder-chip" onClick={()=>setFolder('')}><FolderSimple/> {t("Root")} <em>{rootCount}</em></button>
       </FolderRow>}
-    </nav>
+    </nav>}
 
     {videos}</>}
   </div>;

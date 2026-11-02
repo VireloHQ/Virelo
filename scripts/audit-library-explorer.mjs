@@ -9,14 +9,15 @@ import {fileURLToPath,pathToFileURL} from 'node:url';
 import {execFileSync,spawn} from 'node:child_process';
 const repo=fileURLToPath(new URL('../',import.meta.url));
 const {chromium}=createRequire(process.env.VIRELO_TEST_NODE_PACKAGE||import.meta.url)('playwright');
-const root=await mkdtemp(join(tmpdir(),'virelo-explorer-audit-')),media=join(root,'media');
+const root=await mkdtemp(join(tmpdir(),'virelo-explorer-audit-')),media=join(root,'media'),otherMedia=join(root,'archive');
 const clip=execFileSync(process.env.FFMPEG_PATH||'ffmpeg',['-hide_banner','-loglevel','error','-f','lavfi','-i','color=c=0x354356:s=320x180:r=10:d=2','-c:v','libx264','-preset','ultrafast','-pix_fmt','yuv420p','-movflags','frag_keyframe+empty_moov','-f','mp4','pipe:1'],{windowsHide:true});
 await mkdir(join(media,'Shows','Season 1'),{recursive:true});await mkdir(join(media,'Shots'),{recursive:true});
+await mkdir(otherMedia);
 const items=[];
-for(let i=1;i<=203;i++){
- const folder=i===202?'Shows/Season 1':i===203?'Shots':'',filename='Clip '+String(i).padStart(3,'0')+'.mp4',source=folder?folder+'/'+filename:filename,path=join(media,source);
+for(let i=1;i<=204;i++){
+ const libraryId=i===204?2:1,folder=i===202?'Shows/Season 1':i===203?'Shots':'',filename='Clip '+String(i).padStart(3,'0')+'.mp4',source=folder?folder+'/'+filename:filename,path=join(libraryId===2?otherMedia:media,source);
  await writeFile(path,clip);
- items.push({id:i,library_id:1,path,source_path:source,filename,title:'Clip '+String(i).padStart(3,'0'),sort_title:'clip '+String(i).padStart(3,'0'),kind:'video',series_title:null,season:null,episode:null,year:null,duration:2,width:320,height:180,video_codec:'h264',audio_codec:null,container:'mp4',folder,size:clip.length,mtime:1,thumbnail_path:null,poster_path:null,backdrop_path:null,overview:null,genres:null,external_id:null,added_at:1,updated_at:1,liked:0,progress_position:0});
+ items.push({id:i,library_id:libraryId,path,source_path:source,filename,title:'Clip '+String(i).padStart(3,'0'),sort_title:'clip '+String(i).padStart(3,'0'),kind:'video',series_title:null,season:null,episode:null,year:null,duration:2,width:320,height:180,video_codec:'h264',audio_codec:null,container:'mp4',folder,size:clip.length,mtime:1,thumbnail_path:null,poster_path:null,backdrop_path:null,overview:null,genres:null,external_id:null,added_at:1,updated_at:1,liked:0,progress_position:0});
 }
 const modes=[],children=[];let server,browser,page;let checks=0;
 const check=(value,message)=>{assert.ok(value,message);checks++;console.log('PASS',message);};
@@ -56,6 +57,7 @@ async function auditFolderPress(page,context,label,width) {
  check(await page.getByRole('menu').count()===0,label+' multi-touch cancels the hold');
  await folder.tap();await page.getByRole('heading',{name:'Shows',exact:true}).waitFor();
  check(await page.getByRole('menu').count()===0,label+' a short tap still opens the folder');
+ await page.waitForFunction(()=>document.querySelector('input[role="combobox"]')?.value==='/Clips/Shows');
  const input=page.getByRole('combobox',{name:'Path',exact:true});await input.fill('/Clips');await input.press('Enter');
  await page.getByRole('heading',{name:'Clips',exact:true}).waitFor();
  await client.detach();
@@ -71,6 +73,7 @@ try {
   server=await createVireloServer({dataDir:join(root,'data'),mediaPaths:[],host:'127.0.0.1',port:0});
   server.db.updateSettings({libraryWatchEnabled:false,externalMetadataEnabled:false});
   server.db.addLibrary(media,'Clips');
+  server.db.addLibrary(otherMedia,'Archive');
   for(const item of items){const {id,source_path,added_at,updated_at,liked,progress_position,...record}=item;server.db.upsertMedia(record);}
   await server.app.listen({host:'127.0.0.1',port:0});modes.push(['npm','http://127.0.0.1:'+server.app.server.address().port]);
  }
@@ -90,14 +93,14 @@ try {
    await page.route(base+'/__explorer-clip',route=>route.fulfill({body:clip,contentType:'video/mp4'}));
    await page.goto(base+'/__explorer-seed');
    await page.evaluate(async items=>{
-    const directory=await(await navigator.storage.getDirectory()).getDirectoryHandle('Clips',{create:true}),blob=await(await fetch('/__explorer-clip')).blob();
+    const storage=await navigator.storage.getDirectory(),directories=[await storage.getDirectoryHandle('Clips',{create:true}),await storage.getDirectoryHandle('Archive',{create:true})],blob=await(await fetch('/__explorer-clip')).blob();
     for(const item of items){
-     let folder=directory;for(const segment of item.folder.split('/').filter(Boolean))folder=await folder.getDirectoryHandle(segment,{create:true});
+     let folder=directories[item.library_id-1];for(const segment of item.folder.split('/').filter(Boolean))folder=await folder.getDirectoryHandle(segment,{create:true});
      const writer=await(await folder.getFileHandle(item.filename,{create:true})).createWritable();await writer.write(blob);await writer.close();
     }
     await new Promise((resolve,reject)=>{
      const r=indexedDB.open('virelo-web',2);r.onupgradeneeded=()=>{for(const name of ['media','libraries','thumbnails'])r.result.createObjectStore(name,{keyPath:'id'});r.result.createObjectStore('settings');r.result.createObjectStore('playlists',{keyPath:'id',autoIncrement:true});};
-     r.onerror=()=>reject(r.error);r.onsuccess=()=>{const db=r.result,tx=db.transaction(['media','libraries'],'readwrite');items.forEach(item=>tx.objectStore('media').put(item));tx.objectStore('libraries').put({id:1,label:'Clips',path:'Clips',created_at:1,persistent:true,handle:directory});tx.oncomplete=()=>{db.close();resolve();};tx.onabort=()=>reject(tx.error);};
+     r.onerror=()=>reject(r.error);r.onsuccess=()=>{const db=r.result,tx=db.transaction(['media','libraries'],'readwrite');items.forEach(item=>tx.objectStore('media').put(item));directories.forEach((handle,index)=>tx.objectStore('libraries').put({id:index+1,label:handle.name,path:handle.name,created_at:1,persistent:true,handle}));tx.oncomplete=()=>{db.close();resolve();};tx.onabort=()=>reject(tx.error);};
     });
    },items);
   }
@@ -112,6 +115,29 @@ try {
   const input=page.getByRole('combobox',{name:'Path',exact:true});
   await input.waitFor();await page.locator('.splash-screen').waitFor({state:'hidden'});
   check(await page.locator('.library-layout-switch,.folder-options').count()===0,label+' layout and folder option controls are absent from the library');
+  await page.getByRole('button',{name:'Search',exact:true}).click();
+  const search=page.getByRole('textbox',{name:'Search library',exact:true});
+  await search.fill('Clip 202');
+  await page.getByRole('heading',{name:'Search',exact:true}).waitFor();
+  await page.locator('.media-card').filter({hasText:'Clip 202'}).waitFor();
+  check(await page.locator('.media-card').count()===1&&await page.locator('.explorer-folder-grid').count()===0,label+' search from All libraries finds nested videos, without folder tiles');
+  if(width===1440){
+   await search.fill('Clip');
+   await page.waitForFunction(()=>document.querySelectorAll('.media-card').length===200);
+   await page.getByRole('button',{name:'Load more',exact:true}).click();
+   await page.waitForFunction(()=>document.querySelectorAll('.media-card').length===204);
+   check(true,label+' global search paginates across libraries and nested folders');
+   await page.getByRole('button',{name:'Play all',exact:true}).click();
+   await page.waitForFunction(()=>document.querySelectorAll('.playback-queue-tile').length===204);
+   check(true,label+' search Play all uses the same global scope');
+   await page.reload();await page.waitForFunction(()=>document.querySelectorAll('.playback-queue-tile').length===204);
+   check(true,label+' global search queue retains its scope after reload');
+   await page.goto(base+prefix+'/library');
+   await page.getByRole('button',{name:'Search',exact:true}).click();
+  }
+  await page.getByRole('button',{name:'Close search',exact:true}).click();
+  await page.locator('.explorer-folder-grid').waitFor();
+  check(await page.locator('.header-search-input').inputValue()==='',label+' close search clears both the field and global filter');
   await page.locator('.explorer-folder-grid .folder-chip').filter({hasText:'Clips'}).click();
   await page.waitForFunction(()=>document.querySelector('input[role="combobox"]')?.value==='/Clips');
   check(await input.inputValue()==='/Clips',label+' settings-selected Explorer opens the registered root');
@@ -147,6 +173,28 @@ try {
   await input.fill('../Shots');await input.press('Enter');await page.getByRole('heading',{name:'Shots',exact:true}).waitFor();
   await page.waitForFunction(()=>document.querySelectorAll('.media-card').length===1);
   check(await page.locator('.media-card').count()===1,label+' relative paths retain the current library');
+  await page.getByRole('button',{name:'Search',exact:true}).click();
+  await search.fill('Clip 202');
+  await page.locator('.media-card').filter({hasText:'Clip 202'}).waitFor();
+  check(await input.inputValue()==='/Clips/Shots',label+' searching another folder preserves the browsing location');
+  await search.fill('Clip 204');
+  await page.locator('.media-card').filter({hasText:'Clip 204'}).waitFor();
+  check(await page.locator('.media-card').count()===1,label+' a selected library does not restrict global search');
+  await search.fill('not-a-matching-video');
+  await page.getByRole('heading',{name:'No matches',exact:true}).waitFor();
+  check(await page.locator('.media-card').count()===0,label+' unmatched global searches show an empty state');
+  await search.fill('   ');
+  await page.getByRole('heading',{name:'Shots',exact:true}).waitFor();
+  await page.locator('.media-card').filter({hasText:'Clip 203'}).waitFor();
+  check(true,label+' whitespace restores the current folder instead of an empty search');
+  await search.fill('Clip 202');
+  await page.getByRole('button',{name:'Close search',exact:true}).click();
+  await page.locator('.media-card').filter({hasText:'Clip 203'}).waitFor();
+  await page.getByRole('button',{name:'Search',exact:true}).click();
+  check(await search.inputValue()==='',label+' reopening search never restores cancelled text');
+  await search.fill('Clip 204');await search.press('Escape');
+  await page.locator('.media-card').filter({hasText:'Clip 203'}).waitFor();
+  check(await page.locator('.header-search-input').inputValue()===''&&await page.getByRole('button',{name:'Search',exact:true}).evaluate(element=>element===document.activeElement),label+' Escape clears search, restores the folder and returns keyboard focus');
   await input.fill('/Not registered/private');await input.press('Enter');await page.getByRole('alert').filter({hasText:'Folder not found.'}).waitFor();
   check(await page.getByRole('heading',{name:'Shots',exact:true}).isVisible(),label+' unknown paths do not change the current folder');
   await input.press('Escape');
@@ -178,7 +226,28 @@ try {
   await page.goto(base+prefix+'/library');
   await page.getByRole('navigation',{name:'Library selection',exact:true}).waitFor();
   check(await page.getByRole('navigation',{name:'Library selection',exact:true}).isVisible(),label+' original library layout remains available');
+  await page.getByRole('button',{name:'Search',exact:true}).click();await search.fill('Clip 204');
+  await page.locator('.media-card').filter({hasText:'Clip 204'}).waitFor();
+  check(await page.locator('.media-card').count()===1,label+' grid and Explorer share global search semantics');
   check(errors.length===0,label+' no browser exceptions: '+errors.join('; '));
+  await context.close();
+ }
+ if(server){
+  const base=modes.find(([mode])=>mode==='npm')[1],context=await browser.newContext({locale:'en-US',reducedMotion:'reduce'});
+  const headers={'X-Virelo-Request':'1'};
+  await context.request.post(base+'/api/auth/login',{headers,data:{username:'audit',password:'1'}});
+  const created=await context.request.post(base+'/api/accounts',{headers,data:{username:'search-viewer',password:'1',allLibraries:false,libraryIds:[1]}});
+  assert.ok(created.ok(),await created.text());
+  const login=await context.request.post(base+'/api/auth/login',{headers,data:{username:'search-viewer',password:'1'}});
+  assert.ok(login.ok(),await login.text());
+  page=await context.newPage();await page.goto(base+'/library');
+  await page.locator('.splash-screen').waitFor({state:'hidden'});
+  await page.getByRole('button',{name:'Search',exact:true}).click();
+  const search=page.getByRole('textbox',{name:'Search library',exact:true});
+  await search.fill('Clip 204');await page.getByRole('heading',{name:'No matches',exact:true}).waitFor();
+  check(await page.locator('.media-card').count()===0,'npm global search never exposes an inaccessible library');
+  await search.fill('Clip 202');await page.locator('.media-card').filter({hasText:'Clip 202'}).waitFor();
+  check(await page.locator('.media-card').count()===1,'npm restricted users can search accessible nested videos');
   await context.close();
  }
  for(const item of items)assert.deepEqual(await readFile(item.path),clip);
