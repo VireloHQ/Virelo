@@ -38,11 +38,6 @@ try{
       const {QueryClient,QueryClientProvider}=await import(imports.find(url=>url.includes('react-query')));
       const {PlayerControls}=await import('/src/components/PlayerControls.tsx');
       const {RepeatControl}=await import('/src/components/RepeatControl.tsx');
-      window.__repeatIcons={};
-      for(const name of ['repeat-off.svg','repeat-one.svg','repeat-all.svg']){
-        const icon=await import('/src/assets/icons/'+name+'?import');
-        const style=document.createElement('span').style;style.maskImage=`url("${icon.default}")`;window.__repeatIcons[name]=style.maskImage;
-      }
       const {AppearanceProvider}=await import('/src/components/AppearanceProvider.tsx');
       const {api}=await import('/src/api.ts');
       await import('/src/styles.css');await import('/src/player-ui.css');await import('/src/ui-motion.css');
@@ -76,13 +71,14 @@ try{
     if(touch){
       check(await queueRepeat.evaluate(element=>element.offsetWidth>=44&&element.offsetHeight>=44),'touch repeat retains a 44px target');
       await queueRepeat.tap();check(await queueRepeat.getAttribute('aria-pressed')==='true','touch toggles queue repeat');
-      check(await queueRepeat.locator('.repeat-icon').evaluate(element=>element.style.maskImage===window.__repeatIcons['repeat-all.svg']),'queue repeat uses the loop icon');
+      check(await queueRepeat.getAttribute('data-repeat-mode')==='queue'&&await queueRepeat.locator('svg.repeat-icon').count()===1,'queue repeat uses the shared icon style');
       await queueRepeat.tap();check(await queueRepeat.getAttribute('aria-pressed')==='false','touch turns queue repeat off');
     }else{
       const repeat=page.locator('.player-transport .repeat-control>button'),face=repeat.locator('.repeat-button-face');
-      const iconIs=name=>repeat.locator('.repeat-icon').evaluate((element,name)=>element.style.maskImage===window.__repeatIcons[name],name);
-      check(await iconIs('repeat-off.svg'),'off uses the slashed loop SVG');
-      for(const expected of ['repeat-one.svg','repeat-all.svg','repeat-off.svg']){await repeat.click();check(await iconIs(expected),'repeat cycle shows '+expected);}
+      const loopPath=await repeat.locator('svg.repeat-icon').innerHTML();
+      const iconIs=async mode=>await repeat.getAttribute('data-repeat-mode')===mode&&await repeat.locator('svg.repeat-icon').count()===1&&(mode==='one'?(await repeat.locator('svg.repeat-icon').innerHTML())!==loopPath:(await repeat.locator('svg.repeat-icon').innerHTML())===loopPath);
+      check(await iconIs('off'),'off uses the shared icon style');
+      for(const expected of ['one','queue','off']){await repeat.click();check(await iconIs(expected),'repeat cycle shows '+expected);}
       await repeat.hover();
       await page.waitForFunction(()=>getComputedStyle(document.querySelector('.player-transport .repeat-button-face')).backgroundColor!=='rgba(0, 0, 0, 0)');
       check(await repeat.evaluate(element=>element.offsetWidth>=40&&element.offsetHeight>=44),'desktop repeat retains its accessible target');
@@ -106,6 +102,7 @@ try{
       const gradient=()=>play().evaluate(element=>getComputedStyle(element,'::before').backgroundImage);
       const initial=await gradient();
       check(initial.includes('linear-gradient'),'Original play/pause uses a real gradient ring');
+      check(await play().evaluate(element=>getComputedStyle(element).borderRadius==='15px'&&getComputedStyle(element,'::before').padding==='2px'),'Original uses its own rounded-square shape and thin accent edge');
       await page.locator('body').click({position:{x:1,y:1}});
       await page.locator('.player-transport').screenshot({path:join(artifacts,mode+'-original.png'),animations:'disabled'});
       const box=await play().boundingBox();await play().click();
@@ -124,8 +121,8 @@ try{
       }
       await appearance({controllerStyle:'classic',accentColor:'#c3a6ff'});
       await page.evaluate(()=>{window.__setQueue(false);window.__setRepeat('off');});
-      await repeat.click();check(await iconIs('repeat-one.svg'),'a single video can repeat');
-      await repeat.click();check(await iconIs('repeat-off.svg'),'without a queue, repeat cycles straight back to off');
+      await repeat.click();check(await iconIs('one'),'a single video can repeat');
+      await repeat.click();check(await iconIs('off'),'without a queue, repeat cycles straight back to off');
       await page.emulateMedia({reducedMotion:'reduce'});await repeat.hover();await page.mouse.down();
       check(await face.evaluate(element=>getComputedStyle(element).scale==='1'&&getComputedStyle(element).transitionProperty==='none'),'reduced motion keeps press feedback without scaling');
       await page.mouse.up();
