@@ -46,6 +46,8 @@ try{
       const {AppearanceProvider}=await import('/src/components/AppearanceProvider.tsx');
       const {api}=await import('/src/api.ts');
       await import('/src/styles.css');await import('/src/player-ui.css');await import('/src/ui-motion.css');
+      const lateQueueStyle=document.head.appendChild(document.createElement('style'));
+      lateQueueStyle.textContent=(await import('/src/playback-queue.css?raw')).default;
       window.__appearance={controllerStyle:'classic',accentColor:'#c3a6ff'};
       api.appearance=async()=>window.__appearance;
       const client=new QueryClient({defaultOptions:{queries:{retry:false,refetchOnWindowFocus:false}}});
@@ -64,6 +66,13 @@ try{
     await page.locator('.player-controls').waitFor();
     await page.evaluate(()=>document.fonts.ready);
     const queueRepeat=page.locator('.playback-queue-nav .repeat-control>button');
+    if(!touch){
+      await queueRepeat.hover();
+      check(await queueRepeat.evaluate(element=>getComputedStyle(element).backgroundColor==='rgba(0, 0, 0, 0)'),'late Queue CSS cannot paint the larger repeat hit area');
+    }
+    await page.keyboard.press('Tab');await queueRepeat.focus();
+    check(await queueRepeat.evaluate(element=>getComputedStyle(element).outlineStyle==='none'),'late Queue CSS cannot restore the purple outline');
+    check(await queueRepeat.locator('.repeat-button-face').evaluate(element=>getComputedStyle(element).boxShadow!=='none'),'Queue keyboard focus stays inside the compact face');
     if(touch){
       check(await queueRepeat.evaluate(element=>element.offsetWidth>=44&&element.offsetHeight>=44),'touch repeat retains a 44px target');
       await queueRepeat.tap();check(await queueRepeat.getAttribute('aria-pressed')==='true','touch toggles queue repeat');

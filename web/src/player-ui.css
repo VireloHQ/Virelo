@@ -5,7 +5,7 @@
 .repeat-button-face { display:grid; place-items:center; width:32px; height:32px; border-radius:5px; transition:background-color var(--dur-micro) var(--ease-out),scale var(--dur-micro) var(--ease-out); }
 .repeat-icon { display:block; width:20px; height:20px; background:currentColor; mask-size:contain; mask-position:center; mask-repeat:no-repeat; }
 .repeat-control>button.active { color:var(--color-brand); }
-.repeat-control>button:focus-visible { outline:none; }
+.app-shell .repeat-control>button:is(:hover,:active,:focus-visible,[aria-pressed="true"]):not(:disabled) { background:transparent; outline:none; }
 .repeat-control>button:focus-visible .repeat-button-face { box-shadow:inset 0 0 0 1.5px #ffffffb8; transition:none; }
 .repeat-control>button:active .repeat-button-face { background:var(--control-pressed); scale:.94; }
 .repeat-control>button:focus-visible:active .repeat-button-face { scale:1; }
