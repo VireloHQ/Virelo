@@ -37,6 +37,8 @@ try{
       const createRoot=dom.createRoot||dom.default.createRoot;
       const {QueryClient,QueryClientProvider}=await import(imports.find(url=>url.includes('react-query')));
       const {PlayerControls}=await import('/src/components/PlayerControls.tsx');
+      const {PlayerActionMenu}=await import('/src/components/PlayerActionMenu.tsx');
+      const {PlaybackSettingsMenu}=await import('/src/components/PlaybackSettingsMenu.tsx');
       const {RepeatControl}=await import('/src/components/RepeatControl.tsx');
       const {AppearanceProvider}=await import('/src/components/AppearanceProvider.tsx');
       const {api}=await import('/src/api.ts');
@@ -49,11 +51,19 @@ try{
       client.setQueryData(['appearance'],window.__appearance);window.__client=client;
       function Fixture(){
         const [repeat,setRepeat]=React.useState('off'),[paused,setPaused]=React.useState(true),[hasQueue,setHasQueue]=React.useState(true);
+        const [position,setPosition]=React.useState(null),player=React.useRef(null);
+        const settings=context=>React.createElement(PlaybackSettingsMenu,{unified:true,context,
+          audioTracks:[],subtitleTracks:[],selectedAudio:null,selectedSubtitle:null,selectedQuality:null,qualityPreference:'source',
+          qualityOptions:[{height:1080,label:'1080p',bitrate:5000000},{height:720,label:'720p',bitrate:2800000}],
+          onSelectAudio:()=>{},onSelectSubtitle:()=>{},onSelectQuality:()=>{window.__qualityChanges=(window.__qualityChanges||0)+1;}});
         window.__setRepeat=setRepeat;window.__setQueue=setHasQueue;
         return React.createElement('div',{className:'app-shell'},
-          React.createElement('div',{className:'player controls-visible has-queue',style:{width:'min(1100px,100%)',margin:'24px auto'}},
+          React.createElement('div',{className:'player controls-visible has-queue',ref:player,tabIndex:0,style:{width:'min(1100px,100%)',margin:'24px auto'},
+            onContextMenu:event=>{event.preventDefault();setPosition({x:event.clientX,y:event.clientY});}},
             React.createElement(PlayerControls,{current:10,duration:120,paused,busy:false,volume:.6,muted:false,pip:false,pipSupported:false,canGoPrev:true,canGoNext:true,hasQueue,
-              repeat,onRepeat:setRepeat,onToggle:()=>setPaused(value=>!value),onSeek:()=>{},onSeekBy:()=>{},onPrev:()=>{},onNext:()=>{},onShuffle:()=>{},onVolume:()=>{},onMute:()=>{},onFullscreen:()=>{},onPip:()=>{},favorite:null,settings:null})),
+              repeat,onRepeat:setRepeat,onToggle:()=>setPaused(value=>!value),onSeek:()=>{},onSeekBy:()=>{},onPrev:()=>{},onNext:()=>{},onShuffle:()=>{},onVolume:()=>{},onMute:()=>{},onFullscreen:()=>{},onPip:()=>{},favorite:null,settings:settings(false)}),
+            position&&React.createElement(PlayerActionMenu,{position,label:'Video actions',returnFocus:player.current,onClose:()=>setPosition(null),
+              actions:[{label:'Play',action:()=>{}},{label:'Settings',content:settings(true)}]})),
           React.createElement('div',{className:'playback-queue-nav',style:{margin:'16px'}},React.createElement(RepeatControl,{mode:repeat,hasQueue:true,onChange:setRepeat,queueOnly:true})));
       }
       createRoot(document.getElementById('root')).render(React.createElement(QueryClientProvider,{client},React.createElement(AppearanceProvider,null,React.createElement(Fixture))));
@@ -126,6 +136,42 @@ try{
       await page.emulateMedia({reducedMotion:'reduce'});await repeat.hover();await page.mouse.down();
       check(await face.evaluate(element=>getComputedStyle(element).scale==='1'&&getComputedStyle(element).transitionProperty==='none'),'reduced motion keeps press feedback without scaling');
       await page.mouse.up();
+    }
+    await page.emulateMedia({reducedMotion:'reduce'});
+    for(const controllerStyle of ['classic','streamline','theater','centerstage']){
+      await page.evaluate(controllerStyle=>{
+        window.__appearance={controllerStyle,accentColor:'#c3a6ff'};
+        window.__client.setQueryData(['appearance'],window.__appearance);
+      },controllerStyle);
+      await page.waitForFunction(style=>document.querySelector('.player-controls')?.dataset.controllerStyle===style,controllerStyle);
+      for(const fullscreen of [false,true]){
+        if(fullscreen)await page.locator('.player').evaluate(element=>element.requestFullscreen());
+        await page.locator('.player').click({button:'right',position:{x:45,y:50}});
+        const row=page.locator('.player-action-menu .context-playback-settings>button');
+        await row.waitFor();
+        check(await row.evaluate(button=>{
+          const rect=button.getBoundingClientRect(),content=button.closest('.player-action-menu-content').getBoundingClientRect();
+          const [icon,label,caret]=Array.from(button.children).map(child=>child.getBoundingClientRect());
+          const center=box=>box.top+box.height/2;
+          return getComputedStyle(button).display==='flex'&&Math.abs(rect.width-content.width)<1
+            &&icon.right<=label.left&&label.right<=caret.left
+            &&Math.abs(center(icon)-center(label))<1&&Math.abs(center(caret)-center(label))<1;
+        }),controllerStyle+' '+(fullscreen?'fullscreen':'windowed')+' context settings keeps a full-width icon/label/caret row');
+        if(fullscreen)check(await row.evaluate(button=>document.fullscreenElement.contains(button)),'context stays inside the fullscreen element');
+        if(!touch&&controllerStyle==='classic'&&fullscreen)await page.locator('.player-action-menu').screenshot({path:join(artifacts,mode+'-fullscreen-context.png')});
+        await row.click();
+        const submenu=page.locator('.context-settings-menu:not([hidden])');
+        await submenu.waitFor({state:'visible'});
+        if(fullscreen)check(await submenu.evaluate(menu=>document.fullscreenElement.contains(menu)),'settings submenu stays visible in fullscreen');
+        if(!touch)check(await submenu.evaluate(menu=>menu.dataset.side==='right'),'settings opens beside its context row');
+        const before=await page.evaluate(()=>window.__qualityChanges||0);
+        await submenu.getByRole('menuitem',{name:'Quality',exact:true}).click();
+        await submenu.getByRole('menuitemradio',{name:/^720p/}).click();
+        check(await page.evaluate(()=>window.__qualityChanges)>before,'context submenu selects quality without using the toolbar menu');
+        await page.keyboard.press('Escape');
+        await page.locator('.player-action-menu').waitFor({state:'hidden'});
+        if(fullscreen)await page.evaluate(()=>document.fullscreenElement&&document.exitFullscreen());
+      }
     }
     check(errors.length===0,(touch?'touch':'desktop')+' has no browser exceptions: '+errors.join('; '));
     await context.close();
