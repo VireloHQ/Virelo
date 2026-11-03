@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Make volume leveling attenuation-only, including cancellation of the compressor's automatic makeup gain. Preserve the 30ms lookahead, fast attenuation and stable recovery.
+- Add optional scan-time, per-track loudness analysis. Reuse integrated LUFS and true-peak measurements for constant-gain playback without boosting quiet scenes or modifying source videos.
+
 - Update application icons, sharing QR branding and install assets to the ribbon mark.
 
 - Refine repeat controls with shared Phosphor icons, compact press feedback and neutral keyboard focus.

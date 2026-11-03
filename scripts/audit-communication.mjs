@@ -194,7 +194,8 @@ const auditAppearance=async(page,mode)=>{
 };
 try{
   await mkdir(media);
-  for(const [name,volume,size] of [['quiet',.5,'320x180'],['loud',2,'320x180'],['portrait',.5,'180x320']])execFileSync(process.env.FFMPEG_PATH||'ffmpeg',[
+  // The loud stereo fixture must exceed the leveling threshold, not sit just below it.
+  for(const [name,volume,size] of [['quiet',.5,'320x180'],['loud',8,'320x180'],['portrait',.5,'180x320']])execFileSync(process.env.FFMPEG_PATH||'ffmpeg',[
     '-hide_banner','-loglevel','error','-f','lavfi','-i','color=c=0x354358:s='+size+':r=12','-f','lavfi','-i','sine=frequency=440:sample_rate=48000',
     '-t','30','-c:v','libx264','-threads','2','-preset','ultrafast','-pix_fmt','yuv420p','-af','volume='+volume,'-c:a','aac','-ac','2','-movflags','+faststart',join(media,name+'.mp4')],{windowsHide:true,timeout:60000});
   const originals=await Promise.all(['quiet','loud','portrait'].map(name=>readFile(join(media,name+'.mp4'))));
@@ -432,7 +433,14 @@ api.mediaSource=async id=>{if(!auditUrls.has(id))auditUrls.set(id,URL.createObje
     check(await current.evaluate(()=>window.__levelingBeforePlay.length>0&&window.__levelingBeforePlay.every(Boolean)),mode+' saved leveling is bound before the first video play call');
     const startupVolume=await current.evaluate(()=>({before:window.__volumeBeforePlay,saved:localStorage.getItem('virelo-playback-volume:v1')}));
     console.log('STARTUP_VOLUME',mode,JSON.stringify(startupVolume));
-    check(startupVolume.before.length>0&&startupVolume.before.every(volume=>volume>=0&&volume<=.030001)&&startupVolume.before.some(volume=>Math.abs(volume-.03)<.000001),mode+' first playback stays muted or at the saved low output level');
+    check(startupVolume.before.length>0&&startupVolume.before.every(volume=>volume>=0&&volume<=.030001),mode+' first playback stays muted or at the saved low output level');
+    await current.waitForFunction(()=>{
+      const video=document.querySelector('.player video'),audio=document.querySelector('.player audio');
+      const active=audio?.currentSrc&&!audio.paused?audio:video;
+      const context=window.__contexts.find(context=>context.__sources.includes(active));
+      return Math.abs((context?.__outputs[context.__sources.indexOf(active)]?.gain.value??-1)-.03)<.000001;
+    });
+    check(true,mode+' the active video or selected audio restores the saved low output level');
     const setFullVolume=async()=>{
       await current.locator('.player').hover();await current.getByRole('button',{name:'Volume',exact:true}).click();
       await current.locator('.volume-slider').press('End');
@@ -468,7 +476,8 @@ api.mediaSource=async id=>{if(!auditUrls.has(id))auditUrls.set(id,URL.createObje
     await current.getByRole('menuitemcheckbox',{name:/Volume leveling/}).click();await current.waitForTimeout(700);
     const before=await sample(current);check(before.rms>0,mode+' disabling leveling leaves audio audible');
     await current.getByRole('menuitemcheckbox',{name:/Volume leveling/}).click();await current.keyboard.press('Escape');await current.keyboard.press('Escape');
-    await current.waitForTimeout(5000);const quiet=await sample(current);check(quiet.rms>before.rms*1.5,mode+' quiet audio is lifted smoothly');
+    await current.waitForTimeout(5000);const quiet=await sample(current);
+    check(quiet.rms>before.rms*.95&&quiet.rms<=before.rms*1.03,mode+' quiet audio retains its original level without amplification');
     await current.locator('.player').hover();await current.getByRole('button',{name:'Volume',exact:true}).click();
     await current.locator('.volume-slider').press('End');
     for(let step=0;step<5;step++)await current.locator('.volume-slider').press('PageDown');
@@ -486,8 +495,15 @@ api.mediaSource=async id=>{if(!auditUrls.has(id))auditUrls.set(id,URL.createObje
     check((await sample(current)).rms>0,mode+' seeking keeps normalized audio audible');
     await current.goto(base+prefix+'/watch/'+items[1].id+'?queue=false');await current.waitForFunction(()=>{const v=document.querySelector('.player video');return v&&!v.paused&&v.currentTime>5;});
     const loud=await sample(current);const difference=20*Math.log10(loud.rms/quiet.rms);
-    console.log('OUTPUT_LEVELS',mode,JSON.stringify({quiet,loud,differenceDb:difference,saved:await current.evaluate(()=>localStorage.getItem('virelo-playback-volume:v1'))}));
-    check(Math.abs(difference)<3,mode+' differently mastered clips converge within 3 dB');
+    await current.locator('.player').hover();
+    await openPlaybackSetting(current,'Audio');
+    await current.getByRole('menuitemcheckbox',{name:/Volume leveling/}).click();await current.waitForTimeout(500);
+    const loudOriginal=await sample(current);
+    await current.getByRole('menuitemcheckbox',{name:/Volume leveling/}).click();await current.keyboard.press('Escape');await current.keyboard.press('Escape');
+    const originalDifference=20*Math.log10(loudOriginal.rms/before.rms);
+    console.log('OUTPUT_LEVELS',mode,JSON.stringify({quiet,loud,loudOriginal,differenceDb:difference,originalDifferenceDb:originalDifference,saved:await current.evaluate(()=>localStorage.getItem('virelo-playback-volume:v1'))}));
+    check(loud.rms>0&&loud.rms<loudOriginal.rms*.9,mode+' loud audio is attenuated relative to the same source with leveling off');
+    check(difference>0&&difference<originalDifference-1,mode+' loudness differences shrink without lifting the quiet recording');
     await current.goto(base+prefix+'/shorts?startId='+items[2].id);await current.waitForFunction(()=>{const v=document.querySelector('.short-player video');return v&&!v.paused&&v.currentTime>1;});
     check(await current.evaluate(()=>window.__levelingBeforePlay.length>0&&window.__levelingBeforePlay.every(Boolean)),mode+' Shorts binds leveling before playback too');
     await current.getByRole('button',{name:'Audio',exact:true}).click();check(await current.getByRole('menuitemcheckbox',{name:/Volume leveling/}).getAttribute('aria-checked')==='true',mode+' Shorts shares the saved leveling preference');

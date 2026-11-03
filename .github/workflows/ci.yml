@@ -14,7 +14,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        # Keep macOS coverage while hosted ARM64 runners have capacity constraints.
+        os: [ubuntu-latest, windows-latest, macos-26-intel]
         node: [22, 24, 26]
     runs-on: ${{ matrix.os }}
     steps:
@@ -50,10 +51,12 @@ jobs:
       - run: node scripts/audit-player-control-polish.mjs
       - run: node scripts/audit-volume-leveling.mjs
       - run: node scripts/audit-volume-modulation.mjs
+      - run: node scripts/audit-measured-volume.mjs
       - run: node scripts/audit-volume-integration.mjs
       - run: node scripts/audit-volume-controls.mjs
       - run: npm run check
       - run: npm run audit:package
+      - run: node --disable-warning=ExperimentalWarning --test scripts/audit-audio-loudness.mjs
       - run: node scripts/audit-multiuser.mjs
       - run: node scripts/audit-communication.mjs
       - run: node scripts/audit-scan-repair.mjs

@@ -1,4 +1,12 @@
 {
+  "Analyzing audio": "Analyzing audio",
+  "Audio analysis did not return a loudness measurement.": "Audio analysis did not return a loudness measurement.",
+  "Audio analysis returned an invalid loudness measurement.": "Audio analysis returned an invalid loudness measurement.",
+  "ffprobe is required for audio analysis.": "ffprobe is required for audio analysis.",
+  "Too many audio tracks to analyze.": "Too many audio tracks to analyze.",
+  "Analyze audio during scans": "Analyze audio during scans",
+  "Measure loudness for more consistent playback. Scans take longer.": "Measure loudness for more consistent playback. Scans take longer.",
+  "Analyzing audio · {value0}": "Analyzing audio · {value0}",
   "Forward": "Forward",
   "Parent folder": "Parent folder",
   "Folders": "Folders",

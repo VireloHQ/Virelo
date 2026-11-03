@@ -1,4 +1,12 @@
 {
+  "Analyzing audio": "Анализ звука",
+  "Audio analysis did not return a loudness measurement.": "Не удалось получить результат измерения громкости.",
+  "Audio analysis returned an invalid loudness measurement.": "Получен некорректный результат измерения громкости.",
+  "ffprobe is required for audio analysis.": "Для анализа звука необходим ffprobe.",
+  "Too many audio tracks to analyze.": "Слишком много звуковых дорожек для анализа.",
+  "Analyze audio during scans": "Анализировать звук при сканировании",
+  "Measure loudness for more consistent playback. Scans take longer.": "Измерять громкость для более ровного звучания. Сканирование займёт больше времени.",
+  "Analyzing audio · {value0}": "Анализ звука · {value0}",
   "Forward": "Вперёд",
   "Parent folder": "Родительская папка",
   "Folders": "Папки",

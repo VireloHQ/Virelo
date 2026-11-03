@@ -48,7 +48,7 @@ const QUEUE_OPTIONS = [
   { value: 'manual', label: 'Manual next only' }
 ];
 const sectionFields: Record<string, readonly (keyof Settings)[]> = {
-  libraries:['libraryWatchEnabled'], network:['externalMetadataEnabled','externalImagesEnabled'],
+  libraries:['libraryWatchEnabled','audioAnalysisEnabled'], network:['externalMetadataEnabled','externalImagesEnabled'],
   playback:['queueBehavior'], shorts:['shortsIncludeLandscapes']
 };
 export function SettingsView(){
@@ -106,6 +106,7 @@ export function SettingsView(){
         {activeSection==='libraries'&&<section id="settings-panel-libraries" className="settings-card settings-section" aria-labelledby="settings-title-libraries">
           <div className="settings-card-head"><div><h2 id="settings-title-libraries" tabIndex={-1}>{t("Libraries")}</h2><p>{t("Manage the folders Virelo scans for media.")}</p></div></div>
           <LibrarySettings/>
+          {isAdmin&&<SettingSwitch checked={form.audioAnalysisEnabled} onChange={v=>setForm({...form,audioAnalysisEnabled:v})} title={t("Analyze audio during scans")} description={t("Measure loudness for more consistent playback. Scans take longer.")}/>}
           {isAdmin&&<SettingSwitch checked={form.libraryWatchEnabled} onChange={(v)=>setForm({...form,libraryWatchEnabled:v})} title={t("Watch local folders")} description={t("Monitor configured folders and scan when files change.")}/>}
           {saveAction}
         </section>}

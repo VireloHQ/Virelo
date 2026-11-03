@@ -176,10 +176,20 @@ are not shared. Other devices must be able to reach the selected address.
 Enable **Settings → Playback → Volume leveling**, or **Player Settings → Audio →
 Volume leveling**, to reduce loudness differences during playback. It is off by
 default, saved on this device, and shared by normal videos, Shorts and selected
-audio tracks. Live stereo-weighted estimates, bounded gain and a compressor are
-used without scanning or rewriting videos. Manual volume and mute remain in
-control. This is not full-file integrated LUFS normalization or a guaranteed
-true-peak mastering process. Browser audio processing support is required.
+audio tracks. Leveling only turns audio down; it never boosts quiet recordings.
+Without a saved measurement, live stereo-weighted estimates and a peak limiter
+protect playback with the existing 30ms lookahead. Manual volume and mute remain
+in control.
+
+Administrators can enable **Settings → Libraries → Analyze audio during scans**
+and run a scan to measure integrated LUFS and true peak for each audio track.
+This option is off by default and requires FFmpeg/ffprobe. Analysis runs in the
+background after library indexing and thumbnail repair; long videos take longer.
+Measurements are cached in Virelo's database and invalidated when a file changes.
+Analyzed tracks use a constant, non-positive gain targeting −18 LUFS with −3dB
+peak headroom, preserving the quiet/loud contrast within the video. Quiet tracks
+remain quieter rather than being amplified. No source files are rewritten.
+Browser audio processing support is required.
 Safari/iOS WebKit is left on original audio to avoid its native-HLS audio-routing
 limitation; the controls explain when leveling is unavailable.
 

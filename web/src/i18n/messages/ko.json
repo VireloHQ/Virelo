@@ -1,4 +1,12 @@
 {
+  "Analyzing audio": "오디오 분석 중",
+  "Audio analysis did not return a loudness measurement.": "라우드니스 측정 결과를 가져오지 못했습니다.",
+  "Audio analysis returned an invalid loudness measurement.": "라우드니스 측정 결과가 유효하지 않습니다.",
+  "ffprobe is required for audio analysis.": "오디오를 분석하려면 ffprobe가 필요합니다.",
+  "Too many audio tracks to analyze.": "오디오 트랙이 너무 많아 분석할 수 없습니다.",
+  "Analyze audio during scans": "스캔할 때 오디오 분석",
+  "Measure loudness for more consistent playback. Scans take longer.": "음량 편차를 줄이기 위해 라우드니스를 측정합니다. 스캔 시간이 늘어납니다.",
+  "Analyzing audio · {value0}": "오디오 분석 중 · {value0}",
   "Forward": "앞으로",
   "Parent folder": "상위 폴더",
   "Folders": "폴더",

@@ -2,6 +2,7 @@ import { AccountError } from './accounts.js';
 import type { AppSettings } from './types.js';
 
 export const DEFAULT_SETTINGS: AppSettings = {
+  audioAnalysisEnabled: false,
   externalMetadataEnabled: true,
   externalImagesEnabled: true,
   metadataProvider: 'cinemeta',

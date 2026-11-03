@@ -1,4 +1,12 @@
 {
+  "Analyzing audio": "正在分析音频",
+  "Audio analysis did not return a loudness measurement.": "未获取到响度测量结果。",
+  "Audio analysis returned an invalid loudness measurement.": "响度测量结果无效。",
+  "ffprobe is required for audio analysis.": "分析音频需要 ffprobe。",
+  "Too many audio tracks to analyze.": "音轨过多，无法分析。",
+  "Analyze audio during scans": "扫描时分析音频",
+  "Measure loudness for more consistent playback. Scans take longer.": "测量响度，让播放音量更一致。扫描所需时间会增加。",
+  "Analyzing audio · {value0}": "正在分析音频 · {value0}",
   "Forward": "前进",
   "Parent folder": "上一级文件夹",
   "Folders": "文件夹",

@@ -1,4 +1,12 @@
 {
+  "Analyzing audio": "音声を解析中",
+  "Audio analysis did not return a loudness measurement.": "音量の測定結果を取得できませんでした。",
+  "Audio analysis returned an invalid loudness measurement.": "音量の測定結果が無効です。",
+  "ffprobe is required for audio analysis.": "音声の解析にはffprobeが必要です。",
+  "Too many audio tracks to analyze.": "音声トラックが多すぎるため解析できません。",
+  "Analyze audio during scans": "スキャン時に音声を解析",
+  "Measure loudness for more consistent playback. Scans take longer.": "音量を測定して、再生時のばらつきを抑えます。スキャンに時間がかかります。",
+  "Analyzing audio · {value0}": "音声を解析中 · {value0}",
   "Forward": "進む",
   "Parent folder": "親フォルダーへ",
   "Folders": "フォルダー",

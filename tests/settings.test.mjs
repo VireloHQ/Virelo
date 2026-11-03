@@ -13,9 +13,10 @@ process.env.VIRELO_LOG_LEVEL = 'silent';
 test('settings reject invalid values atomically and recover malformed stored values', async t => {
   const root=await mkdtemp(join(tmpdir(),'virelo-settings-')),db=new VireloDB(root);
   t.after(async()=>{db.close();await rm(root,{recursive:true,force:true});});
+  assert.equal(db.getSettings().audioAnalysisEnabled,false);
   db.updateSettings({externalMetadataEnabled:false,metadataLanguage:'zh-CN',queueBehavior:'loop'});
   const previous=db.getSettings();
-  for(const patch of [{externalMetadataEnabled:'false'},{externalImagesEnabled:null},{libraryWatchEnabled:1},{shortsIncludeLandscapes:[]},{metadataProvider:'unknown'},{metadataLanguage:{}},{metadataLanguage:'x'.repeat(65)},{queueBehavior:'unknown'},{tmdbApiKey:'x'.repeat(4097)}]) {
+  for(const patch of [{audioAnalysisEnabled:'true'},{externalMetadataEnabled:'false'},{externalImagesEnabled:null},{libraryWatchEnabled:1},{shortsIncludeLandscapes:[]},{metadataProvider:'unknown'},{metadataLanguage:{}},{metadataLanguage:'x'.repeat(65)},{queueBehavior:'unknown'},{tmdbApiKey:'x'.repeat(4097)}]) {
     assert.throws(()=>db.updateSettings({queueBehavior:'manual',...patch}),/Invalid settings/);
     assert.deepEqual(db.getSettings(),previous);
   }
@@ -35,15 +36,17 @@ test('settings API rejects malformed input without persisting partial changes',a
   const inject=await authenticatedInjector(app);
   db.updateSettings({externalMetadataEnabled:false,libraryWatchEnabled:false,tmdbApiKey:'keep-this-key'});
   const previous=db.getSettings();
-  for(const payload of [[],{externalMetadataEnabled:'false'},{queueBehavior:'bad',shortsIncludeLandscapes:true},{tmdbApiKey:1},{clearTmdbApiKey:'true'}]) {
+  for(const payload of [[],{audioAnalysisEnabled:1},{externalMetadataEnabled:'false'},{queueBehavior:'bad',shortsIncludeLandscapes:true},{tmdbApiKey:1},{clearTmdbApiKey:'true'}]) {
     const response=await inject({method:'POST',url:'/api/settings',payload});
     assert.equal(response.statusCode,400,JSON.stringify(payload));
     assert.equal(response.json().message,'Invalid settings.');
     assert.deepEqual(db.getSettings(),previous);
   }
-  const saved=await inject({method:'POST',url:'/api/settings',payload:{...previous,queueBehavior:'manual',tmdbApiKey:''}});
+  const saved=await inject({method:'POST',url:'/api/settings',payload:{...previous,audioAnalysisEnabled:true,queueBehavior:'manual',tmdbApiKey:''}});
   assert.equal(saved.statusCode,200,saved.body);
   assert.equal(saved.json().tmdbApiKey,'');
   assert.equal(db.getSettings().tmdbApiKey,'keep-this-key');
   assert.equal(db.getSettings().queueBehavior,'manual');
+  assert.equal(saved.json().audioAnalysisEnabled,true);
+  assert.equal(db.getSettings().audioAnalysisEnabled,true);
 });
