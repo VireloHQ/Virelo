@@ -37,7 +37,7 @@ export function Header() {
     <header className={'topbar'+(isHome?' home-header':'')}>
       <div className="topbar-inner">
         <Link to="/app" className="brand" aria-label={t("Virelo app home")} onClick={()=>setHomeFilter('all')}>
-          <span className="brand-mark"><img src="/virelo-icon.png?v=transparent-1" alt="" /></span>
+          <span className="brand-mark"><img src="/virelo-icon.png?v=ribbon-1" alt="" /></span>
           <span className="brand-name">{t("Virelo")}</span>
         </Link>
         <nav className="desktop-nav" aria-label={t("Main navigation")}>

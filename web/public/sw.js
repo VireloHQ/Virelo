@@ -1,4 +1,4 @@
-const CACHE_NAME = 'virelo-web-shell-transparent-1';
+const CACHE_NAME = 'virelo-web-shell-ribbon-1';
 
 function responseKind(request, url) {
   if (/^\/(?:api|hls|audio|playback|media)(?:\/|$)/.test(url.pathname)) return null;
@@ -64,7 +64,7 @@ async function writeCached(key, response) {
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    Promise.all(['/', '/app', '/manifest.webmanifest?v=transparent-1', '/favicon-32.png?v=transparent-1', '/virelo-icon-192.png?v=transparent-1'].map(async (path) => {
+    Promise.all(['/', '/app', '/manifest.webmanifest?v=ribbon-1', '/favicon-32.png?v=ribbon-1', '/virelo-icon-192.png?v=ribbon-1'].map(async (path) => {
       try {
         const response = await fetch(path, { cache: 'no-cache' });
         const kind = path === '/' || path === '/app' ? 'document' : responseKind({}, new URL(path, self.location.origin));

@@ -7,7 +7,7 @@ export function shareLink(origin:string,pathname:string,webOnly=false) {
 }
 export async function shareQr(url:string) {
   if(url.length>2000)throw new Error('The link is too long for a QR code.');
-  const image=new Image();image.src='/virelo-icon-192.png?v=transparent-1';
+  const image=new Image();image.src='/virelo-icon-192.png?v=ribbon-1';
   const [{default:qrcode},logo]=await Promise.all([import('qrcode-generator'),image.decode().then(()=>image,()=>null)]);
   const code=qrcode(0,'H');code.addData(url);code.make();
   const count=code.getModuleCount(),cell=12,margin=4;

@@ -10,13 +10,13 @@
   "description": "Turn local videos into a private streaming-style library. No uploads required.",
   "icons": [
     {
-      "src": "/virelo-icon-192.png?v=transparent-1",
+      "src": "/virelo-icon-192.png?v=ribbon-1",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/virelo-icon-512.png?v=transparent-1",
+      "src": "/virelo-icon-512.png?v=ribbon-1",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"

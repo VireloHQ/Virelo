@@ -4,7 +4,7 @@ Virelo does not provide a movie catalogue. The library and player screenshots us
 
 | Assets (paths relative to `web/public/` unless noted) | Provenance |
 | --- | --- |
-| `favicon-*.png`, `virelo-icon*.png` | Virelo logo supplied by the maintainer, including the transparent version. |
+| `favicon-*.png`, `virelo-icon*.png` | Maintainer-supplied transparent ribbon logo. `virelo-icon.png` is the original PNG; smaller PNGs preserve its aspect ratio, colors and transparency. |
 | `landing/hero-coast.webp` | Project-supplied coastal photograph, declared free to use. Converted to WebP at 2000 × 1121 with metadata removed; composition unchanged. The source license identifier and photographer attribution are not recorded. |
 | `assets/demo/*-cinema.webp` (repository root) | Original project-created artwork from earlier captures. Not used by the current landing previews or included in the deployed site. |
 | `landing/library-*.webp`, `landing/player-*.webp` | Captures of the current Virelo UI using an isolated demonstration library with Sintel, Big Buck Bunny, Spring, Caminandes 3 and Cosmos Laundromat frames. No personal browser storage or account data is used. |

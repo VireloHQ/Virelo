@@ -19,7 +19,7 @@ export function PageSkeleton({ kind, queueLayout }: { kind: SkeletonKind; queueL
   const marketing = kind === 'landing' || kind === 'setup';
   return <div className={'page-skeleton loading-' + kind} role="status" aria-label={t("Loading page")} aria-busy="true">
     <div aria-hidden="true">
-      {marketing ? <div className="loading-marketing-header"><div className="loading-brand"><img src="/virelo-icon-180.png?v=transparent-1" alt="" width="40" height="40" /><span>{t("Virelo")}</span></div><div className="skeleton loading-action" /></div> : null}
+      {marketing ? <div className="loading-marketing-header"><div className="loading-brand"><img src="/virelo-icon-180.png?v=ribbon-1" alt="" width="40" height="40" /><span>{t("Virelo")}</span></div><div className="skeleton loading-action" /></div> : null}
       {kind === 'home' || kind === 'landing' ? <>
         <div className="loading-feature"><div className="loading-feature-copy"><Lines title /><div className="loading-actions"><div className="skeleton loading-action" /><div className="skeleton loading-action" /></div></div></div>
         {kind === 'landing' ? <div className="loading-landing-preview"><div className="skeleton loading-label" /><div className="skeleton loading-preview-image" /></div> : <Shelves />}

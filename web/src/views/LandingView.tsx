@@ -34,7 +34,7 @@ function LandingContent() {
     <a className="landing-skip" href="#landing-main">{t("Skip to content")}</a>
     <header className="landing-header">
       <div className="landing-header-inner">
-        <Link to="/" className="landing-brand" aria-label={t("Virelo home")}><img src="/virelo-icon-180.png?v=transparent-1" alt="" width="40" height="40"/><span>Virelo</span></Link>
+        <Link to="/" className="landing-brand" aria-label={t("Virelo home")}><img src="/virelo-icon-180.png?v=ribbon-1" alt="" width="40" height="40"/><span>Virelo</span></Link>
         <nav className="landing-nav" aria-label={t("Landing page navigation")}><a href="#experience">{t("The experience")}</a><a href="#start">{t("Ways to watch")}</a><Link to="/setup">{t("Setup guide")}</Link></nav>
         <div className="landing-header-actions"><PublicLanguageSelect /><a className="landing-github-link" href={webSource} target="_blank" rel="noreferrer" aria-label={t("Virelo Web on GitHub")}><GithubLogo weight="fill"/><span>GitHub</span></a><Link to="/app" className="landing-open-link">{t("Open Virelo")}</Link></div>
       </div>
@@ -122,7 +122,7 @@ function LandingContent() {
       <section className="landing-closing landing-container" aria-labelledby="closing-title"><div><h2 id="closing-title">{t("Make tonight")}<br/>{t("a movie night.")}</h2><p>{t("Your videos are already there. Give them a place to play.")}</p></div><Link to="/app" className="landing-button landing-button-primary"><Play weight="fill"/>{t("Open Virelo")}</Link></section>
     </main>
 
-    <footer className="landing-footer landing-container"><Link to="/" className="landing-brand" aria-label={t("Virelo home")}><img src="/virelo-icon-180.png?v=transparent-1" alt="" width="32" height="32"/><span>Virelo</span></Link><p>{t("Your private video library.")}</p><nav aria-label={t("Footer navigation")}><Link to="/setup">{t("Setup guide")}</Link><a href={webSource} target="_blank" rel="noreferrer">{t("Web source")}</a><a href={cliSource} target="_blank" rel="noreferrer">{t("CLI source")}</a><a href="https://www.npmjs.com/package/virelo" target="_blank" rel="noreferrer">npm</a></nav></footer>
+    <footer className="landing-footer landing-container"><Link to="/" className="landing-brand" aria-label={t("Virelo home")}><img src="/virelo-icon-180.png?v=ribbon-1" alt="" width="32" height="32"/><span>Virelo</span></Link><p>{t("Your private video library.")}</p><nav aria-label={t("Footer navigation")}><Link to="/setup">{t("Setup guide")}</Link><a href={webSource} target="_blank" rel="noreferrer">{t("Web source")}</a><a href={cliSource} target="_blank" rel="noreferrer">{t("CLI source")}</a><a href="https://www.npmjs.com/package/virelo" target="_blank" rel="noreferrer">npm</a></nav></footer>
   </div>;
 }
 

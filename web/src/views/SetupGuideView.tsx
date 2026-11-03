@@ -69,7 +69,7 @@ function SetupGuideContent() {
       <header className="landing-header">
         <div className="landing-header-inner">
           <Link to="/" className="landing-brand" aria-label={t("Virelo home")}>
-            <img src="/virelo-icon-180.png?v=transparent-1" alt="" width="40" height="40" />
+            <img src="/virelo-icon-180.png?v=ribbon-1" alt="" width="40" height="40" />
             <span>Virelo</span>
           </Link>
           <span className="setup-header-label">{t("Setup guide")}</span>
@@ -235,7 +235,7 @@ function SetupGuideContent() {
 
       <footer className="landing-footer setup-footer">
         <Link to="/" className="landing-brand" aria-label={t("Virelo home")}>
-          <img src="/virelo-icon-180.png?v=transparent-1" alt="" width="32" height="32" />
+          <img src="/virelo-icon-180.png?v=ribbon-1" alt="" width="32" height="32" />
           <span>Virelo</span>
         </Link>
         <p>{t("Your private video library.")}</p>
