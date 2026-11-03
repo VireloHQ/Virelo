@@ -20,13 +20,13 @@ test('share links never include account-local state or tokens',()=>{
   for(const origin of ['javascript:alert(1)','file:///media/private','https://user:password@example.test'])assert.throws(()=>shareLink(origin,'/'));
 });
 test('leveling uses bounded gain, ignores silence and preserves manual volume',()=>{
-  assert.equal(levelingGainDb(-30,-24),12);assert.equal(levelingGainDb(-6,-1),-12);
+  assert.equal(levelingGainDb(-30,-24),0);assert.equal(levelingGainDb(-6,-1),-12);
   assert.equal(levelingGainDb(-40,-2),-1,'peak headroom limits amplification');
   assert.equal(levelingGainDb(-70,-60),null);
   for(const value of [NaN,Infinity,-Infinity])assert.equal(levelingGainDb(value,-10),null);
   assert.equal(levelingGainDb(-6),-12);
-  assert.equal(levelingGainDb(-30),12);
-  assert.equal(levelingGainDb(-50),24,'quiet recordings can reach the bounded 24dB boost');
+  assert.equal(levelingGainDb(-30),0);
+  assert.equal(levelingGainDb(-50),0,'quiet recordings are never amplified');
   assert.equal(levelingGainDb(12),-24,'hot recordings retain the attenuation limit');
 });
 test('blocked storage keeps leveling disabled by default and preserves the session choice',()=>{

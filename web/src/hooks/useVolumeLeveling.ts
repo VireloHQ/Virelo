@@ -1,9 +1,10 @@
 import { useLayoutEffect, useRef, useState, useSyncExternalStore, type RefObject } from 'react';
 import { readLevelingPreference, saveLevelingPreference, subscribeLeveling, canLevelAudio } from '../utils/volume-leveling';
 import { VolumeLeveler } from '../utils/volume-leveler';
+import type { AudioLoudness } from '../utils/volume-leveling';
 
 export function useVolumeLeveling(videoRef: RefObject<HTMLVideoElement | null>, audioRef: RefObject<HTMLAudioElement | null>, source: string,
-  controls:{volume:number;muted:boolean;setVolume:(value:number)=>void;setMuted:(value:boolean)=>void}) {
+  controls:{volume:number;muted:boolean;setVolume:(value:number)=>void;setMuted:(value:boolean)=>void}, measurement?:AudioLoudness|null) {
   const enabled = useSyncExternalStore(subscribeLeveling, readLevelingPreference);
   const [error, setError] = useState('');
   const current = useRef<VolumeLeveler | null>(null);
@@ -18,6 +19,7 @@ export function useVolumeLeveling(videoRef: RefObject<HTMLVideoElement | null>, 
     let leveler: VolumeLeveler;
     try {
       leveler = current.current ??= new VolumeLeveler();
+      leveler.measurement(measurement);
       leveler.bind(elements);
       for(const element of elements)leveler.volume(element,controls.volume,controls.muted||Boolean(source&&element===video));
       leveler.enable(enabled);
@@ -43,7 +45,7 @@ export function useVolumeLeveling(videoRef: RefObject<HTMLVideoElement | null>, 
       const leveler = current.current;
       queueMicrotask(() => { if (leveler && !videoRef.current?.isConnected) { leveler.dispose(); if (current.current === leveler) current.current = null; } });
     };
-  }, [enabled, source, videoRef, audioRef, levelingSupported]);
+  }, [enabled, source, videoRef, audioRef, levelingSupported, measurement?.integratedLufs, measurement?.truePeakDb]);
   useLayoutEffect(()=>{
     const video=videoRef.current,audio=audioRef.current;
     for(const element of [video,audio]){

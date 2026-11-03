@@ -49,6 +49,8 @@ jobs:
       - run: node scripts/audit-player-control-polish.mjs
       - run: node scripts/audit-volume-leveling.mjs
       - run: node scripts/audit-volume-modulation.mjs
+      - run: node scripts/audit-measured-volume.mjs
+      - run: node scripts/audit-audio-analysis.mjs
       - run: node scripts/audit-volume-integration.mjs
       - run: node scripts/audit-volume-controls.mjs
       - run: node scripts/audit-library-duplicates.mjs

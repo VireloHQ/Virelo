@@ -55,10 +55,10 @@ try {
     for (let index = 0; index < 48000; index++) for (let channel = 0; channel < 2; channel++)
       view.setInt16(44 + index * 4 + channel * 2, .4 * Math.sin(2 * Math.PI * 440 * index / 48000) * 32767, true);
     const urls = Array.from({ length: 3 }, () => URL.createObjectURL(new Blob([bytes], { type: 'audio/wav' })));
-    function Fixture({ source = '' }) {
+    function Fixture({ source = '', measurement }) {
       const video = React.useRef(null), audio = React.useRef(null);
       controls = usePlaybackVolume();
-      leveling = useVolumeLeveling(video, audio, source, controls);
+      leveling = useVolumeLeveling(video, audio, source, controls, measurement);
       React.useEffect(() => {
         firstPlayVolume ??= leveler.graphs.get(video.current).output.gain.value;
         void (source ? audio.current : video.current).play();
@@ -68,7 +68,7 @@ try {
         React.createElement('audio', { key: source, ref: audio, src: source || undefined, loop: true, onVolumeChange: event => leveling.onVolumeChange(event.currentTarget) }));
     }
     const root = (dom.createRoot || dom.default.createRoot)(document.getElementById('fixture'));
-    const render = source => root.render(React.createElement(React.StrictMode, null, React.createElement(Fixture, { source })));
+    const render = (source,measurement) => root.render(React.createElement(React.StrictMode, null, React.createElement(Fixture, { source,measurement })));
     const checks = [];
     const check = (condition, label) => { if (!condition) throw new Error(label); checks.push(label); };
     const wait = async (predicate, label) => {
@@ -93,13 +93,21 @@ try {
     check(gain(video) === 0 && video.muted, 'UI mute reaches the final output');
     controls.setMuted(false); await settle();
     check(Math.abs(gain(video) - .03) < .000001, 'unmuting preserves saved attenuation');
+    render('',{integratedLufs:-12,truePeakDb:-5});await settle();
+    check(Math.abs(leveler.graphs.get(video).nodes[2].gain.value-10**(-6/20))<.000001,
+      'the hook applies cached loudness as constant attenuation');
+    render();await settle();
+    check(leveler.graphs.get(video).nodes.at(-1).gain.value===1,
+      'an unmeasured video returns to live leveling instead of retaining the previous measurement');
     for (const source of urls.slice(1)) {
-      render(source); await settle();
+      render(source,{integratedLufs:-6,truePeakDb:-1}); await settle();
       const audio = document.querySelector('audio');
       await wait(() => !audio.paused && audio.currentTime > .05, 'selected audio playback');
       check(video.muted && gain(video) === 0 && !audio.muted && Math.abs(gain(audio) - .03) < .000001,
         'new/replaced audio elements inherit volume while the video soundtrack stays silent');
       check(leveler.graphs.size === 2, 'replacing an audio element releases the previous graph');
+      check(Math.abs(leveler.graphs.get(audio).nodes[2].gain.value-10**(-12/20))<.000001,
+        'selected and replacement audio elements inherit the current track measurement');
     }
     render(); await settle();
     check(!video.muted && Math.abs(gain(video) - .03) < .000001, 'returning to original audio retains the manual level');

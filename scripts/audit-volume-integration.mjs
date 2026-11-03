@@ -61,8 +61,9 @@ try{
     assert.ok(next.volume>current.volume?next.rms>current.rms:next.rms<current.rms,'real media output follows the manual volume direction');
   }
   assert.ok(Number.isFinite(results.peakAfterLowering)&&results.peakAfterLowering>0&&results.peakAfterLowering<.011,'lowering manual volume is safe immediately, not after the lookahead flushes');
-  const loudness=results.mastering.map(item=>20*Math.log10(item.rms));
-  assert.ok(Math.max(...loudness)-Math.min(...loudness)<3,'quiet and loud masters converge instead of retaining a large inter-video difference');
+  for(const item of results.mastering)assert.ok(item.rms<=item.amplitude/Math.sqrt(2)*.1*1.025,'live leveling never amplifies a quiet master');
+  const loudness=results.mastering.filter(item=>item.amplitude>=.2).map(item=>20*Math.log10(item.rms));
+  assert.ok(Math.max(...loudness)-Math.min(...loudness)<3,'loud masters converge while quiet masters retain their natural level');
   assert.equal(results.muted,0,'mute is silent at final output');
   assert.ok(results.unmuted>0&&results.unmuted<.004,'unmuting retains the low manual level');
   assert.ok(results.bypass>results.restored&&results.bypass<.009,'bypass retains final manual attenuation');

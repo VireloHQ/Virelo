@@ -13,8 +13,10 @@ The original video files remain in their existing folders. Playback uses tempora
 Share links and QR codes are generated locally, without an external QR service.
 They open the app only; local media, playlist IDs and file handles are not included.
 Optional live volume leveling processes decoded audio on this device and stores
-only its on/off preference in localStorage. Samples and measurements are not
-uploaded or persisted, and original files are not modified. The browser-only app
+its on/off preference in localStorage. Optional scan-time audio analysis is
+disabled by default. When enabled, per-track integrated loudness and true-peak
+measurements are saved with the library index in IndexedDB. Audio samples are
+not retained or uploaded, and original files are not modified. The browser-only app
 has no administrator inbox or developer-originated notification feed.
 
 Named playlists, their titles and video references are also stored in IndexedDB

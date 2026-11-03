@@ -115,6 +115,7 @@ export function SettingsView() {
             {libraries.data?.length === 0 && <p className="settings-empty-copy">{t("No folders selected.")}</p>}
           </div>
 
+          <SettingSwitch checked={save.isPending&&save.variables.audioAnalysisEnabled!==undefined?save.variables.audioAnalysisEnabled:form.audioAnalysisEnabled} onChange={(value)=>save.mutate({audioAnalysisEnabled:value})} title={t("Analyze audio during scans")} description={t("Measure loudness for more consistent playback. Scans take longer.")}/>
           <div className="scan-strip">
             {scan.data?.running ? <ScanProgress status={scan.data} compact/> : <div><CheckCircle/><span><strong>{t(scan.data?.message || 'Ready')}</strong></span></div>}
             <Button variant="secondary" isDisabled={scan.data?.running || !libraries.data?.length} onPress={()=>void startScan()}><ArrowsClockwise/> {t("Scan now")}</Button>

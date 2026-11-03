@@ -1,4 +1,4 @@
-import { levelingGainDb, LEVELING_MAX_BOOST_DB } from './volume-leveling';
+import { levelingGainDb, measuredLevelingGainDb, LEVELING_MAX_BOOST_DB, type AudioLoudness } from './volume-leveling';
 
 export const LEVELING_LOOKAHEAD = .03;
 export const LEVELING_RECOVERY_DB_PER_SECOND = 3;
@@ -93,12 +93,22 @@ function createEnvelope(context: BaseAudioContext, source: AudioNode) {
 // The detector runs ahead of the delayed audible path, entirely in the audio graph.
 export function createLevelingGraph(context: BaseAudioContext, source: AudioNode) {
   const delay = context.createDelay(.1), gain = context.createGain(), limiter = context.createDynamicsCompressor();
-  const gate = context.createGain(), mute = context.createGain(), control = context.createGain();
+  const gate = context.createGain(), mute = context.createGain(), control = context.createGain(), makeup = context.createGain();
   delay.delayTime.value = LEVELING_LOOKAHEAD; gain.gain.value = 0; gate.gain.value = 0; mute.gain.value = 0;
   limiter.threshold.value = -3; limiter.knee.value = 0; limiter.ratio.value = 20;
   limiter.attack.value = .003; limiter.release.value = .15;
-  source.connect(delay); delay.connect(gain); gain.connect(limiter); limiter.connect(gate); gate.connect(mute); mute.connect(context.destination);
+  source.connect(delay); delay.connect(gain); gain.connect(limiter); limiter.connect(makeup); makeup.connect(gate); gate.connect(mute); mute.connect(context.destination);
   control.connect(gain.gain);
+  let enabled=true, measured:number|null=null;
+  const update=()=>{
+    const now=context.currentTime;
+    // Crossfade mode changes inside the existing lookahead, without slowing the detector.
+    gain.gain.setTargetAtTime(enabled?(measured===null?0:10**(measured/20)):1,now,.003);
+    control.gain.setTargetAtTime(enabled&&measured===null?1:0,now,.003);
+    limiter.threshold.setValueAtTime(enabled?-3:0,now);limiter.ratio.setValueAtTime(enabled?20:1,now);
+    // Cancel the native compressor's fixed, automatic makeup gain (Web Audio spec).
+    makeup.gain.setValueAtTime(enabled?10**(-3*(1-1/20)*.6/20):1,now);
+  };
   let envelope: ReturnType<typeof createEnvelope> | undefined;
   const reset = () => {
     if (envelope) { source.disconnect(envelope.input); envelope.dispose(); envelope.nodes.forEach(node => node.disconnect()); }
@@ -107,17 +117,15 @@ export function createLevelingGraph(context: BaseAudioContext, source: AudioNode
     gate.gain.cancelScheduledValues(now); gate.gain.setValueAtTime(0, now); gate.gain.setValueAtTime(1, now + LEVELING_LOOKAHEAD);
   };
   reset();
+  update();
   return {
     limiter, output: mute,
-    get nodes() { return [source, delay, gain, limiter, gate, mute, ...envelope!.nodes, control]; },
+    get nodes() { return [source, delay, gain, limiter, makeup, gate, mute, ...envelope!.nodes, control]; },
     reset,
     dispose() { envelope?.dispose(); },
     volume(volume: number, muted: boolean) { mute.gain.setValueAtTime(muted ? 0 : Math.max(0, Math.min(1, volume)), context.currentTime); },
-    enable(enabled: boolean) {
-      const now = context.currentTime;
-      gain.gain.setValueAtTime(enabled ? 0 : 1, now); control.gain.setValueAtTime(enabled ? 1 : 0, now);
-      limiter.threshold.setValueAtTime(enabled ? -3 : 0, now); limiter.ratio.setValueAtTime(enabled ? 20 : 1, now);
-    }
+    measurement(value?:AudioLoudness|null) { measured=measuredLevelingGainDb(value);update(); },
+    enable(value: boolean) { enabled=value;update(); }
   };
 }
 
@@ -126,6 +134,7 @@ export class VolumeLeveler {
   readonly context: AudioContext;
   private graphs = new Map<HTMLMediaElement, Graph>();
   private enabled = true;
+  private measured:AudioLoudness|null=null;
   constructor() { this.context = new AudioContext({ latencyHint: 'playback' }); }
   async resume() { if (this.context.state !== 'running') await this.context.resume(); }
   bind(elements: HTMLMediaElement[]) {
@@ -137,11 +146,16 @@ export class VolumeLeveler {
       const audio = createLevelingGraph(this.context, this.context.createMediaElementSource(element));
       const graph: Graph = Object.assign(audio, { element });
       graph.enable(this.enabled);
+      graph.measurement(this.measured);
       element.addEventListener('loadstart', graph.reset); element.addEventListener('seeking', graph.reset);
       this.graphs.set(element, graph);
     }
   }
   has(element: HTMLMediaElement) { return this.graphs.has(element); }
+  measurement(value?:AudioLoudness|null) {
+    this.measured=value??null;
+    for(const graph of this.graphs.values())graph.measurement(this.measured);
+  }
   volume(element: HTMLMediaElement, volume: number, muted: boolean) {
     const graph=this.graphs.get(element);
     if(!graph)return;

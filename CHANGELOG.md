@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Make volume leveling attenuation-only, including cancellation of the compressor's automatic makeup gain. Preserve the 30ms lookahead, fast attenuation and stable recovery.
+- Add optional scan-time, per-track loudness analysis. Reuse integrated LUFS and true-peak measurements for constant-gain playback without boosting quiet scenes or modifying source videos.
+
 - Refresh the landing page in all five languages with Explorer navigation, playlists, editable queues, volume leveling, player styles and optional PWA installation. Distinguish browser-only use from self-hosted artwork and account administration; keep static product facts consistent.
 - Recapture desktop/mobile library and player previews from the current UI with licensed Blender samples. Update the public-page browser audit for the unified five-language catalogs.
 

@@ -1,6 +1,8 @@
 import type { BrowserCapabilities, Library, MediaItem, ScanStatus, Settings } from './types';
 import { probeVideo, THUMBNAIL_VERSION, validThumbnail } from './utils/video-thumbnail';
 import { libraryName, libraryFolder } from './utils/library-names';
+import { readAudioAnalysis } from './utils/volume-leveling';
+import { AVI_MAX_FILE_BYTES } from './utils/avi';
 
 const DB_NAME = 'virelo-web';
 const DB_VERSION = 2;
@@ -34,6 +36,7 @@ interface LocalFile {
 interface StoredThumbnail { id: number; blob: Blob | null; version?: number; size?: number; mtime?: number; }
 
 const DEFAULT_SETTINGS: Settings = {
+  audioAnalysisEnabled: false,
   shortsIncludeLandscapes: false,
   queueBehavior: 'auto'
 };
@@ -50,6 +53,95 @@ const knownLibraries = new Map<number, StoredLibrary>();
 let scanTask: Promise<void> | null = null;
 let scanStatus: ScanStatus = idleScanStatus();
 let libraryEdit:Promise<unknown>=Promise.resolve();
+let audioRun: { controller: AbortController; status: ScanStatus } | null = null;
+const audioChannel = typeof BroadcastChannel === 'undefined' ? null : new BroadcastChannel('virelo-audio-analysis');
+audioChannel?.addEventListener('message', () => cancelAudioAnalysis());
+
+function finishScan(status: ScanStatus) {
+  status.running = false;
+  status.finishedAt = Date.now();
+  status.message = status.errors ? `Scan complete · ${status.errors} unavailable` : 'Scan complete';
+}
+
+function cancelAudioAnalysis(notify = false) {
+  if (audioRun) {
+    audioRun.controller.abort();
+    finishScan(audioRun.status);
+    audioRun = null;
+  }
+  if (notify) audioChannel?.postMessage('cancel');
+}
+
+function startAudioAnalysis(status: ScanStatus) {
+  const run = { controller: new AbortController(), status };
+  audioRun = run;
+  const signal = run.controller.signal;
+  const current = () => audioRun === run && !signal.aborted && scanStatus === status;
+  const sweep = async () => {
+    if (!current() || !(await readSettings()).audioAnalysisEnabled) return;
+    const media = (await listStoredMedia()).filter(item => {
+      const file = sessionFiles.get(item.id);
+      return file && file.size === item.size && file.lastModified === item.mtime && !readAudioAnalysis(item.audio_loudness, item.size, item.mtime);
+    });
+    if (!current() || !media.length) return;
+    status.audioTotal = media.length;
+    status.audioAnalyzed = 0;
+    let analyzer: import('./browser-audio-analysis').BrowserAudioAnalyzer | undefined;
+    try {
+      for (const item of media) {
+        if (!current()) break;
+        const file = sessionFiles.get(item.id)!;
+        status.message = `Analyzing audio · ${item.filename}`;
+        // Reject oversized sources before importing the analyzer or downloading its worker/core.
+        if (file.size >= AVI_MAX_FILE_BYTES) { status.errors++; status.audioAnalyzed!++; continue; }
+        try {
+          if (!analyzer) {
+            const { BrowserAudioAnalyzer } = await import('./browser-audio-analysis');
+            if (!current()) break;
+            analyzer = new BrowserAudioAnalyzer();
+          }
+          const analysis = await analyzer.analyze(file, signal);
+          if (!current()) break;
+          await saveAudioAnalysis(item, file, JSON.stringify(analysis), current);
+        } catch {
+          if (!current()) break;
+          // Leave failures uncached so another scan can retry; playback retains its live fallback.
+          status.errors++;
+        }
+        status.audioAnalyzed!++;
+      }
+    } finally { analyzer?.dispose(); }
+  };
+  void (async () => {
+    // One full-file worker across tabs as well as within this page; never share the AVI engine.
+    if (navigator.locks) await navigator.locks.request('virelo-audio-analysis', { signal }, sweep);
+    else await sweep();
+  })().catch(() => { if (current()) status.errors++; }).finally(() => {
+    if (current()) { finishScan(status); audioRun = null; }
+  });
+}
+
+async function saveAudioAnalysis(snapshot: StoredMedia, file: File, value: string, current: () => boolean) {
+  const db = await openDatabase();
+  return new Promise<void>((resolve, reject) => {
+    const tx = db.transaction(['media', 'settings', 'libraries'], 'readwrite');
+    const store = tx.objectStore('media');
+    const settings = tx.objectStore('settings').get('current');
+    const library = tx.objectStore('libraries').get(snapshot.library_id);
+    const request = store.get(snapshot.id);
+    request.onsuccess = () => {
+      const item = request.result as StoredMedia | undefined;
+      if (!current() || !settings.result?.audioAnalysisEnabled || !library.result || !item
+        || item.library_id !== snapshot.library_id || item.source_path !== snapshot.source_path
+        || item.size !== file.size || item.mtime !== file.lastModified || sessionFiles.get(item.id) !== file) return;
+      // Merge the latest row, never the pre-analysis snapshot (progress/likes/renames may have changed).
+      store.put({ ...item, audio_loudness: value });
+    };
+    tx.oncomplete = () => resolve();
+    tx.onabort = () => reject(tx.error ?? new Error('Audio analysis could not be saved.'));
+    tx.onerror = () => reject(tx.error);
+  }).finally(() => db.close());
+}
 
 function editLibraries<T>(operation:()=>Promise<T>):Promise<T> {
   const run=()=>navigator.locks?navigator.locks.request('virelo-library-edit',operation):operation();
@@ -284,7 +376,9 @@ export async function renameLocalLibrary(id:number, value:unknown, path:unknown=
 }
 
 export async function removeLocalLibrary(id: number) {
+  cancelAudioAnalysis(true);
   return editLibraries(async()=>{
+    cancelAudioAnalysis(true);
     const media = (await readAll<StoredMedia>('media')).filter((item) => item.library_id === id);
     await Promise.all(media.flatMap((item) => [deleteStore('media', item.id), deleteStore('thumbnails', item.id)]));
     await deleteStore('libraries', id);
@@ -307,8 +401,11 @@ function toLibrary(library: StoredLibrary, connected: boolean): Library {
 }
 
 export async function startLocalScan() {
-  if (scanTask) return false;
-  scanTask = runScan(undefined, false).finally(() => { scanTask = null; });
+  if (scanTask || scanStatus.running) return false;
+  scanTask = editLibraries(() => runScan(undefined, false)).catch(() => {
+    scanStatus.errors++;
+    finishScan(scanStatus);
+  }).finally(() => { scanTask = null; });
   return true;
 }
 
@@ -317,16 +414,17 @@ export function getLocalScanStatus() {
 }
 
 async function runScan(libraryIds?: number[], requestPermission = false) {
-  if (scanStatus.running && !libraryIds) return;
+  cancelAudioAnalysis(true);
   const libraries = (await readAll<StoredLibrary>('libraries')).filter((library) => !libraryIds || libraryIds.includes(library.id));
   scanStatus = { running: true, startedAt: Date.now(), finishedAt: null, total: 0, scanned: 0, added: 0, updated: 0, skipped: 0, errors: 0, message: 'Reading folders…' };
   try {
     for (const library of libraries) await scanLibrary(library, requestPermission);
-    scanStatus.message = scanStatus.errors ? `Scan complete · ${scanStatus.errors} unavailable` : 'Scan complete';
-  } finally {
-    scanStatus.running = false;
-    scanStatus.finishedAt = Date.now();
+  } catch (error) {
+    finishScan(scanStatus);
+    throw error;
   }
+  // Adding/reconnecting waits only for baseline metadata and thumbnails, never for loudness.
+  startAudioAnalysis(scanStatus);
 }
 
 async function scanLibrary(library: StoredLibrary, allowPermissionRequest: boolean) {
@@ -369,6 +467,7 @@ async function scanLibrary(library: StoredLibrary, allowPermissionRequest: boole
       const parsed = parseMediaName(relativePath);
       const probe = await probeVideo(file);
       const item: StoredMedia = {
+        audio_loudness: null,
         id,
         library_id: library.id,
         source_path: relativePath,
@@ -686,6 +785,7 @@ function releaseMediaUrls(id: number, forgetFile = false) {
 export async function readSettings() {
   const stored = await readStore<Partial<Settings>>('settings', 'current');
   return {
+    audioAnalysisEnabled: stored?.audioAnalysisEnabled === true,
     shortsIncludeLandscapes: stored?.shortsIncludeLandscapes ?? DEFAULT_SETTINGS.shortsIncludeLandscapes,
     queueBehavior: stored?.queueBehavior ?? DEFAULT_SETTINGS.queueBehavior
   };
@@ -693,7 +793,9 @@ export async function readSettings() {
 
 export async function writeSettings(settings: Partial<Settings>) {
   const next = { ...await readSettings(), ...settings };
+  next.audioAnalysisEnabled = next.audioAnalysisEnabled === true;
   await writeStore('settings', next, 'current');
+  if (!next.audioAnalysisEnabled) cancelAudioAnalysis(true);
   return next;
 }
 
@@ -702,6 +804,8 @@ export function browserCapabilities(): BrowserCapabilities {
 }
 
 window.addEventListener('beforeunload', () => {
+  cancelAudioAnalysis();
+  audioChannel?.close();
   for (const url of mediaUrls.values()) URL.revokeObjectURL(url);
   for (const url of thumbnailUrls.values()) URL.revokeObjectURL(url);
 });
