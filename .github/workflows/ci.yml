@@ -14,7 +14,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        # Keep macOS coverage while hosted ARM64 runners have capacity constraints.
+        os: [ubuntu-latest, windows-latest, macos-26-intel]
         node: [22, 24, 26]
     runs-on: ${{ matrix.os }}
     steps:
