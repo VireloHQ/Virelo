@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { publicPages, origin, assertPublicHtml } from '../scripts/helpers/public-seo.mjs';
+import { publicPages, origin, assertPublicHtml, normalizeEntryChunks } from '../scripts/helpers/public-seo.mjs';
 import { publicLocaleForPath } from '../web/src/i18n/locale.ts';
 
 test('all ten public pages contain localized, crawlable HTML and reciprocal search metadata', async () => {
@@ -10,9 +10,19 @@ test('all ten public pages contain localized, crawlable HTML and reciprocal sear
     const file = page.path === '/' ? 'index.html' : page.path.slice(1) + '.html';
     const html = await readFile(new URL('../dist/' + file, import.meta.url), 'utf8');
     assertPublicHtml(html, page);
+    for (const script of html.matchAll(/<script([^>]*)>([\s\S]*?)<\/script>/g)) {
+      if (!script[1].includes('application/ld+json')) assert.equal(script[2].trim(), '', page.path + ': no executable inline script under the production CSP');
+    }
     titles.add(page.title);
   }
   assert.equal(titles.size, 10);
+});
+
+test('deployment entry comparison tolerates chunk hashes, never different executable code', () => {
+  const windows = 'import{a}from"./i18n-D4s_uvf4.js";a();';
+  const linux = 'import{a}from"./i18n-Efg_56-8.js";a();';
+  assert.equal(normalizeEntryChunks(windows),normalizeEntryChunks(linux));
+  assert.notEqual(normalizeEntryChunks(windows),normalizeEntryChunks(linux.replace('a();','a(false);')));
 });
 
 test('sitemap lists only the ten canonical public URLs with a content revision date', async () => {

@@ -27,6 +27,9 @@ the existing React landing/guide components into ten static HTML files. It uses
 eager, data-free routes and loads translations before rendering and hydration;
 it does not depend on a live SSR server or provide different content to bots.
 The private player retains a separate, non-indexable app.html shell.
+Static rendering disables the router's inline scroll-restoration script, while
+client-side restoration stays enabled. Public HTML must contain no executable
+inline scripts; the preview audit enforces the same CSP as the production host.
 
 Public routes, metadata and schema are defined in web/src/public-site.ts.
 Localized search copy lives in web/src/i18n/public-seo.json; visible UI copy stays
@@ -69,8 +72,10 @@ five viewport widths, keyboard use, copy controls, storage failures and shared
 language preferences. The worker tests isolate each language's offline document.
 
 After deployment, npm run verify:deployment checks all ten live pages, canonical
-and alternate URLs, the current entry filename, sitemap, private shells, crawler
+and alternate URLs, the public entry code, sitemap, private shells, crawler
 policy, product facts, social image and the exact landing-media bytes.
+Dependency chunk hashes are normalized only for the entry-code comparison,
+because Windows and Cloudflare/Linux builds can emit different chunk filenames.
 
 For a hosting-level check, run Wrangler locally against dist and pass its URL to
 the same verifier. Workers' clean-HTML handling redirects .html requests: keep

@@ -9,7 +9,9 @@ export function createPublicRouter(pathname?: string) {
     createRoute({ getParentRoute: () => root, path: paths.landing, component: LandingView }),
     createRoute({ getParentRoute: () => root, path: paths.setup, component: SetupGuideView })
   ]);
-  const router = createRouter({ routeTree: root.addChildren(routes), scrollRestoration: true,
+  // The static document must not emit TanStack's self-removing inline scroll script.
+  // Our CSP disallows executable inline scripts; client-side restoration remains enabled.
+  const router = createRouter({ routeTree: root.addChildren(routes), scrollRestoration: !pathname,
     ...(pathname ? { history: createMemoryHistory({ initialEntries: [pathname] }), isServer: true } : {}) });
   // These eager, data-free routes are loaded before rendering on both sides.
   // Keep TanStack's SSR boundary shape during hydration; no serialized loader data is needed.

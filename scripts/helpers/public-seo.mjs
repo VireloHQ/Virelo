@@ -2,6 +2,9 @@ import assert from 'node:assert/strict';
 import seo from '../../web/src/i18n/public-seo.json' with { type: 'json' };
 
 export const origin = 'https://virelo.riyo.me';
+// Rollup's dependency chunk hashes can differ between Windows and Linux builds.
+// Compare the entry code, not those generated filenames.
+export const normalizeEntryChunks = code => code.replace(/-[\w-]{8}(?=\.(?:js|css)\b)/g, '-BUILD');
 export const publicPages = Object.entries(seo).flatMap(([locale, copy]) => {
   const prefix = locale === 'en' ? '' : '/' + locale;
   return [

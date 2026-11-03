@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
 import {readFile} from 'node:fs/promises';
-import {publicPages, assertPublicHtml} from './helpers/public-seo.mjs';
+import {publicPages, assertPublicHtml, normalizeEntryChunks} from './helpers/public-seo.mjs';
 
 const origin = new URL(process.argv[2] || 'https://virelo.riyo.me');
 assert.ok(['http:','https:'].includes(origin.protocol), 'Expected an HTTP(S) site URL');
@@ -16,11 +16,14 @@ assert.equal(response.status,200);
 const html = await response.text();
 assertPublicHtml(html, publicPages[0]);
 const entry = html.match(/<script type="module"[^>]*src="([^"]+\.js)"/)?.[1];
-assert.ok(entry,'Production HTML must reference a hashed public entry');
+assert.match(entry ?? '', /^\/assets\/landing-[\w-]+\.js$/, 'Production HTML must reference a hashed public entry');
 const expectedHtml = await readFile(new URL('../dist/index.html',import.meta.url),'utf8');
-assert.ok(expectedHtml.includes(entry),'Production references the current built public entry');
+const expectedEntry = expectedHtml.match(/<script type="module"[^>]*src="([^"]+\.js)"/)?.[1];
+assert.ok(expectedEntry,'Build first before verifying production');
 const bundle = await get(entry);
 assert.equal(bundle.status,200);
+const expectedCode = await readFile(new URL('../dist' + expectedEntry,import.meta.url),'utf8');
+assert.equal(normalizeEntryChunks(await bundle.text()),normalizeEntryChunks(expectedCode),'Deployed public entry code matches the build across platforms');
 for (const message of ['Your playlists. Your order.','A more comfortable volume.','Is Virelo free and open source?']) assert.ok(html.includes(message),'Current feature in crawlable HTML: '+message);
 await Promise.all(publicPages.slice(1).map(async page=>{
   const response=await get(page.path);assert.equal(response.status,200,page.path);

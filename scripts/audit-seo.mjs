@@ -27,6 +27,7 @@ try {
   for (const expected of publicPages) {
     const response = await fetch(base + expected.path);
     assert.equal(response.status,200);
+    assert.ok(response.headers.get('content-security-policy')?.includes("script-src 'self' 'wasm-unsafe-eval'"),'Audit uses the production CSP');
     assertPublicHtml(await response.text(),expected);
     const context = await browser.newContext({locale:'en-US',serviceWorkers:'block',viewport:{width:1440,height:900}});
     // Conflicting saved/browser language must not replace the requested public document.
