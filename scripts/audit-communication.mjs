@@ -194,7 +194,8 @@ const auditAppearance=async(page,mode)=>{
 };
 try{
   await mkdir(media);
-  for(const [name,volume,size] of [['quiet',.5,'320x180'],['loud',2,'320x180'],['portrait',.5,'180x320']])execFileSync(process.env.FFMPEG_PATH||'ffmpeg',[
+  // The loud stereo fixture must exceed the leveling threshold, not sit just below it.
+  for(const [name,volume,size] of [['quiet',.5,'320x180'],['loud',8,'320x180'],['portrait',.5,'180x320']])execFileSync(process.env.FFMPEG_PATH||'ffmpeg',[
     '-hide_banner','-loglevel','error','-f','lavfi','-i','color=c=0x354358:s='+size+':r=12','-f','lavfi','-i','sine=frequency=440:sample_rate=48000',
     '-t','30','-c:v','libx264','-threads','2','-preset','ultrafast','-pix_fmt','yuv420p','-af','volume='+volume,'-c:a','aac','-ac','2','-movflags','+faststart',join(media,name+'.mp4')],{windowsHide:true,timeout:60000});
   const originals=await Promise.all(['quiet','loud','portrait'].map(name=>readFile(join(media,name+'.mp4'))));
