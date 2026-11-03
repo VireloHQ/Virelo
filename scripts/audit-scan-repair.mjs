@@ -176,8 +176,8 @@ try{
   await offline.waitForFunction(()=>Boolean(navigator.serviceWorker.controller));
   await offline.reload();await offline.getByRole('heading',{name:'Welcome back',exact:true}).waitFor();
   const entry=await offline.locator('script[type="module"]').getAttribute('src');
-  await offline.waitForFunction(async entry=>{const cache=await caches.open('virelo-shell-transparent-1');return Boolean(await cache.match(entry))&&Boolean(await cache.match('/startup.js'))&&Boolean(await cache.match('/'));},entry);
-  await offline.evaluate(async entry=>{await (await caches.open('virelo-shell-transparent-1')).delete(entry);},entry);
+  await offline.waitForFunction(async entry=>{const cache=await caches.open('virelo-shell-ribbon-1');return Boolean(await cache.match(entry))&&Boolean(await cache.match('/startup.js'))&&Boolean(await cache.match('/'));},entry);
+  await offline.evaluate(async entry=>{await (await caches.open('virelo-shell-ribbon-1')).delete(entry);},entry);
   await offlineContext.setOffline(true);await offline.reload();
   await offline.locator('#startup-error').waitFor({state:'visible'});
   await offlineContext.close();

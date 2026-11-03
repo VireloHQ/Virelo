@@ -1,4 +1,4 @@
-const CACHE_NAME = 'virelo-shell-transparent-1';
+const CACHE_NAME = 'virelo-shell-ribbon-1';
 
 function responseKind(request, url) {
   if (/^\/(?:api|hls|audio|playback|media)(?:\/|$)/.test(url.pathname)) return null;

@@ -49,7 +49,7 @@ export function SplashScreen({ onDone }: { onDone: () => void }) {
 
   return <div ref={screen} className={`splash-screen${leaving ? ' splash-phase-leaving' : ''}`} role="status" aria-label={t("Virelo")}>
     <div className="splash-content">
-      <div className="splash-logo" aria-hidden="true"><img src="/virelo-icon.png?v=transparent-1" alt="" width="512" height="512" fetchPriority="high" /></div>
+      <div className="splash-logo" aria-hidden="true"><img src="/virelo-icon.png?v=ribbon-1" alt="" width="512" height="512" fetchPriority="high" /></div>
       <div className="splash-wordmark" aria-hidden="true">{t("Virelo")}</div>
     </div>
   </div>;

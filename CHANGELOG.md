@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Update application icons, sharing QR branding and install assets to the ribbon mark.
+
 - Refine repeat controls with shared Phosphor icons, compact press feedback and neutral keyboard focus.
 - Add a theme-aware gradient ring to the circular Original play/pause button and the appearance preview.
 
