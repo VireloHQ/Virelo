@@ -102,7 +102,7 @@ try{
       const gradient=()=>play().evaluate(element=>getComputedStyle(element,'::before').backgroundImage);
       const initial=await gradient();
       check(initial.includes('linear-gradient'),'Original play/pause uses a real gradient ring');
-      check(await play().evaluate(element=>getComputedStyle(element).borderRadius==='15px'&&getComputedStyle(element,'::before').padding==='2px'),'Original uses its own rounded-square shape and thin accent edge');
+      check(await play().evaluate(element=>getComputedStyle(element).borderRadius==='50%'&&getComputedStyle(element,'::before').padding==='3px'&&getComputedStyle(element).backgroundColor==='rgba(0, 0, 0, 0)'),'Original retains its circular shape, transparent center and original ring thickness');
       await page.locator('body').click({position:{x:1,y:1}});
       await page.locator('.player-transport').screenshot({path:join(artifacts,mode+'-original.png'),animations:'disabled'});
       const box=await play().boundingBox();await play().click();

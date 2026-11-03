@@ -3,7 +3,7 @@
 ## Unreleased
 
 - Refine repeat controls with shared Phosphor icons, compact press feedback and neutral keyboard focus.
-- Add a theme-aware, rounded-square play/pause button to Original controls and the appearance preview.
+- Add a theme-aware gradient ring to the circular Original play/pause button and the appearance preview.
 
 ## 0.5.3 — 2026-11-02
 
