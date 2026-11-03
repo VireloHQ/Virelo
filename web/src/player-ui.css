@@ -2,9 +2,22 @@
 
 .repeat-control { flex:none; }
 .repeat-control>button { width:40px; min-height:44px; display:grid; place-items:center; border:0; border-radius:6px; padding:0; background:transparent; color:#f4f2f6; cursor:pointer; }
-.repeat-control>button>svg { width:22px; height:22px; }
+.repeat-button-face { display:grid; place-items:center; width:32px; height:32px; border-radius:5px; transition:background-color var(--dur-micro) var(--ease-out),scale var(--dur-micro) var(--ease-out); }
+.repeat-icon { display:block; width:20px; height:20px; background:currentColor; mask-size:contain; mask-position:center; mask-repeat:no-repeat; }
 .repeat-control>button.active { color:var(--color-brand); }
-.repeat-control>button:focus-visible { outline:2px solid var(--color-focus); outline-offset:-2px; }
+.repeat-control>button:focus-visible { outline:none; }
+.repeat-control>button:focus-visible .repeat-button-face { box-shadow:inset 0 0 0 1.5px #ffffffb8; transition:none; }
+.repeat-control>button:active .repeat-button-face { background:var(--control-pressed); scale:.94; }
+.repeat-control>button:focus-visible:active .repeat-button-face { scale:1; }
+@media (hover:hover) and (pointer:fine) {
+  .repeat-control>button:hover .repeat-button-face { background:var(--control-hover); }
+  .repeat-control>button:active .repeat-button-face { background:var(--control-pressed); }
+}
+@media (pointer:coarse) { .repeat-control>button { min-width:44px; } }
+@media (prefers-reduced-motion:reduce) {
+  .repeat-button-face { transition:none; }
+  .repeat-control>button:active .repeat-button-face { scale:1; }
+}
 .player:focus-visible { outline:2px solid var(--color-focus); outline-offset:-2px; }
 .player.controls-visible .player-caption { translate:0 calc(var(--caption-bottom) - var(--player-controls-height,112px)); }
 

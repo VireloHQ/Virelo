@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Refine repeat controls with Fluent System SVGs, compact press feedback and neutral keyboard focus.
+- Add an accent-aware gradient ring to Original play/pause controls and the appearance preview.
+
 ## 0.5.3 — 2026-11-02
 
 - Use the same HLS engine for converted audio and video when Media Source Extensions are supported, avoiding native-HLS backward-seek failures. Keep native playback as a fallback.
