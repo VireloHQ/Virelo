@@ -6,7 +6,7 @@ import { runInNewContext } from 'node:vm';
 const source = await readFile(new URL('../web/public/sw.js', import.meta.url), 'utf8');
 const metadata = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8'));
 const isWeb = metadata.name === 'virelo-web';
-const cacheName = isWeb ? 'virelo-web-shell-ribbon-1' : 'virelo-shell-ribbon-1';
+const cacheName = isWeb ? 'virelo-web-shell-public-1' : 'virelo-shell-ribbon-1';
 const origin = 'https://virelo.test';
 const keyOf = (request) => new URL(typeof request === 'string' ? request : request.url, origin).href;
 const response = (body = 'export const build = "old";', mime = 'text/javascript', status = 200, headers = {}) =>
@@ -267,6 +267,27 @@ test('navigation caches bounded canonical shells and has a graceful offline miss
   await missing.done;
 });
 
+if (isWeb) test('localized landing and guide documents never overwrite another language or the app shell', async () => {
+  const paths = ['/', '/setup', '/ja', '/ja/setup', '/zh-CN', '/zh-CN/setup', '/ko', '/ko/setup', '/ru', '/ru/setup', '/app/settings'];
+  let online = true;
+  const sw = worker({network: async request => {
+    if (!online) throw new Error('Offline');
+    return response(new URL(request.url).pathname, 'text/html');
+  }});
+  for (const path of paths) {
+    const event = sw.fetch(path, {mode:'navigate'});
+    assert.equal(await (await event.response).text(), path);
+    await event.done;
+  }
+  assert.equal(sw.storage.get(cacheName).size, paths.length);
+  online = false;
+  for (const path of paths) {
+    const event = sw.fetch(path + '?ref=test', {mode:'navigate'});
+    assert.equal(await (await event.response).text(), path);
+    await event.done;
+  }
+});
+
 test('activation preserves old hashed assets and unrelated caches without reloading clients', async () => {
   const sw = worker();
   sw.seed('/assets/old.js', response());
@@ -316,16 +337,18 @@ if(isWeb)test('AVI decoder assets accept gzip or transparently decoded WASM and 
   assert.equal((await event.response).type,'error');await event.done;assert.equal(invalid.calls.put.length,0);
 });
 
-test('Vercel SPA rewrite excludes the assets namespace and keeps HTML and sw.js fresh', async () => {
+test('Vercel rewrites only private app routes and keeps HTML and sw.js fresh', async () => {
   const config = JSON.parse(await readFile(new URL('../vercel.json', import.meta.url), 'utf8'));
-  const rewrites = config.rewrites.filter((rewrite) => rewrite.destination === '/index.html');
-  const matches = (source, path) => new RegExp('^' + source + '$').test(path);
+  const rewrites = config.rewrites.filter((rewrite) => rewrite.destination === (isWeb ? '/app' : '/index.html'));
+  if (isWeb) assert.equal(config.cleanUrls, true, 'Vercel resolves the app.html shell without an extension');
+  const matches = (source, path) => new RegExp('^' + source.replaceAll('/:path*', '(?:/.*)?') + '$').test(path);
   for (const path of ['/assets', '/assets/', '/assets/missing.js', '/assets/nested/missing.css']) {
     assert.equal(rewrites.some((rewrite) => matches(rewrite.source, path)), false, path);
   }
-  for (const path of ['/', '/app', '/app/watch/123', '/privacy', '/assets-library']) {
+  for (const path of isWeb ? ['/app', '/app/watch/123', '/library', '/watch/123'] : ['/', '/app', '/app/watch/123', '/privacy', '/assets-library']) {
     assert.equal(rewrites.some((rewrite) => matches(rewrite.source, path)), true, path);
   }
+  if (isWeb) for (const path of ['/', '/setup', '/ja', '/ja/setup', '/unknown']) assert.equal(rewrites.some(rule => matches(rule.source, path)), false, path);
   for (const path of ['/', '/index.html', '/app/watch/123', '/sw.js']) {
     assert.ok(config.headers.some((rule) => matches(rule.source, path) && rule.headers.some((header) =>
       header.key.toLowerCase() === 'cache-control' && header.value === 'no-cache')), path);

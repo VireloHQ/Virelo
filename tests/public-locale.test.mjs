@@ -97,7 +97,7 @@ test('CLI requirements stay patched and consistent across locales, hosting and s
   const read = file => readFile(new URL('../' + file, import.meta.url), 'utf8');
   assert.ok((await read('web/src/views/LandingView.tsx')).includes(JSON.stringify(landingMessage)));
   assert.ok((await read('web/src/views/SetupGuideView.tsx')).includes(JSON.stringify(requirements)));
-  for (const file of ['README.md', 'CONTRIBUTING.md', 'SECURITY.md', 'web/index.html', 'web/public/llms-full.txt']) {
+  for (const file of ['README.md', 'CONTRIBUTING.md', 'SECURITY.md', 'web/src/views/SetupGuideView.tsx', 'web/public/llms-full.txt']) {
     const text = await read(file);
     for (const version of ['22.23.4', '24.22.1', '26.12.1']) assert.ok(text.includes(version), file);
     assert.doesNotMatch(text, /22\.16|22\.22\.3/, file);

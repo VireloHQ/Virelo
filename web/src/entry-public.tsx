@@ -1,0 +1,20 @@
+import { createRoot, hydrateRoot } from 'react-dom/client';
+import { RouterProvider } from '@tanstack/react-router';
+import '@fontsource-variable/inter';
+import { createPublicRouter } from './public-router';
+import { LocaleRoot } from './i18n/LocaleRoot';
+import { initializeLocale, setLocale } from './i18n';
+import { publicLocation } from './public-site';
+import './styles.css';
+import './streaming-ui.css';
+import './ui-motion.css';
+
+const location = publicLocation(window.location.pathname);
+initializeLocale();
+if (location) await setLocale(location.locale, false);
+const router = createPublicRouter();
+await router.load();
+const root = document.getElementById('root')!;
+const page = <LocaleRoot><RouterProvider router={router} /></LocaleRoot>;
+if (root.hasChildNodes()) hydrateRoot(root, page);
+else createRoot(root).render(page);

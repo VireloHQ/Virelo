@@ -7,6 +7,7 @@ import { NotFoundView } from './views/NotFoundView';
 import type { SortKey } from './types';
 import { validateShortsSearch } from './utils/shorts-navigation';
 import { useScanRefresh } from './hooks/useScanRefresh';
+import { publicLocation, publicPaths } from './public-site';
 
 const LandingRouteView = createRouteView(() => import('./views/LandingView'), 'LandingView', 'landing');
 const SetupGuideRouteView = createRouteView(() => import('./views/SetupGuideView'), 'SetupGuideView', 'setup');
@@ -21,8 +22,8 @@ const DetailRouteView = createRouteView(() => import('./views/DetailView'), 'Det
 const ShortsRouteView = createRouteView(() => import('./views/ShortsView'), 'ShortsView', 'shorts');
 
 function viewForPath(pathname: string) {
-  if (pathname === '/') return LandingRouteView;
-  if (pathname === '/setup' || pathname === '/setup/') return SetupGuideRouteView;
+  const page = publicLocation(pathname);
+  if (page) return page.page === 'landing' ? LandingRouteView : SetupGuideRouteView;
   const path = pathname.replace(/^\/app(?=\/|$)/, '').replace(/\/$/, '') || '/';
   if (path === '/') return HomeRouteView;
   if (path === '/favorites') return FavoritesRouteView;
@@ -71,6 +72,10 @@ function Root() {
 const rootRoute = createRootRoute({ component: Root, notFoundComponent: NotFoundView, errorComponent: RouteErrorView });
 const landingRoute = createRoute({ getParentRoute:()=>rootRoute, path:'/', component:LandingRouteView });
 const setupGuideRoute = createRoute({ getParentRoute:()=>rootRoute, path:'setup', component:SetupGuideRouteView });
+const localizedPublicRoutes = Object.entries(publicPaths).filter(([locale]) => locale !== 'en').flatMap(([, paths]) => [
+  createRoute({ getParentRoute: () => rootRoute, path: paths.landing, component: LandingRouteView }),
+  createRoute({ getParentRoute: () => rootRoute, path: paths.setup, component: SetupGuideRouteView })
+]);
 const appRoute = createRoute({ getParentRoute:()=>rootRoute, path:'app', component:Shell });
 const appIndexRoute = createRoute({ getParentRoute:()=>appRoute, path:'/', component:HomeRouteView });
 const libraryRoute = createRoute({ getParentRoute:()=>appRoute, path:'library', component:LibraryRouteView });
@@ -99,6 +104,7 @@ const legacyDetailRoute = createRoute({
 const routeTree = rootRoute.addChildren([
   landingRoute,
   setupGuideRoute,
+  ...localizedPublicRoutes,
   appRoute.addChildren([appIndexRoute, libraryRoute, favoritesRoute, playlistsRoute, playlistRoute, settingsRoute, watchRoute, detailRoute, shortsRoute]),
   legacyLibraryRoute,
   legacyFavoritesRoute,

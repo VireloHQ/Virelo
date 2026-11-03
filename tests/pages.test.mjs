@@ -26,13 +26,14 @@ test('Pages receives its host rules and custom 404 in the production build', asy
 });
 
 test('Pages rewrites application and legacy routes, never missing assets', () => {
-  const shell = path => redirects.some(([pattern, target, status]) => matches(pattern, path) && target === '/' && status === '200');
-  for (const path of ['/setup', '/setup/', '/app', '/app/library', '/app/favorites', '/favorites', '/app/settings', '/app/shorts', '/app/watch/123', '/app/title/123', '/library', '/settings', '/shorts', '/watch/123', '/title/123']) {
+  const shell = path => redirects.some(([pattern, target, status]) => matches(pattern, path) && target === '/app' && status === '200');
+  for (const path of ['/app/library', '/app/favorites', '/favorites', '/app/settings', '/app/shorts', '/app/watch/123', '/app/title/123', '/library', '/settings', '/shorts', '/watch/123', '/title/123']) {
     assert.ok(shell(path), path);
   }
-  for (const path of ['/assets', '/assets/', '/assets/missing.js', '/assets/missing.css', '/assets/nested/missing.wasm', '/sw.js', '/landing/shorts-demo.mp4', '/missing.png', '/unknown']) {
+  for (const path of ['/', '/setup', '/setup/', '/ja', '/ja/setup', '/assets', '/assets/', '/assets/missing.js', '/assets/missing.css', '/assets/nested/missing.wasm', '/sw.js', '/landing/shorts-demo.mp4', '/missing.png', '/unknown']) {
     assert.equal(shell(path), false, path);
   }
+  assert.ok(!redirects.some(([pattern, target]) => pattern === '/app' || target.endsWith('.html')), 'Clean HTML handling serves /app directly; rewritten .html targets cause a redirect loop on Workers');
 });
 
 test('Pages keeps HTML and PWA entry points fresh, but caches hashed assets', () => {

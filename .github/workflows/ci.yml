@@ -57,5 +57,6 @@ jobs:
       - run: node scripts/audit-library-explorer.mjs
       - run: node scripts/audit-browser-streaming.mjs
       - run: npm run build
+      - run: node scripts/audit-seo.mjs
       - run: node scripts/audit-public-locales.mjs
       - run: node scripts/audit-avi.mjs

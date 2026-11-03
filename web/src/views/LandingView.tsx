@@ -3,6 +3,7 @@ import { Link } from '@tanstack/react-router';
 import { Check, Copy, GithubLogo, Play, TerminalWindow } from '@phosphor-icons/react';
 import { PublicLanguageSelect, PublicLocaleProvider, usePublicLocale } from '../components/PublicLocale';
 import { ShortsDemo } from '../components/ShortsDemo';
+import { publicPath } from '../public-site';
 import '../landing.css';
 
 const cliSource = 'https://github.com/VireloHQ/Virelo';
@@ -34,9 +35,9 @@ function LandingContent() {
     <a className="landing-skip" href="#landing-main">{t("Skip to content")}</a>
     <header className="landing-header">
       <div className="landing-header-inner">
-        <Link to="/" className="landing-brand" aria-label={t("Virelo home")}><img src="/virelo-icon-180.png?v=ribbon-1" alt="" width="40" height="40"/><span>Virelo</span></Link>
-        <nav className="landing-nav" aria-label={t("Landing page navigation")}><a href="#experience">{t("The experience")}</a><a href="#start">{t("Ways to watch")}</a><Link to="/setup">{t("Setup guide")}</Link></nav>
-        <div className="landing-header-actions"><PublicLanguageSelect /><a className="landing-github-link" href={webSource} target="_blank" rel="noreferrer" aria-label={t("Virelo Web on GitHub")}><GithubLogo weight="fill"/><span>GitHub</span></a><Link to="/app" className="landing-open-link">{t("Open Virelo")}</Link></div>
+        <Link to={publicPath(locale, 'landing')} className="landing-brand" aria-label={t("Virelo home")}><img src="/virelo-icon-180.png?v=ribbon-1" alt="" width="40" height="40"/><span>Virelo</span></Link>
+        <nav className="landing-nav" aria-label={t("Landing page navigation")}><a href="#experience">{t("The experience")}</a><a href="#start">{t("Ways to watch")}</a><Link to={publicPath(locale, 'setup')}>{t("Setup guide")}</Link></nav>
+        <div className="landing-header-actions"><PublicLanguageSelect /><a className="landing-github-link" href={webSource} target="_blank" rel="noreferrer" aria-label={t("Virelo Web on GitHub")}><GithubLogo weight="fill"/><span>GitHub</span></a><Link to="/app" reloadDocument className="landing-open-link">{t("Open Virelo")}</Link></div>
       </div>
     </header>
 
@@ -47,19 +48,19 @@ function LandingContent() {
         <div className="landing-hero-content landing-container">
           <h1 id="landing-title">{t("Your collection.")}<br/>{t("Now showing.")}</h1>
           <p>{t("Your video folders, ready to watch in your browser. No account, uploads or installation required.")}</p>
-          <div className="landing-hero-actions"><Link to="/app" className="landing-button landing-button-primary"><Play weight="fill"/>{t("Open web player")}</Link><a href="#start" className="landing-button landing-button-secondary" onClick={()=>{setMode('cli');setCopyState('idle');}}><TerminalWindow/>{t("Run locally")}</a></div>
+          <div className="landing-hero-actions"><Link to="/app" reloadDocument className="landing-button landing-button-primary"><Play weight="fill"/>{t("Open web player")}</Link><a href="#start" className="landing-button landing-button-secondary" onClick={()=>{setMode('cli');setCopyState('idle');}}><TerminalWindow/>{t("Run locally")}</a></div>
           <p className="landing-hero-note">{t("Free and open source.")}</p>
         </div>
       </section>
 
       <section className="landing-experience landing-container" id="experience" aria-labelledby="experience-title">
         <div className="landing-section-heading">
-          <div><h2 id="experience-title">{t("Familiar to browse.")}<br/>{t("Entirely yours.")}</h2><p>{t("A home for your movies, series, and everyday videos.")}</p></div>
+          <div><h2 id="experience-title">{t("Familiar to browse.")}<br/>{t("Entirely yours.")}</h2><p>{t("Virelo is a free, open-source video player for your own movies, series and Shorts.")}</p></div>
           <div className="landing-tabs" role="tablist" aria-label={t("Preview the Virelo app")}>{(['home','player'] as const).map((value,index)=><button key={value} id={'preview-tab-'+value} type="button" role="tab" aria-selected={preview===value} aria-controls="landing-preview" tabIndex={preview===value?0:-1} ref={node=>{previewTabs.current[index]=node;}} onClick={()=>setPreview(value)} onKeyDown={event=>tabKey(event,index,previewTabs.current,next=>setPreview(next===0?'home':'player'))}>{value==='home'?t("Library"):t("Player")}</button>)}</div>
         </div>
         <figure className="landing-preview" id="landing-preview" role="tabpanel" aria-labelledby={'preview-tab-'+preview} tabIndex={0}>
           <picture><source media="(max-width: 600px)" srcSet={preview==='home'?'/landing/library-mobile.webp':'/landing/player-mobile.webp'}/><img src={preview==='home'?'/landing/library-desktop.webp':'/landing/player-desktop.webp'} alt={preview==='home'?t("The actual Virelo Home screen with a featured video, Continue watching and personal library shelves."):t("The actual Virelo player with playback controls and a video queue.")} width="1440" height="1050" loading="lazy"/></picture>
-          <figcaption><p>{t(previewCopy[preview])}</p><span>{t("Actual Virelo UI, shown with sample videos.")} <a href="/landing/library-credits.txt" target="_blank" rel="noreferrer">{t("Sample film credits")}</a></span></figcaption>
+          <figcaption><p>{t(previewCopy[preview])}</p><span><a href="/landing/library-credits.txt" target="_blank" rel="noreferrer">{t("Sample film credits")}</a></span></figcaption>
         </figure>
         <div className="landing-editorial-features">
           <article><h3>{t("Browse your way.")}</h3><p>{t("Search your collection or switch to Explorer for a folder tree and an address bar with path completion.")}</p></article>
@@ -76,7 +77,7 @@ function LandingContent() {
           <h2 id="shorts-title">{t("Shorts.")}<br/>{t("Your own feed.")}</h2>
           <p>{t("Your portrait clips deserve more than a folder. Virelo brings them together in Shorts, ready to swipe through whenever you have a moment.")}</p>
           <ul><li>{t("A fresh mix every time you open Shorts.")}</li><li>{t("Swipe to the next video. Tap to pause.")}</li><li>{t("Keep favorites close. Keep your files private.")}</li></ul>
-          <Link to="/app" className="landing-button landing-button-primary"><Play weight="fill"/>{t("Try Virelo Shorts")}</Link>
+          <Link to="/app" reloadDocument className="landing-button landing-button-primary"><Play weight="fill"/>{t("Try Virelo Shorts")}</Link>
           <p className="landing-shorts-note">{t("Choose your video folder, then open Shorts.")}</p>
         </div>
         <ShortsDemo />
@@ -92,7 +93,7 @@ function LandingContent() {
                 <h3>{t("No install. Just your videos.")}</h3>
                 <p>{t("Choose a folder and start watching. Use Virelo in a browser, or add it to your home screen as a PWA where supported.")}</p>
                 <ol className="landing-steps"><li>{t("Open the web player.")}</li><li>{t("Choose a folder and allow read access.")}</li><li>{t("Pick something to watch.")}</li></ol>
-                <Link to="/app" className="landing-button landing-button-primary"><Play weight="fill"/>{t("Open web player")}</Link>
+                <Link to="/app" reloadDocument className="landing-button landing-button-primary"><Play weight="fill"/>{t("Open web player")}</Link>
                 <p className="landing-small">{t("Folder access and playback support depend on your browser.")}</p>
               </>:<>
                 <h3>{t("One command. Your home cinema.")}</h3>
@@ -104,7 +105,7 @@ function LandingContent() {
                 </ul>
                 <div className="landing-command"><code>npx virelo</code><button type="button" onClick={()=>void copyCommand()} aria-label={t("Copy npx virelo command")}>{copyState==='copied'?<Check weight="bold"/>:<Copy/>}<span>{copyState==='copied'?t("Copied"):t("Copy")}</span></button></div>
                 <p className="landing-copy-status" role="status">{copyState==='error'?t("Copy isn’t available here. Select the command above and copy it manually."):copyState==='copied'?t("Command copied. Open a terminal in your video folder and paste it."):''}</p>
-                <Link to="/setup" className="landing-text-link">{t("Setup and network guide")}</Link>
+                <Link to={publicPath(locale, 'setup')} className="landing-text-link">{t("Setup and network guide")}</Link>
                 <p className="landing-small">{t("Requires Node.js 22.23.4+, 24.22.1+ or 26.12.1+ within those release lines. Windows, macOS, Linux and Android via Termux. Network access is opt-in; don’t expose Virelo directly to the public internet.")}</p>
               </>}
             </div>
@@ -113,16 +114,18 @@ function LandingContent() {
       </section>
 
       <section className="landing-faq landing-container" aria-labelledby="faq-title"><h2 id="faq-title">{t("A few things to know.")}</h2><div className="landing-faq-list">
+        <details><summary>{t("Is Virelo free and open source?")}</summary><p>{t("Yes. Virelo is free and open source under AGPL-3.0-only. The source code is available on GitHub.")}</p></details>
+        <details><summary>{t("What is the difference between the web player and the self-hosted server?")}</summary><p>{t("The web player opens files on the device you are using and needs no account. The self-hosted npm version runs on your computer and adds accounts, library permissions, automatic movie and series metadata, and network playback.")}</p></details>
         <details><summary>{t("Does Virelo upload my videos?")}</summary><p>{t("No. The web player reads only the folders you choose, and your video files stay on your device. Favorites, thumbnails and watch progress are stored in this browser.")}</p></details>
         <details><summary>{t("Can I run Virelo without installing it globally?")}</summary><p>{t("Yes. Open a terminal in your video folder and run")}{' '}<code>npx virelo</code>{t(".")}</p></details>
         <details><summary>{t("Can I watch from another device?")}</summary><p>{t("Yes. Run")}{' '}<code>npx virelo --host 0.0.0.0</code>{' '}{t("on a trusted local network, then open the host computer’s local address from your other device. The browser-only player reads files on the device you’re using.")}</p></details>
-        <details><summary>{t("Will every video work in my browser?")}</summary><p>{t("Playback depends on your browser’s video codecs. The web player supports local audio conversion and embedded text subtitles for supported files. For broader compatibility, use the CLI with FFmpeg. See the")}{' '}<Link to="/setup">{t("setup guide")}</Link>{' '}{t("for details.")}</p></details>
+        <details><summary>{t("Will every video work in my browser?")}</summary><p>{t("Playback depends on your browser’s video codecs. The web player supports local audio conversion and embedded text subtitles for supported files. For broader compatibility, use the CLI with FFmpeg. See the")}{' '}<Link to={publicPath(locale, 'setup')}>{t("setup guide")}</Link>{' '}{t("for details.")}</p></details>
       </div></section>
 
-      <section className="landing-closing landing-container" aria-labelledby="closing-title"><div><h2 id="closing-title">{t("Make tonight")}<br/>{t("a movie night.")}</h2><p>{t("Your videos are already there. Give them a place to play.")}</p></div><Link to="/app" className="landing-button landing-button-primary"><Play weight="fill"/>{t("Open Virelo")}</Link></section>
+      <section className="landing-closing landing-container" aria-labelledby="closing-title"><div><h2 id="closing-title">{t("Make tonight")}<br/>{t("a movie night.")}</h2><p>{t("Your videos are already there. Give them a place to play.")}</p></div><Link to="/app" reloadDocument className="landing-button landing-button-primary"><Play weight="fill"/>{t("Open Virelo")}</Link></section>
     </main>
 
-    <footer className="landing-footer landing-container"><Link to="/" className="landing-brand" aria-label={t("Virelo home")}><img src="/virelo-icon-180.png?v=ribbon-1" alt="" width="32" height="32"/><span>Virelo</span></Link><p>{t("Your private video library.")}</p><nav aria-label={t("Footer navigation")}><Link to="/setup">{t("Setup guide")}</Link><a href={webSource} target="_blank" rel="noreferrer">{t("Web source")}</a><a href={cliSource} target="_blank" rel="noreferrer">{t("CLI source")}</a><a href="https://www.npmjs.com/package/virelo" target="_blank" rel="noreferrer">npm</a></nav></footer>
+    <footer className="landing-footer landing-container"><Link to={publicPath(locale, 'landing')} className="landing-brand" aria-label={t("Virelo home")}><img src="/virelo-icon-180.png?v=ribbon-1" alt="" width="32" height="32"/><span>Virelo</span></Link><p>{t("Your private video library.")}</p><nav aria-label={t("Footer navigation")}><Link to={publicPath(locale, 'setup')}>{t("Setup guide")}</Link><a href={webSource} target="_blank" rel="noreferrer">{t("Web source")}</a><a href={cliSource} target="_blank" rel="noreferrer">{t("CLI source")}</a><a href="https://www.npmjs.com/package/virelo" target="_blank" rel="noreferrer">npm</a></nav></footer>
   </div>;
 }
 

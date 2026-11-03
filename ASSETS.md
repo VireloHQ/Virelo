@@ -54,6 +54,16 @@ For new source encodes, follow the source/offset details in the bundled credits,
 
 If Playwright or Chromium is installed outside this project, set `VIRELO_TEST_NODE_PACKAGE` to a `package.json` that can resolve Playwright and `VIRELO_TEST_CHROMIUM` to the browser executable. `VIRELO_TEST_FFMPEG` and `VIRELO_TEST_FFPROBE` can override the tool paths. The capture script starts a localhost-only Vite instance, uses a fresh browser context and an isolated demonstration catalog, verifies that all three clips appear, and checks the final video format, duration and decoding. Generated recordings and working files remain in a temporary directory printed by the script, never in a personal library.
 
+## Social preview
+
+The 1200 × 630 social image at 'og/virelo.png' is a resized, letterboxed export
+of the project's Product Hunt device composition, not a generated image. It uses
+the maintainer-supplied ribbon mark and isolated Virelo screenshots in laptop and
+phone mockups. The on-screen films are Sintel (Blender Foundation, CC BY 3.0) and
+Spring (Blender Foundation, CC BY 4.0). Stills are cropped and resized; attribution
+is included in the image. Sources and license links are listed in
+['landing/library-credits.txt'](web/public/landing/library-credits.txt).
+
 ## Adding media
 
 Only contribute media that can be redistributed with this repository. Record demonstrations with project-created or explicitly licensed sample files and fresh browser storage; do not include personal libraries, downloaded social-media clips without permission, account credentials or private local paths. Document the source and any required license notices here.

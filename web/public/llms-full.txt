@@ -1,6 +1,6 @@
 # Virelo
 
-Virelo is a private video library for files a user already owns. It presents local folders through a streaming-style interface with search, favorites, watch progress, folder queues, details, and a Shorts-style feed.
+Virelo is a free, open-source video player for local files. It turns selected folders into a private streaming-style library with search, favorites, watch progress, named playlists, editable queues, optional volume leveling and a swipeable Shorts feed.
 
 Official site: https://virelo.riyo.me/
 Setup guide: https://virelo.riyo.me/setup
@@ -8,6 +8,17 @@ Web player: https://virelo.riyo.me/app
 Web source: https://github.com/VireloHQ/Virelo-Web
 CLI source: https://github.com/VireloHQ/Virelo
 npm package: https://www.npmjs.com/package/virelo
+License: AGPL-3.0-only, https://www.gnu.org/licenses/agpl-3.0.html
+
+## Localized pages
+
+The product overview and setup guide are available at stable language-specific URLs:
+
+- English: https://virelo.riyo.me/ and https://virelo.riyo.me/setup
+- Japanese: https://virelo.riyo.me/ja and https://virelo.riyo.me/ja/setup
+- Simplified Chinese: https://virelo.riyo.me/zh-CN and https://virelo.riyo.me/zh-CN/setup
+- Korean: https://virelo.riyo.me/ko and https://virelo.riyo.me/ko/setup
+- Russian: https://virelo.riyo.me/ru and https://virelo.riyo.me/ru/setup
 
 ## Privacy model
 

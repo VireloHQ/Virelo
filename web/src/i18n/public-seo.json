@@ -1,0 +1,37 @@
+{
+  "en": {
+    "landing": "Virelo — Private Video Player, Shorts & Playlists",
+    "setup": "Virelo Setup — Self-Hosted Video Library with npx",
+    "description": "Play local videos in your browser without uploads. Swipe through Shorts, build playlists and level volume. Free and open source, with optional self-hosting.",
+    "guide": "Run Virelo with npx, add video folders and set up accounts, FFmpeg and playback on your trusted network. Guides for Windows, macOS, Linux and Android.",
+    "image": "Virelo video library and Shorts player on a laptop and phone."
+  },
+  "ja": {
+    "landing": "Virelo｜ローカル動画プレイヤー・ショート動画・プレイリスト",
+    "setup": "Vireloの使い方｜npm版のセットアップと自宅ネットワークでの再生",
+    "description": "Vireloは、手元の動画をアップロードせずに楽しめる無料・オープンソースの動画プレイヤー。ショート動画のスワイプ、プレイリスト、音量の自動調整に対応。ブラウザーでそのまま使うか、npm版を自宅で動かせます。",
+    "guide": "npx vireloで動画フォルダーをライブラリに。Windows・macOS・Linux・Androidでの起動、アカウント作成、FFmpeg、自宅ネットワークでの再生方法を紹介します。",
+    "image": "PCとスマートフォンに表示されたVireloの動画ライブラリとショート動画プレイヤー。"
+  },
+  "zh-CN": {
+    "landing": "Virelo — 本地视频播放器、短视频与播放列表",
+    "setup": "Virelo 使用指南 — npm 自托管与局域网播放",
+    "description": "Virelo 是免费开源的本地视频播放器，无需上传即可在浏览器观看。支持短视频滑动播放、播放列表和自动音量调节，也可通过 npm 自托管，管理账号、媒体库权限和影片信息。",
+    "guide": "通过 npx virelo 启动视频库。了解 Windows、macOS、Linux 和 Android 的安装方法，以及账号、FFmpeg 和可信局域网播放的设置。",
+    "image": "笔记本电脑和手机上显示的 Virelo 视频库与短视频播放器。"
+  },
+  "ko": {
+    "landing": "Virelo — 로컬 동영상 플레이어, 쇼츠와 재생목록",
+    "setup": "Virelo 사용 가이드 — npm 서버와 홈 네트워크 재생",
+    "description": "Virelo는 업로드 없이 브라우저에서 로컬 동영상을 재생하는 무료 오픈 소스 플레이어입니다. 쇼츠, 재생목록, 자동 음량 조절을 지원하며 npm으로 직접 서버를 운영할 수도 있습니다.",
+    "guide": "npx virelo로 동영상 라이브러리를 시작하세요. Windows, macOS, Linux, Android에서의 실행과 계정, FFmpeg, 신뢰할 수 있는 네트워크 재생 설정을 안내합니다.",
+    "image": "노트북과 스마트폰에서 실행 중인 Virelo 동영상 라이브러리와 쇼츠 플레이어."
+  },
+  "ru": {
+    "landing": "Virelo — видеоплеер для локальных файлов и плейлистов",
+    "setup": "Настройка Virelo — свой видеосервер через npx",
+    "description": "Смотрите локальные видео в браузере без загрузки в облако. Shorts, плейлисты и выравнивание громкости. Бесплатно, с открытым кодом и возможностью своего сервера.",
+    "guide": "Запустите видеотеку командой npx virelo. Настройка для Windows, macOS, Linux и Android: папки, учётные записи, FFmpeg и просмотр в доверенной домашней сети.",
+    "image": "Видеотека Virelo и проигрыватель Shorts на ноутбуке и смартфоне."
+  }
+}

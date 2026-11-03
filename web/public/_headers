@@ -19,8 +19,38 @@
 
 /app
   Cache-Control: no-cache
+  X-Robots-Tag: noindex, follow
 
 /app/*
+  Cache-Control: no-cache
+  X-Robots-Tag: noindex, follow
+
+/app.html
+  Cache-Control: no-cache
+  X-Robots-Tag: noindex, follow
+
+/ja
+  Cache-Control: no-cache
+
+/ja/setup
+  Cache-Control: no-cache
+
+/zh-CN
+  Cache-Control: no-cache
+
+/zh-CN/setup
+  Cache-Control: no-cache
+
+/ko
+  Cache-Control: no-cache
+
+/ko/setup
+  Cache-Control: no-cache
+
+/ru
+  Cache-Control: no-cache
+
+/ru/setup
   Cache-Control: no-cache
 
 /library
@@ -65,6 +95,13 @@
 /llms-full.txt
   Content-Type: text/plain; charset=utf-8
   Cache-Control: public, max-age=3600
+
+/product.md
+  Content-Type: text/markdown; charset=utf-8
+  Cache-Control: public, max-age=3600
+
+/og/*
+  Cache-Control: public, max-age=86400
 
 /assets/*
   Cache-Control: public, max-age=31536000, immutable

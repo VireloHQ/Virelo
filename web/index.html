@@ -6,145 +6,18 @@
     <meta name="theme-color" content="#090909" />
     <meta name="color-scheme" content="dark" />
     <meta name="application-name" content="Virelo" />
-    <meta name="description" content="Turn local videos into a private streaming-style library. Browse and play in your browser without uploading your files." />
-    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
-    <link rel="canonical" href="https://virelo.riyo.me/" />
-    <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://virelo.riyo.me/" />
-    <meta property="og:locale" content="en_US" />
-    <meta property="og:site_name" content="Virelo" />
-    <meta property="og:title" content="Virelo" />
-    <meta property="og:description" content="Turn local videos into a streaming-style library. No uploads required." />
-    <meta property="og:image" content="https://virelo.riyo.me/virelo-icon-512.png?v=ribbon-1" />
-    <meta property="og:image:secure_url" content="https://virelo.riyo.me/virelo-icon-512.png?v=ribbon-1" />
-    <meta property="og:image:type" content="image/png" />
-    <meta property="og:image:alt" content="Virelo logo" />
-    <meta property="og:image:width" content="512" />
-    <meta property="og:image:height" content="512" />
-    <meta name="twitter:card" content="summary" />
-    <meta name="twitter:url" content="https://virelo.riyo.me/" />
-    <meta name="twitter:title" content="Virelo" />
-    <meta name="twitter:description" content="Turn local videos into a streaming-style library. No uploads required." />
-    <meta name="twitter:image" content="https://virelo.riyo.me/virelo-icon-512.png?v=ribbon-1" />
-    <meta name="twitter:image:alt" content="Virelo logo" />
+    <meta name="robots" content="noindex, follow" />
+    <link rel="canonical" href="https://virelo.riyo.me/app" />
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png?v=ribbon-1" />
     <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48.png?v=ribbon-1" />
-    <link rel="shortcut icon" href="/favicon-32.png?v=ribbon-1" />
     <link rel="apple-touch-icon" sizes="180x180" href="/virelo-icon-180.png?v=ribbon-1" />
     <link rel="manifest" href="/manifest.webmanifest?v=ribbon-1" />
     <title>Virelo</title>
-    <script type="application/ld+json">
-      {
-        "@context": "https://schema.org",
-        "@graph": [
-          {
-            "@type": "Organization",
-            "@id": "https://virelo.riyo.me/#organization",
-            "name": "Virelo",
-            "url": "https://virelo.riyo.me/",
-            "logo": {
-              "@type": "ImageObject",
-              "url": "https://virelo.riyo.me/virelo-icon-512.png?v=ribbon-1"
-            },
-            "sameAs": [
-              "https://github.com/VireloHQ/Virelo",
-              "https://www.npmjs.com/package/virelo"
-            ]
-          },
-          {
-            "@type": "WebSite",
-            "@id": "https://virelo.riyo.me/#website",
-            "url": "https://virelo.riyo.me/",
-            "name": "Virelo",
-            "description": "Turn local videos into a private streaming-style library without uploading your files.",
-            "inLanguage": "en",
-            "publisher": { "@id": "https://virelo.riyo.me/#organization" }
-          },
-          {
-            "@type": "SoftwareApplication",
-            "@id": "https://virelo.riyo.me/#software",
-            "name": "Virelo",
-            "url": "https://virelo.riyo.me/",
-            "applicationCategory": "MultimediaApplication",
-            "operatingSystem": "Web, Windows, macOS, Linux, Android",
-            "description": "A private, local-first video library with search, favorites, watch progress, queues, and a Shorts feed.",
-            "isAccessibleForFree": true,
-            "offers": {
-              "@type": "Offer",
-              "price": "0",
-              "priceCurrency": "USD"
-            },
-            "publisher": { "@id": "https://virelo.riyo.me/#organization" }
-          },
-          {
-            "@type": "FAQPage",
-            "@id": "https://virelo.riyo.me/#faq",
-            "mainEntity": [
-              {
-                "@type": "Question",
-                "name": "Does Virelo upload my videos?",
-                "acceptedAnswer": {
-                  "@type": "Answer",
-                  "text": "No. The web player reads only the folders you choose, and your video files stay on your device."
-                }
-              },
-              {
-                "@type": "Question",
-                "name": "Can I run Virelo without installing it globally?",
-                "acceptedAnswer": {
-                  "@type": "Answer",
-                  "text": "Yes. Open a terminal in your video folder and run npx virelo."
-                }
-              },
-              {
-                "@type": "Question",
-                "name": "Can I watch from another device?",
-                "acceptedAnswer": {
-                  "@type": "Answer",
-                  "text": "Yes. Run npx virelo --host 0.0.0.0 on a trusted local network, then open the host computer's local address from your other device."
-                }
-              },
-              {
-                "@type": "Question",
-                "name": "Will every video work in my browser?",
-                "acceptedAnswer": {
-                  "@type": "Answer",
-                  "text": "Playback depends on your browser’s video codecs. The web player supports local audio conversion and embedded text subtitles for supported files. For broader compatibility, use the CLI with FFmpeg."
-                }
-              }
-            ]
-          }
-        ]
-      }
-    </script>
-    <style>
-      html,body{margin:0;background:var(--page,#090909);color:var(--text,#f5f5f5)}
-      .static-shell{min-height:100vh;padding:clamp(32px,8vw,112px);background:#090909;color:#f5f5f5;font-family:system-ui,sans-serif}.static-shell>div{max-width:900px;margin:auto}.static-shell h1{margin:0 0 24px;font-size:clamp(44px,7vw,84px);font-weight:750;line-height:1.03;letter-spacing:-.05em}.static-shell p,.static-shell li{color:#b2b2b2;font-size:18px;line-height:1.7}.static-shell a{display:inline-block;margin:12px 24px 12px 0;color:#fff;text-underline-offset:4px}.static-shell h2{margin:36px 0 12px;font-size:28px}.static-shell code{color:#fff}.static-shell summary{padding:16px 0;cursor:pointer}
-    </style>
+    <style>html,body{margin:0;background:var(--page,#090909);color:var(--text,#f5f5f5)}</style>
   </head>
   <body>
     <div id="root"></div>
-    <!-- No-JS fallback only; it must not appear before the app's splash screen. -->
-    <noscript>
-      <main class="static-shell">
-        <div>
-          <h1>Your collection.<br />Now showing.</h1>
-          <p>Your video folders, ready to watch in your browser. No account, uploads or installation required.</p>
-          <p><a href="/app">Open web player</a><a href="/setup">Setup guide</a></p>
-          <h2>A home for your videos.</h2>
-          <p>Virelo is a free, open-source video library with Explorer navigation, search, favorites, watch progress, named playlists, editable queues, volume leveling and a swipeable Shorts feed. Choose from four player styles and five interface languages. The web player reads selected files on your device and stores library state in your browser. It needs no installation; supported browsers can also add it as a PWA.</p>
-          <h2>Start with a folder.</h2>
-          <p>Choose a folder in the web player, or open a terminal in your video folder and run <code>npx virelo</code>. The CLI requires stable Node.js 22.23.4+, 24.22.1+ or 26.12.1+ within those release lines, and supports Windows, macOS, Linux and Android via Termux. Virelo CLI 0.4+ requires sign-in; create the first administrator using localhost on the server device. Network access is opt-in and intended for trusted private networks.</p>
-          <p>The self-hosted server also matches movie and series information, posters and backdrops automatically, with separate accounts, personal playlists, library permissions, private announcements and optional disclosed activity monitoring. Automatic movie and series information is not available in the browser-only player.</p>
-          <h2>A few things to know.</h2>
-          <details><summary>Does Virelo upload my videos?</summary><p>No. The web player reads only the folders you choose, and your video files stay on your device.</p></details>
-          <details><summary>Can I run Virelo without installing it globally?</summary><p>Yes. Open a terminal in your video folder and run <code>npx virelo</code>.</p></details>
-          <details><summary>Can I watch from another device?</summary><p>Yes. Run <code>npx virelo --host 0.0.0.0</code> on a trusted local network, then open the host computer’s local address from your other device.</p></details>
-          <details><summary>Will every video work in my browser?</summary><p>Playback depends on your browser’s video codecs. The web player supports local audio conversion and embedded text subtitles for supported files. For broader compatibility, use the CLI with FFmpeg.</p></details>
-          <p><a href="https://github.com/VireloHQ/Virelo-Web">Web source</a><a href="https://github.com/VireloHQ/Virelo">CLI source</a></p>
-        </div>
-      </main>
-    </noscript>
+    <noscript><p>Enable JavaScript to open local videos in Virelo. <a href="/">About Virelo</a> · <a href="/setup">Setup guide</a></p></noscript>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

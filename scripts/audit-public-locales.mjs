@@ -18,6 +18,7 @@ const languages = [
 const catalogs = Object.fromEntries(await Promise.all(languages.map(async locale => [locale.code,
   JSON.parse(await readFile(join(repo,'web/src/i18n/messages',locale.code+'.json'),'utf8'))])));
 const text = (locale, message) => catalogs[locale.code][message];
+const publicUrl = (locale, path = '/') => (locale.code === 'en' ? '' : '/' + locale.code) + (path === '/' ? '' : path) || '/';
 const screenshots = await mkdtemp(join(tmpdir(), 'virelo-locales-'));
 const server = spawn(process.execPath, [join(repo, 'node_modules/vite/bin/vite.js'), 'preview', '--host', '127.0.0.1', '--port', '0'],
   { cwd: repo, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
@@ -50,18 +51,18 @@ try {
     for (const width of [320, 390, 768, 1024, 1440]) {
       await page.setViewportSize({ width, height: width > 760 ? 1000 : 844 });
       for (const path of ['/', '/setup']) {
-        await page.goto(base + path);
+        await page.goto(base + publicUrl(locale, path));
         await page.locator(path === '/' ? '#landing-title' : '#setup-title').waitFor();
         await page.waitForFunction(code => document.documentElement.lang === code, locale.code);
         await page.evaluate(() => document.fonts.ready);
-        check(await page.title() === 'Virelo', locale.code + ' preserves product title');
+        check((await page.title()).includes('Virelo') && (await page.title()).length > 10, locale.code + ' has a descriptive localized title');
         check(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), locale.code + ' fits ' + path + ' at ' + width);
         check(await page.locator('h1').count() === 1, locale.code + ' has one heading');
         const action = await page.locator('.landing-header-actions .landing-open-link').boundingBox();
         const selector = await page.locator('.public-language-select').boundingBox();
         check(action.x >= 0 && action.x + action.width <= width + 1 && selector.x >= 0 && selector.x + selector.width <= width + 1,
           locale.code + ' header actions remain in bounds at ' + width);
-        check(await page.locator('link[rel="canonical"]').getAttribute('href') === 'https://virelo.riyo.me' + path,
+        check(await page.locator('link[rel="canonical"]').getAttribute('href') === 'https://virelo.riyo.me' + publicUrl(locale, path),
           locale.code + ' canonical follows the public page');
         const graph = await page.locator('script[type="application/ld+json"]').evaluate(node => JSON.parse(node.textContent)['@graph']);
         check(graph.find(entity => entity['@type'] === 'WebPage').inLanguage === locale.code, 'structured page language');
@@ -155,7 +156,7 @@ try {
     const selected = locale.code === 'ja' ? languages[2] : languages[1];
     await choose(page, selected);
     check(await page.evaluate(() => localStorage.getItem('virelo.language.v1')) === selected.code, 'explicit language saved');
-    await page.locator('.landing-nav a[href="/setup"]').click();
+    await page.locator('.landing-nav a[href="' + publicUrl(selected, '/setup') + '"]').click();
     await page.locator('#setup-title').waitFor();
     check(await page.locator('#setup-title').textContent() === text(selected, 'Run Virelo locally.'), 'selection survives client-side guide navigation');
     await page.reload();
@@ -164,7 +165,7 @@ try {
     await page.locator('.landing-header-actions a[href="/app"]').click();
     await page.locator('.app-shell').waitFor();
     check(await page.evaluate(() => document.documentElement.lang) === selected.code, 'app and landing share the selected language');
-    await page.goto(base);
+    await page.goto(base + publicUrl(selected));
     await page.waitForFunction(code => document.documentElement.lang === code, selected.code);
     const trigger = page.locator('.public-language-select .picker-trigger');
     await trigger.focus(); await page.keyboard.press('Enter');
@@ -191,7 +192,7 @@ try {
   page.on('pageerror', error => blockedErrors.push(error.message));
   await page.goto(base); await page.locator('#landing-title').waitFor();
   await choose(page, languages[1]);
-  await page.locator('.landing-nav a[href="/setup"]').click(); await page.locator('#setup-title').waitFor();
+  await page.locator('.landing-nav a[href="/ja/setup"]').click(); await page.locator('#setup-title').waitFor();
   check(await page.locator('#setup-title').textContent() === text(languages[1], 'Run Virelo locally.'), 'blocked storage keeps the session choice');
   check(blockedErrors.length === 0, 'blocked storage does not crash localization');
   await blocked.close();

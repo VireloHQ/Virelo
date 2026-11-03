@@ -1,11 +1,12 @@
 # Virelo
 
-> Virelo turns local video folders into a private streaming-style library. Files remain on the user's device.
+> Virelo is a free, open-source video player for local folders, with Shorts, named playlists, editable queues and optional volume leveling. Use the browser-only player or a self-hosted npm server.
 
 ## Main pages
 
 - [Virelo home](https://virelo.riyo.me/): Product overview, privacy model, and ways to use Virelo.
 - [Setup guide](https://virelo.riyo.me/setup): CLI setup for Windows, macOS, Linux, and Android with Termux.
+- [Product facts](https://virelo.riyo.me/product.md): Editions, features, requirements, privacy and license.
 - [Web player](https://virelo.riyo.me/app): Browser-only player for user-selected local folders.
 
 ## Project links
@@ -24,3 +25,12 @@
 - Virelo includes Explorer navigation, named playlists, editable queues, optional volume leveling and a swipeable Shorts feed for portrait videos.
 - Four controller styles, custom accent colors and five interface languages are available.
 - Automatic movie/series information and artwork, accounts, library permissions and administrator announcements require the self-hosted server, not the browser-only player.
+- The license is AGPL-3.0-only. Film samples and third-party dependencies retain their own licenses.
+
+## Languages
+
+- [English](https://virelo.riyo.me/)
+- [日本語](https://virelo.riyo.me/ja)
+- [简体中文](https://virelo.riyo.me/zh-CN)
+- [한국어](https://virelo.riyo.me/ko)
+- [Русский](https://virelo.riyo.me/ru)

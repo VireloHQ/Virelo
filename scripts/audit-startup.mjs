@@ -25,7 +25,8 @@ const server = createServer(async (request, response) => {
         response.writeHead(404).end();
         return;
       }
-      data = await readFile(resolve(root, 'index.html'));
+      const publicFile = url.pathname === '/' ? 'index.html' : url.pathname.slice(1) + '.html';
+      data = await readFile(resolve(root, url.pathname.startsWith('/app') ? 'app.html' : publicFile));
       extension = '.html';
     }
     response.writeHead(200, {
@@ -55,7 +56,9 @@ try {
         await page.locator('#root').waitFor({ state: 'attached' });
         await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
         check(await page.locator('.static-shell').count() === 0, `${pathname} ${viewport.width}: no fallback landing page before JavaScript`);
-        check(await page.locator('#root').innerHTML() === '', `${pathname} ${viewport.width}: no marketing content in the first app frame`);
+        const appRoute = pathname.startsWith('/app');
+        check(appRoute ? await page.locator('#root').innerHTML() === '' : await page.locator('h1').count() === 1,
+          pathname + ' ' + viewport.width + ': ' + (appRoute ? 'no marketing content in the first app frame' : 'public content readable before JavaScript'));
       } finally { releaseScripts(); await context.close(); }
     }
   }
@@ -102,8 +105,8 @@ try {
   const nojsPage = await nojs.newPage();
   await nojsPage.goto(base);
   check(await nojsPage.getByRole('heading', { level: 1 }).count() === 1, 'JavaScript-disabled visitors still get a product heading');
-  check(await nojsPage.locator('.static-shell').isVisible(), 'no-JavaScript fallback is visible only when needed');
-  check((await nojsPage.locator('main').innerText()).includes('npx virelo') && await nojsPage.locator('a[href="/app"]').isVisible(), 'no-JavaScript installation and launch information is preserved');
+  check(await nojsPage.locator('.landing-hero').isVisible(), 'JavaScript-disabled visitors get the real LP rather than a separate fallback');
+  check((await nojsPage.locator('main').textContent()).includes('npx virelo') && await nojsPage.locator('a[href="/app"]').first().isVisible(), 'no-JavaScript installation and launch information is preserved');
   await nojs.close();
   console.log(JSON.stringify({ checks }));
 } finally {

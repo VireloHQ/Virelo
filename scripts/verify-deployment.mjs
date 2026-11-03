@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
 import {readFile} from 'node:fs/promises';
+import {publicPages, assertPublicHtml} from './helpers/public-seo.mjs';
 
 const origin = new URL(process.argv[2] || 'https://virelo.riyo.me');
 assert.ok(['http:','https:'].includes(origin.protocol), 'Expected an HTTP(S) site URL');
@@ -13,19 +14,33 @@ const digest = bytes => createHash('sha256').update(bytes).digest('hex');
 const response = await get('/');
 assert.equal(response.status,200);
 const html = await response.text();
-const entry = html.match(/src="([^"]*\/assets\/index-[^"]+\.js)"/)?.[1];
-assert.ok(entry,'Production HTML must reference a hashed app entry');
+assertPublicHtml(html, publicPages[0]);
+const entry = html.match(/<script type="module"[^>]*src="([^"]+\.js)"/)?.[1];
+assert.ok(entry,'Production HTML must reference a hashed public entry');
+const expectedHtml = await readFile(new URL('../dist/index.html',import.meta.url),'utf8');
+assert.ok(expectedHtml.includes(entry),'Production references the current built public entry');
 const bundle = await get(entry);
 assert.equal(bundle.status,200);
-const landing = (await bundle.text()).match(/LandingView-[\w-]+\.js/)?.[0];
-assert.ok(landing,'Production app must include the landing route');
-const route = await get('/assets/'+landing);
-assert.equal(route.status,200);
-const code = await route.text();
-for (const name of ['hero-coast.webp','shorts-blender-demo.mp4','library-credits.txt']) assert.ok(code.includes(name),'Landing route uses '+name);
-for (const message of ['Your playlists. Your order.','A more comfortable volume.','Movie and series info, posters and backdrops, matched automatically.']) {
-  assert.ok(code.includes(message),'Deployed landing includes current feature: '+message);
+for (const message of ['Your playlists. Your order.','A more comfortable volume.','Is Virelo free and open source?']) assert.ok(html.includes(message),'Current feature in crawlable HTML: '+message);
+await Promise.all(publicPages.slice(1).map(async page=>{
+  const response=await get(page.path);assert.equal(response.status,200,page.path);
+  assertPublicHtml(await response.text(),page);
+  console.log('Verified localized public page:',page.path);
+}));
+for(const path of ['/app','/app/settings','/app/watch/1']){
+  const response=await get(path),document=await response.text();assert.equal(response.status,200,path);
+  assert.ok(document.includes('name="robots" content="noindex, follow"')&&!document.includes('landing-title'),'Private shell: '+path);
 }
+const sitemap=await get('/sitemap.xml');assert.equal(sitemap.status,200);
+assert.deepEqual([...(await sitemap.text()).matchAll(/<loc>(.*?)<\/loc>/g)].map(match=>match[1]),publicPages.map(page=>'https://virelo.riyo.me'+page.path));
+const card=await get('/og/virelo.png');assert.equal(card.status,200);
+assert.equal(digest(Buffer.from(await card.arrayBuffer())),digest(await readFile(new URL('../web/public/og/virelo.png',import.meta.url))),'Current social image');
+const facts=await get('/product.md');assert.equal(facts.status,200);
+assert.equal(await facts.text(),await readFile(new URL('../web/public/llms-full.txt',import.meta.url),'utf8'),'Current machine-readable facts');
+const robots=await get('/robots.txt');assert.equal(robots.status,200);
+const policy=await robots.text();
+assert.ok(policy.includes('User-agent: OAI-SearchBot')&&policy.includes('User-agent: Claude-SearchBot'));
+assert.ok(policy.includes('User-agent: GPTBot')&&policy.includes('Disallow: /'));
 
 await Promise.all(['hero-coast.webp','library-desktop.webp','library-mobile.webp','player-desktop.webp','player-mobile.webp','library-credits.txt','shorts-blender-demo.mp4','shorts-blender-demo.webp','shorts-blender-credits.txt'].map(async name=>{
   const deployed = await get('/landing/'+name);

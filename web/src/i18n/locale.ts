@@ -15,6 +15,12 @@ const fieldValidation = new Set(['{value0} is required.','{value0} must contain 
 export function isLocale(value: unknown): value is Locale {
   return languages.some(language => language.value === value);
 }
+export function publicLocaleForPath(pathname: string): Locale | null {
+  const path = pathname.replace(/\/+$/, '') || '/';
+  if (path === '/' || path === '/setup') return 'en';
+  const match = path.match(/^\/([^/]+)(?:\/setup)?$/);
+  return match && match[1] !== 'en' && isLocale(match[1]) ? match[1] : null;
+}
 export function resolveLocale(saved: unknown, preferred: readonly string[]): Locale {
   if (isLocale(saved)) return saved;
   for (const value of preferred) {

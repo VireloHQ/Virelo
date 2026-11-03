@@ -8,14 +8,13 @@ test('the React root is empty before JavaScript starts', () => {
   assert.match(html, /<div id="root">\s*<\/div>/);
 });
 
-test('static landing content is only available when JavaScript is disabled', () => {
+test('the private app has a JavaScript notice, not a duplicate marketing page', () => {
   const fallback = html.match(/<noscript>([\s\S]*?)<\/noscript>/)?.[1];
   assert.ok(fallback);
-  assert.match(fallback, /<main class="static-shell">/);
-  assert.match(fallback, /Your collection\./);
-  assert.match(fallback, /npx virelo/);
-  assert.match(fallback, /files stay on your device/);
-  assert.doesNotMatch(html.replace(/<noscript>[\s\S]*?<\/noscript>/g, ''), /<main class="static-shell">/);
+  assert.match(fallback, /Enable JavaScript/);
+  assert.match(fallback, /About Virelo/);
+  assert.doesNotMatch(html, /class="static-shell"|Your collection\./);
+  assert.match(html, /name="robots" content="noindex, follow"/);
 });
 
 test('critical startup styling provides a dark background without an external stylesheet', () => {

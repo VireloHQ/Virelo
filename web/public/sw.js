@@ -1,4 +1,4 @@
-const CACHE_NAME = 'virelo-web-shell-ribbon-1';
+const CACHE_NAME = 'virelo-web-shell-public-1';
 
 function responseKind(request, url) {
   if (/^\/(?:api|hls|audio|playback|media)(?:\/|$)/.test(url.pathname)) return null;
@@ -36,7 +36,11 @@ function validResponse(response, kind) {
 
 function cacheKey(request, url, kind) {
   // Keep a bounded shell, but retain exact hashed assets for still-open builds.
-  if (kind === 'document') return url.pathname === '/app' || url.pathname.startsWith('/app/') ? '/app' : '/';
+  if (kind === 'document') {
+    const path = url.pathname.replace(/\/+$/, '') || '/';
+    if (/^\/(?:ja|zh-CN|ko|ru)(?:\/setup)?$/.test(path) || path === '/setup') return path;
+    return path === '/app' || path.startsWith('/app/') ? '/app' : '/';
+  }
   if ((kind === 'script' || kind === 'style') && url.searchParams.has('virelo-retry')) {
     const key = new URL(url);
     key.search = key.search.slice(1).split('&').filter((part) => !new URLSearchParams(part).has('virelo-retry')).join('&');

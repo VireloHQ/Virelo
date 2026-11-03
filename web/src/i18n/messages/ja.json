@@ -1276,5 +1276,10 @@
   "{value0} unread": "未読{value0}件",
   "{value0}. Press Space to play or pause.": "{value0}。Spaceキーで再生・一時停止できます。",
   "{value0}p": "{value0}p",
-  "· {value0}-day history": "· {value0}日間の履歴"
+  "· {value0}-day history": "· {value0}日間の履歴",
+  "Virelo is a free, open-source video player for your own movies, series and Shorts.": "Vireloは、手元の映画・ドラマ・ショート動画を楽しむ、無料・オープンソースの動画プレイヤーです。",
+  "Is Virelo free and open source?": "Vireloは無料・オープンソースですか？",
+  "Yes. Virelo is free and open source under AGPL-3.0-only. The source code is available on GitHub.": "はい。VireloはAGPL-3.0-onlyで公開されている、無料のオープンソースソフトウェアです。ソースコードはGitHubで公開しています。",
+  "What is the difference between the web player and the self-hosted server?": "Web版とセルフホスト版は何が違いますか？",
+  "The web player opens files on the device you are using and needs no account. The self-hosted npm version runs on your computer and adds accounts, library permissions, automatic movie and series metadata, and network playback.": "Web版は、今使っている端末の動画を開くプレイヤーです。アカウントは不要です。セルフホストのnpm版はPC上で動き、アカウント管理、ライブラリのアクセス制限、映画・ドラマの情報の自動取得、ネットワーク経由の再生ができます。"
 }

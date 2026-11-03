@@ -1276,5 +1276,10 @@
   "{value0} unread": "{value0} 条未读",
   "{value0}. Press Space to play or pause.": "{value0}。按空格键播放或暂停。",
   "{value0}p": "{value0}p",
-  "· {value0}-day history": "· 保留 {value0} 天的记录"
+  "· {value0}-day history": "· 保留 {value0} 天的记录",
+  "Virelo is a free, open-source video player for your own movies, series and Shorts.": "Virelo 是免费开源的视频播放器，让你轻松观看自己的电影、剧集和短视频。",
+  "Is Virelo free and open source?": "Virelo 是免费开源的吗？",
+  "Yes. Virelo is free and open source under AGPL-3.0-only. The source code is available on GitHub.": "是的。Virelo 是以 AGPL-3.0-only 许可证发布的免费开源软件，源代码可在 GitHub 上查看。",
+  "What is the difference between the web player and the self-hosted server?": "网页版和自托管版有什么区别？",
+  "The web player opens files on the device you are using and needs no account. The self-hosted npm version runs on your computer and adds accounts, library permissions, automatic movie and series metadata, and network playback.": "网页版直接打开当前设备上的视频，无需账号。通过 npm 自托管的版本在你的电脑上运行，提供账号管理、媒体库访问权限、电影和剧集信息自动获取以及网络播放功能。"
 }

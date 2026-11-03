@@ -1,5 +1,5 @@
 import en from './messages/en.json';
-import { isLocale, LANGUAGE_KEY, resolveLocale, translate, type Catalog, type Locale, type MessageValue } from './locale';
+import { isLocale, LANGUAGE_KEY, resolveLocale, translate, publicLocaleForPath, type Catalog, type Locale, type MessageValue } from './locale';
 
 const loaders = {
   en: async () => en,
@@ -37,6 +37,8 @@ export async function setLocale(value: Locale, persist = true): Promise<void> {
   listeners.forEach(listener => listener());
 }
 export function deviceLocale(): Locale {
+  const publicLocale = typeof window === 'undefined' || !window.location ? null : publicLocaleForPath(window.location.pathname);
+  if (publicLocale) return publicLocale;
   let saved: unknown;
   try {
     const current = localStorage.getItem(LANGUAGE_KEY);

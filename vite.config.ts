@@ -1,11 +1,13 @@
 import { defineConfig } from 'vite';
+import { fileURLToPath } from 'node:url';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import { ffmpegAssets } from './scripts/ffmpeg-assets.ts';
+import { publicPreview } from './scripts/public-preview.ts';
 
 export default defineConfig({
   root: 'web',
-  plugins: [react(), tailwindcss(), ffmpegAssets()],
+  plugins: [react(), tailwindcss(), ffmpegAssets(), publicPreview()],
   optimizeDeps: { exclude: ['@ffmpeg/ffmpeg'] },
   build: {
     outDir: '../dist',
@@ -14,6 +16,7 @@ export default defineConfig({
     target: 'es2022',
     cssCodeSplit: true,
     rollupOptions: {
+      input: { app: fileURLToPath(new URL('./web/index.html', import.meta.url)), landing: fileURLToPath(new URL('./web/landing.html', import.meta.url)) },
       output: {
         manualChunks(id) {
           if (id.includes('node_modules/@heroui')) return 'heroui';

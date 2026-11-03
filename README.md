@@ -126,9 +126,13 @@ Keep the existing host until the Pages preview has passed checks for `/`, `/setu
 
 ### Deployment verification
 
+The landing page and setup guide are statically rendered in five languages.
+See [public search visibility](docs/SEO-GEO.md) for canonical URLs, crawler policy,
+metadata maintenance and search-console follow-up.
+
 After a Git-triggered build succeeds, run `npm run verify:deployment` (or pass
-another production URL). This checks the live landing bundle and compares deployed
-Hero/Shorts/credit bytes to the repository. A successful push alone does not deploy
+another production URL). This checks all ten localized public pages, private app
+shells, sitemap, social card and exact landing-media bytes. A successful push alone does not deploy
 a site. When a repository is recreated, reconnect it in the hosting dashboard;
 the same repository URL can refer to a different repository ID.
 

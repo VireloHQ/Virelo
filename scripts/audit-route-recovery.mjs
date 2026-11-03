@@ -45,7 +45,7 @@ async function serve(root) {
     if (!path.startsWith(resolve(root) + '/'.replace('/', process.platform === 'win32' ? '\\' : '/')) && path !== resolve(root)) { response.writeHead(403); response.end(); return; }
     let data, extension = extname(path);
     try { data = await readFile(path); }
-    catch { if (url.pathname.startsWith('/assets/')) { response.writeHead(404); response.end(); return; } data = await readFile(join(root,'index.html')); extension = '.html'; }
+    catch { if (url.pathname.startsWith('/assets/')) { response.writeHead(404); response.end(); return; } data = await readFile(join(root,root === webBuild && url.pathname.startsWith('/app') ? 'app.html' : 'index.html')); extension = '.html'; }
     response.setHeader('Content-Type', {'.html':'text/html','.js':'text/javascript','.css':'text/css','.txt':'text/plain','.png':'image/png','.svg':'image/svg+xml','.ico':'image/x-icon','.woff2':'font/woff2','.webmanifest':'application/manifest+json'}[extension] || 'application/octet-stream');
     response.end(data);
   });
@@ -92,7 +92,7 @@ async function continuity(page, before, label) {
   check(Math.abs(actual.volume - 0.37) < 0.001, label + ' volume retained');
 }
 try {
-  for (const [mode,root] of [['npm',npmBuild],['web',webBuild]]) {
+  for (const [mode,root] of [['npm',npmBuild],['web',webBuild]].filter(([mode]) => !process.env.VIRELO_AUDIT_MODE || process.env.VIRELO_AUDIT_MODE === mode)) {
     const base = await serve(root), prefix = mode === 'web' ? '/app' : '';
     const legalContext = await browser.newContext({serviceWorkers:'block'});
     const legalPage = await legalContext.newPage();
@@ -126,14 +126,20 @@ try {
     });
     check(contrast>=4.5,mode+' recovery description meets text contrast requirements');
     check(page.url() === before.url, mode + ' failed navigation leaves the URL and current screen unchanged');
-    check(requests.length === 3 && requests.some(url => url.includes('virelo-retry=')), mode + ' bounded cache-busting retries');
+    // Chromium may fetch the initial URL twice (modulepreload and import).
+    // The application must still make exactly two distinct cache-busting retries.
+    check(requests.length >= 3 && requests.length <= 4
+      && JSON.stringify(requests.filter(url => url.includes('virelo-retry=')).map(url => new URL(url).searchParams.get('virelo-retry'))) === '["1","2"]',
+    mode + ' bounded cache-busting retries');
     await continuity(page,before,mode + ' persistent chunk failure');
     check(!(await page.locator('body').innerText()).includes('Something went wrong!'), mode + ' no default debug error page');
     await page.locator('.route-recovery-notice').getByRole('button',{name:'Dismiss message'}).click();
     await page.waitForTimeout(350);
     await continuity(page,before,mode + ' dismissed message');
     await clickLibrary(page); await page.locator('.route-recovery-notice').waitFor();
-    check(requests.length >= 5 && requests.length <= 6, mode + ' repeated failed navigation is bounded (browser may remember the original failure)');
+    check(requests.length >= 5 && requests.length <= 8
+      && JSON.stringify(requests.filter(url => url.includes('virelo-retry=')).map(url => new URL(url).searchParams.get('virelo-retry'))) === '["1","2","3","4"]',
+    mode + ' repeated failed navigation is bounded (browser may retry modulepreload as well as import)');
     blocked = false;
     const secondDoc = await page.evaluate(() => window.__documentId);
     await page.locator('.route-recovery-notice').getByRole('button',{name:'Try again',exact:true}).click();

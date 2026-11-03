@@ -5,10 +5,10 @@ import { readFile } from 'node:fs/promises';
 test('production player menus retain standard backdrop blur, not only the WebKit alias', async () => {
   const pkg = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8'));
   const dist = new URL(pkg.name === 'virelo' ? '../dist/web/' : '../dist/', import.meta.url);
-  const html = await readFile(new URL('index.html', dist), 'utf8');
-  const asset = html.match(/href="(\/assets\/index-[^"]+\.css)"/)?.[1];
-  assert.ok(asset, 'production HTML must reference its stylesheet');
-  const css = await readFile(new URL(asset.slice(1), dist), 'utf8');
+  const html = await readFile(new URL(pkg.name === 'virelo' ? 'index.html' : 'app.html', dist), 'utf8');
+  const assets = [...html.matchAll(/href="(\/assets\/[^"?]+\.css)"/g)].map(match => match[1]);
+  assert.ok(assets.length, 'production HTML must reference its stylesheets');
+  const css = (await Promise.all(assets.map(asset => readFile(new URL(asset.slice(1), dist), 'utf8')))).join('\n');
   const menuRules = [...css.matchAll(/\.playback-settings-menu\{([^}]+)\}/g)].map(match => match[1]);
   assert.ok(menuRules.some(rule => /(?:^|;)backdrop-filter:blur\(18px\)(?:;|$)/.test(rule)),
     'CSS optimization must not strip the standard backdrop-filter declaration');

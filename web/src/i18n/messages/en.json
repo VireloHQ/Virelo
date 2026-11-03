@@ -1327,5 +1327,10 @@
   "{value0} unread": "{value0} unread",
   "{value0}. Press Space to play or pause.": "{value0}. Press Space to play or pause.",
   "{value0}p": "{value0}p",
-  "· {value0}-day history": "· {value0}-day history"
+  "· {value0}-day history": "· {value0}-day history",
+  "Virelo is a free, open-source video player for your own movies, series and Shorts.": "Virelo is a free, open-source video player for your own movies, series and Shorts.",
+  "Is Virelo free and open source?": "Is Virelo free and open source?",
+  "Yes. Virelo is free and open source under AGPL-3.0-only. The source code is available on GitHub.": "Yes. Virelo is free and open source under AGPL-3.0-only. The source code is available on GitHub.",
+  "What is the difference between the web player and the self-hosted server?": "What is the difference between the web player and the self-hosted server?",
+  "The web player opens files on the device you are using and needs no account. The self-hosted npm version runs on your computer and adds accounts, library permissions, automatic movie and series metadata, and network playback.": "The web player opens files on the device you are using and needs no account. The self-hosted npm version runs on your computer and adds accounts, library permissions, automatic movie and series metadata, and network playback."
 }

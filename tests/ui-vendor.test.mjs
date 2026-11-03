@@ -38,7 +38,7 @@ test('scoped HeroUI styles cover every imported component and shared foundations
 test('production CSS retains controls without shipping unused calendar and color-picker styles', async () => {
   const metadata = JSON.parse(await readFile(new URL('package.json', root),'utf8'));
   const output = new URL(metadata.name === 'virelo' ? 'dist/web/' : 'dist/', root);
-  const html = await readFile(new URL('index.html',output),'utf8');
+  const html = await readFile(new URL(metadata.name === 'virelo' ? 'index.html' : 'app.html',output),'utf8');
   const paths = [...html.matchAll(/<link\b[^>]*href="([^"?]+\.css)(?:\?[^" ]*)?"/g)].map(match=>match[1]);
   assert.ok(paths.length, 'built HTML references CSS');
   const css = (await Promise.all(paths.map(path=>readFile(new URL(path.replace(/^\//,''), output),'utf8')))).join('\n');

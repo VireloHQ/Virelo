@@ -17,6 +17,7 @@ import {
 } from '@phosphor-icons/react';
 import { PublicLanguageSelect, PublicLocaleProvider, usePublicLocale } from '../components/PublicLocale';
 import type { PublicMessage } from '../i18n/public-messages';
+import { publicPath } from '../public-site';
 import '../landing.css';
 import '../setup-guide.css';
 
@@ -62,13 +63,13 @@ function SectionHeading({ title, children }: { title: string; children: string }
 }
 
 function SetupGuideContent() {
-  const { t } = usePublicLocale();
+  const { t, locale } = usePublicLocale();
   return (
     <div className="landing-page setup-page">
       <a className="landing-skip" href="#setup-main">{t("Skip to content")}</a>
       <header className="landing-header">
         <div className="landing-header-inner">
-          <Link to="/" className="landing-brand" aria-label={t("Virelo home")}>
+          <Link to={publicPath(locale, 'landing')} className="landing-brand" aria-label={t("Virelo home")}>
             <img src="/virelo-icon-180.png?v=ribbon-1" alt="" width="40" height="40" />
             <span>Virelo</span>
           </Link>
@@ -78,14 +79,14 @@ function SetupGuideContent() {
               <GithubLogo weight="fill" />
               <span>GitHub</span>
             </a>
-            <Link to="/app" className="landing-open-link">{t("Open Virelo")}</Link>
+            <Link to="/app" reloadDocument className="landing-open-link">{t("Open Virelo")}</Link>
           </div>
         </div>
       </header>
 
       <main className="setup-main" id="setup-main" tabIndex={-1}>
         <section className="setup-hero" aria-labelledby="setup-title">
-          <Link to="/" className="setup-back"><ArrowLeft />{' '}{t("Back to Virelo")}</Link>
+          <Link to={publicPath(locale, 'landing')} className="setup-back"><ArrowLeft />{' '}{t("Back to Virelo")}</Link>
           <h1 id="setup-title">{t("Run Virelo locally.")}</h1>
           <p>{t("Start Virelo from a video folder, keep it on a predictable local address, or make it available to devices on your trusted network.")}</p>
           <ul className="setup-requirements" aria-label={t("Requirements")}>
@@ -234,15 +235,15 @@ function SetupGuideContent() {
       </main>
 
       <footer className="landing-footer setup-footer">
-        <Link to="/" className="landing-brand" aria-label={t("Virelo home")}>
+        <Link to={publicPath(locale, 'landing')} className="landing-brand" aria-label={t("Virelo home")}>
           <img src="/virelo-icon-180.png?v=ribbon-1" alt="" width="32" height="32" />
           <span>Virelo</span>
         </Link>
         <p>{t("Your private video library.")}</p>
         <div>
-          <Link to="/">{t("Home")}</Link>
+          <Link to={publicPath(locale, 'landing')}>{t("Home")}</Link>
           <a href={githubUrl} target="_blank" rel="noreferrer">GitHub</a>
-          <Link to="/app">{t("Web player")}</Link>
+          <Link to="/app" reloadDocument>{t("Web player")}</Link>
         </div>
       </footer>
     </div>

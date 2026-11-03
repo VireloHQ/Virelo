@@ -1371,5 +1371,10 @@
   "{value0} unread": "Не прочитано: {value0}",
   "{value0}. Press Space to play or pause.": "{value0}. Нажмите пробел для воспроизведения или паузы.",
   "{value0}p": "{value0}p",
-  "· {value0}-day history": "· срок хранения истории: {value0} дн."
+  "· {value0}-day history": "· срок хранения истории: {value0} дн.",
+  "Virelo is a free, open-source video player for your own movies, series and Shorts.": "Virelo — бесплатный видеоплеер с открытым кодом для ваших фильмов, сериалов и Shorts.",
+  "Is Virelo free and open source?": "Virelo — бесплатный проект с открытым кодом?",
+  "Yes. Virelo is free and open source under AGPL-3.0-only. The source code is available on GitHub.": "Да. Virelo — бесплатное ПО с открытым исходным кодом под лицензией AGPL-3.0-only. Исходный код доступен на GitHub.",
+  "What is the difference between the web player and the self-hosted server?": "Чем веб-плеер отличается от собственного сервера?",
+  "The web player opens files on the device you are using and needs no account. The self-hosted npm version runs on your computer and adds accounts, library permissions, automatic movie and series metadata, and network playback.": "Веб-плеер открывает файлы на текущем устройстве и не требует учётной записи. Версия npm работает на вашем компьютере и добавляет учётные записи, права доступа к библиотекам, автоматический поиск сведений о фильмах и сериалах и просмотр по сети."
 }

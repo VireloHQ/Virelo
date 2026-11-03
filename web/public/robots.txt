@@ -2,28 +2,18 @@ User-agent: *
 Allow: /
 Disallow: /app/
 
-User-agent: GPTBot
-Allow: /
-Disallow: /app/
-
+User-agent: OAI-SearchBot
 User-agent: ChatGPT-User
-Allow: /
-Disallow: /app/
-
-User-agent: ClaudeBot
-Allow: /
-Disallow: /app/
-
+User-agent: Claude-SearchBot
+User-agent: Claude-User
 User-agent: PerplexityBot
 Allow: /
 Disallow: /app/
 
+User-agent: GPTBot
+User-agent: ClaudeBot
 User-agent: Google-Extended
-Allow: /
-Disallow: /app/
-
 User-agent: CCBot
-Allow: /
-Disallow: /app/
+Disallow: /
 
 Sitemap: https://virelo.riyo.me/sitemap.xml
