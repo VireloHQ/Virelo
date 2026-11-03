@@ -161,7 +161,8 @@ test('audio progress counts pending files across visible libraries, not tracks o
 test('mtime-only and size changes invalidate cached measurements after scanLibrary',requiresMedia,async t=>{
   const f=await fixture(t);f.enable();await f.scan();
   const initial=JSON.parse(f.cached()),before=await fingerprint(f.source);
-  await utimes(f.source,new Date(),new Date(before.mtime+4000));
+  // Whole seconds round-trip exactly through both POSIX microseconds and Windows timestamps.
+  await utimes(f.source,new Date(),new Date(Math.floor(before.mtime/1000)*1000+4000));
   const touched=await fingerprint(f.source);assert.equal(touched.sha256,before.sha256);assert.equal(touched.size,before.size);
   await scanLibrary(f.db,f.library,f.data,status());assert.equal(f.cached(),null);
   assert.equal((await f.scan()).errors,0);assert.equal(JSON.parse(f.cached()).mtime,Math.trunc(touched.mtime));
