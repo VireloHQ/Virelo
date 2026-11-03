@@ -433,7 +433,14 @@ api.mediaSource=async id=>{if(!auditUrls.has(id))auditUrls.set(id,URL.createObje
     check(await current.evaluate(()=>window.__levelingBeforePlay.length>0&&window.__levelingBeforePlay.every(Boolean)),mode+' saved leveling is bound before the first video play call');
     const startupVolume=await current.evaluate(()=>({before:window.__volumeBeforePlay,saved:localStorage.getItem('virelo-playback-volume:v1')}));
     console.log('STARTUP_VOLUME',mode,JSON.stringify(startupVolume));
-    check(startupVolume.before.length>0&&startupVolume.before.every(volume=>volume>=0&&volume<=.030001)&&startupVolume.before.some(volume=>Math.abs(volume-.03)<.000001),mode+' first playback stays muted or at the saved low output level');
+    check(startupVolume.before.length>0&&startupVolume.before.every(volume=>volume>=0&&volume<=.030001),mode+' first playback stays muted or at the saved low output level');
+    await current.waitForFunction(()=>{
+      const video=document.querySelector('.player video'),audio=document.querySelector('.player audio');
+      const active=audio?.currentSrc&&!audio.paused?audio:video;
+      const context=window.__contexts.find(context=>context.__sources.includes(active));
+      return Math.abs((context?.__outputs[context.__sources.indexOf(active)]?.gain.value??-1)-.03)<.000001;
+    });
+    check(true,mode+' the active video or selected audio restores the saved low output level');
     const setFullVolume=async()=>{
       await current.locator('.player').hover();await current.getByRole('button',{name:'Volume',exact:true}).click();
       await current.locator('.volume-slider').press('End');
