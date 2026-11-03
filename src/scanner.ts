@@ -7,6 +7,7 @@ import { makeThumbnail, probeMedia } from './ffmpeg.js';
 import { imageFileExists } from './image-files.js';
 import { setImmediate as yieldToRequests } from 'node:timers/promises';
 import { ignoredMediaEntry, isMediaFile, isVideoPath } from './media-files.js';
+import { scanAudioLoudness } from './audio-loudness.js';
 
 function cleanName(value: string) {
   return value
@@ -182,4 +183,5 @@ export async function scanAll(db: VireloDB, dataDir: string, status: ScanStatus,
     status.message = `Scanning ${library.label}`;
     await scanLibrary(db, library, dataDir, status, signal);
   }
+  await scanAudioLoudness(db,dataDir,status,scope,signal);
 }

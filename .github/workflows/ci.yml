@@ -50,10 +50,12 @@ jobs:
       - run: node scripts/audit-player-control-polish.mjs
       - run: node scripts/audit-volume-leveling.mjs
       - run: node scripts/audit-volume-modulation.mjs
+      - run: node scripts/audit-measured-volume.mjs
       - run: node scripts/audit-volume-integration.mjs
       - run: node scripts/audit-volume-controls.mjs
       - run: npm run check
       - run: npm run audit:package
+      - run: node --disable-warning=ExperimentalWarning --test scripts/audit-audio-loudness.mjs
       - run: node scripts/audit-multiuser.mjs
       - run: node scripts/audit-communication.mjs
       - run: node scripts/audit-scan-repair.mjs

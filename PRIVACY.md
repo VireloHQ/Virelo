@@ -16,8 +16,11 @@ connected localhost client can request the server's existing LAN addresses.
 Personal playlists and account/settings URLs are replaced with the server home.
 
 Optional volume leveling reads decoded audio locally during playback. The
-device-local preference is stored in localStorage; samples and loudness estimates
-are not uploaded, stored in the server database or written to original files.
+device-local preference is stored in localStorage. Optional scan-time analysis,
+controlled by the administrator and disabled by default, stores per-track
+integrated loudness and true-peak numbers in the server database. Audio samples
+are not retained or uploaded to any external service; original files are never
+modified.
 
 Server administrators may send plain-text announcements. The local database
 stores the message, sender reference, creation time, intended account IDs and

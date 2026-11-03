@@ -1,6 +1,7 @@
 import { t, useLocale } from '../i18n';
 import { useEffect, useRef, useState } from 'react';
 import { useVolumeLeveling } from '../hooks/useVolumeLeveling';
+import { audioMeasurement } from '../utils/volume-leveling';
 import { ArrowsOut, FastForward, Pause, PictureInPicture, Play, Repeat, Rewind, SpeakerHigh, SpeakerSlash } from '@phosphor-icons/react';
 import { LoadingSpinner } from './LoadingSpinner';
 import { api } from '../api';
@@ -101,7 +102,8 @@ export function Player({item,queue,queueIndex,shuffled,onShuffle,onEnded,onNext,
   const volumeControls = usePlaybackVolume();
   const {volume,setVolume,muted,setMuted} = volumeControls;
   const {speed,changeSpeed} = usePlaybackSpeed(videoRef,audioRef,item.id,externalAudioUrl);
-  const {leveling,setLeveling,levelingError,levelingSupported,onVolumeChange}=useVolumeLeveling(videoRef,audioRef,externalAudioUrl,volumeControls);
+  const measurement=audioMeasurement(item.audio_loudness,item.size,item.mtime,playbackItemId.current===item.id?selectedAudio:null);
+  const {leveling,setLeveling,levelingError,levelingSupported,onVolumeChange}=useVolumeLeveling(videoRef,audioRef,externalAudioUrl,volumeControls,measurement);
   const [pip,setPip] = useState(false);
   const [pipSupported,setPipSupported] = useState(false);
   const [singleRepeat,setSingleRepeat] = useState<RepeatMode>('off');

@@ -165,13 +165,14 @@ export async function createVireloServer(config: RuntimeConfig, pickFolder: (sig
 
   async function runScan(scope?: CatalogScope) {
     if (closing || scanStatus.running) return false;
-    Object.assign(scanStatus, { running: true, startedAt: Date.now(), finishedAt: null, total: 0, scanned: 0, added: 0, updated: 0, skipped: 0, thumbnailsGenerated:0, thumbnailsRepaired:0, errors: 0, message: 'Starting scan' });
+    Object.assign(scanStatus, { running: true, audioTotal:undefined, audioAnalyzed:undefined, startedAt: Date.now(), finishedAt: null, total: 0, scanned: 0, added: 0, updated: 0, skipped: 0, thumbnailsGenerated:0, thumbnailsRepaired:0, errors: 0, message: 'Starting scan' });
     scanTask = (async () => {
       try {
         await scanAll(db, config.dataDir, scanStatus, scope, scanAbort.signal);
         const settings = db.getSettings();
         let metadataSummary='';
         if (settings.externalMetadataEnabled && !closing) {
+          scanStatus.audioTotal=undefined;scanStatus.audioAnalyzed=undefined;
           scanStatus.message = 'Matching metadata';
           const result = await refreshMissingMetadata(db, config.dataDir, (done, total) => {
             scanStatus.message = `Matching metadata · ${done}/${total}`;
@@ -254,7 +255,7 @@ export async function createVireloServer(config: RuntimeConfig, pickFolder: (sig
       .on('error', warn);
   }
 
-  const visibleScanStatus = (isAdmin: boolean) => isAdmin ? scanStatus : { ...scanStatus, message: scanStatus.running ? 'Scanning libraries' : 'Idle', total:0,scanned:0,added:0,updated:0,skipped:0,thumbnailsGenerated:0,thumbnailsRepaired:0,errors:0 };
+  const visibleScanStatus = (isAdmin: boolean) => isAdmin ? scanStatus : { ...scanStatus, audioTotal:undefined,audioAnalyzed:undefined,message: scanStatus.running ? 'Scanning libraries' : 'Idle', total:0,scanned:0,added:0,updated:0,skipped:0,thumbnailsGenerated:0,thumbnailsRepaired:0,errors:0 };
   app.get('/api/health', async request => ({ ok: true, version: VIRELO_VERSION, ffmpeg: await hasFfmpeg(), ffprobe: await hasFfprobe(), scan: visibleScanStatus(request.account!.isAdmin) }));
   app.get('/api/settings', async () => publicSettings(db.getSettings()));
   app.get('/api/data', async request => {
@@ -277,7 +278,7 @@ export async function createVireloServer(config: RuntimeConfig, pickFolder: (sig
       || body.clearTmdbApiKey !== undefined && typeof body.clearTmdbApiKey !== 'boolean'
       || body.tmdbApiKey !== undefined && typeof body.tmdbApiKey !== 'string') throw new AccountError('Invalid settings.');
     const patch: Partial<AppSettings> = {};
-    for (const key of ['externalMetadataEnabled','externalImagesEnabled','metadataProvider','metadataLanguage','libraryWatchEnabled','shortsIncludeLandscapes','queueBehavior'] as const) {
+    for (const key of ['audioAnalysisEnabled','externalMetadataEnabled','externalImagesEnabled','metadataProvider','metadataLanguage','libraryWatchEnabled','shortsIncludeLandscapes','queueBehavior'] as const) {
       if (body[key] !== undefined) (patch as any)[key] = body[key];
     }
     if (body.clearTmdbApiKey === true) patch.tmdbApiKey = '';

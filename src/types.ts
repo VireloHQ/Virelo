@@ -22,6 +22,7 @@ export interface Library {
 }
 
 export interface MediaRecord {
+  audio_loudness?:string|null;
   id: number;
   canonical_id?: number;
   library_id: number;
@@ -66,6 +67,7 @@ export interface FolderEntry {
 }
 
 export interface AppSettings {
+  audioAnalysisEnabled:boolean;
   externalMetadataEnabled: boolean;
   externalImagesEnabled: boolean;
   metadataProvider: 'cinemeta' | 'tmdb';
@@ -87,6 +89,8 @@ export interface ShortsFeed {
 }
 
 export interface ScanStatus {
+  audioTotal?:number;
+  audioAnalyzed?:number;
   running: boolean;
   startedAt: number | null;
   finishedAt: number | null;

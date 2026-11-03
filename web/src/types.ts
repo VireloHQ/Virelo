@@ -8,6 +8,7 @@ export type { PlaylistSummary, PlaylistWrite } from './utils/playlist-values';
 export type PlaylistDetail = import('./utils/playlist-values').PlaylistSummary & { items: MediaItem[] };
 
 export interface MediaItem {
+  audio_loudness?:string|null;
   id: number;
   canonical_id?: number;
   library_id: number;
@@ -77,6 +78,7 @@ export interface ShortsFeed {
 
 export interface Library { id:number; path:string; label:string; created_at:number; persistent:number; folderLabels?:Record<string,string> }
 export interface Settings {
+  audioAnalysisEnabled:boolean;
   externalMetadataEnabled: boolean;
   externalImagesEnabled: boolean;
   metadataProvider: 'cinemeta' | 'tmdb';
@@ -88,6 +90,8 @@ export interface Settings {
   queueBehavior: QueueBehavior;
 }
 export interface ScanStatus {
+  audioTotal?:number;
+  audioAnalyzed?:number;
   running:boolean; startedAt:number|null; finishedAt:number|null; total:number; scanned:number; added:number; updated:number; skipped:number; thumbnailsGenerated?:number; thumbnailsRepaired?:number; errors:number; message:string;
 }
 

@@ -100,6 +100,7 @@ export class VireloDB {
       );
     `);
     const columns = this.db.prepare('PRAGMA table_info(media)').all() as Array<{name: string}>;
+    if(!columns.some(column=>column.name==='audio_loudness'))this.db.exec('ALTER TABLE media ADD COLUMN audio_loudness TEXT');
     for (const name of ['metadata_blocked', 'metadata_revision']) {
       if (!columns.some((column) => column.name === name)) this.db.exec(`ALTER TABLE media ADD COLUMN ${name} INTEGER NOT NULL DEFAULT 0`);
     }
@@ -368,6 +369,7 @@ export class VireloDB {
         height=CASE WHEN media.size!=excluded.size OR media.mtime!=excluded.mtime THEN excluded.height ELSE COALESCE(excluded.height,media.height) END,
         video_codec=CASE WHEN media.size!=excluded.size OR media.mtime!=excluded.mtime THEN excluded.video_codec ELSE COALESCE(excluded.video_codec,media.video_codec) END,
         audio_codec=CASE WHEN media.size!=excluded.size OR media.mtime!=excluded.mtime THEN excluded.audio_codec ELSE COALESCE(excluded.audio_codec,media.audio_codec) END,
+        audio_loudness=CASE WHEN media.size!=excluded.size OR media.mtime!=excluded.mtime THEN NULL ELSE media.audio_loudness END,
         container=COALESCE(excluded.container,media.container), folder=excluded.folder, size=excluded.size, mtime=excluded.mtime,
         thumbnail_path=COALESCE(excluded.thumbnail_path,media.thumbnail_path), poster_path=COALESCE(media.poster_path,excluded.poster_path),
         backdrop_path=COALESCE(media.backdrop_path,excluded.backdrop_path), overview=COALESCE(media.overview,excluded.overview),
