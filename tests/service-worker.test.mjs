@@ -6,7 +6,7 @@ import { runInNewContext } from 'node:vm';
 const source = await readFile(new URL('../web/public/sw.js', import.meta.url), 'utf8');
 const metadata = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8'));
 const isWeb = metadata.name === 'virelo-web';
-const cacheName = isWeb ? 'virelo-web-shell-transparent-1' : 'virelo-shell-transparent-1';
+const cacheName = isWeb ? 'virelo-web-shell-ribbon-1' : 'virelo-shell-ribbon-1';
 const origin = 'https://virelo.test';
 const keyOf = (request) => new URL(typeof request === 'string' ? request : request.url, origin).href;
 const response = (body = 'export const build = "old";', mime = 'text/javascript', status = 200, headers = {}) =>
