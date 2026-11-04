@@ -12,7 +12,7 @@ function responseKind(request, url) {
     return null;
   }
   if (url.pathname === '/manifest.webmanifest') return 'manifest';
-  if (/^\/(?:favicon-\d+|virelo-icon(?:-\d+)?)\.png$/.test(url.pathname)) return 'image';
+  if (/^\/(?:favicon-\d+|virelo-icon(?:-\d+)?)\.(?:png|webp)$/.test(url.pathname)) return 'image';
   if (url.pathname === '/' || url.pathname === '/index.html'
     || (request.mode === 'navigate' && !/\.[^/]+$/.test(url.pathname))) return 'document';
   return null;
