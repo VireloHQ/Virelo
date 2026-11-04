@@ -60,7 +60,7 @@ export const api = {
       genres:shelves.genres.map(g=>({...g,items:resolve(g.items)}))};
   },
   media: async (params: Record<string, string | number | undefined> = {}) => {
-    let items = await hydrated(await listStoredMedia());
+    let items = await listStoredMedia();
     const search = String(params.search ?? '').trim().toLocaleLowerCase();
     const libraryId = params.libraryId === undefined ? null : Number(params.libraryId);
     const folder = params.folder === undefined ? null : String(params.folder);
@@ -72,7 +72,7 @@ export const api = {
     items.sort(params.sort==='random'&&params.seed!==undefined?(a,b)=>shortsRank(a.id,Number(params.seed))-shortsRank(b.id,Number(params.seed))||a.id-b.id:compare((params.sort as SortKey | undefined) ?? 'title'));
     const offset = Number(params.offset ?? 0);
     const limit = Number(params.limit ?? items.length);
-    return items.slice(offset, offset + limit);
+    return hydrated(items.slice(offset, offset + limit));
   },
   clearMetadata: clearLocalMetadata,
   clearAllMetadata: clearAllLocalMetadata,
@@ -83,9 +83,10 @@ export const api = {
   },
   shorts: async ({ limit = 40, offset = 0, seed = 0, startId }: { limit?: number; offset?: number; seed?: number; startId?: number } = {}): Promise<ShortsFeed> => {
     const settings = await readSettings();
-    const all = (await hydrated(await listStoredMedia())).filter((item) => settings.shortsIncludeLandscapes || Boolean(item.width && item.height && item.height > item.width));
+    const all = (await listStoredMedia()).filter((item) => settings.shortsIncludeLandscapes || Boolean(item.width && item.height && item.height > item.width));
     all.sort((a, b) => Number(b.id === startId) - Number(a.id === startId) || shortsRank(a.id, seed) - shortsRank(b.id, seed) || a.id - b.id);
-    return { items: all.slice(offset, offset + limit).map((item) => ({ ...item, liked: item.liked ? 1 : 0 })), total: all.length };
+    const page = await hydrated(all.slice(offset, offset + limit));
+    return { items: page.map((item) => ({ ...item, liked: item.liked ? 1 : 0 })), total: all.length };
   },
   setLike: async (id: number, liked: boolean) => {
     await updateStoredMedia(id, (item) => { item.liked = liked ? 1 : 0; item.updated_at = Date.now(); });
