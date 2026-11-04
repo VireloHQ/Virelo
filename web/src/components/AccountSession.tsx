@@ -59,7 +59,7 @@ export function AccountSession({ children }: {children:ReactNode}) {
     session={{user:query.data.user,localAccess:query.data.localAccess,monitoring:query.data.monitoring,refresh,logout}}>{children}</PrivateSession>;
   const connectionError = query.isError || (query.isPending && query.errorUpdatedAt > 0);
   return <div className={`account-entry app-shell${query.isPending || connectionError ? ' account-connection' : ''}`}>
-    <a className="account-brand" href="/" aria-label={t("Virelo")}><img src="/virelo-icon.png?v=ribbon-1" alt=""/>{t("Virelo")}</a>
+    <a className="account-brand" href="/" aria-label={t("Virelo")}><img src="/virelo-icon-180.png?v=ribbon-1" alt=""/>{t("Virelo")}</a>
     <LanguageSelect/>
     {connectionError
       ? <section className="account-status" aria-labelledby="connection-error-title"><h1 id="connection-error-title">{t("Cannot reach your server")}</h1><p>{t("Check that Virelo is running, then try again.")}</p><Button isPending={query.isFetching} onPress={()=>void query.refetch()}>{query.isFetching ? t("Connecting…") : t("Try again")}</Button></section>

@@ -223,7 +223,8 @@ test('only complete responses with suitable shell MIME are cached', async () => 
     ['/assets/theme.css', 'text/css'], ['/assets/font.woff2', 'font/woff2'],
     ['/assets/decoder.wasm', 'application/wasm'], ['/assets/logo.svg', 'image/svg+xml'],
     ['/manifest.webmanifest', 'application/manifest+json'], ['/favicon-32.png', 'image/png'],
-    ['/virelo-icon-192.png', 'image/png']
+    ['/virelo-icon-192.png', 'image/png'], ['/virelo-icon-512.webp', 'image/webp'],
+    ['/virelo-icon.webp', 'image/webp']
   ]) {
     const sw = worker({ network: async () => response('asset', mime) });
     const event = sw.fetch(path);
