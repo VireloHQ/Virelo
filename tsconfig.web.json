@@ -16,5 +16,5 @@
     "skipLibCheck": true,
     "types": ["vite/client"]
   },
-  "include": ["web/src/**/*.ts", "web/src/**/*.tsx", "scripts/entry-public-server.tsx"]
+  "include": ["web/src/**/*.ts", "web/src/**/*.tsx"]
 }

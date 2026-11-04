@@ -17,7 +17,7 @@ try {
     window.__cspViolations = [];
     document.addEventListener('securitypolicyviolation', event => window.__cspViolations.push(event.violatedDirective + ': ' + event.blockedURI));
   });
-  for (const path of ['/', '/setup', '/app', '/app/settings', '/app/favorites', '/favorites', '/app/watch/123', '/library', '/settings', '/shorts']) {
+  for (const path of ['/', '/app', '/app/settings', '/app/favorites', '/favorites', '/app/watch/123', '/library', '/settings', '/shorts']) {
     const response = await context.request.get(base + path);
     check(response.status() === 200 && response.headers()['content-type'].includes('text/html'), 'SPA navigation ' + path);
     check(response.headers()['cache-control'].includes('no-cache'), 'fresh HTML ' + path);
@@ -27,20 +27,15 @@ try {
     check(response.status() === 404, 'real missing-file status ' + path);
   }
   const html = await (await context.request.get(base)).text();
-  const script = html.match(/src="(\/assets\/index-[^"]+\.js)"/)[1];
+  const script = html.match(/src="(\/assets\/app-[^"]+\.js)"/)[1];
   const asset = await context.request.get(base + script);
   check(asset.status() === 200 && /javascript/.test(asset.headers()['content-type']), 'hashed JS is not rewritten to HTML');
   check(asset.headers()['cache-control'].includes('immutable'), 'hashed assets cached');
   const worker = await context.request.get(base + '/sw.js');
   check(worker.headers()['cache-control'].includes('no-cache'), 'service worker refreshed');
   await page.goto(base);
-  const video = page.locator('video').first();
-  await video.scrollIntoViewIfNeeded();
-  await page.waitForFunction(() => document.querySelector('video')?.readyState >= 2);
-  check(await video.evaluate(element => element.currentSrc.includes('/landing/')), 'same-origin LP demo loads under CSP');
-  check((await page.evaluate(() => window.__cspViolations)).length === 0, 'LP has no CSP violations');
-  await page.goto(base + '/setup'); await page.locator('h1').first().waitFor();
-  check(await page.title() === 'Virelo', 'setup route renders');
+  await page.locator('.app-shell').waitFor();
+  check((await page.evaluate(() => window.__cspViolations)).length === 0, 'player has no CSP violations');
   await page.goto(base + '/app/settings'); await page.locator('.settings-heading').waitFor();
   check(await page.evaluate(async () => {
     const module = await WebAssembly.compile(new Uint8Array([0,97,115,109,1,0,0,0]));

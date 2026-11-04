@@ -2,9 +2,9 @@ import type { Plugin } from 'vite';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-export function publicPreview(): Plugin {
+export function playerPreview(): Plugin {
   return {
-    name: 'public-and-app-preview',
+    name: 'player-preview',
     config(_config, environment) { if (environment.isPreview) return { appType: 'mpa' }; },
     configurePreviewServer(server) {
       const headers = readFileSync(resolve(server.config.root, server.config.build.outDir, '_headers'), 'utf8');

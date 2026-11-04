@@ -7,8 +7,9 @@ choice is saved; unsupported languages fall back to English.
 
 On the npm server, every account can save its own language. This preference is
 independent of administrator permissions and does not sign out playback sessions.
-The standalone Web app stores its choice in the browser. Its landing page and
-setup guide use the same catalog and preference.
+The standalone Web app stores its choice in the browser. The independently
+maintained official website shares the same preference key on the same origin,
+but maintains its own translation catalog.
 
 ## Source layout
 

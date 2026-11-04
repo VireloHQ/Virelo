@@ -6,7 +6,9 @@
 
 ## What it does
 
-Virelo Web runs at [virelo.riyo.me](https://virelo.riyo.me). Choose a folder and the app builds a local library with thumbnails, search, favorites, watch progress, queues, and Shorts.
+Virelo Web runs at [virelo.riyo.me/app](https://virelo.riyo.me/app). Choose a folder and the app builds a local library with thumbnails, search, favorites, watch progress, queues, and Shorts.
+
+This repository contains the standalone player. The official marketing website and setup pages are maintained separately and are not part of this open-source distribution. Building or self-hosting the player does not require private website source or credentials.
 
 Video files are read through browser file APIs. They are not copied to Virelo, uploaded to a server, or sent to a third party.
 
@@ -39,7 +41,7 @@ Live volume leveling is disabled on Safari/iOS WebKit to avoid native-HLS
 audio-routing problems. Original playback remains available. The implementation
 does not claim full-file EBU R128 or true-peak mastering conformance.
 
-The player, library, settings, landing page and setup guide support English, Japanese, Simplified Chinese, Korean and Russian. They initially follow the browser's preferred supported language, with English as the fallback. Change language in **Settings → Appearance → Language** or use the globe menu on the public pages. The choice is shared across pages and tabs; if browser storage is blocked, it remains available in the current tab. Translations are bundled with Virelo. User filenames, titles, playlist names and recorded demo footage are not translated. See [Localization](docs/LOCALIZATION.md) to add a language.
+The player, library and settings support English, Japanese, Simplified Chinese, Korean and Russian. They initially follow the browser's preferred supported language, with English as the fallback. Change language in **Settings → Appearance → Language**. The choice is shared across tabs and the official website on the same origin; if browser storage is blocked, it remains available in the current tab. Translations are bundled with Virelo. User filenames, titles and playlist names are not translated. See [Localization](docs/LOCALIZATION.md) to add a language.
 
 Folder access requires a secure context, so production must use HTTPS. Browsers that can persist directory handles can reconnect the same folder after permission is granted. The fallback keeps selected files available for the current session and may ask for the folder again after a reload.
 
@@ -124,17 +126,14 @@ npm run build
 npx wrangler pages dev dist
 ```
 
-Keep the existing host until the Pages preview has passed checks for `/`, `/setup`, `/app`, `/app/settings`, and a direct `/app/watch/<id>` URL. Then attach the existing `virelo.riyo.me` custom domain in Pages. Retaining the same HTTPS origin preserves browser library storage and settings; a `pages.dev` preview has separate browser storage. This repository keeps `vercel.json` for rollback compatibility; it is not used by Pages.
+Verify `/`, `/app`, `/app/settings`, and a direct `/app/watch/<id>` URL before changing hosts. The standalone root opens the player. Retaining the same HTTPS origin preserves browser library storage and settings; a `pages.dev` preview has separate browser storage. The official site's root and setup URLs are provided by a separate deployment. This repository keeps `vercel.json` for rollback compatibility; it is not used by Pages.
 
 ### Deployment verification
 
-The landing page and setup guide are statically rendered in five languages.
-See [public search visibility](docs/SEO-GEO.md) for canonical URLs, crawler policy,
-metadata maintenance and search-console follow-up.
-
 After a Git-triggered build succeeds, run `npm run verify:deployment` (or pass
-another production URL). This checks all ten localized public pages, private app
-shells, sitemap, social card and exact landing-media bytes. A successful push alone does not deploy
+another production URL). This checks player routes, scripts, the full AGPL license,
+PWA assets and missing-module handling. Marketing pages and their SEO checks run
+in the separate website project. A successful push alone does not deploy
 a site. When a repository is recreated, reconnect it in the hosting dashboard;
 the same repository URL can refer to a different repository ID.
 
@@ -165,7 +164,9 @@ See [ASSETS.md](ASSETS.md) for the provenance of the logo, sample artwork, scree
 
 Copyright (c) 2026 Virelo contributors.
 
-The current project is licensed under the [GNU Affero General Public License, version 3 only (AGPL-3.0-only)](LICENSE). Commercial use and sale are permitted under its terms. Distribution requires the corresponding source, and modified versions that users access over a network must offer those users the corresponding source at no charge. Private modifications used only by their author do not need to be published.
+The player is licensed under the [GNU Affero General Public License, version 3 only (AGPL-3.0-only)](LICENSE). Commercial use and sale are permitted under its terms. Distribution requires the corresponding source, and modified versions that users access over a network must offer those users the corresponding source at no charge. Private modifications used only by their author do not need to be published.
+
+The separately maintained official website is not included in this player license. Previously granted MIT and AGPL permissions remain unchanged, including for website material in this repository's earlier history. The last combined public snapshot is `2b08b686d8216450b8855d123d9d90e04b80a287`. See [BRANDING.md](BRANDING.md) for the separate branding policy; it does not restrict lawful self-hosting or revoke existing copyright permissions.
 
 Source and build instructions are available in [this repository](https://github.com/VireloHQ/Virelo-Web). When distributing or hosting a modified build, provide the source and build instructions for that exact build and update the app's source link. Your video files and library data are not subject to this source-code requirement.
 

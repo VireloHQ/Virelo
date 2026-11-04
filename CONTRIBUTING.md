@@ -13,6 +13,8 @@ and API changes first. Update public documentation when behavior changes.
 
 New contributions are licensed under AGPL-3.0-only, as described in [LICENSE](LICENSE). Include any required copyright and license notices for third-party material. This does not change the terms under which earlier contributions were received.
 
+This repository contains the player, not the separately maintained official marketing site. Keep website source, marketing assets and site deployment credentials out of player pull requests.
+
 Use stable Node.js 22.23.4+, 24.22.1+ or 26.12.1+ within those release lines.
 Run `npm ci` followed by `npm run check` before
 opening a pull request. This typechecks and builds the browser app and runs the
@@ -27,14 +29,13 @@ also cover the version-1 database upgrade, concurrent writes and temporarily
 unavailable references. Set `VIRELO_TEST_PLAYLIST_SCENARIO` to `desktop`, `mobile`
 or `small` to run one size. The npm checkout also accepts `VIRELO_TEST_WEB_REPO`.
 
-`scripts/audit-*.mjs` cover landing pages, localization, thumbnails, favorites,
+`scripts/audit-*.mjs` cover player localization, thumbnails, favorites,
 playback controls, responsive layouts and recovery states. Use a separate
 Playwright installation and set `VIRELO_TEST_NODE_PACKAGE` to its `package.json`
 and `VIRELO_TEST_CHROMIUM` to Chromium as needed. FFmpeg/ffprobe must be on PATH
 for generated-media tests.
 
-For example, run `npm run build` and `node scripts/audit-public-locales.mjs`
-to check the built landing/setup pages, or `node scripts/audit-favorites.mjs`
+For example, run `npm run build` and `node scripts/audit-favorites.mjs`
 for the real app's favorite and queue controls.
 Some component audits expect a running Vite server; inspect their URL/environment
 options before running them. Use fresh browser storage and synthetic media.

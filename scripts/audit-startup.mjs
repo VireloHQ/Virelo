@@ -45,7 +45,7 @@ const check = (condition, label) => { assert.ok(condition, label); checks++; con
 try {
   browser = await chromium.launch({ headless: true, ...(process.env.VIRELO_TEST_CHROMIUM ? { executablePath: process.env.VIRELO_TEST_CHROMIUM } : {}) });
   for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 }]) {
-    for (const pathname of ['/', '/setup', '/app', '/app/library']) {
+    for (const pathname of ['/', '/app', '/app/library']) {
       const context = await browser.newContext({ serviceWorkers: 'block', viewport });
       const page = await context.newPage();
       let releaseScripts;
@@ -56,9 +56,7 @@ try {
         await page.locator('#root').waitFor({ state: 'attached' });
         await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
         check(await page.locator('.static-shell').count() === 0, `${pathname} ${viewport.width}: no fallback landing page before JavaScript`);
-        const appRoute = pathname.startsWith('/app');
-        check(appRoute ? await page.locator('#root').innerHTML() === '' : await page.locator('h1').count() === 1,
-          pathname + ' ' + viewport.width + ': ' + (appRoute ? 'no marketing content in the first app frame' : 'public content readable before JavaScript'));
+        check(await page.locator('#root').innerHTML() === '', pathname + ' ' + viewport.width + ': no marketing content in the first app frame');
       } finally { releaseScripts(); await context.close(); }
     }
   }
@@ -96,17 +94,16 @@ try {
   check(await page.evaluate(() => !window.__fallbackFlash), 'no fallback flash across the full app startup');
   check(await page.evaluate(() => window.__splashSeen), 'the Virelo splash still appears and finishes normally');
   await page.goto(base);
-  await page.locator('.landing-hero').waitFor();
-  check(await page.locator('.landing-hero h1').isVisible(), 'the actual landing-page headline remains intact');
+  await page.locator('.app-shell').waitFor();
+  check(await page.locator('.page-shell').isVisible(), 'the standalone root opens the player');
   check(errors.length === 0, 'no startup runtime errors: ' + errors.join(' | '));
   await context.close();
 
   const nojs = await browser.newContext({ javaScriptEnabled: false, serviceWorkers: 'block' });
   const nojsPage = await nojs.newPage();
   await nojsPage.goto(base);
-  check(await nojsPage.getByRole('heading', { level: 1 }).count() === 1, 'JavaScript-disabled visitors still get a product heading');
-  check(await nojsPage.locator('.landing-hero').isVisible(), 'JavaScript-disabled visitors get the real LP rather than a separate fallback');
-  check((await nojsPage.locator('main').textContent()).includes('npx virelo') && await nojsPage.locator('a[href="/app"]').first().isVisible(), 'no-JavaScript installation and launch information is preserved');
+  check(await nojsPage.locator('noscript p').isVisible() && (await nojsPage.locator('noscript p').textContent()).includes('Enable JavaScript to open local videos in Virelo.'), 'JavaScript-disabled visitors get actionable guidance');
+  check(await nojsPage.locator('a[href="https://virelo.riyo.me/setup"]').isVisible(), 'self-hosted no-JavaScript help links to the independently maintained guide');
   await nojs.close();
   console.log(JSON.stringify({ checks }));
 } finally {

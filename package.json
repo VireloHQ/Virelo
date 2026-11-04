@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -p tsconfig.web.json && vite build && node scripts/prerender-public.mjs",
+    "build": "tsc -p tsconfig.web.json && vite build && node scripts/build-player.mjs",
     "preview": "vite preview",
     "verify:deployment": "node scripts/verify-deployment.mjs",
     "typecheck": "tsc -p tsconfig.web.json",
