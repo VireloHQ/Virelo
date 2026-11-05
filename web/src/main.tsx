@@ -4,12 +4,15 @@ import { RouterProvider } from '@tanstack/react-router';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import '@fontsource-variable/inter';
 import { SplashScreen } from './components/SplashScreen';
-import { router } from './router';
-import { initializeLocale } from './i18n';
+import { initialLocale, router } from './router';
+import { initializeLocale, setLocale } from './i18n';
 import { LocaleRoot } from './i18n/LocaleRoot';
 import './styles.css';
 import './streaming-ui.css';
 import './ui-motion.css';
+import { APP_ORIGIN, LEGACY_HOST } from './utils/app-location';
+const LegacyMigration = React.lazy(() => import('./components/LegacyMigration').then(module => ({ default: module.LegacyMigration })));
+const legacyVisit = window.location.hostname === LEGACY_HOST && new URLSearchParams(window.location.search).get('legacy') !== '1';
 
 if (import.meta.env.PROD && 'serviceWorker' in navigator) {
   window.addEventListener('load', () => {
@@ -22,6 +25,7 @@ const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 20_000, refetchOnWindowFocus: false, retry: 1 } }
 });
 initializeLocale();
+if (initialLocale) void setLocale(initialLocale).catch(() => {});
 
 // A repair/rescan replaces blob URLs. All artwork consumers must stop using the revoked URL.
 window.addEventListener('virelo-thumbnail-updated',event=>{
@@ -30,12 +34,12 @@ window.addEventListener('virelo-thumbnail-updated',event=>{
 });
 
 function App() {
-  const [showSplash, setShowSplash] = useState(() => window.location.pathname === '/app' || window.location.pathname.startsWith('/app/'));
+  const [showSplash, setShowSplash] = useState(() => window.location.origin === APP_ORIGIN || window.location.pathname === '/app' || window.location.pathname.startsWith('/app/'));
   const finishSplash = useCallback(() => setShowSplash(false), []);
 
   return (
     <>
-      <RouterProvider router={router} />
+      {legacyVisit ? <React.Suspense fallback={null}><LegacyMigration/></React.Suspense> : <RouterProvider router={router} />}
       {showSplash && <SplashScreen onDone={finishSplash} />}
     </>
   );

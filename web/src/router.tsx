@@ -7,6 +7,8 @@ import { NotFoundView } from './views/NotFoundView';
 import type { SortKey } from './types';
 import { validateShortsSearch } from './utils/shorts-navigation';
 import { useScanRefresh } from './hooks/useScanRefresh';
+import { appLocationRewrite, APP_ORIGIN, publicAppPath } from './utils/app-location';
+import { isLocale, LANGUAGE_KEY, type Locale } from './i18n/locale';
 const HomeRouteView = createRouteView(() => import('./views/HomeView'), 'HomeView', 'home');
 const FavoritesRouteView = createRouteView(() => import('./views/FavoritesView'), 'FavoritesView', 'library');
 const PlaylistsRouteView = createRouteView(() => import('./views/PlaylistsView'), 'PlaylistsView', 'library');
@@ -100,7 +102,21 @@ const routeTree = rootRoute.addChildren([
   legacyWatchRoute,
   legacyDetailRoute
 ]);
+export const initialLocale: Locale | null = (() => {
+  if (typeof window === 'undefined' || window.location.origin !== APP_ORIGIN) return null;
+  const url = new URL(window.location.href);
+  url.pathname = publicAppPath(url.pathname);
+  const value = url.searchParams.get('lang');
+  const language = isLocale(value) ? value : null;
+  if (language) {
+    try { localStorage.setItem(LANGUAGE_KEY, language); } catch { /* Apply the handoff to this visit even without storage. */ }
+    url.searchParams.delete('lang');
+  }
+  if (url.href !== window.location.href) window.history.replaceState(window.history.state, '', url);
+  return language;
+})();
 export const router = createRouter({
+  rewrite: appLocationRewrite,
   routeTree, defaultPreload: 'intent', scrollRestoration: true,
   defaultErrorComponent: RouteErrorView,
   defaultPendingComponent: () => <RoutePendingView viewForPath={viewForPath} />,

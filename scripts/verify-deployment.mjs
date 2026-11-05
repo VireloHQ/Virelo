@@ -1,10 +1,10 @@
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 
-const origin = new URL(process.argv[2] || 'https://virelo.riyo.me');
+const origin = new URL(process.argv[2] || 'https://app.virelo.dev');
 assert.ok(['http:','https:'].includes(origin.protocol),'Expected an HTTP(S) origin');
 const get = path => fetch(new URL(path,origin),{cache:'no-store',signal:AbortSignal.timeout(20000)});
-for (const path of ['/app','/app/settings','/app/library','/app/playlists']) {
+for (const path of origin.hostname === 'app.virelo.dev' ? ['/','/settings','/library','/playlists','/playlists/1','/watch/1'] : ['/app','/app/settings','/app/library','/app/playlists']) {
   const response = await get(path);
   assert.equal(response.status,200,path);
   assert.ok(response.headers.get('content-security-policy')?.includes("script-src 'self' 'wasm-unsafe-eval'"),path+': CSP');

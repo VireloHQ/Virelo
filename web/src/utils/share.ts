@@ -1,7 +1,7 @@
 export function shareLink(origin:string,pathname:string,webOnly=false) {
   const url=new URL(origin);
   if(!['http:','https:'].includes(url.protocol)||url.username||url.password)throw new Error('Use an HTTP or HTTPS address.');
-  url.pathname=webOnly?'/app':/^\/(?:watch|title)\/[1-9]\d*$/.test(pathname)?pathname:'/';
+  url.pathname=webOnly?(url.origin==='https://app.virelo.dev'?'/':'/app'):/^\/(?:watch|title)\/[1-9]\d*$/.test(pathname)?pathname:'/';
   url.search='';url.hash='';
   return url.href;
 }

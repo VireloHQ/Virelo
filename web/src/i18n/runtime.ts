@@ -38,7 +38,7 @@ export async function setLocale(value: Locale, persist = true): Promise<void> {
 }
 export function deviceLocale(): Locale {
   const publicLocale = typeof window === 'undefined' || !window.location ? null : publicLocaleForPath(window.location.pathname);
-  if (publicLocale) return publicLocale;
+  if (publicLocale && window.location.hostname !== 'app.virelo.dev') return publicLocale;
   let saved: unknown;
   try {
     const current = localStorage.getItem(LANGUAGE_KEY);

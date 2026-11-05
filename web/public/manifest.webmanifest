@@ -2,7 +2,7 @@
   "name": "Virelo",
   "short_name": "Virelo",
   "id": "/",
-  "start_url": "/app",
+  "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "background_color": "#050816",

@@ -6,7 +6,15 @@
 
 ## What it does
 
-Virelo Web runs at [virelo.riyo.me/app](https://virelo.riyo.me/app). Choose a folder and the app builds a local library with thumbnails, search, favorites, watch progress, queues, and Shorts.
+Virelo Web runs at [app.virelo.dev](https://app.virelo.dev). Choose a folder and the app builds a local library with thumbnails, search, favorites, watch progress, queues, and Shorts. The product website is [virelo.dev](https://virelo.dev).
+
+### Backups and browser migration
+
+In **Settings → Export / Import**, export either settings only or your library and settings. Library backups include folder registrations, favorites, watch progress, metadata, and playlists, but not video files, artwork, or folder access permissions. Backups contain private library information; store and share them accordingly.
+
+Importing settings updates preferences without replacing your library. Importing a library requires an empty browser library to prevent overwriting existing data. Reconnect each folder in Settings after importing; the original video files are never changed.
+
+Users arriving at `virelo.riyo.me/app` with saved data can export it before opening the new app. The old library remains available from that migration screen; a redirect alone cannot move browser storage to another origin.
 
 This repository contains the standalone player. The official marketing website and setup pages are maintained separately and are not part of this open-source distribution. Building or self-hosting the player does not require private website source or credentials.
 
@@ -126,7 +134,7 @@ npm run build
 npx wrangler pages dev dist
 ```
 
-Verify `/`, `/app`, `/app/settings`, and a direct `/app/watch/<id>` URL before changing hosts. The standalone root opens the player. Retaining the same HTTPS origin preserves browser library storage and settings; a `pages.dev` preview has separate browser storage. The official site's root and setup URLs are provided by a separate deployment. This repository keeps `vercel.json` for rollback compatibility; it is not used by Pages.
+Verify `/`, `/settings`, `/library`, `/playlists`, and a direct `/watch/<id>` URL on `app.virelo.dev`. That hostname exposes the player without an `/app` prefix; local and other deployments keep the existing `/app` routes. Retaining the same HTTPS origin preserves browser library storage and settings; a preview or another hostname has separate browser storage. The official site's root and setup URLs are provided by a separate deployment. This repository keeps `vercel.json` for rollback compatibility; it is not used by Pages.
 
 ### Deployment verification
 
@@ -136,6 +144,10 @@ PWA assets and missing-module handling. Marketing pages and their SEO checks run
 in the separate website project. A successful push alone does not deploy
 a site. When a repository is recreated, reconnect it in the hosting dashboard;
 the same repository URL can refer to a different repository ID.
+
+`node scripts/verify-app-migration.mjs` additionally checks the live domain migration,
+backups, language handoff, mobile settings and offline PWA in disposable Chromium
+profiles. It never opens or modifies your normal browser profile.
 
 ### Workers Builds
 

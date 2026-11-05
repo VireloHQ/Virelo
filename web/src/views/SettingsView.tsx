@@ -17,6 +17,8 @@ import { VolumeLevelingSetting } from '../components/VolumeLevelingSetting';
 import { SharingSettings } from '../components/ShareButton';
 import { QrCode } from '@phosphor-icons/react';
 import type { QueueBehavior } from '../types';
+import { BrowserBackupSettings } from '../components/BrowserBackup';
+import { Database } from '@phosphor-icons/react';
 
 const settingsSections = [
   { id:'libraries', label:'Libraries', description:'Folders and browser access', icon:Folders },
@@ -25,6 +27,7 @@ const settingsSections = [
   { id:'appearance', label:'Appearance', description:'Player style and accent color', icon:Palette },
   { id:'sharing', label:'Sharing', description:'App links and QR codes', icon:QrCode },
   { id:'shorts', label:'Shorts', description:'Videos in your vertical feed', icon:DeviceMobile },
+  { id:'backup', label:'Export / Import', description:'Settings and library backups', icon:Database },
   { id:'privacy', label:'Privacy', description:'Your files stay on your device', icon:ShieldCheck }
 ] as const;
 
@@ -44,8 +47,11 @@ export function SettingsView() {
   const capabilities = useQuery({ queryKey:['capabilities'], queryFn:api.capabilities });
   const scan = useQuery({ queryKey:['scan'], queryFn:api.scanStatus, refetchInterval:(query)=>query.state.data?.running ? 400 : 2_000 });
   const form = settingsQuery.data;
-  const [activeSection, setActiveSection] = useState<SettingsSectionId>('libraries');
-  const [mobileDetail,setMobileDetail]=useState(false);
+  const [activeSection, setActiveSection] = useState<SettingsSectionId>(() => {
+    const value = new URLSearchParams(window.location.search).get('section');
+    return settingsSections.find(section => section.id === value)?.id ?? 'libraries';
+  });
+  const [mobileDetail,setMobileDetail]=useState(() => new URLSearchParams(window.location.search).get('section') === 'backup');
   const openSection=(id:string)=>{
     setActiveSection(id as SettingsSectionId);
     setMobileDetail(true);
@@ -92,6 +98,7 @@ export function SettingsView() {
         <button type="button" className="settings-back" onClick={closeSection}><ArrowLeft aria-hidden="true"/> {t("All settings")}</button>
         {activeSection==='appearance'&&<AppearanceSettings/>}
         {activeSection === 'sharing' && <SharingSettings webOnly/>}
+        {activeSection === 'backup' && <BrowserBackupSettings/>}
         {activeSection === 'libraries' && <section id="settings-panel-libraries" className="settings-card settings-section" aria-labelledby="settings-title-libraries">
           <div className="settings-card-head">
             <div><h2 id="settings-title-libraries" tabIndex={-1}>{t("Libraries")}</h2><p>{t("Choose folders that Virelo can read in this browser.")}</p></div>

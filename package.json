@@ -31,7 +31,7 @@
   "bugs": {
     "url": "https://github.com/VireloHQ/Virelo-Web/issues"
   },
-  "homepage": "https://virelo.riyo.me",
+  "homepage": "https://app.virelo.dev",
   "engines": {
     "node": "^22.23.4 || ^24.22.1 || ^26.12.1"
   },

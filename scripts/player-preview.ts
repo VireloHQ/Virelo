@@ -13,7 +13,7 @@ export function playerPreview(): Plugin {
       server.middlewares.use((request, response, next) => {
         response.setHeader('Content-Security-Policy', csp);
         const url = new URL(request.url ?? '/', 'http://localhost');
-        if (/^\/(?:app(?:\/|$)|(?:library|favorites|settings|shorts)\/?$|(?:watch|title)\/)/.test(url.pathname)) request.url = '/app.html' + url.search;
+        if (/^\/(?:app(?:\/|$)|(?:library|favorites|playlists|settings|shorts)\/?$|(?:watch|title|playlists)\/)/.test(url.pathname)) request.url = '/app.html' + url.search;
         next();
       });
     }

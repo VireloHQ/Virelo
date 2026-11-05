@@ -143,7 +143,7 @@ async function saveAudioAnalysis(snapshot: StoredMedia, file: File, value: strin
   }).finally(() => db.close());
 }
 
-function editLibraries<T>(operation:()=>Promise<T>):Promise<T> {
+export function editLibraries<T>(operation:()=>Promise<T>):Promise<T> {
   const run=()=>navigator.locks?navigator.locks.request('virelo-library-edit',operation):operation();
   const task=libraryEdit.then(run,run);
   libraryEdit=task.catch(()=>{});
@@ -154,9 +154,10 @@ async function matchingLibrary(libraries:StoredLibrary[],name:string,handle?:Fil
   for(const library of libraries) {
     if(library.id===exceptId)continue;
     const existing=library.handle??sessionHandles.get(library.id);
+    // Explicit reconnects may coexist with imported, same-named folders that have no handle yet.
     if(handle&&existing) {
       if(handle===existing||await handle.isSameEntry(existing))return library;
-    } else if(library.path===name) {
+    } else if(library.path===name && (!handle || exceptId===undefined)) {
       throw new Error(`A folder named "${name}" is already registered. Reconnect it in Settings. This selection method cannot distinguish folders with the same name.`);
     }
   }
