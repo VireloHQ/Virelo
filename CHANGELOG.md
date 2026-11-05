@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 0.5.4 — 2026-11-05
+
+- Reduce startup image transfers with responsive lossless splash assets and appropriately sized header and sign-in logos. Preserve the splash design, horizontal exit and timing, with PNG and offline-cache fallbacks.
+
 - Make volume leveling attenuation-only, including cancellation of the compressor's automatic makeup gain. Preserve the 30ms lookahead, fast attenuation and stable recovery.
 - Add optional scan-time, per-track loudness analysis. Reuse integrated LUFS and true-peak measurements for constant-gain playback without boosting quiet scenes or modifying source videos.
 
