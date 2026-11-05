@@ -16,4 +16,4 @@ User-agent: Google-Extended
 User-agent: CCBot
 Disallow: /
 
-Sitemap: https://virelo.riyo.me/sitemap.xml
+Sitemap: https://virelo.dev/sitemap.xml

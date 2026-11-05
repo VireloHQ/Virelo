@@ -103,7 +103,7 @@ try {
   const nojsPage = await nojs.newPage();
   await nojsPage.goto(base);
   check(await nojsPage.locator('noscript p').isVisible() && (await nojsPage.locator('noscript p').textContent()).includes('Enable JavaScript to open local videos in Virelo.'), 'JavaScript-disabled visitors get actionable guidance');
-  check(await nojsPage.locator('a[href="https://virelo.riyo.me/setup"]').isVisible(), 'self-hosted no-JavaScript help links to the independently maintained guide');
+  check(await nojsPage.locator('a[href="https://virelo.dev/setup"]').isVisible(), 'self-hosted no-JavaScript help links to the independently maintained guide');
   await nojs.close();
   console.log(JSON.stringify({ checks }));
 } finally {

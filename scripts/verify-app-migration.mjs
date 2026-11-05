@@ -13,6 +13,7 @@ try {
   await page.goto('https://app.virelo.dev/settings?section=backup');
   await page.getByRole('heading',{name:'Export / Import',exact:true}).waitFor();
   assert.equal(new URL(page.url()).pathname,'/settings');
+  await page.locator('.splash-screen').waitFor({state:'hidden'});
   await page.screenshot({path:join(screenshots,'backup-desktop.png'),fullPage:true});
   const backup=page.waitForEvent('download');await page.getByRole('button',{name:'Export',exact:true}).click();
   assert.equal((await backup).suggestedFilename(),'virelo-library-backup.json');
@@ -32,6 +33,7 @@ try {
   await page.setViewportSize({width:390,height:844});await page.reload();await page.locator('#settings-title-backup').waitFor();
   assert.ok(await page.locator('#settings-title-backup').isVisible());
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+  await page.locator('.splash-screen').waitFor({state:'hidden'});
   await page.screenshot({path:join(screenshots,'backup-mobile.png'),fullPage:true});
 
   const old=await context.newPage();old.on('pageerror',error=>errors.push(error.message));
