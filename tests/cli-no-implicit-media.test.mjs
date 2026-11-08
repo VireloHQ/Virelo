@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { once } from 'node:events';
-import { mkdtemp, mkdir, rm } from 'node:fs/promises';
+import { mkdtemp, mkdir, realpath, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -47,7 +47,13 @@ for (const {args,expectedCount} of [
       const libraries = new VireloDB(data);
       try {
         assert.equal(libraries.listLibraries().length, expectedCount);
-        if (expectedCount) assert.equal(libraries.listLibraries()[0].path, cwd);
+        if (expectedCount) {
+          const [registered, requested] = await Promise.all([
+            realpath(libraries.listLibraries()[0].path), realpath(cwd)
+          ]);
+          const normalizeCase = path => process.platform === 'win32' ? path.toLowerCase() : path;
+          assert.equal(normalizeCase(registered), normalizeCase(requested));
+        }
       } finally {
         libraries.close();
       }
