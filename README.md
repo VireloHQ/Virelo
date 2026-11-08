@@ -29,13 +29,13 @@ Use a current stable Node.js release in one of these supported lines:
 Virelo creates data or starts a server. These minimums include the
 [October 2026 Node.js security fixes](https://nodejs.org/en/blog/vulnerability/october-2026-security-releases).
 
-Run Virelo in the folder you want to serve:
+Start Virelo from **any directory**:
 
 ```bash
 npx virelo
 ```
 
-Virelo scans the current directory, starts at `http://127.0.0.1:41777`, and opens in your browser. On first use or after upgrading from a version without accounts, create the first administrator using this localhost address on the PC running Virelo, then sign in to your library.
+Virelo loads your saved libraries without scanning the current working directory, starts at `http://127.0.0.1:41777`, and opens in your browser. On first use or after upgrading from a version without accounts, create the first administrator using this localhost address on the PC running Virelo, then sign in to your library.
 
 Folder discovery runs in the background without waiting to show the interface.
 Hidden entries and nested `node_modules` directories are excluded from scanning
@@ -43,11 +43,19 @@ and monitoring. `.ts` files are checked for transport-stream packets so TypeScri
 source files are not mistaken for recordings. The startup screen remains visible
 while scripts or styles load and offers recovery if those resources fail.
 
+To use the **current directory** as a temporary library (the previous default):
+
+```bash
+npx virelo --here
+```
+
 To serve another folder without changing directories:
 
 ```bash
 npx virelo --media ~/Videos
 ```
+
+If you have not saved a library yet, use **Settings → Libraries → Add folder** after opening the Web UI.
 
 ### Termux
 
@@ -113,6 +121,7 @@ silently overwriting another edit.
 ```text
 virelo [options]
 
+    --here          Include the current directory as a temporary library
 -m, --media <path>  Use a media directory (repeatable)
 -d, --data <path>   Store data and cache in this directory (default: ~/.virelo)
 -H, --host <host>   Bind address (default: 127.0.0.1)
@@ -128,8 +137,11 @@ virelo [options]
 ### Common commands
 
 ```bash
-# Serve the current directory
+# Start with saved libraries (without scanning the current directory)
 npx virelo
+
+# Include the current directory (previous default)
+npx virelo --here
 
 # Serve multiple directories
 npx virelo --media ~/Movies --media ~/Clips
@@ -144,7 +156,7 @@ npx virelo --host 0.0.0.0
 npx virelo --port 0
 ```
 
-If `--media` is omitted, Virelo serves the directory where the command is run. Supplying `--media` replaces that default for the current run.
+If neither `--here` nor `--media` is provided, Virelo starts with saved libraries only and does **not** scan the current directory. Use `--here` to explicitly include the current directory. Both `--here` and `--media` add temporary libraries for the current run; saved libraries remain available.
 
 ## 🎞️ Media support
 
@@ -231,7 +243,7 @@ The default data directory is `~/.virelo`:
 
 Videos stay in their original folders and are never copied into the data directory. Use `--data <path>` to choose another location.
 
-The current directory or `--media` folders are temporary for the current run.
+The explicit `--here` directory or `--media` folders are temporary for the current run.
 Use **Settings → Libraries → Save library** to keep one, or **Add folder** to save
 any other readable folder. Saved libraries remain available when Virelo starts
 elsewhere using the same data directory. Previous startup folders do not fill

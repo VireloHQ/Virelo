@@ -17,6 +17,7 @@ Usage:
   virelo [options]
 
 Options:
+      --here          Include the current working directory as a temporary library
   -m, --media <path>  Use a media directory (repeatable)
   -d, --data <path>   Store data and cache in this directory (default: ~/.virelo)
   -H, --host <host>   Bind address (default: 127.0.0.1)
@@ -28,7 +29,8 @@ Options:
   -h, --help          Show help
   -v, --version       Show version
 
-With no --media option, Virelo serves the directory where the command is run.
+With no --here or --media, Virelo loads saved libraries without scanning the current directory.
+Use --here for the previous default, or add folders in Settings > Libraries.
 Requires Node.js ${NODE_REQUIREMENT} within those release lines.
 `);
 }
@@ -82,7 +84,7 @@ async function main() {
   const boundHost = address && typeof address === 'object' ? address.address : options.host;
   const browserHost = boundHost === '0.0.0.0' ? '127.0.0.1' : boundHost === '::' ? '::1' : options.host;
   const url = serverUrl(browserHost, port);
-  console.log(`\nVirelo is ready\n  Local:  ${url}\n  Media:  ${options.mediaPaths.join(', ')}\n  Data:   ${dataDir}`);
+  console.log(`\nVirelo is ready\n  Local:  ${url}\n  Media:  ${options.mediaPaths.length ? options.mediaPaths.join(', ') : 'Saved libraries only (add folders in the Web UI)'}\n  Data:   ${dataDir}`);
   console.log('  Accounts: sign in to use this server. First-time setup must be completed on this PC using localhost.');
   if (boundHost === '127.0.0.1' || boundHost === '::1' || boundHost.startsWith('127.')) {
     console.log('  Network: local access only. Use --host 0.0.0.0 to share on a trusted network.');

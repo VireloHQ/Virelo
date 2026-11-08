@@ -45,6 +45,7 @@ export function parseCliArgs(args: string[], cwd = process.cwd()): CliOptions {
     if (argument === '--help' || argument === '-h') { help = true; continue; }
     if (argument === '--version' || argument === '-v') { version = true; continue; }
     if (argument === '--no-open') { openBrowser = false; continue; }
+    if (argument === '--here') { media.push(resolve(cwd)); continue; }
     if (FLAG_OPTIONS.has(argument)) { port = 0; continue; }
 
     const equalsIndex = argument.indexOf('=');
@@ -74,6 +75,6 @@ export function parseCliArgs(args: string[], cwd = process.cwd()): CliOptions {
   }
 
   if (!host) throw new CliUsageError('Host cannot be empty.');
-  const mediaPaths = [...new Set(media.length ? media : [resolve(cwd)])];
+  const mediaPaths = [...new Set(media)];
   return { dataDir: data, help, host, mediaPaths, openBrowser, port, version, ...(resetPassword ? {resetPassword} : {}) };
 }
