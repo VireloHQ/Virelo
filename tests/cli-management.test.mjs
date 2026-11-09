@@ -75,7 +75,7 @@ test('background Virelo can be reattached, updated and stopped from another fold
     // Always stop the daemon before removing test data, including after failures.
     await command(['stop','--data',data], root).catch(() => {});
     await waitForStop(data).catch(() => {});
-    await rm(root, { recursive: true, force: true });
+    await rm(root, { recursive: true, force: true, maxRetries: 20, retryDelay: 200 });
   }
 });
 
@@ -97,7 +97,7 @@ test('concurrent startup requests share a single daemon', { timeout: 50000 }, as
   } finally {
     await command(['stop','--data',data], root).catch(() => {});
     await waitForStop(data).catch(() => {});
-    await rm(root, { recursive: true, force: true });
+    await rm(root, { recursive: true, force: true, maxRetries: 20, retryDelay: 200 });
   }
 });
 
@@ -142,7 +142,7 @@ test('Web Admin can restart a detached server without changing its port, then st
   } finally {
     await command(['stop','--data',data], root).catch(()=>{});
     await waitForStop(data).catch(()=>{});
-    await rm(root,{recursive:true,force:true});
+    await rm(root,{recursive:true,force:true,maxRetries:20,retryDelay:200});
   }
 });
 
@@ -163,7 +163,7 @@ test('older profiles see the startup change once without blocking a background l
   } finally {
     await command(['stop','--data',data],root).catch(()=>{});
     await waitForStop(data).catch(()=>{});
-    await rm(root,{recursive:true,force:true});
+    await rm(root,{recursive:true,force:true,maxRetries:20,retryDelay:200});
   }
 });
 
@@ -175,7 +175,7 @@ test('Docker restart does not try to create a second detached server', {timeout:
     });
     assert.equal(result.status,1,result.stdout);
     assert.match(result.stderr,/Restart the container through Docker/);
-  } finally { await rm(root,{recursive:true,force:true}); }
+  } finally { await rm(root,{recursive:true,force:true,maxRetries:20,retryDelay:200}); }
 });
 
 test('status and stop never start an uninitialized server', { timeout: 15000 }, async () => {
@@ -186,5 +186,5 @@ test('status and stop never start an uninitialized server', { timeout: 15000 }, 
       assert.notEqual(result.code, 0, result.stdout + result.stderr);
       assert.match(result.stdout, /not running/);
     }
-  } finally { await rm(root, { recursive: true, force: true }); }
+  } finally { await rm(root, { recursive: true, force: true, maxRetries: 20, retryDelay: 200 }); }
 });
