@@ -30,14 +30,16 @@ async function checkEntryScreen(browser,base) {
   for(const viewport of [{width:574,height:346},{width:390,height:844},{width:320,height:568},{width:844,height:320}]) {
     await page.setViewportSize(viewport);
     const layout=await page.evaluate(()=>{
-      const rect=selector=>{const r=document.querySelector(selector).getBoundingClientRect();return {center:r.x+r.width/2,top:r.top,bottom:r.bottom,height:r.height};};
-      return {brand:rect('.account-brand'),language:rect('.language-select'),title:rect('.account-status h1'),copy:rect('.account-status p'),button:rect('.account-status button'),overflow:document.documentElement.scrollWidth>innerWidth};
+      const rect=selector=>{const r=document.querySelector(selector).getBoundingClientRect();return {center:r.x+r.width/2,top:r.top,bottom:r.bottom,height:r.height,left:r.left,right:r.right};};
+      return {header:rect('.account-entry-header'),brand:rect('.account-brand'),language:rect('.language-select'),title:rect('.account-status h1'),copy:rect('.account-status p'),button:rect('.account-status button'),overflow:document.documentElement.scrollWidth>innerWidth};
     });
-    for(const item of Object.values(layout).filter(value=>typeof value==='object'))assert.ok(Math.abs(item.center-viewport.width/2)<1,'connection content is centered');
+    for(const item of [layout.header,layout.title,layout.copy,layout.button])assert.ok(Math.abs(item.center-viewport.width/2)<1,'connection content is centered');
     assert.ok(layout.copy.top-layout.title.bottom>=15,'description has breathing room');
     assert.ok(layout.button.top-layout.copy.bottom>=23,'retry is separated from the explanation');
     assert.ok(layout.button.height>=44,'retry has a touch-friendly target');
-    assert.ok(layout.language.top>=layout.brand.bottom+12&&layout.title.top>=layout.language.bottom+12,'language control remains visible without overlapping the logo or status');
+    assert.ok(layout.brand.right+8<=layout.language.left,'language control sits to the right of the logo');
+    assert.ok(Math.abs((layout.brand.top+layout.brand.height/2)-(layout.language.top+layout.language.height/2))<2,'brand and language picker align');
+    assert.ok(layout.title.top>=layout.header.bottom+12,'status stays below the header without overlapping it');
     assert.ok(layout.button.bottom<=viewport.height,'retry stays in view: '+JSON.stringify({viewport,layout}));assert.equal(layout.overflow,false);
     await page.screenshot({path:join(repo,`node_modules/.cache/account-connection-${viewport.width}.png`)});
   }
