@@ -1,8 +1,7 @@
-.appearance-language { display: grid; gap: 12px; padding-bottom: 24px; margin-bottom: 28px; border-bottom: 1px solid var(--border); }
+.appearance-language { display: grid; gap: 12px; margin-bottom: 16px; }
 .appearance-language > label { font-weight: 600; }
 .language-select { width: min(100%, 300px); }
 .language-select .picker { width: 100%; }
-.account-entry > .language-select { margin: 0 auto 24px; width: min(100%, 220px); }
 .language-select[aria-busy="true"] { pointer-events: none; opacity: .65; }
 html[lang="ja"], html[lang="zh-CN"], html[lang="ko"] { line-break: strict; }
 

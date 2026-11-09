@@ -1,4 +1,6 @@
 .account-entry { min-height:100dvh; padding:48px 24px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:48px; }
+.account-entry-header { display:flex; align-items:center; justify-content:space-between; gap:24px; width:min(100%,420px); }
+.account-entry-header .language-select { flex:0 1 180px; min-width:0; }
 .account-brand { display:inline-flex; align-items:center; gap:10px; color:var(--text); font-size:28px; font-weight:750; text-decoration:none; }
 .account-brand img { width:40px; height:40px; object-fit:contain; }
 .account-entry.account-connection { justify-content:center; gap:32px; padding:40px 24px; }
@@ -8,7 +10,6 @@
 .account-status > .button { min-width:144px; min-height:44px; margin-top:8px; }
 @media (max-height:420px) {
   .account-entry.account-connection { gap:16px; padding:16px 24px; }
-  .account-entry.account-connection > .language-select { margin:0 auto; }
 }
 .account-entry-form { width:min(100%,420px); }
 .account-entry-form h1 { font-size:32px; font-weight:700; letter-spacing:-.035em; line-height:1.15; margin-bottom:16px; }
@@ -91,6 +92,9 @@
   .library-list > div { flex-wrap:wrap; gap:12px; }
   .library-item-actions { margin-left:auto; }
   .account-entry { justify-content:flex-start; padding-top:32px; gap:32px; }
+  .account-entry-header { gap:12px; }
+  .account-entry-header .language-select { flex-basis:160px; }
+  .account-brand { font-size:24px; }
   .account-entry-form h1 { font-size:28px; }
   .account-manager-head { flex-direction:column; }
 }
