@@ -152,8 +152,10 @@ async function serveForeground(options: CliOptions, profile: ControlProfile) {
     closing = true;
     process.off('SIGINT', shutdown);
     process.off('SIGTERM', shutdown);
-    await control.close();
+    // Keep IPC available until the HTTP listener has released its port.
+    // A restarting client waits for the control socket to disappear.
     await app.close();
+    await control.close();
   };
   let control: Awaited<ReturnType<typeof createControlServer>>;
   try {
