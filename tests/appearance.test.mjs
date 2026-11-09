@@ -34,3 +34,16 @@ test('custom accents remain readable, including black and saturated colors', () 
       assert.ok((luminance(tokens[key]) + .05) / (luminance('#303034') + .05) >= (color === '#c3a6ff' && key === '--color-brand-strong' ? 3 : 4.5), color + ' ' + key);
   }
 });
+
+test('Appearance settings have a single divider before Library view', async () => {
+  const [languageCss, settingsCss, source] = await Promise.all([
+    readFile(new URL('../web/src/i18n/language.css', import.meta.url), 'utf8'),
+    readFile(new URL('../web/src/styles.css', import.meta.url), 'utf8'),
+    readFile(new URL('../web/src/components/AppearanceSettings.tsx', import.meta.url), 'utf8')
+  ]);
+  const languageRule = languageCss.match(/\.appearance-language\s*\{([^}]*)\}/)?.[1];
+  assert.ok(languageRule, 'language settings style exists');
+  assert.doesNotMatch(languageRule, /\bborder(?:-bottom)?\s*:/, 'language settings do not draw a second divider');
+  assert.match(settingsCss, /\.setting-row\s*\{[^}]*border-top:\s*1px solid/, 'the settings row draws one divider');
+  assert.match(source, /<LanguageSettings\s*\/>\s*<div className="setting-row">/, 'the divider belongs to the next row');
+});
