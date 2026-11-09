@@ -35,7 +35,7 @@ Start Virelo from **any directory**:
 npx virelo
 ```
 
-Virelo loads your saved libraries without scanning the current working directory, starts at `http://127.0.0.1:41777`, and opens in your browser. On first use or after upgrading from a version without accounts, create the first administrator using this localhost address on the PC running Virelo, then sign in to your library.
+Virelo loads your saved libraries without scanning the current working directory and starts at `http://127.0.0.1:41777`. In an interactive terminal it opens a management console; press **O** to open the Web UI or **Q** to leave the server running without the console. On first use or after upgrading from a version without accounts, create the first administrator using this localhost address on the PC running Virelo, then sign in to your library.
 
 Folder discovery runs in the background without waiting to show the interface.
 Hidden entries and nested `node_modules` directories are excluded from scanning
@@ -127,7 +127,10 @@ virelo [options]
 -H, --host <host>   Bind address (default: 127.0.0.1)
 -p, --port <port>   HTTP port (default: 41777; use 0 for an available port)
     --random-port   Select an available HTTP port automatically
-    --no-open       Do not open a browser
+    --background    Start independently of the terminal, without opening the TUI
+    --foreground    Run attached to the terminal (also the default in Docker/non-TTY)
+    --no-tui        Disable the interactive console
+    --no-open       Do not open a browser in foreground mode
     --reset-password <username>
                     Recover an administrator's password locally, then exit
 -h, --help          Show help
@@ -146,6 +149,19 @@ npx virelo --here
 # Serve multiple directories
 npx virelo --media ~/Movies --media ~/Clips
 
+# Keep Virelo running after the terminal closes (also works in scripts)
+npx virelo --background
+
+# Reopen management from any directory
+npx virelo
+
+# Check or stop the server
+npx virelo status
+npx virelo stop
+
+# Restart the server
+npx virelo restart
+
 # Use a custom data directory
 npx virelo --media ~/Videos --data ~/.config/virelo
 
@@ -157,6 +173,8 @@ npx virelo --port 0
 ```
 
 If neither `--here` nor `--media` is provided, Virelo starts with saved libraries only and does **not** scan the current directory. Use `--here` to explicitly include the current directory. Both `--here` and `--media` add temporary libraries for the current run; saved libraries remain available.
+
+For details on the detachable terminal console, profiles, Web Admin controls, SSH and Docker, see [Server management](docs/server-management.md). OS sign-in autostart is planned separately.
 
 ## 🎞️ Media support
 

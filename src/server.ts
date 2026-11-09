@@ -29,6 +29,8 @@ import { mediaScheduler,MediaBusyError } from './media-work.js';
 import { requestHostname, isTrustedHostname } from './request-security.js';
 import { AccountError } from './accounts.js';
 import { libraryName, libraryFolder } from './library-names.js';
+import { readServerSettings, writeServerSettings } from './server-settings.js';
+import { controlProfile, sendControl } from './server-control.js';
 
 const SORT_KEYS: SortKey[] = ['title', 'newest', 'oldest', 'year', 'duration', 'random'];
 
@@ -258,6 +260,62 @@ export async function createVireloServer(config: RuntimeConfig, pickFolder: (sig
   const visibleScanStatus = (isAdmin: boolean) => isAdmin ? scanStatus : { ...scanStatus, audioTotal:undefined,audioAnalyzed:undefined,message: scanStatus.running ? 'Scanning libraries' : 'Idle', total:0,scanned:0,added:0,updated:0,skipped:0,thumbnailsGenerated:0,thumbnailsRepaired:0,errors:0 };
   app.get('/api/health', async request => ({ ok: true, version: VIRELO_VERSION, ffmpeg: await hasFfmpeg(), ffprobe: await hasFfprobe(), scan: visibleScanStatus(request.account!.isAdmin) }));
   app.get('/api/settings', async () => publicSettings(db.getSettings()));
+  const serverManagementSnapshot = async () => {
+    const address = app.server.address();
+    const activeHost = address && typeof address === 'object' ? address.address : config.host;
+    const activePort = address && typeof address === 'object' ? address.port : config.port;
+    const saved = await readServerSettings(config.dataDir);
+    const desired = saved ?? { host: config.host, port: config.port };
+    const control = await sendControl(await controlProfile(config.dataDir), { action: 'status' }).catch(() => null);
+    return {
+      managed: Boolean(control?.ok),
+      restartSupported: Boolean(control?.ok && control.status.restartSupported),
+      version: VIRELO_VERSION,
+      pid: process.pid,
+      uptimeSeconds: Math.floor(process.uptime()),
+      platform: process.platform,
+      dataDir: config.dataDir,
+      host: activeHost,
+      port: activePort,
+      desired,
+      restartRequired: Boolean(saved && (saved.host !== activeHost || saved.port !== activePort && saved.port !== 0)),
+      libraries: db.visibleLibraries().length,
+      scanRunning: scanStatus.running
+    };
+  };
+  app.get('/api/server/management', async request => {
+    fresh(request, true);
+    return serverManagementSnapshot();
+  });
+  app.post<{ Body: { host?: unknown; port?: unknown } }>('/api/server/management/config', async (request, reply) => {
+    fresh(request, true);
+    if (!directLocal(request))
+      return reply.code(403).send({ error: 'Server network settings can only be changed on localhost.' });
+    if (!request.body || typeof request.body !== 'object' || Array.isArray(request.body))
+      return reply.code(400).send({ error: 'Expected a host and port.' });
+    try {
+      await writeServerSettings(config.dataDir, request.body);
+      return serverManagementSnapshot();
+    } catch (error) {
+      return reply.code(400).send({ error: error instanceof Error ? error.message : 'Invalid server settings.' });
+    }
+  });
+  app.post<{ Params: { action: string } }>('/api/server/management/:action', async (request, reply) => {
+    fresh(request, true);
+    if (!directLocal(request)) return reply.code(403).send({ error: 'Server controls are only available on localhost.' });
+    if (!['stop', 'restart'].includes(request.params.action))
+      return reply.code(404).send({ error: 'Unknown server action.' });
+    const action = request.params.action as 'stop' | 'restart';
+    try {
+      const response = await sendControl(await controlProfile(config.dataDir), { action });
+      if (!response) return reply.code(409).send({ error: 'No managed server is available. Use the external service manager instead.' });
+      if (!response.ok) return reply.code(409).send({ error: response.error });
+      return { ok: true, message: response.message };
+    } catch (error) {
+      app.log.warn(error);
+      return reply.code(503).send({ error: 'Could not contact the server manager.' });
+    }
+  });
   app.get('/api/data', async request => {
     fresh(request,true);
     const usage=await dataUsage(config.dataDir,playbackCacheLimit(config.dataDir));
@@ -609,15 +667,27 @@ export async function createVireloServer(config: RuntimeConfig, pickFolder: (sig
     db.close();
   });
 
+  async function addTemporaryLibrary(rawPath: string) {
+    const mediaPath = resolve(rawPath);
+    const info = await stat(mediaPath);
+    if (!info.isDirectory()) throw new Error('Media path must be a directory.');
+    assertSeparateCache(config.dataDir, [mediaPath]);
+    const library = db.addLibrary(mediaPath, basename(mediaPath) || mediaPath, false);
+    await refreshWatcher();
+    if (scanStatus.running) watchScanPending = true;
+    else void runScan();
+    return library;
+  }
+
   await refreshWatcher();
-  return { app, db, accounts, runScan, scanStatus };
+  return { app, db, accounts, runScan, scanStatus, addTemporaryLibrary };
 }
 
 export async function startServer(config: RuntimeConfig) {
-  const { app, db, runScan, scanStatus } = await createVireloServer(config);
+  const { app, db, runScan, scanStatus, addTemporaryLibrary } = await createVireloServer(config);
   await app.listen({ host: config.host, port: config.port });
   const address = app.server.address();
   const port = address && typeof address === 'object' ? address.port : config.port;
   void runScan();
-  return { app, db, port, scanStatus };
+  return { app, db, port, scanStatus, runScan, addTemporaryLibrary };
 }
