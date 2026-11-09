@@ -16,7 +16,7 @@ import {
   type ControlRequest, type ControlReply, type ServerSnapshot
 } from './server-control.js';
 import {
-  canUseTui, isContainer, runningServer, startDetached, stopDetached, waitForStop
+  canUseTui, isContainer, runningServer, shouldOpenTerminalConsole, startDetached, stopDetached, waitForStop
 } from './server-process.js';
 import { openTerminalUI } from './terminal-ui.js';
 import { readServerSettings } from './server-settings.js';
@@ -37,7 +37,7 @@ Options:
   -H, --host <host>   Bind address (default: 127.0.0.1)
   -p, --port <port>   HTTP port (default: ${DEFAULT_PORT}; use 0 for an available port)
       --random-port   Select an available HTTP port automatically
-      --background    Start independently of this terminal, even without a TTY
+      --background    Start independently without opening the terminal UI
       --foreground    Keep the server attached to this terminal (Docker/service mode)
       --no-tui        Do not open the terminal management UI
       --no-open       Do not open a browser in foreground mode
@@ -243,8 +243,11 @@ async function manage(options: CliOptions, profile: ControlProfile) {
     if (before && !before.restartSupported)
       throw new CliUsageError('This server is supervised externally. Restart it using its service manager.');
     if (before) {
-      if (!options.explicitHost) options.host = before.host;
-      if (!options.explicitPort) options.port = before.port;
+      // Apply saved Web Admin settings on restart. Without saved settings,
+      // keep the current bind address and port unless the CLI overrides them.
+      const saved = await readServerSettings(profile.dataDir);
+      if (!options.explicitHost && !saved) options.host = before.host;
+      if (!options.explicitPort && !saved) options.port = before.port;
     }
     const stopped = await stopDetached(profile);
     if (stopped) await waitForStop(profile);
@@ -261,7 +264,7 @@ async function manage(options: CliOptions, profile: ControlProfile) {
       if (!reply?.ok) throw new Error(reply?.error || 'Failed to add media to the running server.');
     }
   }
-  if (!canUseTui() || options.noTui) {
+  if (!shouldOpenTerminalConsole(options)) {
     await plainUpgradeNotice(profile, hadDatabase);
     console.log(`${existing ? 'Connected to' : 'Started'} Virelo at ${status.url} (PID ${status.pid}).`);
     console.log('The server will keep running. Use "virelo status" or "virelo stop" to manage it.');

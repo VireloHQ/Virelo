@@ -16,6 +16,10 @@ export function canUseTui(): boolean {
   return !!(process.stdin.isTTY && process.stdout.isTTY && process.env.TERM !== 'dumb' && !process.env.CI);
 }
 
+export function shouldOpenTerminalConsole(options: Pick<CliOptions, 'background' | 'noTui'>, tuiAvailable = canUseTui()): boolean {
+  return tuiAvailable && !options.background && !options.noTui;
+}
+
 export async function runningServer(profile: ControlProfile): Promise<ServerSnapshot | null> {
   const reply = await sendControl(profile, { action: 'status' });
   if (!reply) return null;

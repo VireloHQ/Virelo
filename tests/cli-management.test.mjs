@@ -6,6 +6,7 @@ import { mkdtemp, mkdir, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { createServer } from 'node:net';
 import { VireloDB } from '../dist/db.js';
 
 const entry = fileURLToPath(new URL('../dist/cli.js', import.meta.url));
@@ -32,6 +33,18 @@ async function waitForStop(data) {
     await new Promise(resolve => setTimeout(resolve, 100));
   }
   throw new Error('Server did not stop.');
+}
+
+async function unusedLocalPort() {
+  const listener = createServer();
+  await new Promise((resolve, reject) => {
+    listener.once('error', reject);
+    listener.listen(0, '127.0.0.1', resolve);
+  });
+  const address = listener.address();
+  await new Promise((resolve, reject) => listener.close(error => error ? reject(error) : resolve()));
+  if (!address || typeof address === 'string') throw new Error('Could not allocate a test port.');
+  return address.port;
 }
 
 test('background Virelo can be reattached, updated and stopped from another folder', { timeout: 60000 }, async () => {
@@ -143,6 +156,64 @@ test('Web Admin can restart a detached server without changing its port, then st
     await command(['stop','--data',data], root).catch(()=>{});
     await waitForStop(data).catch(()=>{});
     await rm(root,{recursive:true,force:true,maxRetries:20,retryDelay:200});
+  }
+});
+
+test('Web Admin applies saved host and port after restarting a detached server', {timeout:70000}, async () => {
+  const root = await mkdtemp(join(tmpdir(), 'virelo-web-restart-config-'));
+  const data = join(root, 'data');
+  try {
+    const started = await command(['--background', '--data', data, '--random-port', '--no-open'], root);
+    assert.equal(started.code, 0, started.stdout + started.stderr);
+    const originalUrl = started.stdout.match(/(http:\/\/127\.0\.0\.1:\d+)/)?.[1];
+    assert.ok(originalUrl, started.stdout);
+
+    const login = await fetch(originalUrl + '/api/auth/setup', {
+      method: 'POST',
+      headers: {'content-type': 'application/json', 'x-virelo-request': '1'},
+      body: JSON.stringify({username: 'owner', password: 'test-only-password'})
+    });
+    assert.equal(login.status, 200, await login.text());
+    const cookie = login.headers.get('set-cookie')?.split(';')[0];
+    assert.ok(cookie);
+    const headers = {'x-virelo-request': '1', cookie};
+
+    let nextPort = await unusedLocalPort();
+    while (nextPort === Number(new URL(originalUrl).port)) nextPort = await unusedLocalPort();
+    const save = await fetch(originalUrl + '/api/server/management/config', {
+      method: 'POST',
+      headers: {...headers, 'content-type': 'application/json'},
+      body: JSON.stringify({host: '0.0.0.0', port: nextPort})
+    });
+    const pending = await save.json();
+    assert.equal(save.status, 200, JSON.stringify(pending));
+    assert.equal(pending.restartRequired, true);
+    assert.deepEqual(pending.desired, {host: '0.0.0.0', port: nextPort});
+
+    const restart = await fetch(originalUrl + '/api/server/management/restart', {method: 'POST', headers});
+    assert.equal(restart.status, 200, await restart.text());
+    const nextUrl = `http://127.0.0.1:${nextPort}`;
+    let startedWithSavedSettings = false;
+    for (let i = 0; i < 80; i++) {
+      await new Promise(resolve => setTimeout(resolve, 200));
+      const next = await command(['status', '--data', data], root, 4000);
+      if (next.code === 0 && next.stdout.includes(nextUrl)) {
+        startedWithSavedSettings = true;
+        break;
+      }
+    }
+    assert.equal(startedWithSavedSettings, true, 'restart must use the saved Web Admin port');
+
+    const updated = await fetch(nextUrl + '/api/server/management', {headers});
+    const live = await updated.json();
+    assert.equal(updated.status, 200, JSON.stringify(live));
+    assert.equal(live.host, '0.0.0.0');
+    assert.equal(live.port, nextPort);
+    assert.equal(live.restartRequired, false);
+  } finally {
+    await command(['stop', '--data', data], root).catch(() => {});
+    await waitForStop(data).catch(() => {});
+    await rm(root, {recursive: true, force: true, maxRetries: 20, retryDelay: 200});
   }
 });
 

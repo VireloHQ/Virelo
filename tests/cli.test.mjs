@@ -4,6 +4,7 @@ import { readFile } from 'node:fs/promises';
 import { spawnSync } from 'node:child_process';
 import { resolve } from 'node:path';
 import { CliUsageError, DEFAULT_PORT, parseCliArgs } from '../dist/cli-options.js';
+import { shouldOpenTerminalConsole } from '../dist/server-process.js';
 
 test('starts without implicitly scanning the current directory', () => {
   const cwd = resolve('test-media');
@@ -31,6 +32,13 @@ test('parses repeated media paths and short options without adding CWD', () => {
   assert.equal(options.host, '0.0.0.0');
   assert.equal(options.port, 8080);
   assert.equal(options.openBrowser, false);
+});
+
+test('--background never opens the TUI, even in an interactive terminal', () => {
+  assert.equal(shouldOpenTerminalConsole(parseCliArgs([]), true), true);
+  assert.equal(shouldOpenTerminalConsole(parseCliArgs(['--background']), true), false);
+  assert.equal(shouldOpenTerminalConsole(parseCliArgs(['--no-tui']), true), false);
+  assert.equal(shouldOpenTerminalConsole(parseCliArgs([]), false), false);
 });
 
 test('supports automatic port selection', () => {
