@@ -179,7 +179,10 @@ export async function openTerminalUI(profile:ControlProfile,initial:ServerSnapsh
     if(state.view==='logs'){
       const max=Math.max(0,visibleLogs(state).length-lastFrame.logRows);
       state.logOffset=Math.max(0,Math.min(max,state.logOffset+amount));state.logPaused=state.logOffset>0;
-    }else if(state.view==='libraries')state.libraryOffset=Math.max(0,Math.min(Math.max(0,state.libraries.length-1),state.libraryOffset-amount));
+    }else if(state.view==='libraries'){
+      const max=Math.max(0,state.libraries.length-lastFrame.libraryRows);
+      state.libraryOffset=Math.max(0,Math.min(max,Math.min(max,state.libraryOffset)-amount));
+    }
     paint();
   };
   const edit=(text:string)=>{
@@ -227,8 +230,8 @@ export async function openTerminalUI(profile:ControlProfile,initial:ServerSnapsh
       else if(key.name==='return'||key.name==='right'){activate(`nav:${state.navigation}`);return;}
     }else if(state.view==='logs'||state.view==='libraries'){
       if(key.name==='up')scroll(1);else if(key.name==='down')scroll(-1);
-      else if(key.name==='pageup')scroll(lastFrame.logRows);else if(key.name==='pagedown')scroll(-lastFrame.logRows);
-      else if(key.name==='home')scroll(Number.MAX_SAFE_INTEGER);else if(key.name==='end'){state.logPaused=false;state.logOffset=0;state.libraryOffset=state.view==='libraries'?Math.max(0,state.libraries.length-Math.max(1,Math.floor(((stdout.rows||32)-16)/3))):0;}
+      else if(key.name==='pageup')scroll(state.view==='libraries'?lastFrame.libraryRows:lastFrame.logRows);else if(key.name==='pagedown')scroll(-(state.view==='libraries'?lastFrame.libraryRows:lastFrame.logRows));
+      else if(key.name==='home')scroll(Number.MAX_SAFE_INTEGER);else if(key.name==='end'){state.logPaused=false;state.logOffset=0;state.libraryOffset=state.view==='libraries'?Math.max(0,state.libraries.length-lastFrame.libraryRows):0;}
       else if(key.name==='left'||key.name==='right')state.selection=(state.selection+1)%(state.view==='logs'?3:2);
       else if(key.name==='return')activate(state.view==='logs'?(['pauseLogs','filterLogs','searchLogs'] as const)[state.selection]:state.selection===0?'addFolder':'scan');
     }else{

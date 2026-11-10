@@ -18,23 +18,25 @@ export function visibleLogs(state:ConsoleState):LogEntry[]{return state.logs.fil
 export function renderConsole(state:ConsoleState,columns:number,rows:number,color=true,ascii=false){
   const width=Math.max(12,Math.min(200,columns-1)),height=Math.max(5,Math.min(100,rows));
   const canvas=new TerminalCanvas(width,height,ascii),hits:ConsoleHit[]=[];
-  const wide=width>=90,navWidth=wide?23:0,bodyX=wide?26:1,bodyY=wide?5:7,bodyW=width-bodyX-1,bodyH=height-bodyY-4;
+  const wide=width>=90,navWidth=wide?21:0,bodyX=wide?24:1,bodyY=wide?4:5,bodyW=width-bodyX-1;
+  const bodyH=Math.min(height-bodyY-3,state.view==='overview'?11:state.view==='settings'?13:height);
+  const libraryRows=Math.max(1,Math.floor((bodyH-7)/2));
   const button=(action:ConsoleHit['action'],x:number,y:number,label:string,selected=false,max=bodyW)=>{
     const text=fitTerminal(' '+label+' ',max);
     canvas.text(x,y,text,selected?'selected':'normal',max);
     hits.push({x,y,width:Math.min(max,text.length),action});
   };
-  canvas.text(2,1,'Virelo','title');canvas.text(10,1,'Server console','muted');
-  canvas.text(Math.max(2,width-24),2,state.busy|| (state.connected?'● Connected':'○ Disconnected'),state.connected?'success':'danger',23);
-  canvas.text(2,2,state.status.url,'muted',width-30);
+  canvas.text(2,1,'Virelo','title');if(width>=65)canvas.text(10,1,'Server console','muted');
+  canvas.text(Math.max(10,width-24),1,state.busy|| (state.connected?'● Connected':'○ Disconnected'),state.connected?'success':'danger',23);
+  canvas.text(2,2,state.status.url,'muted',width-4);
   if(width<45||height<18){
     canvas.text(2,6,'Resize to at least 46 × 18.','muted');
     canvas.text(2,8,'Q closes this console.','normal');canvas.text(2,9,'The server keeps running.','muted');
-    return {lines:canvas.lines(color),hits,logRows:1,cursor:null};
+    return {lines:canvas.lines(color),hits,logRows:1,libraryRows:1,cursor:null};
   }
   if(wide){
     for(let i=0;i<consoleActions.length;i++){
-      const y=6+i*2+(i>=4?1:0)+(i>=6?1:0);
+      const y=4+i+(i>=4?1:0)+(i>=6?1:0);
       if(y>=height-4)break;
       const selected=state.focus==='navigation'&&state.navigation===i;
       canvas.fill(1,y,navWidth,selected?'selected':'normal');
@@ -46,42 +48,44 @@ export function renderConsole(state:ConsoleState,columns:number,rows:number,colo
     let x=2;
     for(let i=0;i<4;i++){
       const label=['Home','Folders','Logs','Settings'][i];
-      button(`nav:${i}`,x,5,label,state.navigation===i,label.length+4);x+=label.length+5;
+      button(`nav:${i}`,x,4,label,state.navigation===i,label.length+4);x+=label.length+5;
     }
   }
   canvas.box(bodyX,bodyY,bodyW,bodyH,consoleActions[['overview','libraries','logs','settings'].indexOf(state.view)]);
   const x=bodyX+2,y=bodyY+2,inner=bodyW-4;
-  let logRows=Math.max(1,bodyH-7);
+  const logRows=Math.max(1,bodyH-6);
   if(state.view==='overview'){
     const cardW=Math.floor((inner-4)/3),uptime=Math.max(0,Math.floor((Date.now()-state.status.startedAt)/60000));
     for(const [i,label,value] of [[0,'Server',state.connected?'Online':'Offline'],[1,'Libraries',String(state.status.libraries)],[2,'Scan',state.status.scanRunning?'Running':'Idle']] as const){
-      const cx=x+i*(cardW+2);canvas.box(cx,y,cardW,5,label);canvas.text(cx+2,y+2,value,i===0?'success':'title',cardW-4);
+      const cx=x+i*(cardW+2);canvas.text(cx,y,label,'muted',cardW);canvas.text(cx,y+1,value,i===0&&state.connected?'success':i===0?'danger':'title',cardW);
     }
-    for(const [i,label,value] of [[0,'Address',state.status.url],[1,'Uptime',Math.floor(uptime/60)+'h '+uptime%60+'m'],[2,'Process',String(state.status.pid)],[3,'Data folder',state.status.dataDir]] as const){
-      const row=y+6+i*(bodyH>=23?2:1);if(row>=bodyY+bodyH-1)break;
+    for(const [i,label,value] of [[0,'Uptime',Math.floor(uptime/60)+'h '+uptime%60+'m'],[1,'Process',String(state.status.pid)],[2,'Data folder',state.status.dataDir]] as const){
+      const row=y+3+i;
       canvas.text(x,row,label,'muted',12);canvas.text(x+14,row,value,'normal',inner-14);
     }
-    if(bodyH>20){button('open',x,y+17,'Open in browser',state.focus==='content'&&state.selection===0);button('logs',x+23,y+17,'Live logs',state.focus==='content'&&state.selection===1,inner-23);}
+    button('open',x,y+7,'Open in browser',state.focus==='content'&&state.selection===0);
+    button('logs',x+21,y+7,'Live logs',state.focus==='content'&&state.selection===1,inner-21);
   }else if(state.view==='libraries'){
     button('addFolder',x,y,'Add folder',state.focus==='content'&&state.selection===0);
     button('scan',x+18,y,'Scan',state.focus==='content'&&state.selection===1,inner-18);
     canvas.text(x,y+2,state.status.libraries+' active folders','muted',inner);
-    const count=Math.max(1,Math.floor((bodyH-7)/3));
-    for(const [index,library] of state.libraries.slice(state.libraryOffset,state.libraryOffset+count).entries()){
-      const ly=y+4+index*3;canvas.text(x,ly,library.label,'title',inner-13);
+    const count=libraryRows;
+    const offset=Math.min(state.libraryOffset,Math.max(0,state.libraries.length-count));
+    for(const [index,library] of state.libraries.slice(offset,offset+count).entries()){
+      const ly=y+3+index*2;canvas.text(x,ly,library.label,'title',inner-13);
       canvas.text(x+Math.max(0,inner-11),ly,library.persistent?'Saved':'Temporary','muted',11);
       canvas.text(x,ly+1,library.path,'muted',inner);
     }
-    if(!state.libraries.length)canvas.text(x,y+5,'No folders added.','muted',inner);
+    if(!state.libraries.length)canvas.text(x,y+4,'No folders added.','muted',inner);
     if(state.libraries.length>count)canvas.text(x,bodyY+bodyH-2,'↑↓ / PgUp PgDn scroll folders','muted',inner);
   }else if(state.view==='settings'){
-    canvas.text(x,y,'Listening address','muted',inner);canvas.text(x,y+1,state.status.url,'normal',inner);
-    canvas.text(x,y+3,'Saved port','muted',inner);
+    canvas.text(x,y,'Address','muted',12);canvas.text(x+14,y,state.status.url,'normal',inner-14);
+    canvas.text(x,y+2,'Saved port','muted',12);
     const value=state.desiredPort===0?'Automatic (0)':String(state.desiredPort);
-    button('editPort',x,y+4,value+'  · Edit',state.focus==='content'&&state.selection===0,Math.min(inner,35));
-    if(bodyH>9)canvas.text(x,y+6,state.restartRequired?'Restart required to apply the saved port.':'Port changes take effect after a restart.','muted',inner);
-    if(bodyH>=12)button('restart',x,y+8,'Restart server',state.focus==='content'&&state.selection===1,inner);
-    if(bodyH>17){canvas.text(x,y+11,'Bind address','muted',12);canvas.text(x+14,y+11,state.status.host,'normal',inner-14);canvas.text(x,y+13,'Data folder','muted',12);canvas.text(x+14,y+13,state.status.dataDir,'normal',inner-14);}
+    button('editPort',x+14,y+2,value+'  · Edit',state.focus==='content'&&state.selection===0,Math.min(inner-14,35));
+    canvas.text(x,y+3,state.restartRequired?'Restart required to apply the saved port.':'Port changes take effect after a restart.','muted',inner);
+    button('restart',x,y+5,'Restart server',state.focus==='content'&&state.selection===1,inner);
+    if(bodyH>=12){canvas.text(x,y+7,'Bind address','muted',12);canvas.text(x+14,y+7,state.status.host,'normal',inner-14);canvas.text(x,y+8,'Data folder','muted',12);canvas.text(x+14,y+8,state.status.dataDir,'normal',inner-14);}
   }else{
     button('pauseLogs',x,y,state.logPaused?'Resume':'Pause',state.focus==='content'&&state.selection===0,12);
     button('filterLogs',x+13,y,state.logFilter===50?'Errors':state.logFilter===40?'Warnings':'All levels',state.focus==='content'&&state.selection===1,15);
@@ -117,5 +121,5 @@ export function renderConsole(state:ConsoleState,columns:number,rows:number,colo
     button('confirm',mx+2,my+h-3,modal.type==='port'?'Save port':modal.type==='folder'?'Add folder':modal.type==='search'?'Apply filter':modal.type==='upgrade'?'Continue':modal.type==='stop'?'Stop server':'Restart',!modal.cancel,w-4);
     if(modal.type!=='upgrade')button('cancel',mx+w-14,my+h-3,'Cancel',!!modal.cancel,12);
   }
-  return {lines:canvas.lines(color),hits,logRows,cursor};
+  return {lines:canvas.lines(color),hits,logRows,libraryRows,cursor};
 }

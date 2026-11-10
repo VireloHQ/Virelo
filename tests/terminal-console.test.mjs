@@ -29,6 +29,56 @@ test('terminal text strips OSC, CSI, C1 and bidirectional controls; Unicode fits
   const input=terminalInputWindow('映画のフォルダ',8,7);assert.ok(stringWidth(input.text)<=7);assert.ok(input.cursor<7);
 });
 
+test('every highlighted label uses explicit black, independent of the terminal palette or text tone',()=>{
+  const canvas=new TerminalCanvas(20,1);
+  canvas.fill(0,0,20,'selected');
+  for(const [i,tone] of ['normal','muted','title','accent','success','danger'].entries())canvas.text(i,0,'X',tone);
+  const frames=[canvas.lines(),...Array.from({length:8},(_,navigation)=>renderConsole({...state(),navigation},120,36).lines),
+    renderConsole({...state(),focus:'content'},80,24).lines,
+    renderConsole({...state(),modal:{type:'port',value:'41777',cursor:5}},80,24).lines];
+  let highlighted=0;
+  for(const lines of frames)for(const line of lines){
+    let foreground='',background='';
+    for(const part of line.split(/(\x1b\[[\d;]*m)/)){
+      if(part==='\x1b[0m'){foreground='';background='';}
+      else if(part.startsWith('\x1b[38;'))foreground=part;
+      else if(part.startsWith('\x1b[48;'))background=part;
+      else if(/^\x1b\[/.test(part))foreground=part;
+      else if(background==='\x1b[48;5;250m'&&part.trim()){
+        assert.equal(foreground,'\x1b[38;2;0;0;0m');highlighted++;
+      }
+    }
+  }
+  assert.ok(highlighted>=12);
+});
+
+test('static panels stay compact, actions fit small terminals and growing terminals show more logs/folders',()=>{
+  for(const columns of [46,80,120])for(const rows of [18,24,36,60]){
+    const overview=renderConsole(state(),columns,rows,false);
+    assert.ok(overview.hits.some(hit=>hit.action==='open'));
+    assert.ok(overview.hits.some(hit=>hit.action==='logs'));
+    assert.equal(overview.lines.join('\n').split(state().status.url).length-1,1,'URL is not repeated in Overview');
+    for(const view of ['overview','libraries','logs','settings']){
+      const frame=renderConsole({...state(),view},columns,rows,false);
+      for(const hit of frame.hits){
+        assert.ok(hit.x>=0&&hit.x+hit.width<columns);
+        assert.ok(hit.y>=0&&hit.y<rows-3,view+' action must not overlap the footer');
+        assert.ok(frame.lines[hit.y].slice(hit.x,hit.x+hit.width).trim(),'Hit target has visible text');
+      }
+    }
+  }
+  const short=renderConsole(state(),120,24),tall=renderConsole(state(),120,60);
+  assert.deepEqual(short.lines.slice(4,15),tall.lines.slice(4,15));
+  assert.ok(!tall.lines.slice(15,56).join('').includes('\x1b[48;5;234m'),'Overview does not fill unused rows');
+  assert.ok(renderConsole({...state(),view:'logs'},120,60).logRows>renderConsole({...state(),view:'logs'},120,24).logRows);
+  const libraries=Array.from({length:40},(_,i)=>({id:i,label:'Folder '+i,path:'/videos/'+i,persistent:1}));
+  const folders=renderConsole({...state(),view:'libraries',libraries,libraryOffset:39},120,36,false);
+  assert.ok(folders.libraryRows>5);
+  assert.ok(folders.lines.join('\n').includes('Folder '+(40-folders.libraryRows)),'Resize keeps the last page full');
+  assert.ok(folders.lines.join('\n').includes('Folder 39'));
+  assert.equal(folders.lines.findIndex(line=>line.includes('Folder 39'))-folders.lines.findIndex(line=>line.includes('Folder 38')),2);
+});
+
 test('live log snapshots replace partial lines and handle split Unicode, truncation, rotation and caps',async()=>{
   const root=await mkdtemp(join(tmpdir(),'virelo-tui-log-')),path=join(root,'server.log'),tail=new TerminalLog(path,3);
   try{
@@ -71,11 +121,11 @@ test('port validation preserves pending host settings and detects occupied ports
   }finally{await new Promise(resolve=>listener.close(resolve));await rm(root,{recursive:true,force:true});}
 });
 
-async function fakeConsole(run){
+async function fakeConsole(run,libraries=[]){
   const oldTerm=process.env.TERM;process.env.TERM='xterm-256color';
   const root=await mkdtemp(join(tmpdir(),'virelo-tui-input-')),profile=await controlProfile(root),calls=[];
-  const initial=status(root);let rejectStop=false;
-  const control=await createControlServer(profile,async request=>{calls.push(request);return request.action==='stop'&&rejectStop?{ok:false,error:'Stop refused'}:{ok:true,status:initial,libraries:[]};});
+  const initial={...status(root),libraries:libraries.length};let rejectStop=false;
+  const control=await createControlServer(profile,async request=>{calls.push(request);return request.action==='stop'&&rejectStop?{ok:false,error:'Stop refused'}:{ok:true,status:initial,libraries};});
   const input=new PassThrough();input.isTTY=true;input.isRaw=false;input.setRawMode=mode=>{input.isRaw=mode;};
   let output='';const terminal=new Writable({write(chunk,_encoding,callback){output+=chunk;callback();}});terminal.isTTY=true;terminal.columns=120;terminal.rows=36;
   const finished=openTerminalUI(profile,initial,false,undefined,{input,output:terminal,statusInterval:30,logInterval:20,openBrowser:async()=>{}});
@@ -84,6 +134,20 @@ async function fakeConsole(run){
   finally{key('c','',{ctrl:true});await finished;await control.close();await rm(root,{recursive:true,force:true});if(oldTerm===undefined)delete process.env.TERM;else process.env.TERM=oldTerm;
     assert.equal(input.isRaw,false);assert.equal(input.listenerCount('keypress'),0);assert.ok(output.includes('\x1b[?1000l'));}
 }
+
+test('folder End and Page Up use the compact renderer page size',async()=>{
+  const libraries=Array.from({length:40},(_,i)=>({id:i,label:'Folder '+i,path:'/videos/'+i,persistent:1}));
+  await fakeConsole(async io=>{
+    io.key('down');io.key('return');await until(()=>io.text().includes('Folder 0'));
+    const capacity=renderConsole({...state(),view:'libraries',libraries},120,36,false).libraryRows;
+    let start=io.text().length;io.key('end');
+    assert.match(io.text().slice(start),/Folder 39/);
+    assert.ok(io.text().slice(start).includes('Folder '+(40-capacity)));
+    start=io.text().length;io.key('pageup');
+    assert.ok(io.text().slice(start).includes('Folder '+(40-capacity*2)));
+    start=io.text().length;io.key('home');assert.match(io.text().slice(start),/Folder 0/);
+  },libraries);
+});
 
 test('Q and Ctrl+C close only the console; a rejected Stop keeps the UI alive',async()=>{
   await fakeConsole(async io=>{io.key('q','q');await io.finished;assert.ok(!io.calls.some(call=>call.action==='stop'));assert.match(io.text(),/Virelo keeps running/);});

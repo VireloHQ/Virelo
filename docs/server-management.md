@@ -22,7 +22,7 @@ In **Settings**, select the saved port and press Enter (or click it). Enter a po
 
 **Live logs** follows local server output while the panel is open. **Space** pauses/resumes following; arrows, Page Up/Page Down, Home/End and the mouse wheel browse the buffer. Use **All levels** to filter warnings/errors and **Search** (or `/`) to find text. Reads are bounded to the latest 64 KiB and the display retains up to 1,000 entries. Pausing only affects the view; it does not change server logging. The console never edits the log file.
 
-The layout adapts to narrow terminals, preserves Unicode folder names, honors `NO_COLOR` and restores the shell when closed. Pipes and `TERM=dumb` keep plain status output instead of opening a full-screen UI.
+Overview and Settings use compact panels; folders and logs expand to use the available terminal height. The layout adapts to narrow terminals, preserves Unicode folder names, honors `NO_COLOR` and restores the shell when closed. Pipes and `TERM=dumb` keep plain status output instead of opening a full-screen UI.
 
 ```bash
 npx virelo --here             # Include the current directory for this run

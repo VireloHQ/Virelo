@@ -2,7 +2,7 @@ import stringWidth from 'string-width';
 import { terminalText } from './terminal-log.js';
 
 export type Tone='normal'|'muted'|'title'|'line'|'accent'|'selected'|'field'|'success'|'danger';
-const colors: Record<Tone,string>={normal:'\x1b[37m',muted:'\x1b[38;5;248m',title:'\x1b[1;97m',line:'\x1b[90m',accent:'\x1b[38;5;147m',selected:'\x1b[30m',field:'\x1b[97m',success:'\x1b[32m',danger:'\x1b[91m'};
+const colors: Record<Tone,string>={normal:'\x1b[37m',muted:'\x1b[38;5;248m',title:'\x1b[1;97m',line:'\x1b[90m',accent:'\x1b[38;5;147m',selected:'\x1b[38;2;0;0;0m',field:'\x1b[97m',success:'\x1b[32m',danger:'\x1b[91m'};
 const segments=new Intl.Segmenter(undefined,{granularity:'grapheme'});
 export function terminalInputWindow(value:string,cursor:number,width:number){
   const before=value.slice(0,cursor),parts=[...segments.segment(before)];let start=cursor,used=0;
@@ -48,7 +48,11 @@ export class TerminalCanvas {
   lines(color=true):string[]{
     return this.cells.map(row=>{
       let line='',tone:Tone|undefined,background=-1;
-      for(const cell of row){if(color&&(cell.tone!==tone||cell.background!==background)){line+='\x1b[0m'+colors[cell.tone]+`\x1b[48;5;${cell.background}m`;tone=cell.tone;background=cell.background;}line+=cell.text;}
+      for(const cell of row){
+        const foreground=cell.background===250?'selected':cell.tone;
+        if(color&&(foreground!==tone||cell.background!==background)){line+='\x1b[0m'+colors[foreground]+`\x1b[48;5;${cell.background}m`;tone=foreground;background=cell.background;}
+        line+=cell.text;
+      }
       return line+(color?'\x1b[0m':'');
     });
   }
