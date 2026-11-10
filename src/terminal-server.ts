@@ -23,7 +23,7 @@ export async function ensureTerminalPortAvailable(profile:ControlProfile,status:
   catch(error){if((error as NodeJS.ErrnoException).code==='EADDRINUSE')throw new Error('That port is already in use. Choose another port.');throw error;}
   finally{if(listener.listening)await new Promise<void>(resolve=>listener.close(()=>resolve()));}
 }
-export async function waitForTerminalRestart(profile:ControlProfile,pid:number,timeout=25000):Promise<ServerSnapshot>{
+export async function waitForTerminalRestart(profile:ControlProfile,pid:number,timeout=40000):Promise<ServerSnapshot>{
   const deadline=Date.now()+timeout;
   while(Date.now()<deadline){
     const reply=await sendControl(profile,{action:'status'}).catch(()=>null);

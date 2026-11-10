@@ -97,7 +97,12 @@ export async function stopDetached(profile: ControlProfile): Promise<boolean> {
 export async function waitForStop(profile: ControlProfile, timeout = 15000): Promise<void> {
   const deadline = Date.now() + timeout;
   while (Date.now() < deadline) {
-    if (!await runningServer(profile)) return;
+    try { if (!await runningServer(profile)) return; }
+    catch(error) {
+      // A pipe can close during a status exchange. Retry; an error is not proof of shutdown.
+      if (!['ECONNRESET','EPIPE'].includes((error as NodeJS.ErrnoException).code??'') &&
+        !(error instanceof Error && ['Control server closed the connection.','Virelo control socket timed out.'].includes(error.message))) throw error;
+    }
     await new Promise(resolve => setTimeout(resolve, 150));
   }
   throw new Error('Virelo did not shut down in time. See .control/server.log.');

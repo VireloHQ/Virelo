@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn, spawnSync } from 'node:child_process';
 import { once } from 'node:events';
-import { mkdtemp, mkdir, readFile, rm } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, realpath, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -63,8 +63,9 @@ test('TUI port save and restart reconnect at the new address without dropping te
     assert.equal(after.port,port);assert.equal(after.url,'http://127.0.0.1:'+port);assert.notEqual(after.pid,before.status.pid);
     const libraries=await sendControl(profile,{action:'libraries'});assert.equal(libraries.ok,true);
     assert.equal(libraries.libraries.length,1);assert.equal(libraries.libraries[0].persistent,0);
-    assert.equal(libraries.libraries[0].path.toLowerCase(),media.toLowerCase());
-  }finally{await command(['stop','--data',data],root).catch(()=>{});await waitForStop(data).catch(()=>{});await rm(root,{recursive:true,force:true,maxRetries:20,retryDelay:200});}
+    assert.equal((await realpath(libraries.libraries[0].path)).toLowerCase(),(await realpath(media)).toLowerCase());
+  }catch(error){console.error(await readFile(join(data,'.control','server.log'),'utf8').catch(()=>''));throw error;}
+  finally{await command(['stop','--data',data],root).catch(()=>{});await waitForStop(data).catch(()=>{});await rm(root,{recursive:true,force:true,maxRetries:20,retryDelay:200});}
 });
 
 test('background Virelo can be reattached, updated and stopped from another folder', { timeout: 60000 }, async () => {
@@ -222,7 +223,7 @@ test('Web Admin applies saved host and port after restarting a detached server',
         break;
       }
     }
-    assert.equal(startedWithSavedSettings, true, 'restart must use the saved Web Admin port');
+    assert.equal(startedWithSavedSettings, true, 'restart must use the saved Web Admin port\n'+(startedWithSavedSettings?'':await readFile(join(data,'.control','server.log'),'utf8').catch(()=>'')));
 
     const updated = await fetch(nextUrl + '/api/server/management', {headers});
     const live = await updated.json();
