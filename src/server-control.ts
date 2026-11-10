@@ -26,14 +26,15 @@ export interface ServerSnapshot {
   restartSupported?: boolean;
 }
 
-export type ControlAction = 'status' | 'stop' | 'restart' | 'scan' | 'addMedia';
+export interface ManagedLibrary { id: number; label: string; path: string; persistent: number }
+export type ControlAction = 'status' | 'stop' | 'restart' | 'scan' | 'addMedia' | 'libraries';
 export type ControlRequest = { action: ControlAction; path?: string };
 export type ControlReply =
-  | { ok: true; status: ServerSnapshot; message?: string }
+  | { ok: true; status: ServerSnapshot; message?: string; libraries?: ManagedLibrary[] }
   | { ok: false; error: string };
 
 const MAX_MESSAGE_BYTES = 16384;
-const MAX_RESPONSE_BYTES = 32768;
+const MAX_RESPONSE_BYTES = 256 * 1024;
 const PROTOCOL_VERSION = 1;
 const LOCAL_SOCKET_TIMEOUT_MS = 2500;
 
@@ -187,11 +188,13 @@ export async function createControlServer(
           const message = JSON.parse(raw.slice(0, nl)) as { v?: number; key?: string; action?: ControlAction; path?: string };
           if (message.v !== PROTOCOL_VERSION) result = { ok: false, error: 'Incompatible Virelo control protocol.' };
           else if (!identicalToken(secret, message.key)) result = { ok: false, error: 'Not authorized.' };
-          else if (!['status','stop','restart','scan','addMedia'].includes(message.action ?? ''))
+          else if (!['status','stop','restart','scan','addMedia','libraries'].includes(message.action ?? ''))
             result = { ok: false, error: 'Unknown management command.' };
           else result = await handler({ action: message.action!, ...(message.path !== undefined ? { path: message.path } : {}) });
         } catch { result = { ok: false, error: 'Invalid control request.' }; }
-        socket.end(JSON.stringify(result) + '\n');
+        let response=JSON.stringify(result)+'\n';
+        if(Buffer.byteLength(response)>MAX_RESPONSE_BYTES)response=JSON.stringify({ok:false,error:'Management response is too large.'})+'\n';
+        socket.end(response);
       })().catch(() => socket.destroy());
     });
   });

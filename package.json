@@ -58,7 +58,8 @@
     "@fastify/static": "^10.1.8",
     "chokidar": "^6.0.0",
     "fastify": "^5.10.0",
-    "open": "^11.0.0"
+    "open": "^11.0.0",
+    "string-width": "^8.3.0"
   },
   "overrides": {
     "glob": "^14.0.3"

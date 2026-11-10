@@ -10,9 +10,19 @@ On an interactive terminal:
 npx virelo
 ```
 
-Virelo starts the background server (or finds the existing one for the same data directory) and opens the terminal management console. Select actions using the arrow keys and Enter; **O** opens the Web UI, **Q** closes only the console, and **X** asks to stop the server. Closing the terminal does not stop a background-managed server.
+Virelo starts the background server (or finds the existing one for the same data directory) and opens the terminal management console. The sidebar provides Overview, Libraries, Live logs and Settings. Use the mouse or arrow keys and Enter; **Tab** switches between navigation and the content panel. **O** opens the Web UI, **Q** or **Ctrl+C** returns to the shell without stopping Virelo, and **X** asks to stop the server. **Close console** does not close the terminal window. Closing the terminal does not stop a background-managed server.
 
 The terminal console includes server status, library actions, scan status, recent logs and basic settings. You can reconnect from any directory by running `npx virelo` again. Changes made in the Web UI persist between runs.
+
+### Port settings
+
+In **Settings**, select the saved port and press Enter (or click it). Enter a port from 0 to 65535; **0** selects an available port automatically. Save the port, then choose **Restart server** to apply it. The console checks for an occupied port before requesting a restart and reconnects only after the new process is ready. Port changes retain any pending bind address from Web Admin. Temporary folders are carried over when a managed server restarts. A server run by Docker or another service manager must be restarted through that manager.
+
+### Live logs
+
+**Live logs** follows local server output while the panel is open. **Space** pauses/resumes following; arrows, Page Up/Page Down, Home/End and the mouse wheel browse the buffer. Use **All levels** to filter warnings/errors and **Search** (or `/`) to find text. Reads are bounded to the latest 64 KiB and the display retains up to 1,000 entries. Pausing only affects the view; it does not change server logging. The console never edits the log file.
+
+The layout adapts to narrow terminals, preserves Unicode folder names, honors `NO_COLOR` and restores the shell when closed. Pipes and `TERM=dumb` keep plain status output instead of opening a full-screen UI.
 
 ```bash
 npx virelo --here             # Include the current directory for this run

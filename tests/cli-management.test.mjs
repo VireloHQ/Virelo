@@ -8,6 +8,8 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createServer } from 'node:net';
 import { VireloDB } from '../dist/db.js';
+import { controlProfile, sendControl } from '../dist/server-control.js';
+import { saveTerminalPort, ensureTerminalPortAvailable, waitForTerminalRestart } from '../dist/terminal-server.js';
 
 const entry = fileURLToPath(new URL('../dist/cli.js', import.meta.url));
 
@@ -46,6 +48,24 @@ async function unusedLocalPort() {
   if (!address || typeof address === 'string') throw new Error('Could not allocate a test port.');
   return address.port;
 }
+
+test('TUI port save and restart reconnect at the new address without dropping temporary folders', {timeout:60000},async()=>{
+  const root=await mkdtemp(join(tmpdir(),'virelo-tui-restart-')),data=join(root,'data'),media=join(root,'temporary-videos');
+  try{
+    await mkdir(media);
+    const started=await command(['--background','--data',data,'--media',media,'--random-port','--no-open'],root);
+    assert.equal(started.code,0,started.stderr+started.stdout);
+    const profile=await controlProfile(data),before=await sendControl(profile,{action:'status'});assert.equal(before.ok,true);
+    let port=await unusedLocalPort();while(port===before.status.port)port=await unusedLocalPort();
+    await saveTerminalPort(profile,before.status,String(port));await ensureTerminalPortAvailable(profile,before.status);
+    const restart=await sendControl(profile,{action:'restart'});assert.equal(restart.ok,true);
+    const after=await waitForTerminalRestart(profile,before.status.pid);
+    assert.equal(after.port,port);assert.equal(after.url,'http://127.0.0.1:'+port);assert.notEqual(after.pid,before.status.pid);
+    const libraries=await sendControl(profile,{action:'libraries'});assert.equal(libraries.ok,true);
+    assert.equal(libraries.libraries.length,1);assert.equal(libraries.libraries[0].persistent,0);
+    assert.equal(libraries.libraries[0].path.toLowerCase(),media.toLowerCase());
+  }finally{await command(['stop','--data',data],root).catch(()=>{});await waitForStop(data).catch(()=>{});await rm(root,{recursive:true,force:true,maxRetries:20,retryDelay:200});}
+});
 
 test('background Virelo can be reattached, updated and stopped from another folder', { timeout: 60000 }, async () => {
   const root = await mkdtemp(join(tmpdir(), 'virelo-cli-management-'));

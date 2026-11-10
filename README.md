@@ -176,6 +176,8 @@ If neither `--here` nor `--media` is provided, Virelo starts with saved librarie
 
 For details on the detachable terminal console, profiles, Web Admin controls, SSH and Docker, see [Server management](docs/server-management.md). OS sign-in autostart is planned separately.
 
+The console supports mouse/keyboard navigation, editable port settings with a confirmed restart, and live logs with pause, search and severity filters. **Close console** returns to your shell while Virelo keeps running; **Stop server** is a separate confirmed action.
+
 ## 🎞️ Media support
 
 Virelo recognizes common movie and episode naming patterns:

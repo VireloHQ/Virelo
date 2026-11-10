@@ -161,6 +161,7 @@ async function serveForeground(options: CliOptions, profile: ControlProfile) {
   try {
     control = await createControlServer(profile, async (request: ControlRequest): Promise<ControlReply> => {
       if (request.action === 'status') return { ok: true, status: snapshot() };
+      if (request.action === 'libraries') return {ok:true,status:snapshot(),libraries:db.visibleLibraries().map(({id,label,path,persistent})=>({id,label,path,persistent}))};
       if (request.action === 'stop') {
         setTimeout(() => { void shutdown().catch(error => { console.error(error); process.exitCode = 1; }); }, 70);
         return { ok: true, status: snapshot(), message: 'Stopping server.' };
@@ -245,6 +246,10 @@ async function manage(options: CliOptions, profile: ControlProfile) {
     if (before && !before.restartSupported)
       throw new CliUsageError('This server is supervised externally. Restart it using its service manager.');
     if (before) {
+      const libraries=await sendControl(profile,{action:'libraries'});
+      if(!libraries?.ok||!libraries.libraries)throw new CliUsageError('Could not read active libraries. The running server was not stopped.');
+      options.mediaPaths=[...new Set([...libraries.libraries.filter(library=>!library.persistent).map(library=>library.path),...options.mediaPaths])];
+      await validateMedia(options.mediaPaths);
       // Apply saved Web Admin settings on restart. Without saved settings,
       // keep the current bind address and port unless the CLI overrides them.
       const saved = await readServerSettings(profile.dataDir);

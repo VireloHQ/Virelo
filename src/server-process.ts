@@ -97,7 +97,7 @@ export async function stopDetached(profile: ControlProfile): Promise<boolean> {
 export async function waitForStop(profile: ControlProfile, timeout = 15000): Promise<void> {
   const deadline = Date.now() + timeout;
   while (Date.now() < deadline) {
-    if (!await runningServer(profile).catch(() => null)) return;
+    if (!await runningServer(profile)) return;
     await new Promise(resolve => setTimeout(resolve, 150));
   }
   throw new Error('Virelo did not shut down in time. See .control/server.log.');
