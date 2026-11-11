@@ -1,0 +1,50 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {readFile} from 'node:fs/promises';
+import {stripTypeScriptTypes} from 'node:module';
+const helper=new URL('../web/src/utils/library-folder-children.ts',import.meta.url);
+const source=stripTypeScriptTypes((await readFile(new URL('../web/src/utils/library-explorer.ts',import.meta.url),'utf8')).replace("'./library-folder-children'","'"+helper.href+"'"));
+const {explorerFolders,resolveLibraryAddress:resolve,libraryAddressSuggestions:suggest,navigateLibraryHistory:go}=await import('data:text/javascript;base64,'+Buffer.from(source).toString('base64'));
+const libraries=[{id:1,label:'Movies',folderLabels:{Shows:'Series'}},{id:2,label:'Movies'},{id:3,label:'Music / 100%'}];
+const entries=[{library_id:1,folder:'',count:2},{library_id:1,folder:'Shows/Season 1',count:3},{library_id:1,folder:'Shots',count:1},{library_id:2,folder:'Shows',count:4},{library_id:9,folder:'Private',count:20}];
+test('Explorer builds scoped, counted ancestors without merging identical library names',()=>{
+ const {nodes,roots}=explorerFolders(libraries,entries);
+ assert.equal(roots.length,3);assert.equal(nodes.size,7);
+ assert.equal(nodes.get('1:').count,6);assert.equal(nodes.get('1:Shows').name,'Series');
+ assert.equal(nodes.get('1:Shows/Season 1').parent,'1:Shows');
+ assert.equal(nodes.get('1:Shows').count,3);
+ assert.equal(nodes.get('1:').address,'/Movies [1]');
+ assert.equal(nodes.get('2:').address,'/Movies [2]');
+ assert.equal(nodes.has('9:Private'),false);
+});
+test('paths resolve only catalog locations, preserve original identity and accept unambiguous aliases',()=>{
+ const {nodes}=explorerFolders(libraries,entries);
+ assert.deepEqual(resolve('/Movies [1]/Series/Season 1','/',nodes),{libraryId:1,folder:'Shows/Season 1'});
+ assert.deepEqual(resolve('..','/Movies [1]/Shows/Season 1',nodes),{libraryId:1,folder:'Shows'});
+ assert.deepEqual(resolve('/Movies [1]//Shows/./Season 1/','/',nodes),{libraryId:1,folder:'Shows/Season 1'});
+ assert.deepEqual(resolve('\\\\Movies [1]\\\\Shows','/',nodes),{libraryId:1,folder:'Shows'});
+ assert.deepEqual(resolve('/Music %2F 100%25','/',nodes),{libraryId:3,folder:''});
+ const unusual=explorerFolders([{id:4,label:'..'}],[]);
+ assert.deepEqual(resolve(unusual.roots[0].address,'/',unusual.nodes),{libraryId:4,folder:''});
+ assert.deepEqual(resolve('../../../../','/Movies [1]/Shows',nodes),{libraryId:null,folder:null});
+ for(const value of ['/Movies','/Private','/Movies [1]/Missing','/%ZZ','/Movies [1]/%2e%2e/Private','C:/Users/private'])assert.equal(resolve(value,'/',nodes),null);
+ const collision=explorerFolders([{id:1,label:'A',folderLabels:{One:'Same',Two:'Same'}}],[{library_id:1,folder:'One',count:1},{library_id:1,folder:'Two',count:1}]);
+ assert.equal(resolve('/A/Same','/',collision.nodes),null);
+ assert.deepEqual(resolve('/A/One','/',collision.nodes),{libraryId:1,folder:'One'});
+});
+test('completion returns immediate children, with original and renamed prefixes',()=>{
+ const {nodes}=explorerFolders(libraries,entries);
+ assert.deepEqual(suggest('/Movies [1]/Sh','/',nodes).map(n=>n.folder),['Shots','Shows']);
+ assert.deepEqual(suggest('/Movies [1]/Ser','/',nodes).map(n=>n.folder),['Shows']);
+ assert.deepEqual(suggest('/Movies [1]/Shows/','/',nodes).map(n=>n.folder),['Shows/Season 1']);
+ assert.equal(suggest('/Private/','/',nodes).length,0);
+ assert.equal(suggest('','/Movies [1]',nodes).length,3);
+});
+test('history suppresses duplicate visits, truncates forward visits and remains bounded',()=>{
+ const a={libraryId:null,folder:null},b={libraryId:1,folder:''},c={libraryId:1,folder:'Shows'};
+ let history={items:[a],index:0};assert.equal(go(history,a),history);
+ history=go(go(history,b),c);assert.equal(history.index,2);
+ history=go({...history,index:0},c);assert.deepEqual(history.items,[a,c]);
+ for(let i=0;i<110;i++)history=go(history,{libraryId:1,folder:String(i)});
+ assert.equal(history.items.length,100);assert.equal(history.index,99);
+});

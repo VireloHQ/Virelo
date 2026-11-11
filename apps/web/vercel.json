@@ -1,0 +1,24 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "cleanUrls": true,
+  "rewrites": [
+    {
+      "source": "/app/:path*",
+      "destination": "/app"
+    },
+    {
+      "source": "/(library|favorites|settings|shorts)",
+      "destination": "/app"
+    },
+    {
+      "source": "/(watch|title)/:path*",
+      "destination": "/app"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/((?!assets(?:/|$)).*)",
+      "headers": [{ "key": "Cache-Control", "value": "no-cache" }]
+    }
+  ]
+}

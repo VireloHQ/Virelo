@@ -1,0 +1,15 @@
+.appearance-language { display: grid; gap: 12px; margin-bottom: 16px; }
+.appearance-language > label { font-weight: 600; }
+.language-select { width: min(100%, 300px); }
+.language-select .picker { width: 100%; }
+.language-select[aria-busy="true"] { pointer-events: none; opacity: .65; }
+html[lang="ja"], html[lang="zh-CN"], html[lang="ko"] { line-break: strict; }
+
+@media (max-width: 680px) {
+  .app-shell .settings-heading { flex-wrap: wrap; row-gap: 12px; }
+  .app-shell .mobile-nav a { min-width: 0; }
+  .app-shell .mobile-nav a > span { max-width: 100%; padding-inline: 2px; text-align: center; line-height: 1.2; overflow-wrap: anywhere; }
+}
+@media (max-width: 360px) {
+  .app-shell .mobile-nav a { font-size: 10px; }
+}

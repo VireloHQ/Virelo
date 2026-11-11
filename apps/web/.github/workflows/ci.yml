@@ -1,0 +1,63 @@
+name: CI
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+permissions:
+  contents: read
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  build:
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+        node: [22, 24, 26]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ matrix.node }}
+          check-latest: true
+          cache: npm
+      - run: npm ci
+      - run: npm run check
+  queue-regressions:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          check-latest: true
+          cache: npm
+      - name: Install FFmpeg
+        timeout-minutes: 5
+        run: |
+          # Avoid the throttled Azure mirror (actions/runner-images#12949).
+          sudo sed -i 's|azure\.archive\.ubuntu\.com|archive.ubuntu.com|g' /etc/apt/apt-mirrors.txt
+          sudo apt-get update -o Acquire::Retries=3
+          sudo apt-get install --yes --no-install-recommends ffmpeg
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: node scripts/audit-player-control-polish.mjs
+      - run: node scripts/audit-volume-leveling.mjs
+      - run: node scripts/audit-volume-modulation.mjs
+      - run: node scripts/audit-measured-volume.mjs
+      - run: node scripts/audit-audio-analysis.mjs
+      - run: node scripts/audit-volume-integration.mjs
+      - run: node scripts/audit-volume-controls.mjs
+      - run: node scripts/audit-library-duplicates.mjs
+      - run: node scripts/audit-browser-backup.mjs
+      - run: node scripts/audit-queue.mjs
+      - run: node scripts/audit-playlists.mjs
+      - run: node scripts/audit-library-explorer.mjs
+      - run: node scripts/audit-browser-streaming.mjs
+      - run: npm run build
+      - run: node scripts/audit-avi.mjs

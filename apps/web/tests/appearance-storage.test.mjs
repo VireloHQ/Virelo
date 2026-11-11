@@ -1,0 +1,23 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
+import { stripTypeScriptTypes } from 'node:module';
+const pure = await readFile(new URL('../web/src/utils/appearance.ts', import.meta.url), 'utf8');
+const url = 'data:text/javascript;base64,' + Buffer.from(stripTypeScriptTypes(pure)).toString('base64');
+const source = (await readFile(new URL('../web/src/utils/appearance-storage.ts', import.meta.url), 'utf8')).replace("'./appearance'", JSON.stringify(url));
+const { readAppearance, writeAppearance } = await import('data:text/javascript;base64,' + Buffer.from(stripTypeScriptTypes(source)).toString('base64'));
+test('browser appearance storage recovers from corruption and reports failed saves', t => {
+  const previous = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
+  const records = new Map();
+  Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: { getItem: key => records.get(key), setItem: (key, value) => records.set(key, value) } });
+  t.after(() => previous ? Object.defineProperty(globalThis, 'localStorage', previous) : delete globalThis.localStorage);
+  const defaults = { controllerStyle: 'classic', accentColor: '#c3a6ff' };
+  assert.deepEqual(readAppearance(), defaults);
+  assert.deepEqual(writeAppearance({ controllerStyle: 'centerstage', accentColor: '#ABCDEF' }), { controllerStyle: 'centerstage', accentColor: '#abcdef' });
+  assert.equal(readAppearance().controllerStyle, 'centerstage');
+  records.set('virelo.appearance.v1', '{bad json');
+  assert.deepEqual(readAppearance(), defaults);
+  assert.throws(() => writeAppearance({ controllerStyle: 'x', accentColor: '#abcdef' }));
+  globalThis.localStorage.setItem = () => { throw new Error('blocked'); };
+  assert.throws(() => writeAppearance(defaults), /Allow browser storage/);
+});

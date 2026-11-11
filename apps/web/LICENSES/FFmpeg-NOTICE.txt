@@ -1,0 +1,22 @@
+AVI playback uses @ffmpeg/core 0.12.10 and @ffmpeg/ffmpeg 0.12.15.
+
+The FFmpeg WebAssembly core is distributed under GPL-2.0-or-later. Virelo
+distributes this component under GPL version 3, included in LICENSE.txt
+beside the core assets. The JavaScript wrapper is MIT licensed.
+
+The unmodified core binaries are installed from the version-pinned npm
+package. Only gzip transport compression is applied to the WebAssembly.
+All files are served by the same origin as Virelo. No video bytes are sent
+to another site or service.
+
+Corresponding source code and build scripts:
+https://github.com/ffmpegwasm/ffmpeg.wasm
+https://github.com/ffmpegwasm/ffmpeg.wasm/tree/f876f907c7e9b9bf51d4ed0b913a855a63ae63fc
+https://github.com/ffmpegwasm/ffmpeg.wasm/blob/f876f907c7e9b9bf51d4ed0b913a855a63ae63fc/Dockerfile
+
+The Dockerfile and build directory identify the FFmpeg source version,
+external codec libraries, their source locations, and build settings.
+Upstream component copyrights and licenses remain in those source trees.
+
+JavaScript wrapper license:
+https://github.com/ffmpegwasm/ffmpeg.wasm/blob/f876f907c7e9b9bf51d4ed0b913a855a63ae63fc/LICENSE

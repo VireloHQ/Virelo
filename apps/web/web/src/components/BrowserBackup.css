@@ -1,0 +1,14 @@
+.backup-actions { display:flex; align-items:center; flex-wrap:wrap; gap:10px; }
+.backup-actions .picker { min-width:210px; }
+.backup-actions svg { width:20px; height:20px; flex:none; }
+.backup-note,.backup-result { margin-top:18px; color:var(--text-muted); font-size:14px; line-height:1.6; }
+.backup-result { display:grid; gap:12px; justify-items:start; }
+.migration-page { min-height:100dvh; display:grid; place-items:center; padding:32px 20px; }
+.migration-card { width:100%; max-width:640px; padding:32px; border:1px solid var(--line-strong); border-radius:16px; background:#111; }
+.migration-brand { display:flex; align-items:center; gap:12px; margin-bottom:28px; font-size:25px; font-weight:750; }
+.migration-brand img { width:58px; height:58px; }
+.migration-card h1 { margin:0 0 16px; font-size:clamp(28px,5vw,36px); line-height:1.2; letter-spacing:-.035em; }
+.migration-card p { color:var(--text-muted); line-height:1.65; margin:0 0 18px; }
+.migration-card .backup-actions { margin:24px 0; }
+.migration-old-link { color:var(--text-muted); font-size:14px; text-decoration:underline; text-underline-offset:4px; }
+@media(max-width:520px) { .migration-card { padding:24px 20px; } .backup-actions .picker { width:100%; } }
