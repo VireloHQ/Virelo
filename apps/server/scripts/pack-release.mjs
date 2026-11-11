@@ -31,6 +31,8 @@ export async function packRelease({ destination = join(workspace, '.release'), d
   assert.deepEqual(manifest.dependencies, lock.packages[''].dependencies);
   assert.deepEqual(manifest.files, files);
   assert.deepEqual(lock.packages[''].bundleDependencies, bundled);
+  assert.equal(overrides.glob, lock.packages['node_modules/glob'].version,
+    'pin the bundled glob override to the exact release-lock version');
   assert.ok(Object.values(manifest.dependencies).every(value => !/^(?:workspace|file|link):/.test(value)));
   const stage = await mkdtemp(join(tmpdir(), 'virelo-npm-stage-'));
   try {
