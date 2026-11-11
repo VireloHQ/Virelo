@@ -102,7 +102,7 @@ npx virelo --media "C:\Users\You\Videos" --random-port
 
 ## Appearance
 
-The interface supports English, Japanese, Simplified Chinese, Korean and Russian. Change language in **Settings → Appearance → Language** or on the sign-in screen. Every account can save its own choice. See [Localization](docs/LOCALIZATION.md) to add a language.
+The interface supports English, Japanese, Simplified Chinese, Korean and Russian. Change language in **Settings → Appearance → Language** or on the sign-in screen. Every account can save its own choice. See [Localization](https://github.com/VireloHQ/Virelo/blob/main/docs/LOCALIZATION.md) to add a language.
 
 Open **Settings → Appearance** to choose Virelo, Streamline, Theater or Centerstage controller layouts and an accent color. Custom colors are adjusted for readable controls. Appearance settings are saved to the signed-in account on the server and can be changed by every user, including non-administrators. Controller layouts apply to normal videos; Shorts keep their vertical controls. No video files are changed.
 
@@ -174,7 +174,7 @@ npx virelo --port 0
 
 If neither `--here` nor `--media` is provided, Virelo starts with saved libraries only and does **not** scan the current directory. Use `--here` to explicitly include the current directory. Both `--here` and `--media` add temporary libraries for the current run; saved libraries remain available.
 
-For details on the detachable terminal console, profiles, Web Admin controls, SSH and Docker, see [Server management](docs/server-management.md). OS sign-in autostart is planned separately.
+For details on the detachable terminal console, profiles, Web Admin controls, SSH and Docker, see [Server management](https://github.com/VireloHQ/Virelo/blob/main/docs/server-management.md). OS sign-in autostart is planned separately.
 
 The console supports mouse/keyboard navigation, editable port settings with a confirmed restart, and live logs with pause, search and severity filters. **Close console** returns to your shell while Virelo keeps running; **Stop server** is a separate confirmed action.
 
