@@ -42,7 +42,16 @@ async function saveState(host: string, port: number): Promise<ServerState> {
   return response.json() as Promise<ServerState>;
 }
 
-async function serverAction(action: 'stop' | 'restart') {
+async function serverAction(action: 'stop' | 'restart', locale = 'en') {
+  if (action === 'restart') {
+    const form = document.createElement('form');
+    form.method = 'post';
+    form.action = '/server-recovery?locale=' + encodeURIComponent(locale);
+    form.enctype = 'text/plain';
+    document.body.append(form);
+    form.submit();
+    return;
+  }
   const response = await fetch('/api/server/management/' + action, {
     method: 'POST',
     headers: { 'X-Virelo-Request': '1' }
@@ -54,7 +63,7 @@ async function serverAction(action: 'stop' | 'restart') {
 }
 
 export function ServerManagement() {
-  useLocale();
+  const locale = useLocale();
   const localAccess = useAccount()?.localAccess;
   const client = useQueryClient();
   const query = useQuery({ queryKey: ['server-management'], queryFn: readState, refetchInterval: 10000 });
@@ -122,7 +131,7 @@ export function ServerManagement() {
         {query.data.restartSupported && <ConfirmationDialog
           triggerLabel={t('Restart server')} title={t('Restart Virelo?')}
           confirmLabel={t('Restart server')} confirmVariant="primary"
-          onConfirm={()=>serverAction('restart')}>
+          onConfirm={()=>serverAction('restart',locale)}>
           <p>{t('Virelo will briefly disconnect connected devices while it restarts.')}</p>
         </ConfirmationDialog>}
         <ConfirmationDialog triggerLabel={t('Stop server')} title={t('Stop Virelo?')}

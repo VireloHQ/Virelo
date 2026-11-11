@@ -1,4 +1,10 @@
 {
+  "Virelo control server could not be authenticated. Stop any older Virelo server before updating.": "Vireloの接続先を認証できませんでした。更新する前に旧版のVireloを停止してください。",
+  "Oversized control request.": "管理コマンドが長すぎます。",
+  "Invalid Virelo control response signature.": "Vireloの応答の署名を確認できませんでした。",
+  "Unsafe Virelo control socket.": "安全でないVireloの管理ソケットです。",
+  "Invalid recovery port.": "再接続先のポートが無効です。",
+  "Invalid recovery address.": "再接続先のアドレスが無効です。",
   "Analyzing audio": "音声を解析中",
   "Audio analysis did not return a loudness measurement.": "音量の測定結果を取得できませんでした。",
   "Audio analysis returned an invalid loudness measurement.": "音量の測定結果が無効です。",

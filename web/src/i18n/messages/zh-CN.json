@@ -1,4 +1,10 @@
 {
+  "Virelo control server could not be authenticated. Stop any older Virelo server before updating.": "无法验证 Virelo 管理服务器。请先停止旧版 Virelo，再进行更新。",
+  "Oversized control request.": "管理请求过大。",
+  "Invalid Virelo control response signature.": "Virelo 管理响应的签名无效。",
+  "Unsafe Virelo control socket.": "Virelo 管理套接字不安全。",
+  "Invalid recovery port.": "重新连接的端口无效。",
+  "Invalid recovery address.": "重新连接的地址无效。",
   "Analyzing audio": "正在分析音频",
   "Audio analysis did not return a loudness measurement.": "未获取到响度测量结果。",
   "Audio analysis returned an invalid loudness measurement.": "响度测量结果无效。",

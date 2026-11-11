@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+## 0.6.0
+
+- Start from saved libraries without scanning the current directory. Use `--here` to include it or `--media <path>` to add another folder for the current run.
+- Manage a self-hosted server from an interactive terminal: view live logs, change the port, scan folders, and close the console without stopping playback. Use `status`, `stop`, or `restart` from another terminal.
+- Keep temporary libraries across managed restarts. Local Web Admin can save a bind address and port, then reconnect to the restarted server at a fixed port. For an automatic port, check the console or `npx virelo status` for the new address.
+- Authenticate both ends of the local management connection without sending its shared key. Stop active streams during shutdown so a paused client cannot hold a restart open.
+- Existing accounts and saved libraries are retained. Stop the previous server before updating. Use `--foreground` with a service manager; noninteractive and container starts still run in the foreground by default.
+
 ## 0.5.4 — 2026-11-05
 
 - Reduce startup image transfers with responsive lossless splash assets and appropriately sized header and sign-in logos. Preserve the splash design, horizontal exit and timing, with PNG and offline-cache fallbacks.

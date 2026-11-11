@@ -12,13 +12,14 @@ import { VIRELO_VERSION } from './version.js';
 import { acceptsIpv4, networkUrls, serverUrl } from './network-urls.js';
 import { assertSupportedNode, NODE_REQUIREMENT } from './runtime.js';
 import {
-  controlProfile, createControlServer, sendControl, type ControlProfile,
+  acquireStartupLock, controlProfile, createControlServer, sendControl, type ControlProfile,
   type ControlRequest, type ControlReply, type ServerSnapshot
 } from './server-control.js';
 import {
   canUseTui, isContainer, runningServer, shouldOpenTerminalConsole, startDetached, stopDetached, waitForStop
 } from './server-process.js';
 import { openTerminalUI } from './terminal-ui.js';
+import { ensureRestartPortAvailable, ensureTerminalPortAvailable } from './terminal-server.js';
 import { readServerSettings } from './server-settings.js';
 
 function usage() {
@@ -146,10 +147,10 @@ async function serveForeground(options: CliOptions, profile: ControlProfile) {
     libraries: db.visibleLibraries().length, media: 0, scanRunning: scanStatus.running,
     host: boundHost, port, dataDir: profile.dataDir, restartSupported: options.daemonChild
   });
-  let closing = false;
+  let closing: ServerSnapshot | null = null;
   const shutdown = async () => {
     if (closing) return;
-    closing = true;
+    closing = snapshot();
     process.off('SIGINT', shutdown);
     process.off('SIGTERM', shutdown);
     // Keep IPC available until the HTTP listener has released its port.
@@ -160,7 +161,8 @@ async function serveForeground(options: CliOptions, profile: ControlProfile) {
   let control: Awaited<ReturnType<typeof createControlServer>>;
   try {
     control = await createControlServer(profile, async (request: ControlRequest): Promise<ControlReply> => {
-      if (request.action === 'status') return { ok: true, status: snapshot() };
+      if (request.action === 'status') return { ok: true, status: closing ?? snapshot() };
+      if (closing) return { ok: false, error: 'Virelo is shutting down.' };
       if (request.action === 'libraries') return {ok:true,status:snapshot(),libraries:db.visibleLibraries().map(({id,label,path,persistent})=>({id,label,path,persistent}))};
       if (request.action === 'stop') {
         setTimeout(() => { void shutdown().catch(error => { console.error(error); process.exitCode = 1; }); }, 70);
@@ -170,6 +172,7 @@ async function serveForeground(options: CliOptions, profile: ControlProfile) {
         if (!options.daemonChild)
           return { ok: false, error: 'This server is supervised externally. Restart it using its service manager.' };
         try {
+          await ensureTerminalPortAvailable(profile, snapshot());
           const fd = openSync(join(profile.controlDir, 'server.log'), 'a', 0o600);
           try {
             const child = spawn(process.execPath, [
@@ -238,6 +241,7 @@ async function manage(options: CliOptions, profile: ControlProfile) {
     const stopped = await stopDetached(profile);
     console.log(stopped ? 'Stopping Virelo.' : 'Virelo is not running for this data directory.');
     if (!stopped) process.exitCode = 1;
+    else await waitForStop(profile);
     return;
   }
   if (options.command === 'restart') {
@@ -255,6 +259,7 @@ async function manage(options: CliOptions, profile: ControlProfile) {
       const saved = await readServerSettings(profile.dataDir);
       if (!options.explicitHost && !saved) options.host = before.host;
       if (!options.explicitPort && !saved) options.port = before.port;
+      await ensureRestartPortAvailable(options.host, options.port, before.port);
     }
     const stopped = await stopDetached(profile);
     if (stopped) await waitForStop(profile);
@@ -310,7 +315,10 @@ async function main() {
     if (options.background && isContainer()) throw new CliUsageError('--background is not supported inside containers. Use a Docker restart policy.');
     await manage(options, profile);
   } else {
-    await serveForeground(options, profile);
+    // The launching parent owns the lock for a daemon child.
+    const release = options.daemonChild ? undefined : await acquireStartupLock(profile);
+    try { await serveForeground(options, profile); }
+    finally { await release?.(); }
   }
 }
 

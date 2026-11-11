@@ -39,11 +39,13 @@ Adding media with `--here` or `--media` makes it available for the current run. 
 
 By default, data is stored in `~/.virelo`. Use `--data <path>` to select an independent profile. Each profile has its own library database and local control socket, so `npx virelo --data <path>` attaches only to that profile.
 
-The local control socket uses a profile-specific secret. Unix sockets and credentials are restricted to the user account. Do not put the data directory in a publicly writable or shared location.
+The local control socket authenticates both endpoints with a profile-specific secret that stays on disk. Unix sockets and credentials are restricted to the user account. Do not put the data directory in a publicly writable or shared location.
 
 ## Web Admin
 
 An administrator can open **Settings → Server** to view the active server and adjust the desired host and port. Saving a network change does not expose the current server to other devices immediately: the new address takes effect after a restart. Network changes and server stop/restart controls are restricted to localhost. Admin accounts do not grant arbitrary local process control to remote viewers.
+
+After a managed restart, Web Admin reconnects when the same Virelo profile is ready at the saved fixed address. With port 0, find the new address in the console or with `npx virelo status`. If the hostname changed, sign in again. Stopping or restarting ends any active playback connections.
 
 A server started by a container or an external service manager may not be restartable from the Web Admin. Use that service manager instead.
 
@@ -57,6 +59,6 @@ In an interactive SSH session, the terminal console works normally and can detac
 
 ## Migration from older CLI versions
 
-Earlier versions automatically scanned the current directory. The first interactive launch with an existing data directory explains the new behavior and how to use `--here`. Saved libraries remain unchanged. New installations skip this migration warning.
+Stop the previous Virelo process before updating. Earlier versions automatically scanned the current directory. The first interactive launch with an existing data directory explains the new behavior and how to use `--here`. Saved libraries remain unchanged. New installations skip this migration warning.
 
 **OS sign-in autostart is not yet part of this change.** It needs a durable install location and OS-specific service registration. Do not register an `npx` cache path as an OS login service.

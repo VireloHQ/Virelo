@@ -1,4 +1,10 @@
 {
+  "Virelo control server could not be authenticated. Stop any older Virelo server before updating.": "Не удалось проверить подлинность управляющего сервера Virelo. Перед обновлением остановите старую версию Virelo.",
+  "Oversized control request.": "Слишком большой запрос управления.",
+  "Invalid Virelo control response signature.": "Недействительная подпись ответа управления Virelo.",
+  "Unsafe Virelo control socket.": "Небезопасный управляющий сокет Virelo.",
+  "Invalid recovery port.": "Неверный порт повторного подключения.",
+  "Invalid recovery address.": "Неверный адрес повторного подключения.",
   "Analyzing audio": "Анализ звука",
   "Audio analysis did not return a loudness measurement.": "Не удалось получить результат измерения громкости.",
   "Audio analysis returned an invalid loudness measurement.": "Получен некорректный результат измерения громкости.",

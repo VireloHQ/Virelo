@@ -1,5 +1,5 @@
-import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
-import { createConnection, createServer, type Server } from 'node:net';
+import { createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
+import { createConnection, createServer, type Server, type Socket } from 'node:net';
 import { chmod, lstat, mkdir, open, readFile, realpath, rm, stat, writeFile } from 'node:fs/promises';
 import { userInfo } from 'node:os';
 import { join } from 'node:path';
@@ -35,7 +35,7 @@ export type ControlReply =
 
 const MAX_MESSAGE_BYTES = 16384;
 const MAX_RESPONSE_BYTES = 256 * 1024;
-const PROTOCOL_VERSION = 1;
+const PROTOCOL_VERSION = 2;
 const LOCAL_SOCKET_TIMEOUT_MS = 2500;
 
 export async function controlProfile(dataDir: string): Promise<ControlProfile> {
@@ -90,9 +90,20 @@ async function token(profile: ControlProfile, create: boolean): Promise<string |
   return value;
 }
 
-function identicalToken(expected: string, supplied: unknown): boolean {
+function identicalProof(expected: string, supplied: unknown): boolean {
   if (typeof supplied !== 'string' || !/^[a-f0-9]{64}$/.test(supplied)) return false;
   return timingSafeEqual(Buffer.from(supplied), Buffer.from(expected));
+}
+
+function validNonce(value: unknown): value is string { return typeof value === 'string' && /^[a-f0-9]{64}$/.test(value); }
+function controlProof(secret: string, kind: 'server' | 'request' | 'reply' | 'web-recovery', client: string, server: string, payload = ''): string {
+  return createHmac('sha256', Buffer.from(secret, 'hex'))
+    .update(JSON.stringify([PROTOCOL_VERSION, kind, client, server, payload])).digest('hex');
+}
+
+export async function webRecoveryProof(profile: ControlProfile, challenge: string, previous: string, origin: string): Promise<string | null> {
+  const secret = await token(profile, false);
+  return secret ? controlProof(secret, 'web-recovery', challenge, previous, origin) : null;
 }
 
 function isNoServer(error: unknown): boolean {
@@ -105,29 +116,50 @@ export async function sendControl(profile: ControlProfile, request: ControlReque
   return await new Promise<ControlReply | null>((resolve, reject) => {
     let settled = false;
     let received = '';
+    const clientNonce = randomBytes(32).toString('hex');
+    let serverNonce: string | undefined;
     const socket = createConnection(profile.endpoint);
     socket.setEncoding('utf8');
     const finish = (value: ControlReply | null, error?: Error) => {
       if (settled) return;
       settled = true;
+      clearTimeout(deadline);
       socket.destroy();
       if (error) reject(error); else resolve(value);
     };
-    socket.setTimeout(timeout, () => finish(null, new Error('Virelo control socket timed out.')));
+    const deadline = setTimeout(() => finish(null, new Error('Virelo control socket timed out.')), timeout);
     socket.on('error', error => {
       if (isNoServer(error)) finish(null);
       else finish(null, error);
     });
-    socket.on('connect', () => socket.write(JSON.stringify({ v: PROTOCOL_VERSION, key: secret, ...request }) + '\n'));
+    socket.on('connect', () => socket.write(JSON.stringify({ v: PROTOCOL_VERSION, nonce: clientNonce }) + '\n'));
     socket.on('data', chunk => {
       received += String(chunk);
       if (Buffer.byteLength(received) > MAX_RESPONSE_BYTES) return finish(null, new Error('Oversized control response.'));
-      const end = received.indexOf('\n');
-      if (end === -1) return;
       try {
-        const value = JSON.parse(received.slice(0, end)) as ControlReply;
-        if (typeof value?.ok !== 'boolean') throw new Error('Invalid response.');
-        finish(value);
+        let end: number;
+        while (!settled && (end = received.indexOf('\n')) !== -1) {
+          const message = JSON.parse(received.slice(0, end));
+          received = received.slice(end + 1);
+          if (!serverNonce) {
+            if (message?.v !== PROTOCOL_VERSION || !validNonce(message.nonce) ||
+              !identicalProof(controlProof(secret, 'server', clientNonce, message.nonce), message.proof))
+              return finish(null, new Error('Virelo control server could not be authenticated. Stop any older Virelo server before updating.'));
+            const peerNonce: string = message.nonce;
+            serverNonce = peerNonce;
+            const payload = JSON.stringify(request);
+            const frame = JSON.stringify({ payload, proof: controlProof(secret, 'request', clientNonce, peerNonce, payload) }) + '\n';
+            if (Buffer.byteLength(frame) > MAX_MESSAGE_BYTES) return finish(null, new Error('Oversized control request.'));
+            socket.write(frame);
+          } else {
+            if (typeof message?.payload !== 'string' ||
+              !identicalProof(controlProof(secret, 'reply', clientNonce, serverNonce, message.payload), message.proof))
+              return finish(null, new Error('Invalid Virelo control response signature.'));
+            const value = JSON.parse(message.payload) as ControlReply;
+            if (typeof value?.ok !== 'boolean') throw new Error('Invalid response.');
+            finish(value);
+          }
+        }
       } catch { finish(null, new Error('Invalid Virelo control response.')); }
     });
     socket.on('end', () => { if (!settled) finish(null, new Error('Control server closed the connection.')); });
@@ -170,42 +202,73 @@ export async function createControlServer(
 ): Promise<{ close: () => Promise<void> }> {
   const secret = await token(profile, true);
   if (!secret) throw new Error('Missing Virelo control key.');
+  const sockets = new Set<Socket>();
   const server: Server = createServer(socket => {
+    sockets.add(socket);
+    socket.on('close', () => sockets.delete(socket));
+    socket.on('error', () => socket.destroy());
     socket.setEncoding('utf8');
     socket.setTimeout(10000, () => socket.destroy());
     let raw = '';
     let processing = false;
+    let clientNonce: string | undefined;
+    const serverNonce = randomBytes(32).toString('hex');
     socket.on('data', chunk => {
       if (processing) return;
       raw += String(chunk);
       if (Buffer.byteLength(raw) > MAX_MESSAGE_BYTES) { socket.destroy(); return; }
-      const nl = raw.indexOf('\n');
-      if (nl < 0) return;
-      processing = true;
       void (async () => {
-        let result: ControlReply;
-        try {
-          const message = JSON.parse(raw.slice(0, nl)) as { v?: number; key?: string; action?: ControlAction; path?: string };
-          if (message.v !== PROTOCOL_VERSION) result = { ok: false, error: 'Incompatible Virelo control protocol.' };
-          else if (!identicalToken(secret, message.key)) result = { ok: false, error: 'Not authorized.' };
-          else if (!['status','stop','restart','scan','addMedia','libraries'].includes(message.action ?? ''))
-            result = { ok: false, error: 'Unknown management command.' };
-          else result = await handler({ action: message.action!, ...(message.path !== undefined ? { path: message.path } : {}) });
-        } catch { result = { ok: false, error: 'Invalid control request.' }; }
-        let response=JSON.stringify(result)+'\n';
-        if(Buffer.byteLength(response)>MAX_RESPONSE_BYTES)response=JSON.stringify({ok:false,error:'Management response is too large.'})+'\n';
-        socket.end(response);
+        let nl: number;
+        while (!processing && (nl = raw.indexOf('\n')) !== -1) {
+          const line = raw.slice(0, nl); raw = raw.slice(nl + 1);
+          if (!clientNonce) {
+            const hello = JSON.parse(line);
+            if (hello?.v !== PROTOCOL_VERSION || !validNonce(hello.nonce)) {
+              socket.end(JSON.stringify({ok:false,error:'Incompatible Virelo control protocol.'})+'\n');
+              processing = true; return;
+            }
+            const peerNonce: string = hello.nonce;
+            clientNonce = peerNonce;
+            socket.write(JSON.stringify({v:PROTOCOL_VERSION,nonce:serverNonce,proof:controlProof(secret,'server',peerNonce,serverNonce)})+'\n');
+            continue;
+          }
+          processing = true;
+          let result: ControlReply;
+          try {
+            const frame = JSON.parse(line);
+            if (typeof frame?.payload !== 'string' ||
+              !identicalProof(controlProof(secret,'request',clientNonce,serverNonce,frame.payload),frame.proof))
+              result = {ok:false,error:'Not authorized.'};
+            else {
+              const message = JSON.parse(frame.payload) as ControlRequest;
+              if (!['status','stop','restart','scan','addMedia','libraries'].includes(message?.action))
+                result = {ok:false,error:'Unknown management command.'};
+              else result = await handler({action:message.action,...(message.path !== undefined?{path:message.path}:{})});
+            }
+          } catch { result = {ok:false,error:'Invalid control request.'}; }
+          const response = (value: ControlReply) => {
+            const payload = JSON.stringify(value);
+            return JSON.stringify({payload,proof:controlProof(secret,'reply',clientNonce!,serverNonce,payload)})+'\n';
+          };
+          let encoded = response(result);
+          if (Buffer.byteLength(encoded)>MAX_RESPONSE_BYTES) encoded=response({ok:false,error:'Management response is too large.'});
+          socket.end(encoded);
+        }
       })().catch(() => socket.destroy());
     });
   });
   // An orphaned Unix socket may survive a crash. Only unlink it when it cannot
   // be reached; never replace a socket belonging to a live server.
   if (process.platform !== 'win32') {
-    try { await stat(profile.endpoint); }
-    catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error; }
-    const existing = await sendControl(profile, { action: 'status' });
-    if (existing) throw new Error('A Virelo server is already running for this data directory.');
-    await rm(profile.endpoint, { force: true });
+    const existing = await lstat(profile.endpoint).catch(error => {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') return null;
+      throw error;
+    });
+    if (existing) {
+      if (!existing.isSocket() || existing.uid !== process.getuid?.()) throw new Error('Unsafe Virelo control socket.');
+      if (await sendControl(profile, { action: 'status' })) throw new Error('A Virelo server is already running for this data directory.');
+      await rm(profile.endpoint, { force: true });
+    }
   }
   try {
     await new Promise<void>((resolve, reject) => {
@@ -222,8 +285,7 @@ export async function createControlServer(
     close: async () => {
       if (closed) return;
       closed = true;
-      await new Promise<void>(resolve => server.close(() => resolve()));
-      if (process.platform !== 'win32') await rm(profile.endpoint, { force: true });
+      await new Promise<void>(resolve => { server.close(() => resolve()); for (const socket of sockets) socket.destroy(); });
     }
   };
 }

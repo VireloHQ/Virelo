@@ -15,7 +15,11 @@ test('server management is admin-only; network changes require localhost and an 
   try {
     server = await createVireloServer({dataDir:data,mediaPaths:[],host:'127.0.0.1',port:41777});
     assert.equal((await server.app.inject({method:'GET',url:'/api/server/management'})).statusCode,401);
+    assert.equal((await server.app.inject({method:'POST',url:'/server-recovery'})).statusCode,401);
     const request = await authenticatedInjector(server.app);
+    assert.equal((await request({method:'POST',url:'/server-recovery'})).statusCode,403);
+    assert.equal((await request({method:'POST',url:'/server-recovery',headers:{origin:'http://localhost:41778'}})).statusCode,403);
+    assert.equal((await request({method:'POST',url:'/server-recovery',headers:{origin:'null','sec-fetch-site':'same-site','sec-fetch-mode':'navigate','sec-fetch-dest':'document'}})).statusCode,403);
     const current = await request({method:'GET',url:'/api/server/management'});
     assert.equal(current.statusCode,200,current.body);
     assert.equal(current.json().host,'127.0.0.1');

@@ -1,4 +1,10 @@
 {
+  "Virelo control server could not be authenticated. Stop any older Virelo server before updating.": "Virelo 관리 서버를 인증할 수 없습니다. 업데이트 전에 이전 버전의 Virelo 서버를 중지하세요.",
+  "Oversized control request.": "관리 요청이 너무 큽니다.",
+  "Invalid Virelo control response signature.": "Virelo 관리 응답의 서명이 올바르지 않습니다.",
+  "Unsafe Virelo control socket.": "Virelo 관리 소켓이 안전하지 않습니다.",
+  "Invalid recovery port.": "재연결 포트가 올바르지 않습니다.",
+  "Invalid recovery address.": "재연결 주소가 올바르지 않습니다.",
   "Analyzing audio": "오디오 분석 중",
   "Audio analysis did not return a loudness measurement.": "라우드니스 측정 결과를 가져오지 못했습니다.",
   "Audio analysis returned an invalid loudness measurement.": "라우드니스 측정 결과가 유효하지 않습니다.",

@@ -17,9 +17,12 @@ export async function saveTerminalPort(profile:ControlProfile,status:ServerSnaps
 }
 export async function ensureTerminalPortAvailable(profile:ControlProfile,status:ServerSnapshot):Promise<void>{
   const desired=await readServerSettings(profile.dataDir);
-  if(!desired||desired.port===0||(desired.port===status.port&&desired.host===status.host))return;
-  const listener=createServer();
-  try{await new Promise<void>((resolve,reject)=>{listener.once('error',reject);listener.listen({port:desired.port,host:desired.host,exclusive:true},resolve);});}
+  if(desired)await ensureRestartPortAvailable(desired.host,desired.port,status.port);
+}
+export async function ensureRestartPortAvailable(host:string,port:number,activePort:number):Promise<void>{
+  if(!port||port===activePort)return;
+  const listener=createServer(socket=>socket.destroy());
+  try{await new Promise<void>((resolve,reject)=>{listener.once('error',reject);listener.listen({port,host,exclusive:true},resolve);});}
   catch(error){if((error as NodeJS.ErrnoException).code==='EADDRINUSE')throw new Error('That port is already in use. Choose another port.');throw error;}
   finally{if(listener.listening)await new Promise<void>(resolve=>listener.close(()=>resolve()));}
 }

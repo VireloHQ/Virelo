@@ -5,6 +5,7 @@ import { createReadStream, existsSync, realpathSync, watch as watchDirectory, ty
 import { stat } from 'node:fs/promises';
 import { basename, extname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { randomBytes } from 'node:crypto';
 import { VireloDB } from './db.js';
 import { ensureDataDirs, type RuntimeConfig } from './config.js';
 import { parseMediaName, scanAll } from './scanner.js';
@@ -30,7 +31,8 @@ import { requestHostname, isTrustedHostname } from './request-security.js';
 import { AccountError } from './accounts.js';
 import { libraryName, libraryFolder } from './library-names.js';
 import { readServerSettings, writeServerSettings } from './server-settings.js';
-import { controlProfile, sendControl } from './server-control.js';
+import { controlProfile, sendControl, webRecoveryProof } from './server-control.js';
+import { localRecoveryOrigin, sameOriginRecoveryNavigation, serverRecoveryPage, serverRecoveryTarget } from './server-recovery.js';
 
 const SORT_KEYS: SortKey[] = ['title', 'newest', 'oldest', 'year', 'duration', 'random'];
 
@@ -70,7 +72,7 @@ export async function createVireloServer(config: RuntimeConfig, pickFolder: (sig
     try{checkCacheLibraries();}catch(error){if((error as {statusCode?:number}).statusCode!==409)throw error;cacheBlocked=error as Error;}
     await initializeDemandCache(config.dataDir,checkCacheLibraries,!cacheBlocked);
   } catch(error) { db.close();await mediaScheduler.closeScope(resolve(config.dataDir));throw error; }
-  const app = Fastify({ logger: { level: process.env.VIRELO_LOG_LEVEL || 'info', redact: ['req.headers.cookie','req.headers.authorization','res.headers.set-cookie'] }, bodyLimit: 1024 * 1024 });
+  const app = Fastify({ logger: { level: process.env.VIRELO_LOG_LEVEL || 'info', redact: ['req.headers.cookie','req.headers.authorization','res.headers.set-cookie'] }, bodyLimit: 1024 * 1024, forceCloseConnections: true });
   if(cacheBlocked)app.log.warn(cacheBlocked.message);
   const trustedHosts = (process.env.VIRELO_TRUSTED_HOSTS || '').split(',').map(value => value.trim().toLowerCase()).filter(Boolean);
   const commands = new CustomCommands(db.db, config.dataDir, () => {
@@ -83,10 +85,12 @@ export async function createVireloServer(config: RuntimeConfig, pickFolder: (sig
     const hostname = requestHostname(hostHeader);
     if (!hostname || (!isTrustedHostname(hostname, config.host, trustedHosts) && !commands.allowsHost(hostname))) return reply.code(403).send({ error: 'Untrusted Host header.' });
     const origin = request.headers.origin;
-    if (origin) {
+    const recoveryNavigation = request.method === 'POST' && request.routeOptions.url === '/server-recovery' && directLocal(request) && sameOriginRecoveryNavigation(request.headers);
+    if (origin && !recoveryNavigation) {
       try {
         const originUrl = new URL(origin);
-        if (originUrl.host.toLowerCase() !== hostHeader.toLowerCase()) return reply.code(403).send({ error: 'Cross-origin request blocked.' });
+        const recoveryCheck = request.method === 'GET' && request.routeOptions.url === '/server-ready' && directLocal(request) && localRecoveryOrigin(origin) === origin;
+        if (originUrl.host.toLowerCase() !== hostHeader.toLowerCase() && !recoveryCheck) return reply.code(403).send({ error: 'Cross-origin request blocked.' });
       } catch {
         return reply.code(403).send({ error: 'Invalid Origin header.' });
       }
@@ -98,12 +102,13 @@ export async function createVireloServer(config: RuntimeConfig, pickFolder: (sig
       'X-Frame-Options': 'DENY',
       'Referrer-Policy': 'no-referrer',
       'Cross-Origin-Resource-Policy': 'same-origin',
-      'Content-Security-Policy': "default-src 'self'; img-src 'self' data:; media-src 'self' blob:; connect-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; worker-src 'self' blob:; font-src 'self' data:; object-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+      'Content-Security-Policy': reply.getHeader('Content-Security-Policy') ?? "default-src 'self'; img-src 'self' data:; media-src 'self' blob:; connect-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; worker-src 'self' blob:; font-src 'self' data:; object-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
     });
     return payload;
   });
   const webRoot = fileURLToPath(new URL('./web', import.meta.url));
   const { accounts, fresh } = registerAccounts(app, db, host => commands.allowsHost(host));
+  const recoveryInstance = randomBytes(32).toString('hex');
   const mediaResource=(request:FastifyRequest)=>{
     const user=fresh(request),scope=accounts.scope(user),route=request.routeOptions.url??'';
     const params=request.params as {id?:string;'*'?:string};
@@ -286,6 +291,37 @@ export async function createVireloServer(config: RuntimeConfig, pickFolder: (sig
   app.get('/api/server/management', async request => {
     fresh(request, true);
     return serverManagementSnapshot();
+  });
+  app.post<{Querystring:{locale?:string}}>('/server-recovery', async (request, reply) => {
+    fresh(request, true);
+    const origin = localRecoveryOrigin('http://' + request.headers.host);
+    if (!origin || !directLocal(request) || (request.headers.origin !== origin && !sameOriginRecoveryNavigation(request.headers)))
+      return reply.code(403).send({ error: 'Server controls are only available on localhost.' });
+    const state = await serverManagementSnapshot();
+    if (!state.restartSupported) return reply.code(409).send({ error: 'Use the external service manager to restart Virelo.' });
+    const saved = await readServerSettings(config.dataDir);
+    const target = serverRecoveryTarget(saved?.host ?? state.host, saved?.port ?? state.port, requestHostname(request.headers.host || ''));
+    const challenge = randomBytes(32).toString('hex');
+    const proof = target ? await webRecoveryProof(await controlProfile(config.dataDir), challenge, recoveryInstance, target) : null;
+    const page = serverRecoveryPage(target, challenge, recoveryInstance, proof, request.query.locale);
+    return reply.type('text/html; charset=utf-8').header('Cache-Control', 'no-store').header('Content-Security-Policy', page.csp).send(page.html);
+  });
+  app.get<{ Querystring: { challenge?: string; previous?: string } }>('/server-ready', async (request, reply) => {
+    const target = localRecoveryOrigin('http://' + request.headers.host), origin = request.headers.origin;
+    const { challenge, previous } = request.query;
+    const address = app.server.address();
+    if (!directLocal(request) || !target || !address || typeof address === 'string' || Number(new URL(target).port || '80') !== address.port
+      || (origin && localRecoveryOrigin(origin) !== origin)
+      || ![challenge, previous].every(value => typeof value === 'string' && /^[a-f0-9]{64}$/.test(value)))
+      return reply.code(403).send({ error: 'Invalid local recovery check.' });
+    reply.header('Cache-Control', 'no-store');
+    if (origin) reply.header('Access-Control-Allow-Origin', origin).header('Vary', 'Origin');
+    if (previous === recoveryInstance) return reply.code(409).send({ error: 'Previous server is still running.' });
+    const profile = await controlProfile(config.dataDir);
+    const active = await sendControl(profile, { action: 'status' }).catch(() => null);
+    if (!active?.ok || active.status.pid !== process.pid || active.status.port !== address.port)
+      return reply.code(503).send({ error: 'Server is not ready.' });
+    return { proof: await webRecoveryProof(profile, challenge!, previous!, target) };
   });
   app.post<{ Body: { host?: unknown; port?: unknown } }>('/api/server/management/config', async (request, reply) => {
     fresh(request, true);
