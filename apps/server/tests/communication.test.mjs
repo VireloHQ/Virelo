@@ -4,7 +4,7 @@ import { readFile } from 'node:fs/promises';
 import { stripTypeScriptTypes } from 'node:module';
 const load=async file=>import('data:text/javascript;base64,'+Buffer.from(stripTypeScriptTypes(await readFile(new URL('../web/src/utils/'+file,import.meta.url),'utf8'))).toString('base64'));
 const {shareLink}=await load('share.ts');
-const {levelingGainDb,readLevelingPreference,saveLevelingPreference,supportsVolumeLeveling}=await load('volume-leveling.ts');
+const {levelingGainDb,readLevelingPreference,saveLevelingPreference,supportsVolumeLeveling}=await import('@virelo/web-ui/utils/volume-leveling.ts');
 test('native WebKit HLS audio is never rerouted through unsupported processing',()=>{
   assert.equal(supportsVolumeLeveling('AppleWebKit/605.1.15 Version/18.0 Safari/605.1.15'),false);
   assert.equal(supportsVolumeLeveling('iPhone AppleWebKit/605.1.15 CriOS/140.0 Mobile'),false);
@@ -35,8 +35,8 @@ test('blocked storage keeps leveling disabled by default and preserves the sessi
 });
 
 test('leveling binds before playback and no longer waits for main-thread polling or resets gain on seeks',async()=>{
-  const hook=await readFile(new URL('../web/src/hooks/useVolumeLeveling.ts',import.meta.url),'utf8');
-  const graph=await readFile(new URL('../web/src/utils/volume-leveler.ts',import.meta.url),'utf8');
+  const hook=await readFile(new URL('../../../packages/web-ui/src/hooks/useVolumeLeveling.ts',import.meta.url),'utf8');
+  const graph=await readFile(new URL('../../../packages/web-ui/src/utils/volume-leveler.ts',import.meta.url),'utf8');
   assert.match(hook,/useLayoutEffect/);
   assert.ok(hook.indexOf('leveler.bind(elements)')<hook.indexOf('const start'));
   assert.doesNotMatch(hook,/setInterval|\.tick\(/);

@@ -1,7 +1,7 @@
 import type { BrowserCapabilities, Library, MediaItem, ScanStatus, Settings } from './types';
 import { probeVideo, THUMBNAIL_VERSION, validThumbnail } from './utils/video-thumbnail';
-import { libraryName, libraryFolder } from './utils/library-names';
-import { readAudioAnalysis } from './utils/volume-leveling';
+import { libraryName, libraryFolder } from '@virelo/core/library-names';
+import { readAudioAnalysis } from '@virelo/web-ui/utils/volume-leveling.ts';
 import { AVI_MAX_FILE_BYTES } from './utils/avi';
 
 const DB_NAME = 'virelo-web';

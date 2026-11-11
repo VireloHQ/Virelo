@@ -1,5 +1,5 @@
-import type { AudioLoudness } from './volume-leveling.ts';
-import { measuredLevelingGainDb } from './volume-leveling.ts';
+import type { AudioLoudness } from '@virelo/web-ui/utils/volume-leveling.ts';
+import { measuredLevelingGainDb } from '@virelo/web-ui/utils/volume-leveling.ts';
 
 // loudnorm reports INPUT measurements, not the normalized output or RMS.
 export function parseLoudnorm(log: string): AudioLoudness | null {

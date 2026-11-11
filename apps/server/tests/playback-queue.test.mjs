@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { stripTypeScriptTypes } from 'node:module';
-const source = await readFile(new URL('../web/src/utils/playback-queue.ts', import.meta.url), 'utf8');
+const source = await readFile(new URL('../../../packages/core/src/utils/playback-queue.ts', import.meta.url), 'utf8');
 const { createQueue, reconcileQueue, moveQueueItem, playQueueItemNext, removeQueueItem, clearUpcoming, toggleQueueShuffle, resetQueue, undoQueueEdit } =
   await import('data:text/javascript;base64,' + Buffer.from(stripTypeScriptTypes(source)).toString('base64'));
 
@@ -101,17 +101,17 @@ test('long edit sequences keep queue and manual membership consistent', () => {
   }
 });
 test('queue scroll does not fight CSS snapping; layouts and edits stay client-side', async () => {
-  const css = await readFile(new URL('../web/src/playback-queue.css', import.meta.url), 'utf8');
+  const css = await readFile(new URL('../../../packages/web-ui/src/playback-queue.css', import.meta.url), 'utf8');
   assert.match(css, /scroll-snap-type:none/); assert.match(css, /touch-action:none/);
   assert.match(css, /min-width:1200px/); assert.match(css, /prefers-reduced-motion/);
   const watch = await readFile(new URL('../web/src/views/WatchView.tsx', import.meta.url), 'utf8');
   assert.match(watch, /loadMediaQueue/); assert.match(watch, /sort === 'random' \? 'title'/);
   assert.doesNotMatch(watch, /limit:500|deleteMedia|removeLibrary/);
-  const queue = await readFile(new URL('../web/src/components/PlaybackQueue.tsx', import.meta.url), 'utf8');
+  const queue = await readFile(new URL('../../../packages/web-ui/src/components/PlaybackQueue.tsx', import.meta.url), 'utf8');
   assert.doesNotMatch(queue, /api\.(remove|delete|save|set)/);
   assert.match(queue, /\[currentId, layout\]/);
-  const motion = await readFile(new URL('../web/src/ui-motion.css', import.meta.url), 'utf8');
+  const motion = await readFile(new URL('../../../packages/web-ui/src/ui-motion.css', import.meta.url), 'utf8');
   assert.match(motion, /\.picker\[data-open="true"\] \{ z-index:21/);
-  const select = await readFile(new URL('../web/src/components/Select.tsx', import.meta.url), 'utf8');
+  const select = await readFile(new URL('../../../packages/web-ui/src/components/Select.tsx', import.meta.url), 'utf8');
   assert.match(select, /data-open=\{open\}/);
 });

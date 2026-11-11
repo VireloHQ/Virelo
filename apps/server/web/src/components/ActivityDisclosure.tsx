@@ -1,4 +1,4 @@
-import { Trans } from '../i18n/Trans';
+import { Trans } from '@virelo/web-ui/i18n/Trans.tsx';
 import { t, useLocale, getLocale } from '../i18n';
 import { useEffect, useLayoutEffect, useRef } from 'react';
 import { Eye } from '@phosphor-icons/react';

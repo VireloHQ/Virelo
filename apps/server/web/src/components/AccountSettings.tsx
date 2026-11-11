@@ -1,4 +1,4 @@
-import { Trans } from '../i18n/Trans';
+import { Trans } from '@virelo/web-ui/i18n/Trans.tsx';
 import { t, useLocale } from '../i18n';
 import { useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -6,7 +6,7 @@ import { Button, Input } from '@heroui/react';
 import { ArrowLeft, Database, Eye, Folders, MagnifyingGlass, PencilSimple, Plus, ShieldCheck, UserCircle } from '@phosphor-icons/react';
 import { api } from '../api';
 import { useAccount } from './AccountSession';
-import { ConfirmationDialog } from './ConfirmationDialog';
+import { ConfirmationDialog } from '@virelo/web-ui/components/ConfirmationDialog.tsx';
 import { AccountToggle } from './AccountToggle';
 import { ActivityView, ManagedUserData } from './AccountAdministration';
 import type { Account, AccountPermissions } from '../../../src/auth-types';

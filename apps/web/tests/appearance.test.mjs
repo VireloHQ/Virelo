@@ -37,7 +37,7 @@ test('custom accents remain readable, including black and saturated colors', () 
 
 test('Appearance settings have a single divider before Library view', async () => {
   const [languageCss, settingsCss, source] = await Promise.all([
-    readFile(new URL('../web/src/i18n/language.css', import.meta.url), 'utf8'),
+    readFile(new URL('../../../packages/web-ui/src/i18n/language.css', import.meta.url), 'utf8'),
     readFile(new URL('../web/src/styles.css', import.meta.url), 'utf8'),
     readFile(new URL('../web/src/components/AppearanceSettings.tsx', import.meta.url), 'utf8')
   ]);

@@ -5,10 +5,13 @@ import { AppearanceProvider } from './components/AppearanceProvider';
 import { MobileNav } from './components/MobileNav';
 import { NotFoundView } from './views/NotFoundView';
 import type { SortKey } from './types';
-import { validateShortsSearch } from './utils/shorts-navigation';
+import { validateShortsSearch } from '@virelo/core/shorts-navigation';
 import { PlaybackAccess, useAccount } from './components/AccountSession';
 import { ActivityDisclosure } from './components/ActivityDisclosure';
 import { useScanRefresh } from './hooks/useScanRefresh';
+import { MediaServicesProvider } from '@virelo/web-ui/media-services.tsx';
+import { api, artwork } from './api';
+const mediaServices = { api, artwork };
 
 const HomeRouteView = createRouteView(() => import('./views/HomeView'), 'HomeView', 'home');
 const FavoritesRouteView = createRouteView(() => import('./views/FavoritesView'), 'FavoritesView', 'library');
@@ -60,7 +63,7 @@ function validateWatchSearch(input: Record<string, unknown>): WatchRouteSearch {
 function Shell() {
   useScanRefresh();
   const policy=useAccount()?.monitoring;
-  return <AppearanceProvider><div className={'app-shell'+(policy?.enabled?' activity-monitored':'')}><RouteNavigationGuard viewForPath={viewForPath} /><Header /><main className="page-shell"><ActivityDisclosure policy={policy} compact/><Outlet /></main><MobileNav /></div></AppearanceProvider>;
+  return <MediaServicesProvider services={mediaServices}><AppearanceProvider><div className={'app-shell'+(policy?.enabled?' activity-monitored':'')}><RouteNavigationGuard viewForPath={viewForPath} /><Header /><main className="page-shell"><ActivityDisclosure policy={policy} compact/><Outlet /></main><MobileNav /></div></AppearanceProvider></MediaServicesProvider>;
 }
 
 const rootRoute = createRootRoute({ component: Shell, notFoundComponent: NotFoundView, errorComponent: RouteErrorView });

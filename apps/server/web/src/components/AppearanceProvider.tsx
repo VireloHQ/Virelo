@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useLayoutEffect, useRef, type Rea
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../api';
 import { appearanceVariables, DEFAULT_APPEARANCE, normalizeAppearance, type Appearance } from '../utils/appearance';
-import '../appearance.css';
+import '@virelo/web-ui/appearance.css';
 
 const AppearanceContext = createContext({
   value: DEFAULT_APPEARANCE as Appearance, loading: false, saving: false,

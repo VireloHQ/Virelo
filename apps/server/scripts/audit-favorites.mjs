@@ -1,3 +1,4 @@
+import { sharedModuleBase } from '../../../scripts/vite-audit-url.mjs';
 import { openPlaybackSetting } from './helpers/playback-settings.mjs';
 import { createRequire } from 'node:module';
 import { spawn, execFileSync } from 'node:child_process';
@@ -384,12 +385,12 @@ try {
   assert.deepEqual(errors, []);
   console.log(mode + ': mobile layout, navigation and runtime checks pass');
   await page.setViewportSize({width:1440,height:1000});
-  await page.evaluate(async () => {
-    const {useUIStore} = await import('/src/store.ts');
+  await page.evaluate(async shared => {
+    const {useUIStore} = await import(shared+'store.ts');
     useUIStore.setState({search:''});
     window.__items.forEach(item=>{item.liked=1;});
     await window.__client.invalidateQueries({queryKey:['favorites']});
-  });
+  }, sharedModuleBase);
   await navigate('/favorites');
   await page.getByRole('button',{name:'Play all',exact:true}).click();
   await page.locator('.playback-queue').waitFor();

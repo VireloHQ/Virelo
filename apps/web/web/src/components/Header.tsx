@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from '@tanstack/react-router';
 import { Button, Input } from '@heroui/react';
 import { MagnifyingGlass, Gear, X } from '@phosphor-icons/react';
-import { useUIStore } from '../store';
+import { useUIStore } from '@virelo/web-ui/store.ts';
 
 export function Header() {
   useLocale();

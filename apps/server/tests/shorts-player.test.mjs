@@ -14,7 +14,7 @@ test('Shorts use the normal playback pipeline instead of a separate player', asy
 });
 
 test('Shorts retain accessible seeking, favorites, PiP and context actions', async () => {
-  const controls = await readFile(new URL('../web/src/components/ShortsPlayerControls.tsx', import.meta.url), 'utf8');
+  const controls = await readFile(new URL('../../../packages/web-ui/src/components/ShortsPlayerControls.tsx', import.meta.url), 'utf8');
   assert.match(controls, /aria-label=\{t\(["']Seek video["']\)\}/);
   assert.match(controls, /event.shiftKey \? 30 : 5/);
   assert.match(controls, /onPointerUp=.*commitSeek/);

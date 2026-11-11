@@ -17,6 +17,6 @@ npm run check
 ```
 
 Build one edition with `npm run build -w apps/web` or `npm run build -w apps/server`.
-See [contributing](CONTRIBUTING.md) and [npm releases](docs/releasing.md).
+See [workspace structure](docs/workspace.md), [contributing](CONTRIBUTING.md), and [npm releases](docs/releasing.md).
 
 The player and server are [AGPL-3.0-only](LICENSE). Third-party assets and code keep their own licenses. The two editions have independent storage, permissions and release schedules.

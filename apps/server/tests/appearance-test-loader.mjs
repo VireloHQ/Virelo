@@ -1,16 +1,18 @@
 import { fileURLToPath } from 'node:url';
+import { sourceUrl } from '../../../scripts/test-source.mjs';
 import { rolldown } from 'rolldown';
 
 let serial = 0;
 export async function loadAppearanceTestModule(entry, mocks = {}) {
   const bundle = await rolldown({
-    input: fileURLToPath(new URL('../web/src/' + entry, import.meta.url)),
+    input: fileURLToPath(sourceUrl(entry, import.meta.url)),
     plugins: [{
       name: 'appearance-test-mocks',
       resolveId(source) {
         if (Object.hasOwn(mocks, source)) return '\0mock:' + source + '.js';
         if (source.endsWith('.css')) return '\0empty-css';
         if (source === 'react/jsx-runtime') return { id: import.meta.resolve(source), external: true };
+        if (source.startsWith('@edition/')) return this.resolve(fileURLToPath(new URL('../web/src/' + source.slice(9), import.meta.url)));
       },
       load(id) {
         if (id === '\0empty-css') return '';

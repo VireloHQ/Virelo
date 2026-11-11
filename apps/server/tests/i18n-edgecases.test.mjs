@@ -88,7 +88,7 @@ test('invalid locale loads reject with validation without disrupting a supported
 
 test('duration formatting never emits negative or non-finite units in any locale', async () => {
   for (const locale of ['en', 'ja', 'zh-CN', 'ko', 'ru']) {
-    const { formatDuration } = await load('i18n/format.ts', { './runtime': 'export const getLocale = () => ' + JSON.stringify(locale) + ';' });
+    const { formatDuration } = await load('i18n/format.ts', { '@edition/i18n/runtime': 'export const getLocale = () => ' + JSON.stringify(locale) + ';' });
     const zero = new Intl.NumberFormat(locale, { style: 'unit', unit: 'second', unitDisplay: 'narrow' }).format(0);
     for (const seconds of [-1, -3601, NaN, Infinity, -Infinity]) assert.equal(formatDuration(seconds), zero);
     assert.equal(formatDuration(59.9), new Intl.NumberFormat(locale, { style: 'unit', unit: 'second', unitDisplay: 'narrow' }).format(59));

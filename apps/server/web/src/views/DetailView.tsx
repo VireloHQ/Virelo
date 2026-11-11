@@ -1,16 +1,16 @@
-import { Trans } from '../i18n/Trans';
-import { formatDuration } from '../i18n/format';
+import { Trans } from '@virelo/web-ui/i18n/Trans.tsx';
+import { formatDuration } from '@virelo/web-ui/i18n/format.ts';
 import { t, useLocale } from '../i18n';
-import { PageSkeleton } from '../components/PageSkeleton';
+import { PageSkeleton } from '@virelo/web-ui/components/PageSkeleton.tsx';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useParams } from '@tanstack/react-router';
 import { Button } from '@heroui/react';
 import { ArrowLeft, ArrowsClockwise, Play } from '@phosphor-icons/react';
 import { api, artwork } from '../api';
-import { FavoriteButton } from '../components/FavoriteButton';
-import { SavePlaylist } from '../components/SavePlaylist';
-import { ShareButton } from '../components/ShareButton';
-import { MediaRow } from '../components/MediaRow';
+import { FavoriteButton } from '@virelo/web-ui/components/FavoriteButton.tsx';
+import { SavePlaylist } from '@virelo/web-ui/components/SavePlaylist.tsx';
+import { ShareButton } from '@virelo/web-ui/components/ShareButton.tsx';
+import { MediaRow } from '@virelo/web-ui/components/MediaRow.tsx';
 import { useAccount } from '../components/AccountSession';
 
 export function DetailView() {

@@ -1,4 +1,4 @@
-import { Trans } from '../i18n/Trans';
+import { Trans } from '@virelo/web-ui/i18n/Trans.tsx';
 import { t, useLocale, getLocale } from '../i18n';
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -7,8 +7,8 @@ import { ArrowClockwise, ClockCounterClockwise, Database, Eye, Heart, ListBullet
 import { api } from '../api';
 import { useAccount } from './AccountSession';
 import { AccountToggle } from './AccountToggle';
-import { ConfirmationDialog } from './ConfirmationDialog';
-import { Select } from './Select';
+import { ConfirmationDialog } from '@virelo/web-ui/components/ConfirmationDialog.tsx';
+import { Select } from '@virelo/web-ui/components/Select.tsx';
 import type { Account, AccountDataCategory, ActivityPolicy } from '../../../src/auth-types';
 import './AccountAdministration.css';
 

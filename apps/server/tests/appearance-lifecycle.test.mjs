@@ -79,7 +79,7 @@ for (const [outcome, unmounted] of [['success', true], ['failure', true], ['succ
       onSave = api.saveLanguage;
     } else onSave = value => { saveCalls.push(value); return response.promise; };
     const { LanguageSelect } = await load('components/LanguageSettings.tsx', {
-      react: reactMock, './Select': 'export function Select() {}', '../i18n': i18nMock
+      react: reactMock, './Select': 'export function Select() {}', '@edition/i18n': i18nMock
     });
     const view = LanguageSelect({ onSave });
     env.commit();

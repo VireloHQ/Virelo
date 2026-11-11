@@ -1,6 +1,6 @@
 import {createRequire} from 'node:module';
 import assert from 'node:assert/strict';
-import {buildHome} from '../web/src/utils/home-catalog.ts';
+import {buildHome} from '../../../packages/core/src/utils/home-catalog.ts';
 const require=createRequire(process.env.VIRELO_TEST_NODE_PACKAGE||import.meta.url);
 const {chromium}=require('playwright');
 const repro=process.env.VIRELO_SCROLL_REPRO==='1';

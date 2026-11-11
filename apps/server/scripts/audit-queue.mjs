@@ -1,3 +1,4 @@
+import { sharedModuleBase } from '../../../scripts/vite-audit-url.mjs';
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 import { execFileSync, spawn } from 'node:child_process';
@@ -104,7 +105,7 @@ try {
       return route.fulfill({ json: {} });
     });
     await page.goto(base + '/__queue-audit');
-    await page.evaluate(async ({ mode, base, prefix }) => {
+    await page.evaluate(async ({ mode, base, prefix, shared }) => {
       const Refresh = (await import('/@react-refresh')).default; Refresh.injectIntoGlobalHook(window);
       window.$RefreshReg$ = () => {}; window.$RefreshSig$ = () => type => type; window.__vite_plugin_react_preamble_installed__ = true;
       const main = await (await fetch('/src/main.tsx')).text();
@@ -114,7 +115,7 @@ try {
       const { QueryClient, QueryClientProvider } = await import(imports.find(url => url.includes('react-query')));
       const { RouterProvider } = await import(imports.find(url => url.includes('react-router')));
       const { api } = await import('/src/api.ts');
-      await import('/src/styles.css'); await import('/src/streaming-ui.css'); await import('/src/ui-motion.css');
+      await import('/src/styles.css'); await import('/src/streaming-ui.css'); await import(shared+'ui-motion.css');
       const svg = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="320" height="180"><rect width="320" height="180" fill="#29465b"/><circle cx="235" cy="50" r="60" fill="#615683"/></svg>');
       const items = Array.from({ length: 24 }, (_, index) => ({
         id: index + 1, library_id: 1, title: 'Video ' + String(index + 1).padStart(2, '0'), sort_title: String(index),
@@ -138,7 +139,7 @@ try {
       const { router } = await import('/src/router.tsx'); window.__router = router;
       await router.navigate({ to: prefix + '/watch/1', search: { queue: true } });
       (dom.createRoot || dom.default.createRoot)(document.getElementById('fixture')).render(React.createElement(QueryClientProvider, { client }, React.createElement(RouterProvider, { router })));
-    }, { mode, base, prefix });
+    }, { mode, base, prefix, shared: sharedModuleBase });
     const queue = page.locator('.playback-queue'), list = page.locator('.playback-queue-list');
     const ids = () => page.locator('.playback-queue-tile').evaluateAll(nodes => nodes.map(node => Number(node.dataset.queueId)));
     const action = async (id, name) => {

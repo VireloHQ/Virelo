@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {buildHome,distinctDiscoveryShelves,mediaGenres,moviesOutsideRecent} from '../web/src/utils/home-catalog.ts';
+import {buildHome,distinctDiscoveryShelves,mediaGenres,moviesOutsideRecent} from '../../../packages/core/src/utils/home-catalog.ts';
 const item=(id,patch={})=>({id,library_id:1,title:'Title '+id,kind:'movie',series_title:null,season:null,episode:null,
   duration:7200,width:1920,height:1080,genres:null,added_at:id,updated_at:id,...patch});
 const episode=(id,n,patch={})=>item(id,{kind:'series',series_title:'A series',season:1,episode:n,duration:1200,...patch});

@@ -3,8 +3,8 @@ import { Button } from '@heroui/react';
 import { DownloadSimple, UploadSimple } from '@phosphor-icons/react';
 import { t, useLocale } from '../i18n';
 import { backupSummary, exportBrowserData, importBrowserBackup, readBrowserBackup, type BackupKind, type BrowserBackup } from '../browser-backup';
-import { Select } from './Select';
-import { ConfirmationDialog } from './ConfirmationDialog';
+import { Select } from '@virelo/web-ui/components/Select.tsx';
+import { ConfirmationDialog } from '@virelo/web-ui/components/ConfirmationDialog.tsx';
 import './BrowserBackup.css';
 
 export async function downloadBrowserBackup(kind: BackupKind) {

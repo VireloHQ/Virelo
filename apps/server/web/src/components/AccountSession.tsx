@@ -3,12 +3,12 @@ import { createContext, useContext, useEffect, useRef, useState, type ReactNode 
 import { QueryClient, QueryClientProvider, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button, Input } from '@heroui/react';
 import { api } from '../api';
-import { useUIStore } from '../store';
+import { useUIStore } from '@virelo/web-ui/store.ts';
 import type { Account, AuthStatus } from '../../../src/auth-types';
 import '../accounts.css';
 import { ActivityDisclosure, ActivityReporter } from './ActivityDisclosure';
 import { AccountLanguage } from './AccountLanguage';
-import { LanguageSelect } from './LanguageSettings';
+import { LanguageSelect } from '@virelo/web-ui/components/LanguageSettings.tsx';
 
 interface SessionContext { user: Account; localAccess: boolean; monitoring?:AuthStatus['monitoring']; refresh: () => Promise<void>; logout: () => Promise<void> }
 const Context = createContext<SessionContext | null>(null);

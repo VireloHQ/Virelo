@@ -1,4 +1,4 @@
-import { Trans } from '../i18n/Trans';
+import { Trans } from '@virelo/web-ui/i18n/Trans.tsx';
 import { t, useLocale } from '../i18n';
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -6,7 +6,7 @@ import { Button, Input } from '@heroui/react';
 import { CheckCircle, FolderOpen, FolderPlus, Trash } from '@phosphor-icons/react';
 import { api } from '../api';
 import { useAccount } from './AccountSession';
-import { ScanProgress } from './ScanProgress';
+import { ScanProgress } from '@virelo/web-ui/components/ScanProgress.tsx';
 import { scanMessage } from '../i18n/scan-status';
 import type { Library } from '../types';
 

@@ -1,9 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
+import { readSource } from '../../../scripts/test-source.mjs';
 import { stripTypeScriptTypes } from 'node:module';
 
-const source = path => readFile(new URL('../web/src/' + path, import.meta.url), 'utf8');
+const source = path => readSource(path, import.meta.url);
 
 test('the app loads one shared, restrained motion system after its base styles', async () => {
   const tokens = await source('design-tokens.css');
@@ -11,7 +11,7 @@ test('the app loads one shared, restrained motion system after its base styles',
   for (const [name, value] of [['micro', 160], ['short', 200], ['long', 250]]) {
     assert.ok(tokens.includes('--dur-' + name + ': ' + value + 'ms;'));
   }
-  assert.ok(main.indexOf("./ui-motion.css") > main.indexOf("./streaming-ui.css"));
+  assert.ok(main.indexOf("@virelo/web-ui/ui-motion.css") > main.indexOf("./streaming-ui.css"));
   const motion = await source('ui-motion.css');
   assert.match(motion, /@starting-style/);
   assert.doesNotMatch(motion, /transition:all|transition-delay|animation-delay|translateY/);

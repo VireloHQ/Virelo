@@ -1,5 +1,5 @@
 import { t, useLocale } from '../i18n';
-import { PageSkeleton } from '../components/PageSkeleton';
+import { PageSkeleton } from '@virelo/web-ui/components/PageSkeleton.tsx';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { useNavigate, useSearch } from '@tanstack/react-router';

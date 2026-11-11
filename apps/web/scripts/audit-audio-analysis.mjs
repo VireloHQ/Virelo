@@ -1,3 +1,4 @@
+import { sharedModuleBase } from '../../../scripts/vite-audit-url.mjs';
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 import { execFileSync, spawn, spawnSync } from 'node:child_process';
@@ -9,6 +10,7 @@ import { fileURLToPath } from 'node:url';
 const repo = fileURLToPath(new URL('../', import.meta.url));
 const root = await mkdtemp(join(repo, '.audio-analysis-audit-'));
 const { chromium } = createRequire(process.env.VIRELO_TEST_NODE_PACKAGE || import.meta.url)('playwright');
+const coreWasm = createRequire(import.meta.url).resolve('@ffmpeg/core/wasm');
 const ffmpeg = process.env.FFMPEG_PATH || 'ffmpeg';
 const native = args => execFileSync(ffmpeg, ['-hide_banner', '-nostats', ...args], { windowsHide: true, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
 const subtitle = join(root, 'track.srt');
@@ -63,7 +65,7 @@ try {
   await page.route('**/ffmpeg-core.wasm.gz', async route => {
     const held = gate;
     if (held) { gate = null; waiting(); await held; }
-    await route.fulfill({ body: await readFile(join(repo, 'node_modules/@ffmpeg/core/dist/esm/ffmpeg-core.wasm')), contentType: 'application/wasm' }).catch(() => {});
+    await route.fulfill({ body: await readFile(coreWasm), contentType: 'application/wasm' }).catch(() => {});
   });
   await page.route('**/__audio/*', route => {
     const item = fixtures.find(item => item.name === new URL(route.request().url()).pathname.split('/').at(-1));
@@ -137,14 +139,14 @@ try {
   check(measured.liked === 1 && measured.progress_position === .75 && measured.title === 'Renamed during analysis', 'analysis merges latest favorites, progress, and title');
   check(!!measured.audio_loudness, 'actual scanner worker persists measured JSON');
   const compare = async (file, value) => {
-    const result = await page.evaluate(async ({ name, value }) => {
-      const { audioMeasurement, readAudioAnalysis } = await import('/src/utils/volume-leveling.ts');
+    const result = await page.evaluate(async ({ name, value, shared }) => {
+      const { audioMeasurement, readAudioAnalysis } = await import(shared+'utils/volume-leveling.ts');
       const file = await (await window.audioFolder.getFileHandle(name)).getFile();
       const info = await window.playback.probeBrowserPlayback(file), analysis = readAudioAnalysis(JSON.stringify(value), file.size, file.lastModified);
       return { indexes: info.audioTracks.map(track => track.index), defaultAudioStream: info.defaultAudioStream, analysis,
         selected: info.audioTracks.map(track => audioMeasurement(JSON.stringify(value), file.size, file.lastModified, track.index)),
         primary: audioMeasurement(JSON.stringify(value), file.size, file.lastModified) };
-    }, { name: file.name, value });
+    }, { name: file.name, value, shared: sharedModuleBase });
     assert.ok(result.analysis, 'contract accepts browser measurement');
     assert.deepEqual(value.tracks.map(track => track.index), result.indexes, file.name + ' exact playback stream indexes');
     assert.equal(value.defaultAudioStream, result.defaultAudioStream);

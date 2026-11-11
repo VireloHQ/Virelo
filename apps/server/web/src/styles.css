@@ -1,7 +1,8 @@
 /* Virelo · streaming interface */
 @import "tailwindcss";
-@import "./heroui.css";
-@import "./design-tokens.css";
+@import "@virelo/web-ui/heroui.css";
+@import "@virelo/web-ui/design-tokens.css";
+@source "../../../../packages/web-ui/src";
 
 :root {
   --page: #0b0a0d;

@@ -126,7 +126,15 @@ Connect the existing `virelo-web` Worker to `VireloHQ/Virelo` with Workers Build
 
 Install dependencies from the repository root and include development dependencies. Preserve the existing Worker and both custom domains. See [Workers Builds monorepos](https://developers.cloudflare.com/workers/ci-cd/builds/advanced-setups/#monorepos) and [build watch paths](https://developers.cloudflare.com/workers/ci-cd/builds/build-watch-paths/).
 
-Vite copies `_headers`, `_redirects`, and `404.html` from `web/public` to `dist`. Only application routes receive the SPA shell; missing scripts and styles return a real 404. HTML, the manifest, and the service worker revalidate on each load, while hashed `/assets/` files use immutable caching. The CSP permits same-origin LP video, local `blob:` media/workers, and WebAssembly audio codecs without allowing JavaScript `eval` or third-party connections.
+For the repository cutover, record the active Worker version and Git build
+settings. Verify the candidate with `npm run preview:web -- --name monorepo`
+and `npm run verify:web -- <preview-url>` before reconnecting Builds. After
+reconnecting, confirm that the deployed version came from the new repository's
+`main` commit and verify the live app and legacy-domain data flow. If the
+production verification fails, [roll back to the previous Worker version](https://developers.cloudflare.com/workers/versions-and-deployments/rollbacks/)
+without moving the custom domains.
+
+Vite copies `_headers`, `_redirects`, and `404.html` from `web/public` to `dist`. Only application routes receive the SPA shell; missing scripts and styles return a real 404. HTML, the manifest, and the service worker revalidate on each load, while hashed `/assets/` files use immutable caching. The CSP permits local `blob:` media/workers and WebAssembly audio codecs without allowing JavaScript `eval` or third-party connections.
 
 To test these host rules locally (Vite preview does not apply them):
 

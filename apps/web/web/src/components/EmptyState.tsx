@@ -4,7 +4,7 @@ import { FolderOpen, Gear, ShieldCheck } from '@phosphor-icons/react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { api } from '../api';
-import { ScanProgress } from './ScanProgress';
+import { ScanProgress } from '@virelo/web-ui/components/ScanProgress.tsx';
 
 export function EmptyState() {
   useLocale();

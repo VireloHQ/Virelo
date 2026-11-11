@@ -1,3 +1,4 @@
+import { sharedModuleBase } from '../../../scripts/vite-audit-url.mjs';
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 import { spawn } from 'node:child_process';
@@ -28,7 +29,7 @@ try {
   await page.route(base + '/__volume-controls', route => route.fulfill({ contentType: 'text/html',
     body: '<!doctype html><body><div id="fixture"></div></body>' }));
   await page.goto(base + '/__volume-controls');
-  const checks = await page.evaluate(async () => {
+  const checks = await page.evaluate(async shared => {
     const Refresh = (await import('/@react-refresh')).default;
     Refresh.injectIntoGlobalHook(window);
     window.$RefreshReg$ = () => {}; window.$RefreshSig$ = () => type => type;
@@ -39,9 +40,9 @@ try {
     const dom = await import(imports.find(url => url.includes('/react-dom_client.js')));
     localStorage.setItem('virelo-volume-leveling:v1', 'true');
     localStorage.setItem('virelo-playback-volume:v1', JSON.stringify({ volume: .03, muted: false }));
-    const { useVolumeLeveling } = await import('/src/hooks/useVolumeLeveling.ts');
-    const { usePlaybackVolume } = await import('/src/hooks/usePlaybackVolume.ts');
-    const { VolumeLeveler } = await import('/src/utils/volume-leveler.ts');
+    const { useVolumeLeveling } = await import(shared+'hooks/useVolumeLeveling.ts');
+    const { usePlaybackVolume } = await import(shared+'hooks/usePlaybackVolume.ts');
+    const { VolumeLeveler } = await import(shared+'utils/volume-leveler.ts');
     let leveler, failResume = false, controls, leveling, firstPlayVolume;
     const bind = VolumeLeveler.prototype.bind, resume = VolumeLeveler.prototype.resume;
     VolumeLeveler.prototype.bind = function (elements) { leveler = this; return bind.call(this, elements); };
@@ -128,7 +129,7 @@ try {
     await wait(() => leveler.context.state === 'closed', 'unmount closes the audio context');
     for (const url of urls) URL.revokeObjectURL(url);
     return checks;
-  });
+  }, sharedModuleBase);
   assert.deepEqual(errors, []);
   for (const label of checks) console.log('PASS', label);
 } finally { await browser?.close(); server.kill(); }

@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { stripTypeScriptTypes } from 'node:module';
-const source = await readFile(new URL('../web/src/utils/route-loading.ts', import.meta.url), 'utf8');
+const source = await readFile(new URL('../../../packages/web-ui/src/utils/route-loading.ts', import.meta.url), 'utf8');
 const { createRouteLoader, RouteLoadError, isImportFailure, retryModuleUrl, retryStylesheetUrl } = await import('data:text/javascript;base64,' + Buffer.from(stripTypeScriptTypes(source)).toString('base64'));
 const unavailable = () => new TypeError('Failed to fetch dynamically imported module: https://virelo.test/assets/LibraryView-abc.js');
 

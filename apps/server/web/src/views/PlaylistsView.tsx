@@ -5,14 +5,14 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useParams } from '@tanstack/react-router';
 import { ListPlus, Play, Queue, Shuffle } from '@phosphor-icons/react';
 import { api } from '../api';
-import { PageSkeleton } from '../components/PageSkeleton';
-import { PlaybackQueue } from '../components/PlaybackQueue';
-import { PlaylistArtwork } from '../components/PlaylistArtwork';
-import { ConfirmationDialog } from '../components/ConfirmationDialog';
-import { usePlaybackQueue } from '../hooks/usePlaybackQueue';
+import { PageSkeleton } from '@virelo/web-ui/components/PageSkeleton.tsx';
+import { PlaybackQueue } from '@virelo/web-ui/components/PlaybackQueue.tsx';
+import { PlaylistArtwork } from '@virelo/web-ui/components/PlaylistArtwork.tsx';
+import { ConfirmationDialog } from '@virelo/web-ui/components/ConfirmationDialog.tsx';
+import { usePlaybackQueue } from '@virelo/web-ui/hooks/usePlaybackQueue.ts';
 import { playlistName } from '../utils/playlist-values';
 import type { PlaylistDetail } from '../types';
-import '../components/Playlists.css';
+import '@virelo/web-ui/components/Playlists.css';
 
 export function PlaylistsView() {
   useLocale();

@@ -2,7 +2,7 @@ import { FFmpeg, FFFSType } from '@ffmpeg/ffmpeg';
 import { ALL_FORMATS, BlobSource, Input } from 'mediabunny';
 import { AVI_CORE_PATH, AVI_MAX_FILE_BYTES, isAviFile } from './utils/avi';
 import { parseLoudnorm } from './utils/audio-analysis';
-import { readAudioAnalysis, type AudioLoudnessAnalysis } from './utils/volume-leveling';
+import { readAudioAnalysis, type AudioLoudnessAnalysis } from '@virelo/web-ui/utils/volume-leveling.ts';
 
 const FILE_TIMEOUT = 30 * 60_000;
 

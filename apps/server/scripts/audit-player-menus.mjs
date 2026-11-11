@@ -1,3 +1,4 @@
+import { sharedModuleBase } from '../../../scripts/vite-audit-url.mjs';
 import {createRequire} from 'node:module';
 import {mkdtemp,readFile,readdir} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
@@ -40,13 +41,13 @@ try {
   await page.setViewportSize({width:1440,height:900});
   await page.goto(base+(mode==='web'?'/app/settings':'/settings'));
   await page.locator('.splash-screen').waitFor({state:'hidden'});
-  await page.evaluate(async mode=>{
+  await page.evaluate(async ({mode,shared})=>{
    const main=await(await fetch('/src/main.tsx')).text();
    const imports=[...main.matchAll(/from ["']([^"']+)["']/g)].map(match=>match[1]);
    const React=(await import(imports.find(url=>url.includes('/react.js')))).default;
    const {createRoot}=(await import(imports.find(url=>url.includes('/react-dom_client.js')))).default;
-   const {PlaybackSettingsMenu}=await import('/src/components/PlaybackSettingsMenu.tsx');
-   await import('/src/player-ui.css');
+   const {PlaybackSettingsMenu}=await import(shared+'components/PlaybackSettingsMenu.tsx');
+   await import(shared+'player-ui.css');
    const {Play,SpeakerHigh,ArrowsOut,Rewind,FastForward,RepeatOnce,PictureInPicture,SkipBack,SkipForward}=await import('/@id/@phosphor-icons/react');
    document.body.replaceChildren();
    const node=document.createElement('main');node.style.cssText='max-width:980px;margin:48px auto;';document.body.append(node);
@@ -80,7 +81,7 @@ try {
         button(PictureInPicture,'Picture in Picture'),button(ArrowsOut,'Fullscreen')))));
    }
    root.render(h(Demo));
-  },mode);
+  },{mode,shared:sharedModuleBase});
   if(process.env.VIRELO_TEST_BUILT_CSS==='1'){
    const dist=join(fileURLToPath(new URL('../../',import.meta.url)),mode==='web'?'web/dist':'server/dist/web');
    const html=await readFile(join(dist,'index.html'),'utf8');
@@ -178,13 +179,13 @@ try {
   check(await menu('Quality').getByRole('menuitemradio').count()===2&&await menu('Quality').getByRole('menuitemradio',{name:/^Original Quality/}).count()===1,mode+' Original Quality remains distinct from the sole fixed resolution');
 
   await page.keyboard.press('Escape');
-  await page.evaluate(async()=>{
+  await page.evaluate(async shared=>{
    const main=await(await fetch('/src/main.tsx')).text();
    const imports=[...main.matchAll(/from ["']([^"']+)["']/g)].map(match=>match[1]);
    const React=(await import(imports.find(url=>url.includes('/react.js')))).default;
    const {createRoot}=(await import(imports.find(url=>url.includes('/react-dom_client.js')))).default;
-   const {MediaContextMenu}=await import('/src/components/MediaContextMenu.tsx');
-   const {PlayerActionMenu}=await import('/src/components/PlayerActionMenu.tsx');
+   const {MediaContextMenu}=await import(shared+'components/MediaContextMenu.tsx');
+   const {PlayerActionMenu}=await import(shared+'components/PlayerActionMenu.tsx');
    const {Pause,Rewind,FastForward,SpeakerHigh,Repeat,PictureInPicture,ArrowsOut}=await import('/@id/@phosphor-icons/react');
    document.body.replaceChildren();
    const node=document.createElement('div');document.body.append(node);
@@ -205,7 +206,7 @@ try {
         h(PlayerActionMenu,{position:menu.position,label:'Video actions',actions,returnFocus:surface.current,onClose:()=>setMenu(null)})));
    }
    createRoot(node).render(h(ContextDemo));
-  });
+  }, sharedModuleBase);
   const contextMenu=()=>page.locator('.context-popover');
   for(const kind of ['media','player']){
    await page.evaluate(kind=>window.__contextKind=kind,kind);

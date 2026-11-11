@@ -1,18 +1,18 @@
 import { t, useLocale } from '../i18n';
-import { PageSkeleton } from '../components/PageSkeleton';
+import { PageSkeleton } from '@virelo/web-ui/components/PageSkeleton.tsx';
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from '@heroui/react';
 import { Play, Pause, Info } from '@phosphor-icons/react';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { api, artwork } from '../api';
-import { MediaRow } from '../components/MediaRow';
+import { MediaRow } from '@virelo/web-ui/components/MediaRow.tsx';
 import { EmptyState } from '../components/EmptyState';
-import { distinctDiscoveryShelves, mediaGenres, moviesOutsideRecent } from '../utils/home-catalog';
-import { useUIStore, type HomeFilter } from '../store';
-import { useFeaturedRotation } from '../hooks/useFeaturedRotation';
+import { distinctDiscoveryShelves, mediaGenres, moviesOutsideRecent } from '@virelo/core/home-catalog';
+import { useUIStore, type HomeFilter } from '@virelo/web-ui/store.ts';
+import { useFeaturedRotation } from '@virelo/web-ui/hooks/useFeaturedRotation.ts';
 import type { MediaItem } from '../types';
-import '../home.css';
+import '@virelo/web-ui/home.css';
 
 const filters=[['all','For you'],['movie','Movies'],['series','Series']] as const;
 function featuredTitles(items:MediaItem[]) {

@@ -2,8 +2,8 @@ import { t, useLocale } from '../i18n';
 import { Suspense, createElement, useCallback, useRef, useState, type ComponentType, type FunctionComponent } from 'react';
 import { useBlocker, useRouter, type ErrorComponentProps } from '@tanstack/react-router';
 import { ArrowClockwise, X } from '@phosphor-icons/react';
-import { PageSkeleton, type SkeletonKind } from './PageSkeleton';
-import { createRouteLoader, RouteLoadError } from '../utils/route-loading';
+import { PageSkeleton, type SkeletonKind } from '@virelo/web-ui/components/PageSkeleton.tsx';
+import { createRouteLoader, RouteLoadError } from '@virelo/web-ui/utils/route-loading.ts';
 import './RouteRecovery.css';
 
 export type RouteView = FunctionComponent & { preload: () => Promise<void>; pending: FunctionComponent };

@@ -22,7 +22,7 @@ import {
   writeSettings
 } from './local-library';
 import type { FolderEntry, HomeData, MediaItem, Settings, ShortsFeed, SortKey } from './types';
-import { buildHome } from './utils/home-catalog';
+import { buildHome } from '@virelo/core/home-catalog';
 import { createLocalPlaylist, deleteLocalPlaylist, getLocalPlaylist, listLocalPlaylists, updateLocalPlaylist } from './local-playlists';
 
 async function hydrated(items: Awaited<ReturnType<typeof listStoredMedia>>) {

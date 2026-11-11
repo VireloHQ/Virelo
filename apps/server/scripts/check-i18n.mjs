@@ -65,7 +65,8 @@ export async function checkI18n(root) {
   }
   const visibleAttributes=new Set(['aria-label','alt','placeholder','title','label','description','triggerLabel','confirmLabel','message']);
   const brandText=new Set(['Virelo','GitHub','Windows','macOS','Linux','Termux','npm','ffprobe','AGPL-3.0-only','Big Buck Bunny','Sintel','CC BY 3.0','© 2008 / 2010 Blender Foundation ·']);
-  const paths=await sources(join(root,'web/src'));
+  const webSources=[join(root,'web/src'),join(root,'../../packages/web-ui/src')];
+  const paths=(await Promise.all([...webSources,join(root,'../../packages/core/src')].map(sources))).flat();
   try{paths.push(...await sources(join(root,'src')));}catch(error){if(error.code!=='ENOENT')throw error;}
   for(const path of paths){
     const source=await readFile(path,'utf8'),parsed=parseSync(path,source);
@@ -91,7 +92,7 @@ export async function checkI18n(root) {
       if(node.type==='JSXExpressionContainer'&&!inCode&&parents.at(-1)?.type!=='JSXAttribute')visibleExpression(node.expression);
       if(node.type==='JSXAttribute'&&visibleAttributes.has(node.name?.name)&&node.value?.type==='JSXExpressionContainer')visibleExpression(node.value.expression);
       const nativeLabels=path===join(root,'web/src/i18n/locale.ts')||path===join(root,'src/languages.ts');
-      if(!nativeLabels&&path.startsWith(join(root,'web/src'))&&node.type==='Property'&&['label','title','description'].includes(node.key?.name)){
+      if(!nativeLabels&&webSources.some(directory=>path.startsWith(directory))&&node.type==='Property'&&['label','title','description'].includes(node.key?.name)){
         const inspect=value=>{
           if(value?.type==='Literal'&&typeof value.value==='string'&&/[A-Za-z]{2}/.test(value.value))check(value,value.value);
           if(value?.type==='ConditionalExpression'){inspect(value.consequent);inspect(value.alternate);}

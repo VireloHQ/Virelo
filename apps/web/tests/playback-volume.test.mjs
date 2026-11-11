@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {stripTypeScriptTypes} from 'node:module';
-const source=await readFile(new URL('../web/src/utils/playback-volume.ts',import.meta.url),'utf8');
+const source=await readFile(new URL('../../../packages/web-ui/src/utils/playback-volume.ts',import.meta.url),'utf8');
 const url='data:text/javascript;base64,'+Buffer.from(stripTypeScriptTypes(source)).toString('base64');
 let serial=0;
 const fresh=()=>import(url+'#'+(++serial));

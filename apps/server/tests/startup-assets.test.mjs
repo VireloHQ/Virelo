@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 
 test('the splash uses responsive lossless assets with a PNG fallback and matching early preload',async()=>{
-  const [component,html]=await Promise.all(['web/src/components/SplashScreen.tsx','web/index.html'].map(path=>readFile(new URL('../'+path,import.meta.url),'utf8')));
+  const [component,html]=await Promise.all(['../../../packages/web-ui/src/components/SplashScreen.tsx','../web/index.html'].map(path=>readFile(new URL(path,import.meta.url),'utf8')));
   for(const name of ['virelo-icon-512.webp','virelo-icon.webp']){
     const bytes=await readFile(new URL('../web/public/'+name,import.meta.url));
     const png=await readFile(new URL('../web/public/'+name.replace('.webp','.png'),import.meta.url));

@@ -1,15 +1,15 @@
-import { Trans } from '../i18n/Trans';
+import { Trans } from '@virelo/web-ui/i18n/Trans.tsx';
 import { t, useLocale, getLocale } from '../i18n';
 import { useRef, useState, type ReactNode } from 'react';
 import { Button, Input, Modal } from '@heroui/react';
 import { Bell, Check, CheckCircle, Megaphone, PaperPlaneTilt, Users, X } from '@phosphor-icons/react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../api';
-import { Select } from './Select';
-import { ConfirmationDialog } from './ConfirmationDialog';
+import { Select } from '@virelo/web-ui/components/Select.tsx';
+import { ConfirmationDialog } from '@virelo/web-ui/components/ConfirmationDialog.tsx';
 import type { Announcement } from '../../../src/notification-types';
 import './Communication.css';
-import './ConfirmationDialog.css';
+import '@virelo/web-ui/components/ConfirmationDialog.css';
 import './Notifications.css';
 
 

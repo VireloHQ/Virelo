@@ -1,3 +1,4 @@
+import { sharedModuleBase } from '../../../scripts/vite-audit-url.mjs';
 import { openPlaybackSetting } from './helpers/playback-settings.mjs';
 import {createRequire} from 'node:module';
 import {readFile,writeFile,mkdir,mkdtemp} from 'node:fs/promises';
@@ -52,14 +53,15 @@ try {
      export async function probeBrowserPlayback(file){const info=await probe(file);return {...info,audioTracks:[{index:1,typeIndex:0,codec:'aac',title:'One',supported:true},{index:2,typeIndex:1,codec:'aac',title:'Two',supported:true}],defaultAudioStream:null,qualityOptions:window.__noLower?info.qualityOptions.slice(0,1):info.qualityOptions};}
     `}));
   await page.goto(base+(mode==='web'?'/app/settings':'/settings'));await page.locator('.splash-screen').waitFor({state:'hidden'});
-  const setup=async()=>page.evaluate(async({base,mode})=>{
+  const setup=async()=>page.evaluate(async({base,mode,shared})=>{
     const main=await(await fetch('/src/main.tsx')).text();
     const imports=[...main.matchAll(/from ["']([^"']+)["']/g)].map(match=>match[1]);
     const React=(await import(imports.find(url=>url.includes('/react.js')))).default;
     const {createRoot}=(await import(imports.find(url=>url.includes('/react-dom_client.js')))).default;
-    const {api}=await import('/src/api.ts');
+    const {api,artwork}=await import('/src/api.ts');
+    const {MediaServicesProvider}=await import(shared+'media-services.tsx');
     const {Player}=await import('/src/components/Player.tsx');
-    const {PlaybackQueue}=await import('/src/components/PlaybackQueue.tsx');
+    const {PlaybackQueue}=await import(shared+'components/PlaybackQueue.tsx');
     const {QueryClient,QueryClientProvider}=await import(imports.find(url=>url.includes('react-query')));
     const client=new QueryClient({defaultOptions:{queries:{retry:false}}});
     window.__failQuality=false;window.__noLower=false;window.__conversions=[];window.__starts=[];window.__plays=[];
@@ -89,8 +91,8 @@ try {
         React.createElement(PlaybackQueue,{items:queue,activeIndex:0,repeatMode:repeat,onRepeatChange:setRepeat,onSelect:()=>{}})
       );
     }
-    window.__mount=id=>{window.__itemId=id;root.render(React.createElement(QueryClientProvider,{client},React.createElement(Harness,{id})));};
-  },{base,mode});
+    window.__mount=id=>{window.__itemId=id;root.render(React.createElement(QueryClientProvider,{client},React.createElement(MediaServicesProvider,{services:{api,artwork}},React.createElement(Harness,{id}))));};
+  },{base,mode,shared:sharedModuleBase});
   const mount=async id=>{await page.evaluate(id=>{window.__plays=[];window.__mount(id);},id);};
   const waitVideo=async height=>{
     try{await page.waitForFunction(height=>{const v=document.querySelector('.player video');return v&&!v.paused&&v.videoHeight===height&&v.currentTime>.2;},height,{timeout:30000});}

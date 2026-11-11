@@ -4,11 +4,11 @@ import { useQuery } from '@tanstack/react-query';
 import { CaretDown, FileVideo, Folder } from '@phosphor-icons/react';
 import { api } from '../api';
 import type { MediaItem } from '../types';
-import { FavoriteButton } from './FavoriteButton';
-import { ShareButton } from './ShareButton';
-import { MediaRow } from './MediaRow';
-import './WatchInfo.css';
-import { formatDuration } from '../i18n/format';
+import { FavoriteButton } from '@virelo/web-ui/components/FavoriteButton.tsx';
+import { ShareButton } from '@virelo/web-ui/components/ShareButton.tsx';
+import { MediaRow } from '@virelo/web-ui/components/MediaRow.tsx';
+import '@virelo/web-ui/components/WatchInfo.css';
+import { formatDuration } from '@virelo/web-ui/i18n/format.ts';
 
 export function WatchInfo({ item, actions, children }: { item: MediaItem; actions: ReactNode; children?: ReactNode }) {
   useLocale();

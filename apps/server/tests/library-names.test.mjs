@@ -7,8 +7,8 @@ import {createVireloServer} from '../dist/server.js';
 import {VireloDB} from '../dist/db.js';
 import {hashPassword} from '../dist/accounts.js';
 import {libraryName,libraryFolder} from '../dist/library-names.js';
-import {libraryName as browserName,libraryFolder as browserFolder} from '../web/src/utils/library-names.ts';
-import {libraryFolderChildren,folderDisplayName} from '../web/src/utils/library-folder-children.ts';
+import {libraryName as browserName,libraryFolder as browserFolder} from '../../../packages/core/src/utils/library-names.ts';
+import {libraryFolderChildren,folderDisplayName} from '../../../packages/web-ui/src/utils/library-folder-children.ts';
 
 test('display-name validation agrees in both editions and rejects unsafe folder identifiers',()=>{
   for(const validate of [libraryName,browserName]){

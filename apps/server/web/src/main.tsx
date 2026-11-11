@@ -3,14 +3,14 @@ import ReactDOM from 'react-dom/client';
 import { RouterProvider } from '@tanstack/react-router';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import '@fontsource-variable/inter';
-import { SplashScreen } from './components/SplashScreen';
+import { SplashScreen } from '@virelo/web-ui/components/SplashScreen.tsx';
 import { router } from './router';
 import { AccountSession } from './components/AccountSession';
 import { initializeLocale } from './i18n';
-import { LocaleRoot } from './i18n/LocaleRoot';
+import { LocaleRoot } from '@virelo/web-ui/i18n/LocaleRoot.tsx';
 import './styles.css';
 import './streaming-ui.css';
-import './ui-motion.css';
+import '@virelo/web-ui/ui-motion.css';
 
 if (import.meta.env.PROD && 'serviceWorker' in navigator) {
   window.addEventListener('load', () => {

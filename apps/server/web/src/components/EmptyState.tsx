@@ -4,7 +4,7 @@ import { ArrowsClockwise, FolderOpen, Gear } from '@phosphor-icons/react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { api } from '../api';
-import { ScanProgress } from './ScanProgress';
+import { ScanProgress } from '@virelo/web-ui/components/ScanProgress.tsx';
 import { useAccount } from './AccountSession';
 
 export function EmptyState() {

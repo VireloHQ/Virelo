@@ -1,4 +1,4 @@
-import { Trans } from '../i18n/Trans';
+import { Trans } from '@virelo/web-ui/i18n/Trans.tsx';
 import { t, useLocale } from '../i18n';
 import { useId, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -6,7 +6,7 @@ import { Button, Input } from '@heroui/react';
 import { Copy, Play, Plus, Stop, TerminalWindow } from '@phosphor-icons/react';
 import { api } from '../api';
 import type { CustomCommand, CustomCommandDefinition } from '../../../src/custom-command-types';
-import { ConfirmationDialog } from './ConfirmationDialog';
+import { ConfirmationDialog } from '@virelo/web-ui/components/ConfirmationDialog.tsx';
 import './CustomCommandSettings.css';
 
 const labels: Record<CustomCommand['status'], string> = { stopped:'Stopped', running:'Running', stopping:'Stopping…', exited:'Exited', error:'Failed' };

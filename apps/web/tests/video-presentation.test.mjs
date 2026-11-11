@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { stripTypeScriptTypes } from 'node:module';
-const source = await readFile(new URL('../web/src/utils/video-presentation.ts', import.meta.url), 'utf8');
+const source = await readFile(new URL('../../../packages/web-ui/src/utils/video-presentation.ts', import.meta.url), 'utf8');
 const { DEFAULT_VIDEO_PRESENTATION: defaults, normalizeVideoPresentation: normalize, videoPresentationStyle: style } =
   await import('data:text/javascript;base64,' + Buffer.from(stripTypeScriptTypes(source)).toString('base64'));
 

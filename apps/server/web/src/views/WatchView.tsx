@@ -1,20 +1,20 @@
-import { Trans } from '../i18n/Trans';
+import { Trans } from '@virelo/web-ui/i18n/Trans.tsx';
 import { t, useLocale } from '../i18n';
-import { PageSkeleton } from '../components/PageSkeleton';
+import { PageSkeleton } from '@virelo/web-ui/components/PageSkeleton.tsx';
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useParams, useSearch } from '@tanstack/react-router';
 import { FloppyDisk, ListPlus } from '@phosphor-icons/react';
 import { api } from '../api';
-import { PlaybackQueue } from '../components/PlaybackQueue';
-import { SavePlaylist } from '../components/SavePlaylist';
+import { PlaybackQueue } from '@virelo/web-ui/components/PlaybackQueue.tsx';
+import { SavePlaylist } from '@virelo/web-ui/components/SavePlaylist.tsx';
 import { Player } from '../components/Player';
 import { WatchInfo, WatchRecommendations } from '../components/WatchInfo';
-import { queueDestination, type RepeatMode } from '../utils/playback-repeat';
+import { queueDestination, type RepeatMode } from '@virelo/core/playback-repeat';
 import { loadFavoriteQueue, loadMediaQueue } from '../utils/favorites';
-import { toggleQueueShuffle } from '../utils/playback-queue';
-import { usePlaybackQueue } from '../hooks/usePlaybackQueue';
-import { useQueueLayout } from '../hooks/useQueueLayout';
+import { toggleQueueShuffle } from '@virelo/core/playback-queue';
+import { usePlaybackQueue } from '@virelo/web-ui/hooks/usePlaybackQueue.ts';
+import { useQueueLayout } from '@virelo/web-ui/hooks/useQueueLayout.ts';
 import type { MediaItem, PlaylistDetail, QueueBehavior } from '../types';
 
 export function WatchView() {

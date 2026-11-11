@@ -14,14 +14,14 @@ async function sources(directory) {
 }
 
 test('scoped HeroUI styles cover every imported component and shared foundations', async () => {
-  const css = await readFile(new URL('web/src/heroui.css', root), 'utf8');
+  const css = await readFile(new URL('../../packages/web-ui/src/heroui.css', root), 'utf8');
   const styles = await readFile(new URL('web/src/styles.css', root), 'utf8');
-  assert.match(styles, /@import ["']\.\/heroui\.css["']/);
+  assert.match(styles, /@import ["']@virelo\/web-ui\/heroui\.css["']/);
   assert.doesNotMatch(styles, /@import ["']@heroui\/styles["']/);
   for (const foundation of ['base','themes/default','utilities','variants'])
     assert.ok(css.includes('"@heroui/styles/' + foundation + '"'), foundation);
   const components = {Button:'button',buttonVariants:'button',Input:'input',Switch:'switch',Modal:'modal',Popover:'popover'};
-  for (const file of await sources(new URL('web/src/', root))) {
+  for (const file of [...await sources(new URL('web/src/', root)), ...await sources(new URL('../../packages/web-ui/src/', root))]) {
     const source = await readFile(file, 'utf8');
     for (const match of source.matchAll(/import\s*\{([^}]+)\}\s*from\s*['"]@heroui\/react['"]/g)) {
       for (const name of match[1].split(',').map(value=>value.trim()).filter(value=>value&&!value.startsWith('type '))) {

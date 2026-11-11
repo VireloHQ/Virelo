@@ -7,7 +7,7 @@ import { useEffect, useRef, useState, type MouseEvent, type PointerEvent } from 
 import { api, artwork } from '../api';
 import type { MediaItem } from '../types';
 import { PreviewPlayer } from './PreviewPlayer';
-import { MediaContextMenu } from './MediaContextMenu';
+import { MediaContextMenu } from '@virelo/web-ui/components/MediaContextMenu.tsx';
 
 const HOVER_CAPABLE = typeof window !== 'undefined' && window.matchMedia('(hover: hover) and (pointer: fine)').matches;
 

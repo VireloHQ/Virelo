@@ -5,8 +5,11 @@ import { AppearanceProvider } from './components/AppearanceProvider';
 import { MobileNav } from './components/MobileNav';
 import { NotFoundView } from './views/NotFoundView';
 import type { SortKey } from './types';
-import { validateShortsSearch } from './utils/shorts-navigation';
+import { validateShortsSearch } from '@virelo/core/shorts-navigation';
 import { useScanRefresh } from './hooks/useScanRefresh';
+import { MediaServicesProvider } from '@virelo/web-ui/media-services.tsx';
+import { api, artwork } from './api';
+const mediaServices = { api, artwork };
 import { appLocationRewrite, APP_ORIGIN, publicAppPath } from './utils/app-location';
 import { isLocale, LANGUAGE_KEY, type Locale } from './i18n/locale';
 const HomeRouteView = createRouteView(() => import('./views/HomeView'), 'HomeView', 'home');
@@ -58,7 +61,7 @@ function validateWatchSearch(input: Record<string, unknown>): WatchRouteSearch {
 
 function Shell() {
   useScanRefresh();
-  return <AppearanceProvider><div className="app-shell"><Header /><main className="page-shell"><Outlet /></main><MobileNav /></div></AppearanceProvider>;
+  return <MediaServicesProvider services={mediaServices}><AppearanceProvider><div className="app-shell"><Header /><main className="page-shell"><Outlet /></main><MobileNav /></div></AppearanceProvider></MediaServicesProvider>;
 }
 
 function Root() {

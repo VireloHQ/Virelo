@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { stripTypeScriptTypes } from 'node:module';
-const source=await readFile(new URL('../web/src/utils/playback-speed.ts',import.meta.url),'utf8');
+const source=await readFile(new URL('../../../packages/core/src/utils/playback-speed.ts',import.meta.url),'utf8');
 const {playbackSpeed,speedLabel,PLAYBACK_SPEEDS}=await import('data:text/javascript;base64,'+Buffer.from(stripTypeScriptTypes(source)).toString('base64'));
 test('only supported playback speeds are restored from storage',()=>{
   for(const speed of PLAYBACK_SPEEDS) { assert.equal(playbackSpeed(speed),speed); assert.equal(playbackSpeed(String(speed)),speed); }

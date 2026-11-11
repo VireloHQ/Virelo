@@ -2,10 +2,10 @@ import { editLibraries, openDatabase } from './local-library';
 import type { MediaItem, Settings } from './types';
 import { isAppearance, normalizeAppearance } from './utils/appearance';
 import { isLocale, LANGUAGE_KEY } from './i18n/locale';
-import { libraryFolder, libraryName } from './utils/library-names';
+import { libraryFolder, libraryName } from '@virelo/core/library-names';
 import { playlistIds, playlistName, playlistRevision, type StoredPlaylist } from './utils/playlist-values';
-import { PLAYBACK_SPEED_KEY, PLAYBACK_SPEEDS } from './utils/playback-speed';
-import { LEVELING_KEY, readAudioAnalysis } from './utils/volume-leveling';
+import { PLAYBACK_SPEED_KEY, PLAYBACK_SPEEDS } from '@virelo/core/playback-speed';
+import { LEVELING_KEY, readAudioAnalysis } from '@virelo/web-ui/utils/volume-leveling.ts';
 
 export type BackupKind = 'settings' | 'library';
 interface BackupLibrary {

@@ -1,10 +1,10 @@
-import { Trans } from '../i18n/Trans';
+import { Trans } from '@virelo/web-ui/i18n/Trans.tsx';
 import { t, useLocale, getLocale } from '../i18n';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@heroui/react';
 import { ArrowClockwise, ShieldCheck } from '@phosphor-icons/react';
 import { api } from '../api';
-import { ConfirmationDialog } from './ConfirmationDialog';
+import { ConfirmationDialog } from '@virelo/web-ui/components/ConfirmationDialog.tsx';
 import type { DataCategory } from '../../../src/types';
 import './DataManagement.css';
 

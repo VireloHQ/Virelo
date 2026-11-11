@@ -5,10 +5,10 @@ import { Link, useNavigate } from '@tanstack/react-router';
 import { Play } from '@phosphor-icons/react';
 import { Button } from '@heroui/react';
 import { api } from '../api';
-import { useUIStore } from '../store';
+import { useUIStore } from '@virelo/web-ui/store.ts';
 import { MediaCard } from '../components/MediaCard';
-import { PageSkeleton } from '../components/PageSkeleton';
-import { Select } from '../components/Select';
+import { PageSkeleton } from '@virelo/web-ui/components/PageSkeleton.tsx';
+import { Select } from '@virelo/web-ui/components/Select.tsx';
 import { FAVORITES_PAGE_SIZE, nextFavoritesPage } from '../utils/favorites';
 import type { SortKey } from '../types';
 

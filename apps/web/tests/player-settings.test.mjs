@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
-const source = path => readFile(new URL('../web/src/' + path, import.meta.url), 'utf8');
+import { readSource } from '../../../scripts/test-source.mjs';
+const source = path => readSource(path, import.meta.url);
 
 test('volume trigger focus does not dismiss the popover before its own press toggles it', async () => {
   const controls = await source('components/PlayerControls.tsx');

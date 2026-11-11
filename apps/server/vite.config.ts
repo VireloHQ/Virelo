@@ -9,6 +9,7 @@ const outDir = fileURLToPath(new URL('./dist/web', import.meta.url));
 
 export default defineConfig({
   root: webRoot,
+  resolve: { alias: { '@edition': fileURLToPath(new URL('./web/src', import.meta.url)) } },
   plugins: [react(), tailwindcss(), localizedStartup(fileURLToPath(new URL('./web/src/i18n/messages',import.meta.url))), {
     name: 'nonblocking-startup-css',
     transformIndexHtml: {

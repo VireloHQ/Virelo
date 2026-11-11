@@ -7,6 +7,7 @@ import { playerPreview } from './scripts/player-preview.ts';
 
 export default defineConfig({
   root: 'web',
+  resolve: { alias: { '@edition': fileURLToPath(new URL('./web/src', import.meta.url)) } },
   plugins: [react(), tailwindcss(), ffmpegAssets(), playerPreview()],
   optimizeDeps: { exclude: ['@ffmpeg/ffmpeg'] },
   build: {

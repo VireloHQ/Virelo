@@ -4,8 +4,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowClockwise, CheckCircle, WarningCircle } from '@phosphor-icons/react';
 import { t, useLocale } from '../i18n';
 import { useAccount } from './AccountSession';
-import { Select } from './Select';
-import { ConfirmationDialog } from './ConfirmationDialog';
+import { Select } from '@virelo/web-ui/components/Select.tsx';
+import { ConfirmationDialog } from '@virelo/web-ui/components/ConfirmationDialog.tsx';
 
 type ServerState = {
   version: string;

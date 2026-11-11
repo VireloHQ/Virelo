@@ -2,13 +2,13 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { stripTypeScriptTypes } from 'node:module';
-const source = await readFile(new URL('../web/src/utils/context-menu.ts', import.meta.url), 'utf8');
+const source = await readFile(new URL('../../../packages/web-ui/src/utils/context-menu.ts', import.meta.url), 'utf8');
 const { contextMenuPlacement: place, sidePopoverPlacement: submenu } = await import('data:text/javascript;base64,' +
   Buffer.from(stripTypeScriptTypes(source)).toString('base64'));
 
 test('context bubbles and nested settings share curved tails with rounded tips',async()=>{
   const css=await readFile(new URL('../web/src/styles.css',import.meta.url),'utf8');
-  const player=await readFile(new URL('../web/src/player-ui.css',import.meta.url),'utf8');
+  const player=await readFile(new URL('../../../packages/web-ui/src/player-ui.css',import.meta.url),'utf8');
   for(const side of ['left','right']){
     const rule=css.split('\n').find(line=>line.includes('[data-side="'+side+'"]::after'));
     assert.match(rule,/clip-path:path\('/);

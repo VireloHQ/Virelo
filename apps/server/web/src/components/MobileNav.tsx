@@ -1,6 +1,6 @@
 import { t, useLocale } from '../i18n';
 import { Link } from '@tanstack/react-router';
-import { useUIStore } from '../store';
+import { useUIStore } from '@virelo/web-ui/store.ts';
 import { House, SquaresFour, Gear, MonitorPlay, Heart } from '@phosphor-icons/react';
 
 export function MobileNav() {

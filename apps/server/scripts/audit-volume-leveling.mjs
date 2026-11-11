@@ -13,8 +13,8 @@ const moduleUrl=source=>'data:text/javascript;base64,'+Buffer.from(source).toStr
 const browser=await chromium.launch({headless:true,executablePath:process.env.VIRELO_TEST_CHROMIUM});
 try{
   for(const [mode,root] of modes){
-    const values=moduleUrl(stripTypeScriptTypes(await readFile(join(root,'web/src/utils/volume-leveling.ts'),'utf8')));
-    const graph=moduleUrl(stripTypeScriptTypes(await readFile(join(root,'web/src/utils/volume-leveler.ts'),'utf8')).replace("'./volume-leveling'",JSON.stringify(values)));
+    const values=moduleUrl(stripTypeScriptTypes(await readFile(join(root,'../../packages/web-ui/src/utils/volume-leveling.ts'),'utf8')));
+    const graph=moduleUrl(stripTypeScriptTypes(await readFile(join(root,'../../packages/web-ui/src/utils/volume-leveler.ts'),'utf8')).replace("'./volume-leveling'",JSON.stringify(values)));
     const page=await browser.newPage();
     const results=await page.evaluate(async graph=>{
       const {createLevelingGraph,LEVELING_LOOKAHEAD,LEVELING_RECOVERY_HOLD,LEVELING_RECOVERY_DB_PER_SECOND}=await import(graph);

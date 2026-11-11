@@ -1,3 +1,4 @@
+import { sharedModuleBase } from '../../../scripts/vite-audit-url.mjs';
 import assert from 'node:assert/strict';
 import {createRequire} from 'node:module';
 import {mkdtemp,readFile} from 'node:fs/promises';
@@ -27,7 +28,7 @@ try{
     const errors=[];page.on('pageerror',error=>errors.push(error.message));
     await page.route(base+'/__controls-audit',route=>route.fulfill({body:'<!doctype html><body><div id="root"></div></body>',contentType:'text/html'}));
     await page.goto(base+'/__controls-audit');
-    await page.evaluate(async()=>{
+    await page.evaluate(async shared=>{
       const refresh=(await import('/@react-refresh')).default;
       refresh.injectIntoGlobalHook(window);window.$RefreshReg$=()=>{};window.$RefreshSig$=()=>type=>type;window.__vite_plugin_react_preamble_installed__=true;
       const main=await(await fetch('/src/main.tsx')).text();
@@ -36,15 +37,15 @@ try{
       const dom=await import(imports.find(url=>url.includes('/react-dom_client.js')));
       const createRoot=dom.createRoot||dom.default.createRoot;
       const {QueryClient,QueryClientProvider}=await import(imports.find(url=>url.includes('react-query')));
-      const {PlayerControls}=await import('/src/components/PlayerControls.tsx');
-      const {PlayerActionMenu}=await import('/src/components/PlayerActionMenu.tsx');
-      const {PlaybackSettingsMenu}=await import('/src/components/PlaybackSettingsMenu.tsx');
-      const {RepeatControl}=await import('/src/components/RepeatControl.tsx');
+      const {PlayerControls}=await import(shared+'components/PlayerControls.tsx');
+      const {PlayerActionMenu}=await import(shared+'components/PlayerActionMenu.tsx');
+      const {PlaybackSettingsMenu}=await import(shared+'components/PlaybackSettingsMenu.tsx');
+      const {RepeatControl}=await import(shared+'components/RepeatControl.tsx');
       const {AppearanceProvider}=await import('/src/components/AppearanceProvider.tsx');
       const {api}=await import('/src/api.ts');
-      await import('/src/styles.css');await import('/src/player-ui.css');await import('/src/ui-motion.css');
+      await import('/src/styles.css');await import(shared+'player-ui.css');await import(shared+'ui-motion.css');
       const lateQueueStyle=document.head.appendChild(document.createElement('style'));
-      lateQueueStyle.textContent=(await import('/src/playback-queue.css?raw')).default;
+      lateQueueStyle.textContent=(await import(shared+'playback-queue.css?raw')).default;
       window.__appearance={controllerStyle:'classic',accentColor:'#c3a6ff'};
       api.appearance=async()=>window.__appearance;
       const client=new QueryClient({defaultOptions:{queries:{retry:false,refetchOnWindowFocus:false}}});
@@ -67,7 +68,7 @@ try{
           React.createElement('div',{className:'playback-queue-nav',style:{margin:'16px'}},React.createElement(RepeatControl,{mode:repeat,hasQueue:true,onChange:setRepeat,queueOnly:true})));
       }
       createRoot(document.getElementById('root')).render(React.createElement(QueryClientProvider,{client},React.createElement(AppearanceProvider,null,React.createElement(Fixture))));
-    });
+    }, sharedModuleBase);
     await page.locator('.player-controls').waitFor();
     await page.evaluate(()=>document.fonts.ready);
     const queueRepeat=page.locator('.playback-queue-nav .repeat-control>button');

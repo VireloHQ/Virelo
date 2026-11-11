@@ -5,7 +5,7 @@ import { deviceLocale, getLocale, t, useLocale } from '../i18n';
 import { hasBrowserData } from '../browser-backup';
 import { newAppUrl } from '../utils/app-location';
 import { downloadBrowserBackup } from './BrowserBackup';
-import { LoadingSpinner } from './LoadingSpinner';
+import { LoadingSpinner } from '@virelo/web-ui/components/LoadingSpinner.tsx';
 
 export function LegacyMigration() {
   useLocale();

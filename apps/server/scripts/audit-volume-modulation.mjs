@@ -4,8 +4,8 @@ import { createRequire, stripTypeScriptTypes } from 'node:module';
 
 const { chromium } = createRequire(process.env.VIRELO_TEST_NODE_PACKAGE || import.meta.url)('playwright');
 const moduleUrl = text => 'data:text/javascript;base64,' + Buffer.from(text).toString('base64');
-const values = moduleUrl(stripTypeScriptTypes(await readFile(new URL('../web/src/utils/volume-leveling.ts', import.meta.url), 'utf8')));
-const graph = moduleUrl(stripTypeScriptTypes(await readFile(new URL('../web/src/utils/volume-leveler.ts', import.meta.url), 'utf8')).replace("'./volume-leveling'", JSON.stringify(values)));
+const values = moduleUrl(stripTypeScriptTypes(await readFile(new URL('../../../packages/web-ui/src/utils/volume-leveling.ts', import.meta.url), 'utf8')));
+const graph = moduleUrl(stripTypeScriptTypes(await readFile(new URL('../../../packages/web-ui/src/utils/volume-leveler.ts', import.meta.url), 'utf8')).replace("'./volume-leveling'", JSON.stringify(values)));
 const browser = await chromium.launch({ headless: true, executablePath: process.env.VIRELO_TEST_CHROMIUM });
 try {
   const page = await browser.newPage();
