@@ -1,6 +1,6 @@
 {
   "name": "virelo",
-  "version": "0.5.4",
+  "version": "0.6.0",
   "description": "Turn any folder into a private, streaming-style video library.",
   "type": "module",
   "bin": {
@@ -58,7 +58,8 @@
     "@fastify/static": "^10.1.8",
     "chokidar": "^6.0.0",
     "fastify": "^5.10.0",
-    "open": "^11.0.0"
+    "open": "^11.0.0",
+    "string-width": "^8.3.0"
   },
   "overrides": {
     "glob": "^14.0.3"

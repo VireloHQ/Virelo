@@ -1,7 +1,9 @@
 # Library storage
 
-The current directory, or folders passed with `--media`, are temporary for the
-current server run. They do not become permanently active simply by starting Virelo.
+Folders explicitly passed with `--here` or `--media` are temporary for the
+current server run. Starting Virelo without either option loads saved libraries
+without scanning the current directory. Explicit startup folders do not become
+permanently active simply by starting Virelo.
 
 Folders added in Settings → Libraries are saved libraries. They remain available
 when the server is started from another folder using the same data directory.

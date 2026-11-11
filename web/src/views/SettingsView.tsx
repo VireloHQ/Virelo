@@ -22,6 +22,7 @@ import { useAccount } from '../components/AccountSession';
 import { AccountManager, AccountProfile } from '../components/AccountSettings';
 import { ActivityView, AdminSettings } from '../components/AccountAdministration';
 import { DataManagement } from '../components/DataManagement';
+import { ServerManagement } from '../components/ServerManagement';
 import { CustomCommandSettings } from '../components/CustomCommandSettings';
 import { AnnouncementSettings } from '../components/Notifications';
 import { Megaphone } from '@phosphor-icons/react';
@@ -37,6 +38,7 @@ const settingsSections = [
   { id:'activity', label:'Activity', description:'Online sessions and activity logs', icon:Eye, group:'Admin' },
   { id:'announcements', label:'Announcements', description:'Send messages to server users', icon:Megaphone, group:'Admin' },
   { id:'admin', label:'Admin', description:'Network access and monitoring', icon:ShieldCheck, group:'Admin' },
+  { id:'server', label:'Server', description:'Address, port, and server controls', icon:TerminalWindow, group:'Admin' },
   { id:'network', label:'Metadata', description:'Titles, posters and artwork', icon:ImageSquare, group:'Admin' },
   { id:'shorts', label:'Shorts', description:'Videos in your vertical feed', icon:DeviceMobile, group:'Admin' },
   { id:'data', label:'Data management', description:'Storage usage and playback cache', icon:Database, group:'Admin' },
@@ -98,6 +100,7 @@ export function SettingsView(){
         {activeSection==='account'&&<div id="settings-panel-account" className="settings-card settings-section"><AccountProfile/></div>}
         {activeSection==='accounts'&&isAdmin&&<div id="settings-panel-accounts" className="settings-card settings-section"><AccountManager/></div>}
         {activeSection==='admin'&&isAdmin&&<AdminSettings/>}
+        {activeSection==='server'&&isAdmin&&<ServerManagement/>}
         {activeSection==='sharing'&&<SharingSettings addresses={api.shareAddresses}/>}
         {activeSection==='announcements'&&isAdmin&&<AnnouncementSettings/>}
         {activeSection==='activity'&&isAdmin&&<section id="settings-panel-activity" className="settings-card settings-section" aria-labelledby="settings-title-activity"><div className="settings-card-head"><div><h2 id="settings-title-activity" tabIndex={-1}>{t("Activity")}</h2></div></div><ActivityView/></section>}

@@ -80,7 +80,9 @@ export async function checkI18n(root) {
     const walk=(node,parents=[])=>{
       if(!node||typeof node!=='object')return;
       if(node.type==='CallExpression'&&node.callee?.name==='t'&&typeof node.arguments[0]?.value==='string')check(node,node.arguments[0].value);
-      if(node.type==='NewExpression'&&/Error$/.test(node.callee?.name??'')){
+      // CLI-only diagnostics are not sent to the browser translation catalog.
+      const terminalOnly=path===join(root,'src/cli.ts')||path.startsWith(join(root,'src/terminal-'));
+      if(!terminalOnly&&node.type==='NewExpression'&&/Error$/.test(node.callee?.name??'')){
         const message=sourceMessage(node.arguments[0]);
         if(message&&/[A-Za-z]{3}/.test(message.replace(/\{\w+\}/g,'')))check(node,message);
       }
