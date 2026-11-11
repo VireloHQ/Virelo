@@ -1,15 +1,15 @@
 # Releasing
 
-Git pushes and successful builds do not update the npm package. Prepare the
-release on a pull request and publish only after its checks pass and the release
-is explicitly approved. Do not push a `v*` tag or dispatch the Publish npm workflow
-during preparation: both can publish automatically.
+Git pushes and tags do not publish npm packages. CI builds and audits a tarball;
+the package maintainer publishes it separately after approving the release.
 
 ## Prepare
 
-1. Compare `npm view virelo version` with `package.json`. Use a new, unpublished
-   version in both `package.json` and the root entries of `package-lock.json`.
-2. Update `CHANGELOG.md` and review the changes since the published version.
+1. Compare `npm view virelo version` with `apps/server/package.json`. Use a new,
+   unpublished version in the workspace lock and the version fields of
+   `apps/server/release-lock.json`. The latter pins only the dependencies in the
+   standalone npm package and must match the server's production dependency ranges.
+2. Update `apps/server/CHANGELOG.md` and review the changes since the published version.
 3. Run the checks below with a supported Node.js version:
 
    ```sh
@@ -21,19 +21,22 @@ during preparation: both can publish automatically.
 
    The package audit checks known dependency advisories, installs the actual
    archive in temporary storage and verifies the CLI, HTTP assets and initial
-   administrator setup. It never uses personal libraries or publishes anything.
-4. Merge the pull request after CI passes. From the unchanged, verified checkout,
-   run `npm pack` and retain the printed archive filename and its SHA-256.
+   administrator setup. It also checks that upgrading from 0.6.0 retains an
+   administrator and saved library. It never uses personal libraries or publishes anything.
+4. Merge after CI passes. Use the `npm-package` artifact from the matching CI
+   run, or run `npm run build -w apps/server` then `npm run audit:package` from the
+   repository root and use the exact tarball path and SHA-256 printed by the audit.
+   Do not pack or publish directly from the workspace directory.
 
 ## Publish manually
 
 Sign in with an account that can publish `virelo`, then publish the newly checked
-archive. For 0.6.0:
+archive. For 0.6.1:
 
 ```sh
 npm login --registry=https://registry.npmjs.org/
 npm whoami --registry=https://registry.npmjs.org/
-npm publish ./virelo-0.6.0.tgz --access public --registry=https://registry.npmjs.org/
+npm publish ./virelo-0.6.1.tgz --access public --registry=https://registry.npmjs.org/
 ```
 
 Complete any npm authentication or two-factor prompt yourself. Never put a token
@@ -41,5 +44,5 @@ or one-time password in source files, logs or release notes. A dry run does not
 prove publication permission. Published name/version pairs cannot be reused.
 
 After publication, check `npm view virelo version` and
-`npx --yes virelo@0.6.0 --version` before announcing the npm release. A previously
+`npx --yes virelo@0.6.1 --version` before announcing the npm release. A previously
 cached `npx virelo` installation may need `npx virelo@latest` to pick up the update.

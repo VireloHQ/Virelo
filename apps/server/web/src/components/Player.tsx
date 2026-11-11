@@ -1,0 +1,813 @@
+import { t, useLocale } from '../i18n';
+import { useEffect, useRef, useState } from 'react';
+import { useVolumeLeveling } from '@virelo/web-ui/hooks/useVolumeLeveling.ts';
+import { audioMeasurement } from '@virelo/web-ui/utils/volume-leveling.ts';
+import { ArrowsOut, FastForward, Pause, PictureInPicture, Play, Repeat, Rewind, SpeakerHigh, SpeakerSlash } from '@phosphor-icons/react';
+import { LoadingSpinner } from '@virelo/web-ui/components/LoadingSpinner.tsx';
+import { api } from '../api';
+import { useHlsFallback } from '../hooks/useHlsFallback';
+import { useAdaptiveQuality } from '../hooks/useAdaptiveQuality';
+import { playVideo } from '../utils/media-playback';
+import { qualityLabel, readQualityPreference, resolvePreferredQuality, saveQualityPreference, type QualityPreference } from '../utils/playback-quality';
+import { hasPlaybackTrackPreference, resolvePlaybackTrackSelection, savePlaybackTrackSelection } from '@virelo/web-ui/utils/playback-tracks.ts';
+import { toggleFullscreen } from '@virelo/web-ui/utils/fullscreen.ts';
+import { DraggableCaption, HiddenSubtitleTrack } from '@virelo/web-ui/components/DraggableCaption.tsx';
+import { FavoriteButton } from '@virelo/web-ui/components/FavoriteButton.tsx';
+import { useAccount } from './AccountSession';
+import { PlaybackSettingsMenu } from '@virelo/web-ui/components/PlaybackSettingsMenu.tsx';
+import { ShortsContextMenu, ShortsPlayerControls, type ShortsPlaybackOptions } from '@virelo/web-ui/components/ShortsPlayerControls.tsx';
+import { PlayerActionMenu } from '@virelo/web-ui/components/PlayerActionMenu.tsx';
+import { type RepeatMode } from '@virelo/core/playback-repeat';
+import { useBackgroundPlayback } from '@virelo/web-ui/hooks/useBackgroundPlayback.ts';
+import { usePlaybackVolume } from '@virelo/web-ui/hooks/usePlaybackVolume.ts';
+import { usePlaybackSpeed } from '@virelo/web-ui/hooks/usePlaybackSpeed.ts';
+import { PlayerControls } from '@virelo/web-ui/components/PlayerControls.tsx';
+import { usePlaybackActivity } from '../hooks/usePlaybackActivity';
+import { useVideoPresentation } from '@virelo/web-ui/hooks/useVideoPresentation.ts';
+import { VideoSettingsPanel } from '@virelo/web-ui/components/VideoSettingsPanel.tsx';
+import type { MediaItem, PlaybackInfo } from '../types';
+import '@virelo/web-ui/player-ui.css';
+import '@virelo/web-ui/video-settings.css';
+
+interface PlayerProps {
+  item: MediaItem;
+  queue?: MediaItem[];
+  queueIndex?: number;
+  shuffled?: boolean;
+  onShuffle?: () => void;
+  onEnded?: () => void;
+  onNext?: () => void;
+  onPrev?: () => void;
+  canGoNext?: boolean;
+  canGoPrev?: boolean;
+  autoPlay?: boolean;
+  shorts?: ShortsPlaybackOptions;
+  repeatMode?: RepeatMode;
+  onRepeatChange?: (mode:RepeatMode) => void;
+}
+
+const DIRECT_AUDIO_CODECS=new Set(['aac','flac','mp3','opus','vorbis']);
+type HlsInstance=InstanceType<(typeof import('hls.js/light'))['default']>;
+
+export function Player({item,queue,queueIndex,shuffled,onShuffle,onEnded,onNext,onPrev,canGoNext=true,canGoPrev=true,autoPlay,shorts,repeatMode,onRepeatChange}:PlayerProps) {
+  useLocale();
+  const canTranscode=useAccount()?.user.permissions.transcode!==false;
+  const localPlayback=isLocalPlaybackHost();
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const sourceTransition = useRef(false);
+  const wantsPlayback = useRef(Boolean(autoPlay));
+  const [playRequested, setPlayRequested] = useState(Boolean(autoPlay));
+  const audioRef = useRef<HTMLAudioElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const presentation = useVideoPresentation(item.id, containerRef);
+  const lastProgress = useRef(0);
+  const playbackItemId = useRef(item.id);
+  const controlsTimer = useRef<number | null>(null);
+  const longPressTimer = useRef<number | null>(null);
+  const longPressTriggered = useRef(false);
+  const touchRevealOnly = useRef(false);
+  const audioToken = useRef(0);
+  const audioSourceToken = useRef(0);
+  const audioHlsRef = useRef<HlsInstance|null>(null);
+  const resumeAfterAudio = useRef(false);
+  const audioResumeAt = useRef<number|null>(null);
+  const audioRetryTimer = useRef<number|null>(null);
+  const audioRetryCount = useRef(0);
+  const initialResumeItem = useRef<number|null>(null);
+  const videoFallbackRequested = useRef(false);
+  const qualityRequested = useRef(true);
+  const autoBufferTimer = useRef<number|null>(null);
+  const seekTarget=useRef<number|null>(null);
+  const seekTimer=useRef<number|null>(null);
+  const seekToken=useRef(0);
+  const [seekingPosition,setSeekingPosition]=useState<number|null>(null);
+  const { fallback, error, startFallback, release:releaseFallback,needsSeek:needsFallbackSeek } = useHlsFallback(item, videoRef, wantsPlayback, sourceTransition);
+  const {state:qualityState,error:qualityError,start:startQuality,selectedQuality,activeQuality,qualityOptions,setQuality,playbackBlocked,release:releaseQuality,needsSeek:needsQualitySeek}=useAdaptiveQuality(item,videoRef,releaseFallback,wantsPlayback,sourceTransition);
+  const [qualitySelectionError,setQualitySelectionError] = useState('');
+  const [qualityPreference,setQualityPreference] = useState(()=>readQualityPreference(!localPlayback,canTranscode));
+  const [playbackInfo,setPlaybackInfo] = useState<PlaybackInfo|null>(null);
+  const [selectedAudio,setSelectedAudio] = useState<number|null>(null);
+  const [selectedSubtitle,setSelectedSubtitle] = useState<number|null>(null);
+  const [activeCaption,setActiveCaption] = useState('');
+  const [externalAudioUrl,setExternalAudioUrl] = useState('');
+  const [externalAudioVersion,setExternalAudioVersion] = useState(0);
+  const [audioPreparing,setAudioPreparing] = useState(false);
+  const [audioError,setAudioError] = useState('');
+  const [playbackReady,setPlaybackReady] = useState(false);
+  const [playing,setPlaying] = useState(false);
+  usePlaybackActivity(item.id,playing,videoRef);
+  const [buffering,setBuffering] = useState(false);
+  const [current,setCurrent] = useState(0);
+  const [duration,setDuration] = useState(item.duration || 0);
+  const volumeControls = usePlaybackVolume();
+  const {volume,setVolume,muted,setMuted} = volumeControls;
+  const {speed,changeSpeed} = usePlaybackSpeed(videoRef,audioRef,item.id,externalAudioUrl);
+  const measurement=audioMeasurement(item.audio_loudness,item.size,item.mtime,playbackItemId.current===item.id?selectedAudio:null);
+  const {leveling,setLeveling,levelingError,levelingSupported,onVolumeChange}=useVolumeLeveling(videoRef,audioRef,externalAudioUrl,volumeControls,measurement);
+  const [pip,setPip] = useState(false);
+  const [pipSupported,setPipSupported] = useState(false);
+  const [singleRepeat,setSingleRepeat] = useState<RepeatMode>('off');
+  const repeat=repeatMode??singleRepeat;
+  const changeRepeat=onRepeatChange??setSingleRepeat;
+  const [contextPosition,setContextPosition]=useState<{x:number;y:number;keyboard?:boolean}|null>(null);
+  const [controlsVisible,setControlsVisible] = useState(true);
+  useEffect(()=>{
+    const player=containerRef.current, controls=player?.querySelector<HTMLElement>('.player-controls');
+    if(!player||!controls||shorts)return;
+    const update=()=>player.style.setProperty('--player-controls-height',`${controls.offsetHeight+14}px`);
+    const observer=new ResizeObserver(update);observer.observe(controls);update();
+    return()=>observer.disconnect();
+  },[]);
+
+  const background=useBackgroundPlayback(item.id,videoRef,wantsPlayback,{
+    transition:sourceTransition,
+    resume:resumeFromBackground,
+    play:()=>{wantsPlayback.current=true;setPlayRequested(true);resumeFromBackground();},
+    pause:pausePlayback
+  });
+
+  useEffect(()=>{
+    sourceTransition.current=true;
+    seekToken.current++;
+    seekTarget.current=null;
+    setSeekingPosition(null);
+    if(seekTimer.current!==null)window.clearTimeout(seekTimer.current);
+    seekTimer.current=null;
+    wantsPlayback.current=Boolean(autoPlay);
+    setPlayRequested(Boolean(autoPlay));
+    playbackItemId.current=item.id;
+    setContextPosition(null);
+    audioToken.current++;
+    audioSourceToken.current++;
+    videoFallbackRequested.current=false;
+    qualityRequested.current=true;
+    playbackBlocked.current=typeof readQualityPreference(!localPlayback,canTranscode)==='number';
+    setQualitySelectionError('');
+    if(autoBufferTimer.current!==null)window.clearTimeout(autoBufferTimer.current);
+    autoBufferTimer.current=null;
+    audioRef.current?.pause();
+    if(audioRetryTimer.current!==null)window.clearTimeout(audioRetryTimer.current);
+    audioRetryTimer.current=null;
+    audioRetryCount.current=0;
+    resumeAfterAudio.current=false;
+    audioResumeAt.current=null;
+    initialResumeItem.current=null;
+    lastProgress.current=0;
+    setPlaybackInfo(null);
+    setSelectedAudio(null);
+    setSelectedSubtitle(null);
+    setActiveCaption('');
+    setExternalAudioUrl('');
+    setAudioPreparing(false);
+    setAudioError('');
+    setPlaybackReady(false);
+    setPlaying(false);
+    setBuffering(false);
+    setCurrent(0);
+    setDuration(item.duration||0);
+  },[item.id]);
+
+  useEffect(()=>{
+    let alive=true;
+    if(wantsPlayback.current&&!hasPlaybackTrackPreference('audio'))requestVideoPlayback();
+    api.playbackInfo(item.id).then(async(info)=>{
+      if(!alive)return;
+      setPlaybackInfo(info);
+      const audio=canTranscode?resolvePlaybackTrackSelection('audio',info.audioTracks,info.defaultAudioStream):info.defaultAudioStream;
+      setSelectedAudio(audio);
+      setSelectedSubtitle(resolvePlaybackTrackSelection('subtitles',info.subtitleTracks,null));
+      const preference=readQualityPreference(!localPlayback,canTranscode);
+      setQualityPreference(preference);
+      const preferredQuality=resolvePreferredQuality(info.qualityOptions,preference);
+      setQuality(preferredQuality);
+      const directPlayback=!info.qualityOptions.length||preferredQuality===null||preferredQuality===info.qualityOptions[0]?.height;
+      if(directPlayback){
+        playbackBlocked.current=false;
+        qualityRequested.current=false;
+        const video=videoRef.current;
+        const original=new URL(`/api/media/${item.id}/stream`,window.location.href).href;
+        // Destroying the previous HLS instance can clear src after React sets the next file.
+        if(video&&video.src!==original){sourceTransition.current=true;video.src=original;video.load();}
+        if(info.requiresTranscode||videoRef.current?.error){
+          videoFallbackRequested.current=true;
+          const video=videoRef.current;
+          const position=video?.currentTime||item.progress_position||0;
+          sourceTransition.current=true;
+          video?.pause();
+          await startFallback(audio??undefined,position,wantsPlayback.current);
+        }else if(audio!==null&&audio!==info.defaultAudioStream){
+          const resume=item.progress_position||0;
+          const position=initialResumeItem.current===item.id?(video?.currentTime||0):resume>5&&(!item.duration||resume<item.duration*.92)?resume:0;
+          await prepareAudio(audio,info,true,true,position);
+        }else{
+          setPlaybackReady(true);
+          if(wantsPlayback.current)requestVideoPlayback();
+        }
+        return;
+      }
+      const adaptiveReady=await startQuality(audio??undefined,item.progress_position||0,wantsPlayback.current);
+      if(!alive)return;
+      if(adaptiveReady){
+        setPlaybackReady(true);
+        return;
+      }
+      // Manual quality failures stay paused. Never resume the higher-resolution original.
+      setPlaybackReady(false);
+    }).catch((reason)=>{
+      if(!alive)return;
+      if(typeof readQualityPreference(!localPlayback,canTranscode)==='number'){
+        playbackBlocked.current=true;
+        sourceTransition.current=true;
+        videoRef.current?.pause();
+        audioRef.current?.pause();
+        setPlaybackReady(false);
+        setQualitySelectionError(reason instanceof Error?reason.message:'The selected quality could not be prepared.');
+        return;
+      }
+      qualityRequested.current=false;
+      setPlaybackReady(true);
+      if(wantsPlayback.current)requestVideoPlayback();
+    });
+    return()=>{alive=false;audioToken.current++;};
+  },[autoPlay,item.id,localPlayback,setQuality,startQuality,startFallback,canTranscode]);
+
+  useEffect(()=>{
+    if(qualityState!=='active')return;
+    sourceTransition.current=false;
+    audioRef.current?.pause();
+    setExternalAudioUrl('');
+    setPlaybackReady(true);
+  },[qualityState]);
+
+  useEffect(()=>{if(fallback==='active'){sourceTransition.current=false;setPlaybackReady(true);}},[fallback]);
+
+  useEffect(()=>{setActiveCaption('');},[item.id,selectedSubtitle]);
+
+  useEffect(()=>{
+    const audio=audioRef.current;
+    const sourceToken=++audioSourceToken.current;
+    audioHlsRef.current?.destroy();
+    audioHlsRef.current=null;
+    if(!audio)return;
+    let disposed=false;
+    let ready=false;
+    const handleReady=()=>{
+      if(disposed||sourceToken!==audioSourceToken.current||audio.readyState<HTMLMediaElement.HAVE_METADATA)return;
+      const video=videoRef.current;
+      const pendingPosition=audioResumeAt.current;
+      syncExternalAudio(false,pendingPosition??undefined);
+      if(pendingPosition!==null)audioResumeAt.current=null;
+      if(!ready){
+        ready=true;
+        sourceTransition.current=false;
+        setPlaybackReady(true);
+      }
+      if(video&&!video.paused){
+        syncExternalAudio(true);
+      }else if(resumeAfterAudio.current&&wantsPlayback.current){
+        resumeAfterAudio.current=false;
+        queueMicrotask(()=>{
+          if(disposed||sourceToken!==audioSourceToken.current||!wantsPlayback.current)return;
+          const playPromise=videoRef.current?.play();
+          if(playPromise)void playPromise.then(()=>requestExternalAudioPlayback()).catch(()=>{resumeAfterAudio.current=true;});
+        });
+      }
+    };
+    audio.pause();
+    audio.removeAttribute('src');
+    audio.load();
+    audio.addEventListener('loadedmetadata',handleReady);
+    audio.addEventListener('canplay',handleReady);
+    if(!externalAudioUrl)return()=>{
+      disposed=true;
+      audio.removeEventListener('loadedmetadata',handleReady);
+      audio.removeEventListener('canplay',handleReady);
+    };
+    void import('hls.js/light').then(({default:Hls})=>{
+      if(disposed||sourceToken!==audioSourceToken.current)return;
+      // Match video playback: native HLS may advertise support but fail on a backward seek.
+      if(!Hls.isSupported()){
+        if(!audio.canPlayType('application/vnd.apple.mpegurl'))throw new Error('This browser cannot play converted audio.');
+        audio.src=externalAudioUrl;
+        audio.load();
+        return;
+      }
+      const position=audioResumeAt.current??videoRef.current?.currentTime??0;
+      const hls=new Hls({enableWorker:true,lowLatencyMode:false,maxBufferLength:20,startPosition:position,autoStartLoad:false});
+      audioHlsRef.current=hls;
+      hls.loadSource(externalAudioUrl);
+      hls.attachMedia(audio);
+      hls.on(Hls.Events.MANIFEST_PARSED,()=>hls.startLoad(position));
+      hls.on(Hls.Events.FRAG_BUFFERED,handleReady);
+      hls.on(Hls.Events.ERROR,(_event,data)=>{if(data.fatal)setAudioError('Converted audio playback failed.');});
+    }).catch((reason)=>{if(!disposed)setAudioError(reason instanceof Error?reason.message:'Converted audio playback failed.');});
+    return()=>{
+      disposed=true;
+      audio.removeEventListener('loadedmetadata',handleReady);
+      audio.removeEventListener('canplay',handleReady);
+      audioRetryCount.current=0;
+      if(audioRetryTimer.current!==null)window.clearTimeout(audioRetryTimer.current);
+      audioRetryTimer.current=null;
+      audioHlsRef.current?.destroy();
+      audioHlsRef.current=null;
+    };
+  },[externalAudioUrl,externalAudioVersion]);
+
+  useEffect(()=>{
+    const video=videoRef.current;
+    setPipSupported(Boolean(video && document.pictureInPictureEnabled && typeof video.requestPictureInPicture==='function'));
+    if (!video) return;
+    const handleEnterPip=()=>{setPip(true);shorts?.onPipChange(true);};
+    const handleLeavePip=()=>{setPip(false);shorts?.onPipChange(false);};
+    let disposed=false,attempts=0;
+    let followTimer:number|undefined;
+    const followPip=()=>{
+      if(disposed||!shorts?.pipOn||!document.pictureInPictureEnabled||video.readyState<2||typeof video.requestPictureInPicture!=='function'||attempts>=4)return;
+      if(document.pictureInPictureElement===video)return;
+      attempts++;
+      void video.requestPictureInPicture().catch(()=>{if(!disposed)followTimer=window.setTimeout(followPip,300);});
+    };
+    if(shorts?.pipOn){video.addEventListener('loadeddata',followPip);followPip();}
+    video.addEventListener('enterpictureinpicture',handleEnterPip);
+    video.addEventListener('leavepictureinpicture',handleLeavePip);
+    return ()=>{
+      disposed=true;
+      window.clearTimeout(followTimer);
+      video.removeEventListener('loadeddata',followPip);
+      video.removeEventListener('enterpictureinpicture',handleEnterPip);
+      video.removeEventListener('leavepictureinpicture',handleLeavePip);
+    };
+  },[]);
+
+  useEffect(()=>()=>{
+    if(controlsTimer.current!==null)window.clearTimeout(controlsTimer.current);
+    if(autoBufferTimer.current!==null)window.clearTimeout(autoBufferTimer.current);
+    if(seekTimer.current!==null)window.clearTimeout(seekTimer.current);
+    seekToken.current++;
+  },[]);
+
+  useEffect(()=>{
+    const video=videoRef.current;
+    if(!buffering||!video||!wantsPlayback.current||video.paused||video.seeking||localPlayback||qualityPreference!=='auto'||selectedQuality!==null||!playbackReady||qualityState!=='idle')return;
+    autoBufferTimer.current=window.setTimeout(()=>{
+      autoBufferTimer.current=null;
+      if(!wantsPlayback.current||video.paused||video.seeking||video.readyState>=HTMLMediaElement.HAVE_FUTURE_DATA)return;
+      qualityRequested.current=true;
+      void startQuality(selectedAudio??undefined,video.currentTime,true,true).then((ready)=>{
+        if(!ready)qualityRequested.current=false;
+      });
+    },1500);
+    return()=>{
+      if(autoBufferTimer.current!==null)window.clearTimeout(autoBufferTimer.current);
+      autoBufferTimer.current=null;
+    };
+  },[buffering,playRequested,localPlayback,playbackReady,qualityState,qualityPreference,selectedAudio,selectedQuality,startQuality]);
+
+  function handleWaiting(){
+    if(!background.audioIsClock())audioRef.current?.pause();
+    if(wantsPlayback.current&&!videoRef.current?.paused)setBuffering(true);
+  }
+  function handlePlaying(){
+    setBuffering(false);
+    if(autoBufferTimer.current!==null)window.clearTimeout(autoBufferTimer.current);
+    autoBufferTimer.current=null;
+    syncExternalAudio(true);
+  }
+
+  useEffect(()=>{
+    if(!shorts)return;
+    const video=videoRef.current;
+    return()=>{
+      wantsPlayback.current=false;
+      clearLongPress();
+      if(video){
+        void api.progress(item.id,video.currentTime,Number.isFinite(video.duration)?video.duration:item.duration||0);
+        video.pause();
+      }
+      audioRef.current?.pause();
+    };
+  },[item.id,Boolean(shorts)]);
+
+  function clearLongPress(){
+    if(longPressTimer.current!==null)window.clearTimeout(longPressTimer.current);
+    longPressTimer.current=null;
+  }
+  function startLongPress(event:React.PointerEvent<HTMLDivElement>){
+    touchRevealOnly.current=!shorts&&event.pointerType==='touch'&&!controlsVisible&&event.target===videoRef.current;
+    revealControls();
+    if(!shorts||event.pointerType!=='touch'||(event.target instanceof Element&&event.target.closest('input,button,[role="menu"],.player-caption')))return;
+    clearLongPress();
+    longPressTriggered.current=false;
+    longPressTimer.current=window.setTimeout(()=>{
+      longPressTriggered.current=true;
+      setContextPosition({x:event.clientX,y:event.clientY});
+    },520);
+  }
+
+  function usesTouchControls(){return window.matchMedia('(hover: none), (pointer: coarse)').matches;}
+  function revealControls(){
+    if(controlsTimer.current!==null){window.clearTimeout(controlsTimer.current);controlsTimer.current=null;}
+    setControlsVisible(true);
+  }
+  function scheduleControlsHide(delay=2400){
+    if(shorts)return;
+    if(controlsTimer.current!==null)window.clearTimeout(controlsTimer.current);
+    const video=videoRef.current;
+    if(!video||video.paused){controlsTimer.current=null;return;}
+    controlsTimer.current=window.setTimeout(()=>{
+      const keyboardFocus=containerRef.current?.querySelector(':focus-visible');
+      if(keyboardFocus||document.querySelector('.player-action-menu')||containerRef.current?.querySelector('[aria-haspopup][aria-expanded="true"]')){scheduleControlsHide();return;}
+      setControlsVisible(false);
+      controlsTimer.current=null;
+    },delay);
+  }
+
+  function syncExternalAudio(play=false,targetTime?:number){
+    const video=videoRef.current;const audio=audioRef.current;
+    if(!video||!audio||!externalAudioUrl||background.audioIsClock())return;
+    if(seekTarget.current!==null&&Math.abs(video.currentTime-seekTarget.current)>.65)return;
+    const position=targetTime??video.currentTime;
+    if(Number.isFinite(position)&&(!Number.isFinite(audio.currentTime)||Math.abs(audio.currentTime-position)>.2)){
+      try{audio.currentTime=position;}catch{/* wait for metadata before seeking */}
+    }
+    try{audio.playbackRate=video.playbackRate;}catch{/* the audio source is still loading */}
+    if(play)requestExternalAudioPlayback();
+  }
+  function requestExternalAudioPlayback(){
+    const video=videoRef.current;const audio=audioRef.current;
+    if(!video||!audio||!externalAudioUrl||(video.paused&&!background.audioIsClock())||!wantsPlayback.current||audio.readyState<HTMLMediaElement.HAVE_METADATA)return;
+    if(!audio.paused)return;
+    const result=audio.play();
+    if(!result)return;
+    void result.then(()=>{
+      audioRetryCount.current=0;
+      if(audioRetryTimer.current!==null)window.clearTimeout(audioRetryTimer.current);
+      audioRetryTimer.current=null;
+    }).catch(()=>{
+      if(videoRef.current!==video||audioRef.current!==audio||(video.paused&&!background.audioIsClock())||!wantsPlayback.current||!externalAudioUrl)return;
+      if(audioRetryCount.current>=8)return;
+      audioRetryCount.current++;
+      if(audioRetryTimer.current!==null)return;
+      audioRetryTimer.current=window.setTimeout(()=>{
+        audioRetryTimer.current=null;
+        requestExternalAudioPlayback();
+      },150);
+    });
+  }
+  function requestVideoPlayback(){
+    const video=videoRef.current;
+    const requestItemId=item.id;
+    if(!video||playbackBlocked.current)return;
+    void playVideo(video,()=>wantsPlayback.current&&!playbackBlocked.current&&playbackItemId.current===requestItemId,()=>{
+      setMuted(true);
+      if(audioRef.current)audioRef.current.muted=true;
+    }).then(()=>{if(playbackItemId.current===requestItemId)requestExternalAudioPlayback();});
+  }
+  function pausePlayback(){
+    const video=videoRef.current, audio=audioRef.current;
+    if(background.audioIsClock()&&video&&audio&&externalAudioUrl&&Number.isFinite(audio.currentTime)){
+      video.currentTime=audio.currentTime;
+    }
+    wantsPlayback.current=false;
+    background.suspended.current=false;
+    setPlayRequested(false);
+    setPlaying(false);
+    videoRef.current?.pause();
+    audioRef.current?.pause();
+  }
+  function resumeFromBackground(){
+    const video=videoRef.current, audio=audioRef.current;
+    if(!video||!wantsPlayback.current||!playbackReady||playbackBlocked.current||sourceTransition.current)return;
+    // A hidden video can be suspended while the separate soundtrack keeps playing.
+    if(background.audioIsClock()&&externalAudioUrl&&audio&&!audio.paused&&Number.isFinite(audio.currentTime)){
+      video.currentTime=audio.currentTime;
+    }
+    background.suspended.current=false;
+    requestVideoPlayback();
+  }
+  function reportBackgroundAudio(audio:HTMLAudioElement){
+    if(!background.audioIsClock()||!externalAudioUrl)return;
+    setCurrent(audio.currentTime);
+    if(Math.abs(audio.currentTime-lastProgress.current)>5){
+      lastProgress.current=audio.currentTime;
+      void api.progress(playbackItemId.current,audio.currentTime,duration);
+    }
+  }
+  function toggle(){
+    const video=videoRef.current;
+    if(!video)return;
+    const preparingPlayback=seekingPosition!==null||audioPreparing||qualityState==='starting'||fallback==='starting';
+    const next=preparingPlayback||background.suspended.current?!wantsPlayback.current:video.paused;
+    wantsPlayback.current=next;
+    setPlayRequested(next);
+    if(next){audioRetryCount.current=0;requestVideoPlayback();}
+    else {pausePlayback();setBuffering(false);}
+  }
+  function handleVideoClick(){
+    if(longPressTriggered.current){longPressTriggered.current=false;return;}
+    const revealOnly=touchRevealOnly.current||(!shorts&&usesTouchControls()&&!controlsVisible);
+    touchRevealOnly.current=false;
+    if(revealOnly){revealControls();scheduleControlsHide();return;}
+    toggle();revealControls();
+  }
+  function seek(value:number){
+    const video=videoRef.current;
+    if(!video||!Number.isFinite(value))return;
+    const position=Math.max(0,Math.min(value,Math.max(0,fullDuration(item.duration,duration,video.duration)-.2)));
+    const token=++seekToken.current;
+    if(seekTimer.current!==null)window.clearTimeout(seekTimer.current);
+    seekTimer.current=null;
+    seekTarget.current=position;
+    setSeekingPosition(position);
+    setCurrent(position);
+    initialResumeItem.current=item.id;
+    background.suspended.current=false;
+    if(autoBufferTimer.current!==null)window.clearTimeout(autoBufferTimer.current);
+    autoBufferTimer.current=null;
+    const qualitySeek=needsQualitySeek(position),fallbackSeek=needsFallbackSeek(position);
+    if(qualitySeek||fallbackSeek){
+      sourceTransition.current=true;
+      video.pause();audioRef.current?.pause();setBuffering(false);
+      // Dragging across the range must not spawn an encoder for every pixel.
+      seekTimer.current=window.setTimeout(()=>{
+        seekTimer.current=null;
+        if(token!==seekToken.current)return;
+        if(qualitySeek)void startQuality(selectedAudio??undefined,position,wantsPlayback.current);
+        else void startFallback(selectedAudio??undefined,position,wantsPlayback.current,true);
+      },180);
+      return;
+    }
+    video.currentTime=position;
+    if(audioRef.current&&externalAudioUrl){
+      audioResumeAt.current=position;
+      try{audioRef.current.currentTime=position;audioResumeAt.current=null;}catch{/* apply when metadata arrives */}
+    }
+  }
+  function acceptSeekPosition(video:HTMLVideoElement){
+    if(seekTarget.current===null)return true;
+    if(video.seeking||sourceTransition.current||Math.abs(video.currentTime-seekTarget.current)>.65)return false;
+    seekTarget.current=null;setSeekingPosition(null);return true;
+  }
+  function seekBy(seconds:number){seek(Math.max(0,Math.min(fullDuration(item.duration,duration), (seekTarget.current??current)+seconds)));}
+  function toggleMute(){setMuted((value)=>!value);}
+  function setVol(value:number){setMuted(false);setVolume(value);}
+  async function fullscreen(){const container=containerRef.current;const video=videoRef.current;if(!container||!video)return;await toggleFullscreen(container,video);}
+  async function togglePip(){const v=videoRef.current;if(!v||!pipSupported)return;if(document.pictureInPictureElement)await document.exitPictureInPicture();else await v.requestPictureInPicture().catch(()=>{});}
+
+  async function prepareAudio(stream:number,info=playbackInfo,initial=false,skipAdaptive=false,resumeAt?:number){
+    if(!info||(videoFallbackRequested.current&&fallback!=='active'))return;
+    if(!initial&&selectedAudio===stream&&!audioPreparing)return;
+    const video=videoRef.current;
+    const token=++audioToken.current;
+    const shouldResume=wantsPlayback.current;
+    const position=resumeAt??(video&&Number.isFinite(video.currentTime)?video.currentTime:current);
+    const track=info.audioTracks.find((candidate)=>candidate.index===stream);
+    const canUseOriginal=qualityState!=='active'&&fallback!=='active'&&stream===info.defaultAudioStream&&Boolean(track&&DIRECT_AUDIO_CODECS.has(track.codec));
+    setSelectedAudio(stream);
+    setAudioError('');
+    sourceTransition.current=true;
+    video?.pause();
+    audioRef.current?.pause();
+
+    if(!skipAdaptive&&info.qualityOptions.length&&playbackBlocked.current&&qualityState!=='active'){
+      qualityRequested.current=true;
+      resumeAfterAudio.current=false;
+      audioResumeAt.current=null;
+      setExternalAudioUrl('');
+      setPlaybackReady(false);
+      const ready=await startQuality(stream,position,shouldResume);
+      if(token!==audioToken.current)return;
+      if(ready){sourceTransition.current=false;setPlaybackReady(true);return;}
+      if(selectedQuality!==null){setPlaybackReady(false);return;}
+      qualityRequested.current=false;
+    }
+
+    if(canUseOriginal){
+      resumeAfterAudio.current=false;
+      audioResumeAt.current=null;
+      setExternalAudioUrl('');
+      setAudioPreparing(false);
+      sourceTransition.current=false;
+      setPlaybackReady(true);
+      if(shouldResume)window.setTimeout(()=>{
+        if(token!==audioToken.current||!wantsPlayback.current)return;
+        const nextVideo=videoRef.current;
+        if(nextVideo)void nextVideo.play().catch(()=>{});
+      },0);
+      return;
+    }
+
+    resumeAfterAudio.current=shouldResume;
+    audioResumeAt.current=position;
+    setPlaybackReady(false);
+    setAudioPreparing(true);
+    try{
+      const url=await waitForAudio(item.id,stream,()=>token!==audioToken.current);
+      if(token!==audioToken.current)return;
+      setExternalAudioUrl(url);
+      setExternalAudioVersion(version=>version+1);
+    }catch(reason){
+      if(token!==audioToken.current)return;
+      setAudioError(reason instanceof Error?reason.message:'The selected audio track could not be prepared.');
+    }finally{
+      if(token===audioToken.current)setAudioPreparing(false);
+    }
+  }
+
+  function selectAudio(stream:number){
+    if(canTranscode&&playbackInfo&&savePlaybackTrackSelection('audio',playbackInfo.audioTracks,stream))void prepareAudio(stream);
+  }
+  function selectSubtitle(stream:number|null){
+    if(playbackInfo&&savePlaybackTrackSelection('subtitles',playbackInfo.subtitleTracks,stream))setSelectedSubtitle(stream);
+  }
+
+  async function selectQuality(preference:QualityPreference){
+    if(!canTranscode&&preference!=='source')return;
+    const video=videoRef.current;
+    const position=video?.currentTime||current;
+    saveQualityPreference(preference);
+    setQualityPreference(preference);
+    const height=resolvePreferredQuality(playbackInfo?.qualityOptions??qualityOptions,preference);
+    setQualitySelectionError('');
+    const original=preference==='source'||(height!==null&&height===playbackInfo?.qualityOptions[0]?.height);
+    if(!original){
+      setQuality(height);
+      if(qualityState==='active'||qualityState==='starting')return;
+    }
+    if(original||height===null){
+      releaseQuality();
+      setQuality(height);
+      qualityRequested.current=false;
+      playbackBlocked.current=false;
+      setPlaybackReady(true);
+      if(playbackInfo?.requiresTranscode||fallback==='active'){
+        sourceTransition.current=true;
+        videoFallbackRequested.current=true;
+        void startFallback(selectedAudio??undefined,position,wantsPlayback.current);
+      }else if(video&&(video.src!==new URL(`/api/media/${item.id}/stream`,window.location.href).href||video.error)){
+        sourceTransition.current=true;
+        video.addEventListener('loadedmetadata',()=>{
+          if(playbackItemId.current!==item.id)return;
+          video.currentTime=position;
+          sourceTransition.current=false;
+          if(selectedAudio!==null&&selectedAudio!==playbackInfo?.defaultAudioStream)void prepareAudio(selectedAudio,playbackInfo,true,true);
+          else if(wantsPlayback.current)requestVideoPlayback();
+        },{once:true});
+        video.src=`/api/media/${item.id}/stream`;video.load();
+      }else{
+        sourceTransition.current=false;
+        if(wantsPlayback.current)requestVideoPlayback();
+      }
+      return;
+    }
+    const shouldResume=wantsPlayback.current;
+    qualityRequested.current=true;
+    sourceTransition.current=true;
+    video?.pause();
+    setPlaybackReady(false);
+    const ready=await startQuality(selectedAudio??undefined,video?.currentTime||current,shouldResume);
+    if(playbackItemId.current!==item.id)return;
+    if(ready){sourceTransition.current=false;setPlaybackReady(true);return;}
+    setPlaybackReady(false);
+  }
+
+  function prepareCompatibleVideo(){
+    if(qualityRequested.current||qualityState==='starting'||qualityState==='active'||fallback!=='idle'||videoFallbackRequested.current)return;
+    videoFallbackRequested.current=true;
+    const video=videoRef.current;
+    const shouldPlay=wantsPlayback.current;
+    audioToken.current++;
+    audioRef.current?.pause();
+    setExternalAudioUrl('');
+    setAudioPreparing(false);
+    setAudioError('');
+    void startFallback(selectedAudio??undefined,video?.currentTime||current,shouldPlay);
+  }
+
+  const pauseAction=playing||(playRequested&&(seekingPosition!==null||audioPreparing||qualityState==='starting'||fallback==='starting'));
+  const playbackSettings=(context=false)=><PlaybackSettingsMenu key={item.id} context={context}
+    audioTracks={playbackInfo?.audioTracks??[]}
+    subtitleTracks={playbackInfo?.subtitleTracks??[]}
+    selectedAudio={selectedAudio}
+    selectedSubtitle={selectedSubtitle}
+    qualityOptions={qualityOptions.length?qualityOptions:playbackInfo?.qualityOptions??[]}
+    selectedQuality={selectedQuality}
+    qualityPreference={qualityPreference}
+    activeQuality={activeQuality}
+    allowAutoQuality={!localPlayback}
+    allowConversion={canTranscode}
+    busy={audioPreparing||fallback==='starting'||qualityState==='starting'}
+    unified={!shorts}
+    pictureControls={!shorts&&<VideoSettingsPanel settings={presentation.settings} onChange={presentation.update} onReset={presentation.reset}/>}
+    repeatMode={repeat} hasQueue={Boolean(queue?.length)} onRepeatChange={changeRepeat}
+    speed={speed} onSpeedChange={changeSpeed}
+    leveling={leveling} onLevelingChange={setLeveling} levelingError={levelingError} levelingAvailable={levelingSupported}
+    onSelectAudio={selectAudio}
+    onSelectSubtitle={selectSubtitle}
+    onSelectQuality={(height)=>void selectQuality(height)}
+  />;
+  return <div className={`player${shorts?' short-player':''}${queue?.length?' has-queue':''}${controlsVisible?' controls-visible':''}`} ref={containerRef} tabIndex={0} aria-label={t("{value0} player", { value0: item.title })}
+    onContextMenu={event=>{event.preventDefault();event.stopPropagation();revealControls();setContextPosition({x:event.clientX,y:event.clientY});}}
+    onDoubleClick={()=>void fullscreen()} onPointerMove={(event)=>{clearLongPress();if(event.pointerType==='mouse'){revealControls();scheduleControlsHide();}}} onPointerDown={startLongPress} onPointerUp={()=>{clearLongPress();scheduleControlsHide();}} onPointerCancel={()=>{touchRevealOnly.current=false;clearLongPress();scheduleControlsHide();}} onPointerLeave={()=>scheduleControlsHide(300)} onFocusCapture={revealControls} onBlurCapture={()=>scheduleControlsHide(300)}
+    onKeyDown={event=>{revealControls();scheduleControlsHide();if(shorts&&(event.target===event.currentTarget||event.target===videoRef.current)&&[' ','k','Enter'].includes(event.key)){event.preventDefault();event.stopPropagation();toggle();return;}if(event.target===event.currentTarget&&(event.key==='ContextMenu'||(event.shiftKey&&event.key==='F10'))){event.preventDefault();const bounds=event.currentTarget.getBoundingClientRect();setContextPosition({x:bounds.left+24,y:bounds.top+24,keyboard:true});}}}>
+    <video
+      className={shorts?'video-presentation short-video':'video-presentation'}
+      tabIndex={shorts?0:undefined}
+      aria-label={shorts?t('{value0}. Press Space to play or pause.',{value0:item.title}):undefined}
+      style={presentation.style}
+      ref={videoRef}
+      src={`/api/media/${item.id}/stream`}
+      playsInline
+      loop={!shorts&&(repeat==='one'||(repeat==='queue'&&queue?.length===1))}
+      preload={typeof readQualityPreference(!localPlayback,canTranscode)==='number'?'none':autoPlay?'auto':'metadata'}
+      autoPlay={false}
+      crossOrigin="anonymous"
+      onClick={handleVideoClick}
+      onVolumeChange={event=>onVolumeChange(event.currentTarget)}
+      onPlay={()=>{if(playbackBlocked.current){videoRef.current?.pause();return;}sourceTransition.current=false;setPlaying(true);syncExternalAudio(true);requestExternalAudioPlayback();revealControls();scheduleControlsHide();}}
+      onPlaying={handlePlaying}
+      onWaiting={handleWaiting}
+      onSeeking={()=>audioRef.current?.pause()}
+      onSeeked={(event)=>{if(acceptSeekPosition(event.currentTarget))syncExternalAudio(!event.currentTarget.paused);}}
+      onPause={(e)=>{if(background.handlePause(e.currentTarget)){requestExternalAudioPlayback();return;}if(!sourceTransition.current&&!(shorts&&e.currentTarget.ended)){wantsPlayback.current=false;setPlayRequested(false);}audioRef.current?.pause();if(audioRetryTimer.current!==null)window.clearTimeout(audioRetryTimer.current);audioRetryTimer.current=null;audioRetryCount.current=0;setPlaying(false);setBuffering(false);if(autoBufferTimer.current!==null)window.clearTimeout(autoBufferTimer.current);autoBufferTimer.current=null;revealControls();const v=e.currentTarget;void api.progress(playbackItemId.current,v.currentTime,fullDuration(v.duration,item.duration,duration));}}
+      onLoadedMetadata={(e)=>{
+        const v=e.currentTarget;playbackItemId.current=item.id;setDuration(fullDuration(v.duration,item.duration));
+        if(initialResumeItem.current!==item.id){
+          initialResumeItem.current=item.id;
+          const resume=item.progress_position||0;
+          if(resume>5 && (!v.duration || resume < v.duration*.92)) v.currentTime=resume;
+        }
+      }}
+      onDurationChange={(e)=>setDuration(fullDuration(e.currentTarget.duration,item.duration,duration))}
+      onCanPlay={(e)=>{
+        if(!e.currentTarget.paused)syncExternalAudio(true);
+        else if(wantsPlayback.current&&playbackReady&&fallback==='idle'&&qualityState==='idle'&&!audioPreparing)requestVideoPlayback();
+      }}
+      onTimeUpdate={(e)=>{
+        if(background.audioIsClock()&&externalAudioUrl)return;
+        const v=e.currentTarget;if(!acceptSeekPosition(v))return;setCurrent(v.currentTime);syncExternalAudio(!v.paused);
+        if(Math.abs(v.currentTime-lastProgress.current)>5){lastProgress.current=v.currentTime;void api.progress(playbackItemId.current,v.currentTime,fullDuration(v.duration,item.duration,duration));}
+      }}
+      onRateChange={()=>syncExternalAudio(false)}
+      onEnded={(e)=>{audioRef.current?.pause();const total=fullDuration(e.currentTarget.duration,item.duration,duration);void api.progress(playbackItemId.current,total,total);if(shorts){lastProgress.current=0;seek(0);if(wantsPlayback.current)requestVideoPlayback();}else onEnded?.();}}
+      onError={prepareCompatibleVideo}
+    >
+      {selectedSubtitle!==null&&<HiddenSubtitleTrack
+        key={selectedSubtitle}
+        src={api.subtitleUrl(item.id,selectedSubtitle)}
+        srcLang={playbackInfo?.subtitleTracks.find((track)=>track.index===selectedSubtitle)?.language||'und'}
+        label={playbackInfo?.subtitleTracks.find((track)=>track.index===selectedSubtitle)?.title||t("Subtitles")}
+        onText={setActiveCaption}
+      />}
+    </video>
+    <audio ref={audioRef} preload="auto" onVolumeChange={event=>onVolumeChange(event.currentTarget)} onTimeUpdate={event=>reportBackgroundAudio(event.currentTarget)}/>
+    <DraggableCaption key={`${item.id}:${selectedSubtitle}`} text={activeCaption} controlsVisible={controlsVisible} containerRef={containerRef} onDraggingChange={(dragging)=>{if(dragging)revealControls();else window.setTimeout(scheduleControlsHide,0);}}/>
+    {qualityState==='starting'&&playRequested&&(!playing||buffering)&&<div className="player-status"><LoadingSpinner/><strong>{seekingPosition!==null?t("Seeking…"):selectedQuality===null?t("Buffering…"):t("Switching to {value0}…", { value0: qualityLabel(selectedQuality) })}</strong></div>}
+    {audioPreparing&&playRequested&&<div className="player-status"><LoadingSpinner/><strong>{t("Preparing audio…")}</strong></div>}
+    {fallback==='starting'&&playRequested&&(!playing||buffering) && <div className="player-status"><LoadingSpinner/><strong>{seekingPosition!==null?t("Seeking…"):playbackInfo?.requiresVideoTranscode?t("Preparing video…"):t("Preparing audio…")}</strong></div>}
+    {(qualitySelectionError||fallback==='error'||audioError||(qualityState==='error'&&qualityRequested.current&&!playing)) && <div className="player-status error"><strong>{t("Playback unavailable")}</strong><span>{t(qualitySelectionError||audioError||error||qualityError)}{playbackBlocked.current&&!qualitySelectionError?t(" Choose another quality to continue; your quality limit has been kept."):''}</span></div>}
+    {shorts?<ShortsPlayerControls item={item} current={current} duration={duration} muted={muted} pip={pip}
+      pipSupported={pipSupported} onSeek={seek} onMute={toggleMute} onPip={()=>void togglePip()} onNext={shorts.onNext}>
+      {playbackSettings()}
+    </ShortsPlayerControls>:<PlayerControls current={current} duration={duration} paused={!pauseAction}
+      busy={audioPreparing||qualityState==='starting'||fallback==='starting'}
+      volume={volume} muted={muted} pip={pip} pipSupported={pipSupported}
+      canGoPrev={canGoPrev} canGoNext={canGoNext} hasQueue={Boolean(queue?.length)}
+      queuePosition={queue&&queueIndex!==undefined?`${queueIndex+1} / ${queue.length}`:undefined}
+      shuffled={shuffled} onShuffle={onShuffle} repeat={repeat} onRepeat={changeRepeat}
+      onToggle={toggle} onSeek={seek} onSeekBy={seekBy} onPrev={onPrev} onNext={onNext}
+      onVolume={setVol} onMute={toggleMute} onFullscreen={()=>void fullscreen()} onPip={()=>void togglePip()}
+      favorite={<FavoriteButton item={item} iconOnly/>} settings={playbackSettings()}/>}
+    {contextPosition&&shorts&&<ShortsContextMenu item={item} position={contextPosition} returnFocus={videoRef.current}
+      onPlay={()=>{wantsPlayback.current=true;setPlayRequested(true);requestVideoPlayback();}}
+      onDetails={shorts.onDetails} onClose={()=>setContextPosition(null)} />}
+    {contextPosition&&!shorts&&<PlayerActionMenu label={t("Video actions")} position={contextPosition} returnFocus={containerRef.current} onClose={()=>setContextPosition(null)}
+      actions={[
+        {label:pauseAction?'Pause':'Play',icon:pauseAction?<Pause/>:<Play/>,action:toggle},
+        {label:t("Rewind 10 seconds"),icon:<Rewind/>,action:()=>seekBy(-10)},
+        {label:t("Fast-forward 30 seconds"),icon:<FastForward/>,action:()=>seekBy(30)},
+        {label:muted?'Unmute':'Mute',icon:muted?<SpeakerSlash/>:<SpeakerHigh/>,action:toggleMute},
+        {label:t("Repeat video"),icon:<Repeat/>,checked:repeat==='one',action:()=>changeRepeat(repeat==='one'?'off':'one')},
+        {label:t("Settings"),content:playbackSettings(true)},
+        ...(pipSupported?[{label:pip?'Exit Picture in Picture':'Picture in Picture',icon:<PictureInPicture/>,action:()=>void togglePip()}]:[]),
+        {label:t("Fullscreen"),icon:<ArrowsOut/>,action:()=>void fullscreen()}
+      ]}/>}
+  </div>;
+}
+
+async function waitForAudio(mediaId:number,audioStream:number,cancelled:()=>boolean){
+  const started=await api.startAudioTranscode(mediaId,audioStream);
+  if(started.status==='error')throw new Error(started.error||'Audio conversion failed.');
+  if(started.status==='ready')return started.url;
+  for(let attempt=0;attempt<1200;attempt++){
+    await new Promise((resolve)=>window.setTimeout(resolve,250));
+    if(cancelled())throw new DOMException('Audio preparation was cancelled.','AbortError');
+    const status=await api.audioTranscodeStatus(mediaId,audioStream);
+    if(status.status==='ready')return status.url;
+    if(status.status==='error')throw new Error(status.error||'Audio conversion failed.');
+  }
+  throw new Error('Audio conversion did not finish in time.');
+}
+
+function fullDuration(...values:Array<number|null|undefined>){return Math.max(0,...values.filter((value):value is number=>typeof value==='number'&&Number.isFinite(value)&&value>0));}
+function isLocalPlaybackHost(){return ['localhost','127.0.0.1','::1','[::1]'].includes(window.location.hostname.toLowerCase());}

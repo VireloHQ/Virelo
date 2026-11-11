@@ -1,0 +1,11 @@
+Material Symbols Rounded by Google
+
+The following unmodified SVGs are distributed under the Apache License 2.0:
+
+web/src/assets/icons/replay-10.svg
+https://github.com/google/material-design-icons/blob/master/symbols/web/replay_10/materialsymbolsrounded/replay_10_24px.svg
+
+web/src/assets/icons/forward-30.svg
+https://github.com/google/material-design-icons/blob/master/symbols/web/forward_30/materialsymbolsrounded/forward_30_24px.svg
+
+License: MATERIAL-SYMBOLS-Apache-2.0.txt

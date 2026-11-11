@@ -28,7 +28,7 @@ HTTP startup, assets and first-administrator setup. It uses a fresh temporary
 directory, reported in the output, and leaves those isolated fixtures for inspection.
 It never uses a personal media folder or data directory and does not publish.
 
-After building, `node scripts/audit-multiuser.mjs` checks simultaneous Range
+After building, `node apps/server/scripts/audit-multiuser.mjs` checks simultaneous Range
 requests from 16 accounts, shared cold/warm conversions, audio during a video
 backlog, a 20-segment burst and shared native-process limits. It needs FFmpeg
 and ffprobe, starts a separate server on an ephemeral localhost port, and removes
@@ -37,7 +37,7 @@ local regression measurements, not a supported viewer count or network benchmark
 
 ## Browser checks
 
-`node scripts/audit-communication.mjs` checks locally generated QR/link sharing,
+`node apps/server/scripts/audit-communication.mjs` checks locally generated QR/link sharing,
 independent jsQR decoding of rounded/logo-embedded PNGs at multiple sizes,
 administrator publishing/withdrawal, private inbox read state and real decoded
 audio with leveling on/off. Synthetic clips with different mastering levels
@@ -45,7 +45,7 @@ verify gain, manual volume, mute, seeking and Shorts. It uses an ephemeral serve
 and generated files, removes media/account fixtures, and keeps screenshots in
 the reported temporary directory. Set `VIRELO_TEST_WEB_REPO` to include Web checks.
 
-`node scripts/audit-playlists.mjs` verifies named-playlist creation, editing,
+`node apps/server/scripts/audit-playlists.mjs` verifies named-playlist creation, editing,
 reopening, queue saves during playback, conflict recovery and confirmed deletion
 on desktop and mobile using isolated storage and generated media. The Web checks
 also cover the version-1 database upgrade, concurrent writes and temporarily
@@ -59,11 +59,11 @@ media, temporary databases and fresh browser contexts.
 Install Playwright separately, or set `VIRELO_TEST_NODE_PACKAGE` to its
 `package.json`. Set `VIRELO_TEST_CHROMIUM` to the Chromium executable when needed.
 FFmpeg/ffprobe must be on PATH for playback audits. Run `npm run build` before
-`node scripts/audit-accounts.mjs`; this checks the packaged server and UI together.
+`node apps/server/scripts/audit-accounts.mjs`; this checks the packaged server and UI together.
 Some component audits expect a running Vite development server; inspect the script's
 URL/environment options before running it. Never point audit tools at a personal library.
 
-After building, `node scripts/audit-shorts-playback.mjs` checks real Shorts playback,
+After building, `node apps/server/scripts/audit-shorts-playback.mjs` checks real Shorts playback,
 quality conversion, embedded subtitles, seeking, favorites and clip transitions at
 desktop and touch widths using generated media and an isolated server. Set
 `VIRELO_TEST_WEB_REPO` to a browser-only checkout to run the same checks there too.
@@ -74,7 +74,7 @@ The switching checks use distinct synthetic audio tones to verify selected track
 after forward/backward seeks, paused quality changes, audio-only changes without
 video reloads, and returning to Original. Timings describe the test machine only.
 
-`node scripts/audit-motion.mjs` checks stable content positions, Switch timing,
+`node apps/server/scripts/audit-motion.mjs` checks stable content positions, Switch timing,
 Dropdown dismissal, Modal focus/scroll locking and fixed-layout search controls
 at desktop, portrait and landscape sizes, including keyboard and reduced-motion
 operation. It also accepts `VIRELO_TEST_WEB_REPO` and uses isolated app data.
@@ -92,7 +92,7 @@ discovery, stalled scripts/styles and stylesheet-failure recovery.
 
 ## Repository hygiene
 
-`node scripts/audit-queue.mjs` starts an isolated Vite server with synthetic media
+`node apps/server/scripts/audit-queue.mjs` starts an isolated Vite server with synthetic media
 and mocked catalog data. It checks horizontal/vertical scrolling, touch and keyboard
 drag sorting, shuffle, repeat, context menus, undo and uninterrupted playback on
 desktop and mobile, including reduced motion. It never uses a personal library.

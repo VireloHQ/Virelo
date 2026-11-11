@@ -1,0 +1,15 @@
+node_modules/
+dist/
+*.tgz
+.DS_Store
+.env
+.env.*
+!.env.example
+.npmrc
+*.pem
+*.key
+.virelo/
+.gstack/
+.wrangler/
+.vercel/
+.codex-remote-attachments/
