@@ -126,6 +126,9 @@ Connect the existing `virelo-web` Worker to `VireloHQ/Virelo` with Workers Build
 
 Install dependencies from the repository root and include development dependencies. Preserve the existing Worker and both custom domains. See [Workers Builds monorepos](https://developers.cloudflare.com/workers/ci-cd/builds/advanced-setups/#monorepos) and [build watch paths](https://developers.cloudflare.com/workers/ci-cd/builds/build-watch-paths/).
 
+Production uses only the custom domains. Keep `workers_dev` disabled and
+`preview_urls` enabled so Wrangler preserves the branch preview URLs.
+
 For the repository cutover, record the active Worker version and Git build
 settings. Verify the candidate with `npm run preview:web -- --name monorepo`
 and `npm run verify:web -- <preview-url>` before reconnecting Builds. After
