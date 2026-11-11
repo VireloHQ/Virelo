@@ -32,7 +32,7 @@ for (const fixture of fixtures) for (let track = 0; track < 3; track++) {
   assert.equal(result.status, 0, result.stderr);
   fixture.reference.push(JSON.parse(result.stderr.match(/\{[^{}]*"input_i"[^{}]*\}/)[0]));
 }
-const child = spawn(process.execPath, [join(repo, 'node_modules/vite/bin/vite.js'), '--host', '127.0.0.1', '--port', '0'], { cwd: repo, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
+const child = spawn(process.execPath, [fileURLToPath(new URL('bin/vite.js',import.meta.resolve('vite/package.json'))), '--host', '127.0.0.1', '--port', '0'], { cwd: repo, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
 let browser, releaseDownload, gate, waiting, downloaded;
 const holdDownload = () => {
   gate = new Promise(resolveGate => { releaseDownload = resolveGate; });

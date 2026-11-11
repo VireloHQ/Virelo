@@ -18,7 +18,7 @@ let browser, lastPage, webServer, checks = 0;
 const check = (value, label) => { assert.ok(value, label); checks++; console.log('PASS', label); };
 async function serveWeb() {
   const repo = resolve(process.env.VIRELO_TEST_WEB_REPO);
-  webServer = spawn(process.execPath, [join(repo, 'node_modules/vite/bin/vite.js'), '--host', '127.0.0.1', '--port', '0'],
+  webServer = spawn(process.execPath, [fileURLToPath(new URL('bin/vite.js',import.meta.resolve('vite/package.json'))), '--host', '127.0.0.1', '--port', '0'],
     { cwd: repo, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
   return new Promise((resolve, reject) => {
     let output = '';

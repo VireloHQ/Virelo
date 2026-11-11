@@ -1,5 +1,6 @@
 {
   "name": "virelo-web",
+  "private": true,
   "version": "0.1.0",
   "description": "A private, browser-only video library for local files.",
   "type": "module",
@@ -26,10 +27,10 @@
   "license": "AGPL-3.0-only",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/VireloHQ/Virelo-Web.git"
+    "url": "git+https://github.com/VireloHQ/Virelo.git"
   },
   "bugs": {
-    "url": "https://github.com/VireloHQ/Virelo-Web/issues"
+    "url": "https://github.com/VireloHQ/Virelo/issues"
   },
   "homepage": "https://app.virelo.dev",
   "engines": {

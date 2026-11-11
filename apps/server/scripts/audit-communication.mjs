@@ -212,7 +212,7 @@ try{
   await server.app.listen({host:'127.0.0.1',port:0});const npmBase='http://127.0.0.1:'+server.app.server.address().port;
   browser=await chromium.launch({headless:true,executablePath:process.env.VIRELO_TEST_CHROMIUM,args:['--autoplay-policy=no-user-gesture-required']});
   const instrument=async context=>{
-    await context.addInitScript({path:fileURLToPath(new URL('../node_modules/jsqr/dist/jsQR.js',import.meta.url))});
+    await context.addInitScript({path:fileURLToPath(import.meta.resolve('jsqr'))});
     return context.addInitScript(()=>{
     window.__contexts=[];
     window.__settingsMotion=[];
@@ -383,7 +383,7 @@ try{
   const modes=[['npm',npmBase,context,page]];
   if(process.env.VIRELO_TEST_WEB_REPO){
     const web=resolve(process.env.VIRELO_TEST_WEB_REPO);
-    vite=spawn(process.execPath,[join(web,'node_modules/vite/bin/vite.js'),'--host','127.0.0.1','--port','0'],{cwd:web,windowsHide:true,stdio:['ignore','pipe','pipe']});
+    vite=spawn(process.execPath,[fileURLToPath(new URL('bin/vite.js',import.meta.resolve('vite/package.json'))),'--host','127.0.0.1','--port','0'],{cwd:web,windowsHide:true,stdio:['ignore','pipe','pipe']});
     const webBase=await new Promise((done,fail)=>{let output='';const timer=setTimeout(()=>fail(Error('Vite startup timed out.')),30000);vite.once('error',fail);vite.stderr.on('data',chunk=>{output+=String(chunk);});vite.stdout.on('data',chunk=>{output+=String(chunk).replace(/\x1b\[[0-9;]*m/g,'');const url=output.match(/http:\/\/127\.0\.0\.1:\d+/)?.[0];if(url){clearTimeout(timer);done(url);}});});
     const webContext=await browser.newContext({serviceWorkers:'block',viewport:{width:390,height:844}});await instrument(webContext);
     const webPage=await webContext.newPage();webPage.setDefaultTimeout(15000);webPage.on('pageerror',error=>errors.push(error.message));

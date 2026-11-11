@@ -6,6 +6,7 @@
     "moduleResolution": "Bundler",
     "jsx": "react-jsx",
     "noEmit": true,
+    "allowImportingTsExtensions": true,
     "strict": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
@@ -14,6 +15,5 @@
     "resolveJsonModule": true,
     "skipLibCheck": true,
     "types": ["vite/client"]
-  },
-  "include": ["web/src/**/*.ts", "web/src/**/*.tsx"]
+  }
 }

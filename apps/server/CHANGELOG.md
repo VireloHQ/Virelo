@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 0.6.1
+
+- Share browser and self-hosted player development in one repository. The npm command, data directory, accounts and saved libraries are unchanged.
+
 ## 0.6.0
 
 - Start from saved libraries without scanning the current directory. Use `--here` to include it or `--media <path>` to add another folder for the current run.

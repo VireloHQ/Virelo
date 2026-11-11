@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
 const pkg = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8'));
-const lock = JSON.parse(await readFile(new URL('../package-lock.json', import.meta.url), 'utf8'));
+const lock = JSON.parse(await readFile(new URL('../release-lock.json', import.meta.url), 'utf8'));
 const license = await readFile(new URL('../LICENSE', import.meta.url), 'utf8');
 
 test('package and lockfile agree on AGPL version 3 only', () => {
@@ -29,7 +29,7 @@ test('the full AGPL is identical in source and deployed web assets', async () =>
 test('legacy permissions and contributor copyright notices survive the change', async () => {
   const legacy = await readFile(new URL('../LICENSES/LEGACY-MIT.txt', import.meta.url), 'utf8');
   const readme = await readFile(new URL('../README.md', import.meta.url), 'utf8');
-  const contributing = await readFile(new URL('../CONTRIBUTING.md', import.meta.url), 'utf8');
+  const contributing = await readFile(new URL('../../../CONTRIBUTING.md', import.meta.url), 'utf8');
   assert.match(legacy, /^MIT License/);
   assert.match(legacy, /Copyright \(c\) 2026 Virelo contributors/);
   assert.match(readme, /AGPL-3\.0-only/);

@@ -22,7 +22,7 @@ test('prereleases and malformed versions cannot bypass the runtime check',()=>{
 
 test('package and lockfile declare the same supported versions as the runtime',async()=>{
   const metadata=JSON.parse(await readFile(new URL('../package.json',import.meta.url),'utf8'));
-  const lock=JSON.parse(await readFile(new URL('../package-lock.json',import.meta.url),'utf8'));
+  const lock=JSON.parse(await readFile(new URL('../release-lock.json',import.meta.url),'utf8'));
   assert.equal(metadata.engines.node,SUPPORTED_NODE_RANGE);
   assert.equal(lock.packages[''].engines.node,SUPPORTED_NODE_RANGE);
   assert.equal(lock.version,metadata.version);assert.equal(lock.packages[''].version,metadata.version);

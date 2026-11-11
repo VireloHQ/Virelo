@@ -2,7 +2,6 @@ name: CI
 on:
   push:
     branches: [main]
-    tags: ['v*']
   pull_request:
 permissions:
   contents: read
@@ -26,12 +25,15 @@ jobs:
           check-latest: true
           cache: npm
       - run: npm ci
-      - run: npm run check
+      - run: npm run check -w apps/server
   media-regressions:
     runs-on: ubuntu-24.04
     permissions:
       contents: read
     timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: apps/server
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -47,6 +49,7 @@ jobs:
           sudo apt-get update -o Acquire::Retries=3
           sudo apt-get install --yes --no-install-recommends ffmpeg
       - run: npm ci
+        working-directory: .
       - run: npx playwright install --with-deps chromium
       - run: node scripts/audit-player-control-polish.mjs
       - run: node scripts/audit-volume-leveling.mjs
@@ -56,6 +59,13 @@ jobs:
       - run: node scripts/audit-volume-controls.mjs
       - run: npm run check
       - run: npm run audit:package
+        env:
+          VIRELO_RELEASE_OUTPUT: ${{ github.workspace }}/.release
+      - uses: actions/upload-artifact@v7
+        with:
+          name: npm-package
+          path: .release/virelo-*.tgz
+          if-no-files-found: error
       - run: node --disable-warning=ExperimentalWarning --test scripts/audit-audio-loudness.mjs
       - run: node scripts/audit-multiuser.mjs
       - run: node scripts/audit-communication.mjs
@@ -70,3 +80,55 @@ jobs:
       - run: node scripts/audit-queue.mjs
       - run: node scripts/audit-playlists.mjs
       - run: node scripts/audit-library-explorer.mjs
+  web-build:
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [22, 24, 26]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ matrix.node }}
+          check-latest: true
+          cache: npm
+      - run: npm ci
+      - run: npm run check -w apps/web
+  web-regressions:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          check-latest: true
+          cache: npm
+      - name: Install FFmpeg
+        timeout-minutes: 5
+        run: |
+          sudo sed -i 's|azure\.archive\.ubuntu\.com|archive.ubuntu.com|g' /etc/apt/apt-mirrors.txt
+          sudo apt-get update -o Acquire::Retries=3
+          sudo apt-get install --yes --no-install-recommends ffmpeg
+      - run: npm ci
+        working-directory: .
+      - run: npx playwright install --with-deps chromium
+      - run: node scripts/audit-player-control-polish.mjs
+      - run: node scripts/audit-volume-leveling.mjs
+      - run: node scripts/audit-volume-modulation.mjs
+      - run: node scripts/audit-measured-volume.mjs
+      - run: node scripts/audit-audio-analysis.mjs
+      - run: node scripts/audit-volume-integration.mjs
+      - run: node scripts/audit-volume-controls.mjs
+      - run: node scripts/audit-library-duplicates.mjs
+      - run: node scripts/audit-browser-backup.mjs
+      - run: node scripts/audit-queue.mjs
+      - run: node scripts/audit-playlists.mjs
+      - run: node scripts/audit-library-explorer.mjs
+      - run: node scripts/audit-browser-streaming.mjs
+      - run: npm run build
+      - run: node scripts/audit-avi.mjs

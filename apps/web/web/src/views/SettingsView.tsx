@@ -160,7 +160,7 @@ export function SettingsView() {
     </div>
     <footer className="settings-legal" aria-label={t("Virelo licensing")}>
       <span>{t("Copyright (c) 2026 Virelo contributors. No warranty.")}</span>
-      <nav aria-label={t("Source and license")}><a href="https://github.com/VireloHQ/Virelo-Web" target="_blank" rel="noreferrer">{t("Source code")}</a><a href="/LICENSE.txt" target="_blank" rel="noreferrer">{t("AGPL-3.0-only")}</a></nav>
+      <nav aria-label={t("Source and license")}><a href="https://github.com/VireloHQ/Virelo" target="_blank" rel="noreferrer">{t("Source code")}</a><a href="/LICENSE.txt" target="_blank" rel="noreferrer">{t("AGPL-3.0-only")}</a></nav>
     </footer>
   </div>;
 }

@@ -6,7 +6,7 @@ import { join } from 'node:path';
 
 const repo = fileURLToPath(new URL('../', import.meta.url));
 const { chromium } = createRequire(process.env.VIRELO_TEST_NODE_PACKAGE || import.meta.url)('playwright');
-const server = spawn(process.execPath, [join(repo, 'node_modules/vite/bin/vite.js'), '--host', '127.0.0.1', '--port', '0'],
+const server = spawn(process.execPath, [fileURLToPath(new URL('bin/vite.js',import.meta.resolve('vite/package.json'))), '--host', '127.0.0.1', '--port', '0'],
   { cwd: repo, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
 let browser;
 try {

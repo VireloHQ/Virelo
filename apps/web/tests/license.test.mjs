@@ -3,12 +3,12 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
 const pkg = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8'));
-const lock = JSON.parse(await readFile(new URL('../package-lock.json', import.meta.url), 'utf8'));
+const lock = JSON.parse(await readFile(new URL('../../../package-lock.json', import.meta.url), 'utf8'));
 const license = await readFile(new URL('../LICENSE', import.meta.url), 'utf8');
 
 test('package and lockfile agree on AGPL version 3 only', () => {
   assert.equal(pkg.license, 'AGPL-3.0-only');
-  assert.equal(lock.packages[''].license, pkg.license);
+  assert.equal(lock.packages['apps/web'].license, pkg.license);
   if (pkg.name === 'virelo') {
     assert.ok(pkg.files.includes('LICENSE'));
     assert.ok(pkg.files.includes('LICENSES'));

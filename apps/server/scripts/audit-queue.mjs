@@ -24,7 +24,7 @@ const children = [];
 let browser, lastPage, checks = 0;
 const check = (condition, label) => { assert.ok(condition, label); checks++; console.log('PASS', label); };
 async function serve(path) {
-  const child = spawn(process.execPath, [join(path, 'node_modules/vite/bin/vite.js'), '--host', '127.0.0.1', '--port', '0'],
+  const child = spawn(process.execPath, [fileURLToPath(new URL('bin/vite.js',import.meta.resolve('vite/package.json'))), '--host', '127.0.0.1', '--port', '0'],
     { cwd: path, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
   children.push(child);
   return new Promise((resolve, reject) => {

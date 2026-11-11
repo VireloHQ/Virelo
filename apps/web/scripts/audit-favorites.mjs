@@ -14,7 +14,7 @@ const clip = execFileSync(process.env.VIRELO_TEST_FFMPEG || 'ffmpeg', [
   '-c:v', 'libx264', '-preset', 'ultrafast', '-pix_fmt', 'yuv420p',
   '-movflags', 'frag_keyframe+empty_moov', '-f', 'mp4', 'pipe:1'
 ], { windowsHide: true });
-const server = spawn(process.execPath, [join(repo, 'node_modules/vite/bin/vite.js'), '--host', '127.0.0.1', '--port', '0'],
+const server = spawn(process.execPath, [fileURLToPath(new URL('bin/vite.js',import.meta.resolve('vite/package.json'))), '--host', '127.0.0.1', '--port', '0'],
   { cwd: repo, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
 let browser;
 try {

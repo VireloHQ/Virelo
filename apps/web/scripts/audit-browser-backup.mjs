@@ -5,7 +5,7 @@ import { chromium } from 'playwright';
 
 const repo = fileURLToPath(new URL('../', import.meta.url));
 const clip = execFileSync(process.env.FFMPEG_PATH || 'ffmpeg', ['-hide_banner','-loglevel','error','-f','lavfi','-i','testsrc2=s=160x90:r=10:d=0.5','-c:v','libx264','-preset','ultrafast','-pix_fmt','yuv420p','-movflags','frag_keyframe+empty_moov','-f','mp4','pipe:1'], { windowsHide:true });
-const server = spawn(process.execPath, [repo+'node_modules/vite/bin/vite.js','--host','127.0.0.1','--port','0'], { cwd:repo, windowsHide:true, stdio:['ignore','pipe','pipe'] });
+const server = spawn(process.execPath, [fileURLToPath(new URL('bin/vite.js',import.meta.resolve('vite/package.json'))),'--host','127.0.0.1','--port','0'], { cwd:repo, windowsHide:true, stdio:['ignore','pipe','pipe'] });
 let browser;
 try {
   const base = await new Promise((resolve,reject) => {

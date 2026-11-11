@@ -1,4 +1,6 @@
 import { readFile } from 'node:fs/promises';
+import { createRequire } from 'node:module';
+import { pathToFileURL } from 'node:url';
 import { gzipSync } from 'node:zlib';
 import type { Plugin } from 'vite';
 import { AVI_CORE_PATH } from '../web/src/utils/avi.ts';
@@ -6,7 +8,8 @@ import { AVI_CORE_PATH } from '../web/src/utils/avi.ts';
 export function ffmpegAssets(): Plugin {
   let assets: Promise<Map<string, { bytes: Uint8Array; mime: string }>> | undefined;
   const load = () => assets ??= (async () => {
-    const directory = new URL('../node_modules/@ffmpeg/core/dist/esm/', import.meta.url);
+    const umd = pathToFileURL(createRequire(import.meta.url).resolve('@ffmpeg/core'));
+    const directory = new URL('../esm/', umd);
     const wasm = await readFile(new URL('ffmpeg-core.wasm', directory));
     return new Map([
       ['ffmpeg-core.js', { bytes: await readFile(new URL('ffmpeg-core.js', directory)), mime: 'text/javascript' }],

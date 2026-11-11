@@ -57,7 +57,7 @@ async function changeLanguage(page, locale) {
 }
 async function serveWeb() {
   const webRepo = resolve(process.env.VIRELO_TEST_WEB_REPO);
-  const child = spawn(process.execPath, [join(webRepo, 'node_modules/vite/bin/vite.js'), '--host', '127.0.0.1', '--port', '0'],
+  const child = spawn(process.execPath, [fileURLToPath(new URL('bin/vite.js',import.meta.resolve('vite/package.json'))), '--host', '127.0.0.1', '--port', '0'],
     { cwd: webRepo, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
   children.push(child);
   return new Promise((resolve, reject) => {

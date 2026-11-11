@@ -12,8 +12,8 @@ const screenshots=await mkdtemp(join(tmpdir(),'virelo-player-menus-'));
 const browser=await chromium.launch({headless:true,...(process.env.VIRELO_TEST_CHROMIUM?{executablePath:process.env.VIRELO_TEST_CHROMIUM}:{})});
 const servers=[];
 async function serve(mode){
- const repo=join(fileURLToPath(new URL('../../',import.meta.url)),mode==='web'?'virelo-web':'virelo');
- const child=spawn(process.execPath,[join(repo,'node_modules/vite/bin/vite.js'),'--host','127.0.0.1','--port','0'],{cwd:repo,windowsHide:true,stdio:['ignore','pipe','pipe']});
+ const repo=join(fileURLToPath(new URL('../../',import.meta.url)),mode==='web'?'web' : 'server');
+ const child=spawn(process.execPath,[fileURLToPath(new URL('bin/vite.js',import.meta.resolve('vite/package.json'))),'--host','127.0.0.1','--port','0'],{cwd:repo,windowsHide:true,stdio:['ignore','pipe','pipe']});
  servers.push(child);
  return new Promise((resolve,reject)=>{
   let output='';
@@ -79,7 +79,7 @@ try {
    root.render(h(Demo));
   },mode);
   if(process.env.VIRELO_TEST_BUILT_CSS==='1'){
-   const dist=join(fileURLToPath(new URL('../../',import.meta.url)),mode==='web'?'virelo-web/dist':'virelo/dist/web');
+   const dist=join(fileURLToPath(new URL('../../',import.meta.url)),mode==='web'?'web/dist':'server/dist/web');
    const html=await readFile(join(dist,'index.html'),'utf8');
    const asset=html.match(/href="(\/assets\/index-[^"]+\.css)"/)?.[1];
    assert.ok(asset,'build the project before auditing production CSS');

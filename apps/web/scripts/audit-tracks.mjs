@@ -20,7 +20,7 @@ function deliverMedia(route, body, contentType) {
   return route.fulfill({ status: 206, body: body.subarray(start, end + 1), contentType, headers: { 'Accept-Ranges': 'bytes', 'Content-Range': `bytes ${start}-${end}/${body.length}` } });
 }
 async function serve(repo) {
-  const child = spawn(process.execPath, [join(repo, 'node_modules/vite/bin/vite.js'), '--host', '127.0.0.1', '--port', '0'], { cwd: repo, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
+  const child = spawn(process.execPath, [fileURLToPath(new URL('bin/vite.js',import.meta.resolve('vite/package.json'))), '--host', '127.0.0.1', '--port', '0'], { cwd: repo, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
   servers.push(child);
   return await new Promise((resolve, reject) => {
     let output = '';
@@ -87,7 +87,7 @@ try {
   const clip = await readFile(join(folder, 'clip.mp4')), audio = await readFile(join(folder, 'audio.m4a'));
   browser = await chromium.launch({ headless: true, ...(process.env.VIRELO_TEST_CHROMIUM ? { executablePath: process.env.VIRELO_TEST_CHROMIUM } : {}), args: ['--autoplay-policy=no-user-gesture-required'] });
   for (const mode of ['npm', 'web']) {
-    const base = await serve(join(projects, mode === 'web' ? 'virelo-web' : 'virelo'));
+    const base = await serve(join(projects, mode === 'web' ? 'web' : 'server'));
     const context = await browser.newContext({ serviceWorkers: 'block', reducedMotion: 'reduce' });
     const page = await context.newPage(), errors = [];
     page.setDefaultTimeout(15000); page.on('pageerror', error => errors.push(error.message));

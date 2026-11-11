@@ -9,8 +9,8 @@ import fastifyStatic from '@fastify/static';
 
 test('the published CLI bundles its patched static dependency tree', async () => {
   const pkg = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8'));
-  const lock = JSON.parse(await readFile(new URL('../package-lock.json', import.meta.url), 'utf8'));
-  assert.ok(pkg.bundleDependencies.includes('@fastify/static'));
+  const lock = JSON.parse(await readFile(new URL('../release-lock.json', import.meta.url), 'utf8'));
+  assert.ok(lock.packages[''].bundleDependencies.includes('@fastify/static'));
   assert.equal(existsSync(new URL('../npm-shrinkwrap.json', import.meta.url)), false);
   assert.deepEqual(lock.packages[''].dependencies, pkg.dependencies);
   const matches = Object.entries(lock.packages).filter(([path]) => path.endsWith('/minimatch'));

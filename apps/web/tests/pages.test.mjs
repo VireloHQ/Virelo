@@ -18,14 +18,14 @@ for (const line of (await readFile(new URL('_headers', source), 'utf8')).split('
 }
 const headers = path => Object.assign({}, ...rules.filter(rule => matches(rule.path, path)).map(rule => rule.headers));
 
-test('Pages receives its host rules and custom 404 in the production build', async () => {
+test('Workers Static Assets receives host rules and custom 404 in the production build', async () => {
   for (const file of ['_headers', '_redirects', '404.html']) {
     assert.equal(await readFile(new URL(file, dist), 'utf8'), await readFile(new URL(file, source), 'utf8'), file);
   }
-  assert.equal((await readFile(new URL('../.node-version', import.meta.url), 'utf8')).trim(), '22.23.4');
+  assert.equal((await readFile(new URL('../../../.node-version', import.meta.url), 'utf8')).trim(), '22.23.4');
 });
 
-test('Pages rewrites application and legacy routes, never missing assets', () => {
+test('Workers rewrites application and legacy routes, never missing assets', () => {
   const shell = path => redirects.some(([pattern, target, status]) => matches(pattern, path) && target === '/app' && status === '200');
   for (const path of ['/app/library', '/app/favorites', '/favorites', '/app/settings', '/app/shorts', '/app/watch/123', '/app/title/123', '/library', '/settings', '/shorts', '/watch/123', '/title/123']) {
     assert.ok(shell(path), path);
@@ -36,7 +36,7 @@ test('Pages rewrites application and legacy routes, never missing assets', () =>
   assert.ok(!redirects.some(([pattern, target]) => pattern === '/app' || target.endsWith('.html')), 'Clean HTML handling serves /app directly; rewritten .html targets cause a redirect loop on Workers');
 });
 
-test('Pages keeps HTML and PWA entry points fresh, but caches hashed assets', () => {
+test('Workers keeps HTML and PWA entry points fresh, but caches hashed assets', () => {
   for (const path of ['/', '/index.html', '/setup', '/setup/', '/app', '/app/watch/123', '/sw.js', '/manifest.webmanifest']) {
     assert.equal(headers(path)['cache-control'], 'no-cache', path);
   }
@@ -45,7 +45,7 @@ test('Pages keeps HTML and PWA entry points fresh, but caches hashed assets', ()
   assert.equal(headers('/app')['cross-origin-opener-policy'], 'same-origin');
 });
 
-test('Pages CSP permits LP media, blob media/workers and WASM without JavaScript eval', () => {
+test('Workers CSP permits blob media/workers and WASM without JavaScript eval', () => {
   const csp = headers('/app')['content-security-policy'];
   for (const directive of ["media-src 'self' blob:", "worker-src 'self' blob:", "connect-src 'self' blob:", "script-src 'self' 'wasm-unsafe-eval'", "object-src 'none'", "frame-ancestors 'none'"]) {
     assert.ok(csp.includes(directive), directive);
@@ -54,7 +54,7 @@ test('Pages CSP permits LP media, blob media/workers and WASM without JavaScript
   assert.equal(csp.includes('https:'), false);
 });
 
-test('production files fit Cloudflare Pages static upload limits', async () => {
+test('production files fit Cloudflare Workers static upload limits', async () => {
   let count = 0;
   async function check(directory) {
     for (const entry of await readdir(directory, { withFileTypes: true })) {
@@ -64,5 +64,5 @@ test('production files fit Cloudflare Pages static upload limits', async () => {
     }
   }
   await check(dist);
-  assert.ok(count <= 20000, 'Pages Free plan file count');
+  assert.ok(count <= 20000, 'Workers Free plan file count');
 });

@@ -30,7 +30,7 @@ const check=(value,label)=>{assert.ok(value,label);checks++;console.log('PASS',l
 try{
  let base=process.env.VIRELO_TEST_AVI_BASE_URL;
  if(!base){
-  server=spawn(process.execPath,[join(repo,'node_modules/vite/bin/vite.js'),'preview','--host','127.0.0.1','--port','0'],{cwd:repo,windowsHide:true,stdio:['ignore','pipe','pipe']});
+  server=spawn(process.execPath,[fileURLToPath(new URL('bin/vite.js',import.meta.resolve('vite/package.json'))),'preview','--host','127.0.0.1','--port','0'],{cwd:repo,windowsHide:true,stdio:['ignore','pipe','pipe']});
   base=await new Promise((resolve,reject)=>{let log='';const timer=setTimeout(()=>reject(Error(log)),20000);server.once('error',reject);server.stdout.on('data',chunk=>{log+=String(chunk).replace(/\x1b\[[0-9;]*m/g,'');const url=log.match(/http:\/\/127\.0\.0\.1:\d+/)?.[0];if(url){clearTimeout(timer);resolve(url);}});server.stderr.on('data',chunk=>{log+=chunk;});});
  }
  browser=await chromium.launch({headless:true,executablePath:process.env.VIRELO_TEST_CHROMIUM,args:['--autoplay-policy=no-user-gesture-required']});

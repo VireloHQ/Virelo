@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="https://raw.githubusercontent.com/VireloHQ/Virelo-Web/main/web/public/virelo-icon-512.png" alt="Virelo" width="128" />
+  <img src="https://raw.githubusercontent.com/VireloHQ/Virelo/main/apps/web/web/public/virelo-icon-512.png" alt="Virelo" width="128" />
   <h1>Virelo Web</h1>
   <p>Turn a local video folder into a private streaming-style library, entirely in your browser.</p>
 </div>
@@ -89,71 +89,66 @@ The deployed web player itself does not require Node.js on the viewer's device.
 
 ```bash
 npm ci
-npm run dev
+npm run dev:web
 ```
 
 Run the complete local check with:
 
 ```bash
-npm run check
+npm run check -w apps/web
 ```
 
-With FFmpeg and Playwright available, run `npm run build` followed by
-`node scripts/audit-avi.mjs` to verify AVI playback, thumbnails, audio selection,
+With FFmpeg and Playwright available, run `npm run build -w apps/web` followed by
+`node apps/web/scripts/audit-avi.mjs` to verify AVI playback, thumbnails, audio selection,
 seeking and source-file integrity against the built app.
 
 ## Build and deploy
 
 ```bash
-npm run build
+npm run build -w apps/web
 ```
 
-Deploy the generated `dist` directory to a static host. No Worker, Pages Function, server process, database binding, or API key is required.
+The build output is `apps/web/dist`. No server process or database is required.
 
-### Cloudflare Pages
+### Cloudflare Workers Static Assets
 
-Connect `VireloHQ/Virelo-Web` using **Pages Git integration** and use:
+Connect the existing `virelo-web` Worker to `VireloHQ/Virelo` with Workers Builds:
 
 | Setting | Value |
 | --- | --- |
 | Production branch | `main` |
-| Framework preset | React (Vite) |
-| Root directory | Repository root (leave empty), not `web` |
-| Build command | `npm run build` |
-| Build output directory | `dist` |
+| Root directory | Repository root |
+| Build command | `npm run build -w apps/web` |
+| Deploy command | `npm run deploy:web` |
+| Preview command | `npm run preview:web` |
+| Build watch paths | `apps/web/*`, `packages/*`, `package.json`, `package-lock.json`, `.node-version`, `tsconfig.base.json` |
 | Node.js | `22.23.4`, pinned by `.node-version` |
 
-If `NODE_VERSION` is already set in the dashboard, align it with `.node-version`. Do not set the install command to omit development dependencies: TypeScript and Vite are build dependencies. For push-triggered builds, create a Git-integrated Pages project rather than a Direct Upload-only project. See the [Pages build configuration](https://developers.cloudflare.com/pages/configuration/build-configuration/) and [Node.js version settings](https://developers.cloudflare.com/pages/configuration/build-image/).
+Install dependencies from the repository root and include development dependencies. Preserve the existing Worker and both custom domains. See [Workers Builds monorepos](https://developers.cloudflare.com/workers/ci-cd/builds/advanced-setups/#monorepos) and [build watch paths](https://developers.cloudflare.com/workers/ci-cd/builds/build-watch-paths/).
 
 Vite copies `_headers`, `_redirects`, and `404.html` from `web/public` to `dist`. Only application routes receive the SPA shell; missing scripts and styles return a real 404. HTML, the manifest, and the service worker revalidate on each load, while hashed `/assets/` files use immutable caching. The CSP permits same-origin LP video, local `blob:` media/workers, and WebAssembly audio codecs without allowing JavaScript `eval` or third-party connections.
 
 To test these host rules locally (Vite preview does not apply them):
 
 ```bash
-npm run build
-npx wrangler pages dev dist
+npm run build -w apps/web
+npx wrangler dev --config apps/web/wrangler.jsonc
 ```
 
 Verify `/`, `/settings`, `/library`, `/playlists`, and a direct `/watch/<id>` URL on `app.virelo.dev`. That hostname exposes the player without an `/app` prefix; local and other deployments keep the existing `/app` routes. Retaining the same HTTPS origin preserves browser library storage and settings; a preview or another hostname has separate browser storage. The official site's root and setup URLs are provided by a separate deployment. This repository keeps `vercel.json` for rollback compatibility; it is not used by Pages.
 
 ### Deployment verification
 
-After a Git-triggered build succeeds, run `npm run verify:deployment` (or pass
+After a Git-triggered build succeeds, run `npm run verify:web` from the repository root (or pass
 another production URL). This checks player routes, scripts, the full AGPL license,
 PWA assets and missing-module handling. Marketing pages and their SEO checks run
 in the separate website project. A successful push alone does not deploy
 a site. When a repository is recreated, reconnect it in the hosting dashboard;
 the same repository URL can refer to a different repository ID.
 
-`node scripts/verify-app-migration.mjs` additionally checks the live domain migration,
+`node apps/web/scripts/verify-app-migration.mjs` additionally checks the live domain migration,
 backups, language handoff, mobile settings and offline PWA in disposable Chromium
 profiles. It never opens or modifies your normal browser profile.
-
-### Workers Builds
-
-The same static build can be hosted with Workers Builds. Reconnect the existing
-Worker to the intended repository and production branch, and keep its build
-command and static asset directory aligned with `npm run build` and `dist`.
 
 ### Recommended headers
 
@@ -180,7 +175,7 @@ The player is licensed under the [GNU Affero General Public License, version 3 o
 
 The separately maintained official website is not included in this player license. Previously granted MIT and AGPL permissions remain unchanged, including for website material in this repository's earlier history. The last combined public snapshot is `2b08b686d8216450b8855d123d9d90e04b80a287`. See [BRANDING.md](BRANDING.md) for the separate branding policy; it does not restrict lawful self-hosting or revoke existing copyright permissions.
 
-Source and build instructions are available in [this repository](https://github.com/VireloHQ/Virelo-Web). When distributing or hosting a modified build, provide the source and build instructions for that exact build and update the app's source link. Your video files and library data are not subject to this source-code requirement.
+Source and build instructions are available in [this repository](https://github.com/VireloHQ/Virelo). When distributing or hosting a modified build, provide the source and build instructions for that exact build and update the app's source link. Your video files and library data are not subject to this source-code requirement.
 
 Permissions for any material previously received under MIT are unchanged. The legacy Virelo MIT notice is preserved in [LICENSES/LEGACY-MIT.txt](LICENSES/LEGACY-MIT.txt); it does not license new changes under MIT. Third-party dependencies and assets retain their own licenses and required notices.
 
