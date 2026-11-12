@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { FilmStrip, Heart, House, ListBullets, MonitorPlay, SquaresFour, Television, type Icon } from '@phosphor-icons/react';
+import { FilmStrip, Heart, House, ListBullets, DeviceMobile, SquaresFour, Television, type Icon } from '@phosphor-icons/react';
 import '../header-nav.css';
 
 type HeaderNavSection = 'home' | 'movies' | 'series' | 'library' | 'shorts' | 'favorites' | 'playlists';
@@ -9,7 +9,7 @@ const icons: Record<HeaderNavSection, Icon> = {
   movies: FilmStrip,
   series: Television,
   library: SquaresFour,
-  shorts: MonitorPlay,
+  shorts: DeviceMobile,
   favorites: Heart,
   playlists: ListBullets,
 };
