@@ -133,7 +133,7 @@ try {
       await page.setViewportSize({width:viewportWidth,height:900});
       await page.waitForFunction(width=>window.innerWidth===width,viewportWidth);
       const compactSpacing=await headerSpacing();
-      check(compactSpacing.items===12&&compactSpacing.label===6,label+' compact header uses consistent gaps at '+viewportWidth);
+      check(compactSpacing.items===12&&compactSpacing.label===6,label+' compact header uses consistent gaps at '+viewportWidth+' (observed '+JSON.stringify(compactSpacing)+')');
       const navBox=await headerNav.boundingBox(),actionsBox=await page.locator('.topbar-actions').boundingBox();
       check(Boolean(navBox&&actionsBox&&navBox.x+navBox.width<=actionsBox.x+1),label+' navigation and header actions do not overlap at '+viewportWidth);
       check(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),label+' no horizontal overflow at '+viewportWidth);
