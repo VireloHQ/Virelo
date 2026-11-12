@@ -4,6 +4,7 @@ import { Link, useLocation, useNavigate } from '@tanstack/react-router';
 import { Button, Input } from '@heroui/react';
 import { MagnifyingGlass, Gear, X } from '@phosphor-icons/react';
 import { useUIStore } from '@virelo/web-ui/store.ts';
+import { HeaderNavLabel } from '@virelo/web-ui/components/HeaderNavLabel.tsx';
 
 export function Header() {
   useLocale();
@@ -27,6 +28,10 @@ export function Header() {
     const frame = window.requestAnimationFrame(() => searchInputRef.current?.focus());
     return () => window.cancelAnimationFrame(frame);
   }, [searchOpen]);
+  const selectHomeCategory = (category: 'movie' | 'series') => {
+    setHomeFilter(category);
+    if (!isHome) void navigate({to:'/app'});
+  };
   const toggleSearch = () => {
     const nextOpen = !searchOpen;
     setMobileSearchOpen(nextOpen);
@@ -41,13 +46,13 @@ export function Header() {
           <span className="brand-name">{t("Virelo")}</span>
         </Link>
         <nav className="desktop-nav" aria-label={t("Main navigation")}>
-          <Link to="/app" activeOptions={{exact:true}} activeProps={homeFilter==='all'?{className:'active'}:{}} onClick={()=>setHomeFilter('all')}>{t("Home")}</Link>
-          {isHome&&<><button className="home-header-category" aria-pressed={homeFilter==='movie'} onClick={()=>setHomeFilter('movie')}>{t("Movies")}</button>
-            <button className="home-header-category" aria-pressed={homeFilter==='series'} onClick={()=>setHomeFilter('series')}>{t("Series")}</button></>}
-          <Link to="/app/library" activeProps={{className:'active'}}>{t("Library")}</Link>
-          <Link to="/app/shorts" search={{}} activeProps={{className:'active'}}>{t("Shorts")}</Link>
-          <Link to="/app/favorites" activeProps={{className:'active'}}>{t("Favorites")}</Link>
-          <Link to="/app/playlists" activeProps={{className:'active'}}>{t("Playlists")}</Link>
+          <Link to="/app" activeOptions={{exact:true}} activeProps={homeFilter==='all'?{className:'active'}:{}} onClick={()=>setHomeFilter('all')}><HeaderNavLabel section="home">{t("Home")}</HeaderNavLabel></Link>
+          <button className="home-header-category" aria-pressed={isHome&&homeFilter==='movie'} onClick={()=>selectHomeCategory('movie')}><HeaderNavLabel section="movies">{t("Movies")}</HeaderNavLabel></button>
+          <button className="home-header-category" aria-pressed={isHome&&homeFilter==='series'} onClick={()=>selectHomeCategory('series')}><HeaderNavLabel section="series">{t("Series")}</HeaderNavLabel></button>
+          <Link to="/app/library" activeProps={{className:'active'}}><HeaderNavLabel section="library">{t("Library")}</HeaderNavLabel></Link>
+          <Link to="/app/shorts" search={{}} activeProps={{className:'active'}}><HeaderNavLabel section="shorts">{t("Shorts")}</HeaderNavLabel></Link>
+          <Link to="/app/favorites" activeProps={{className:'active'}}><HeaderNavLabel section="favorites">{t("Favorites")}</HeaderNavLabel></Link>
+          <Link to="/app/playlists" activeProps={{className:'active'}}><HeaderNavLabel section="playlists">{t("Playlists")}</HeaderNavLabel></Link>
         </nav>
         <div className="topbar-actions">
           <div className={`header-search-shell ${searchOpen ? 'open' : ''}`} data-animate={animateSearch}

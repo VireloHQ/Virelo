@@ -113,6 +113,47 @@ try {
   await page.goto(base+prefix+'/library');
   const input=page.getByRole('combobox',{name:'Path',exact:true});
   await input.waitFor();await page.locator('.splash-screen').waitFor({state:'hidden'});
+  if(width===1440){
+    const headerNav=page.locator('.desktop-nav');
+    for(const [section,label] of [['link','Home'],['button','Movies'],['button','Series'],['link','Library'],['link','Shorts'],['link','Favorites'],['link','Playlists']]){
+      const item=headerNav.getByRole(section,{name:label,exact:true});
+      const icon=item.locator('svg.header-nav-icon[aria-hidden="true"]'),text=item.locator('span');
+      check(await icon.count()===1,label+' has a decorative header icon');
+      const iconBox=await icon.boundingBox(),textBox=await text.boundingBox();
+      check(Boolean(iconBox&&textBox&&iconBox.x+iconBox.width<=textBox.x+1),label+' icon is to the left of its label');
+    }
+    const headerSpacing=()=>headerNav.evaluate(nav=>{
+      const link=nav.querySelector('a');
+      return {items:parseFloat(getComputedStyle(nav).columnGap),label:parseFloat(getComputedStyle(link).columnGap)};
+    });
+    const wideSpacing=await headerSpacing();
+    check(wideSpacing.items===18&&wideSpacing.label===8,label+' desktop header uses balanced item and icon gaps');
+    for(const viewportWidth of [1040,920]){
+      await page.setViewportSize({width:viewportWidth,height:900});
+      const compactSpacing=await headerSpacing();
+      check(compactSpacing.items===12&&compactSpacing.label===6,label+' compact header uses consistent gaps at '+viewportWidth);
+      const navBox=await headerNav.boundingBox(),actionsBox=await page.locator('.topbar-actions').boundingBox();
+      check(Boolean(navBox&&actionsBox&&navBox.x+navBox.width<=actionsBox.x+1),label+' navigation and header actions do not overlap at '+viewportWidth);
+      check(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),label+' no horizontal overflow at '+viewportWidth);
+    }
+    await page.setViewportSize({width,height:900});
+    for(const [section,category] of [['library','Movies'],['favorites','Series']]){
+      const sectionLabel=section==='library'?'Library':'Favorites';
+      await headerNav.getByRole('link',{name:sectionLabel,exact:true}).click();
+      await page.waitForURL(base+prefix+'/'+section);
+      const movies=headerNav.getByRole('button',{name:'Movies',exact:true});
+      const series=headerNav.getByRole('button',{name:'Series',exact:true});
+      check(await movies.isVisible()&&await series.isVisible(),label+' '+section+' keeps Home categories visible');
+      check(await movies.getAttribute('aria-pressed')==='false'&&await series.getAttribute('aria-pressed')==='false',label+' '+section+' has no active Home category');
+      await headerNav.getByRole('button',{name:category,exact:true}).click();
+      await page.waitForFunction(home=>location.pathname===home||location.pathname===home+'/',prefix||'/');
+      check(await headerNav.getByRole('button',{name:category,exact:true}).getAttribute('aria-pressed')==='true',label+' '+category+' navigates Home with its filter selected');
+    }
+    await headerNav.getByRole('link',{name:'Library',exact:true}).click();
+    await page.waitForURL(base+prefix+'/library');
+    await input.waitFor();
+  }
+
   check(await page.locator('.library-layout-switch,.folder-options').count()===0,label+' layout and folder option controls are absent from the library');
   await page.getByRole('button',{name:'Search',exact:true}).click();
   const search=page.getByRole('textbox',{name:'Search library',exact:true});
