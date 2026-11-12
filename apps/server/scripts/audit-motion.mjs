@@ -132,7 +132,7 @@ try {
     });
     check(thumbState.inside&&thumbState.color==='rgb(255, 255, 255)'&&thumbState.transform==='none',
       label+' Switch keeps the white thumb inside its track when selected');
-    const thumbEvents = await page.evaluate(() => window.__motion.filter(event => event.className.includes('switch__thumb') && event.property === 'inset-inline-start'));
+    const thumbEvents = await page.evaluate(() => window.__motion.filter(event => event.className.includes('switch__thumb') && ['left','right','inset-inline-start'].includes(event.property)));
     check(scenario.reduce ? thumbEvents.length === 0 : thumbEvents.some(event => event.animations.some(animation => animation.duration === 200)),
       label + ' Switch uses the built-in inset offset timing, with reduced-motion support');
     await toggle.focus(); await page.keyboard.press('Space'); await settled(thumb);
