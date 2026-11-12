@@ -116,6 +116,20 @@ try {
   await input.waitFor();await page.locator('.splash-screen').waitFor({state:'hidden'});
   if(width===1440){
     const headerNav=page.locator('.desktop-nav');
+    for(const [section,label] of [['link','Home'],['button','Movies'],['button','Series'],['link','Library'],['link','Shorts'],['link','Favorites'],['link','Playlists']]){
+      const item=headerNav.getByRole(section,{name:label,exact:true});
+      const icon=item.locator('svg.header-nav-icon[aria-hidden="true"]'),text=item.locator('span');
+      check(await icon.count()===1,label+' has a decorative header icon');
+      const iconBox=await icon.boundingBox(),textBox=await text.boundingBox();
+      check(Boolean(iconBox&&textBox&&iconBox.x+iconBox.width<=textBox.x+1),label+' icon is to the left of its label');
+    }
+    for(const viewportWidth of [1040,920]){
+      await page.setViewportSize({width:viewportWidth,height:900});
+      const navBox=await headerNav.boundingBox(),actionsBox=await page.locator('.topbar-actions').boundingBox();
+      check(Boolean(navBox&&actionsBox&&navBox.x+navBox.width<=actionsBox.x+1),label+' navigation and header actions do not overlap at '+viewportWidth);
+      check(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),label+' no horizontal overflow at '+viewportWidth);
+    }
+    await page.setViewportSize({width,height:900});
     for(const [section,category] of [['library','Movies'],['favorites','Series']]){
       const sectionLabel=section==='library'?'Library':'Favorites';
       await headerNav.getByRole('link',{name:sectionLabel,exact:true}).click();
