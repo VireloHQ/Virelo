@@ -131,6 +131,7 @@ try {
     check(wideSpacing.items===18&&wideSpacing.label===8,label+' desktop header uses balanced item and icon gaps');
     for(const viewportWidth of [1040,920]){
       await page.setViewportSize({width:viewportWidth,height:900});
+      await page.waitForFunction(width=>window.innerWidth===width,viewportWidth);
       const compactSpacing=await headerSpacing();
       check(compactSpacing.items===12&&compactSpacing.label===6,label+' compact header uses consistent gaps at '+viewportWidth);
       const navBox=await headerNav.boundingBox(),actionsBox=await page.locator('.topbar-actions').boundingBox();
