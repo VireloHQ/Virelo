@@ -1,0 +1,10 @@
+/* Shared desktop navigation labels used by both Web and self-hosted editions. */
+.app-shell .desktop-nav :is(a,button) { column-gap:7px; white-space:nowrap; }
+.app-shell .desktop-nav .header-nav-icon { display:block; flex:none; width:18px; height:18px; }
+
+@media (min-width:901px) and (max-width:1280px) {
+  .app-shell .topbar-inner { gap:clamp(12px,1.5vw,20px); }
+  .app-shell .desktop-nav { gap:clamp(8px,0.8vw,12px); font-size:clamp(12px,1.1vw,14px); }
+  .app-shell .desktop-nav :is(a,button) { column-gap:5px; }
+  .app-shell .desktop-nav .header-nav-icon { width:16px; height:16px; }
+}
