@@ -125,9 +125,16 @@ try {
     await settled(thumb);
     check((await toggle.isChecked()) !== original, label + ' Switch updates immediately');
     stable(await recording, 'Switch does not move its description');
-    const thumbEvents = await page.evaluate(() => window.__motion.filter(event => event.className.includes('switch__thumb') && event.property === 'transform'));
+    const thumbState = await thumb.evaluate(element => {
+      const track = element.closest('.switch__control').getBoundingClientRect(), knob = element.getBoundingClientRect();
+      return {inside:knob.left>=track.left-1&&knob.right<=track.right+1,
+        color:getComputedStyle(element).backgroundColor,transform:getComputedStyle(element).transform};
+    });
+    check(thumbState.inside&&thumbState.color==='rgb(255, 255, 255)'&&thumbState.transform==='none',
+      label+' Switch keeps the white thumb inside its track when selected');
+    const thumbEvents = await page.evaluate(() => window.__motion.filter(event => event.className.includes('switch__thumb') && event.property === 'inset-inline-start'));
     check(scenario.reduce ? thumbEvents.length === 0 : thumbEvents.some(event => event.animations.some(animation => animation.duration === 200)),
-      label + ' Switch uses the shared transform timing, with reduced-motion support');
+      label + ' Switch uses the built-in inset offset timing, with reduced-motion support');
     await toggle.focus(); await page.keyboard.press('Space'); await settled(thumb);
     check((await toggle.isChecked()) === original, label + ' keyboard Switch operation stays immediate and reversible');
 
