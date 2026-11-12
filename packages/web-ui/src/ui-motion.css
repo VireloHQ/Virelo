@@ -13,22 +13,19 @@
 .app-shell :is(button, a, input, textarea, select):focus-visible,
 :is(.context-popover, .playback-settings-menu, .virelo-confirm-dialog) :focus-visible { transition:none; }
 
-/* Selection moves inside a fixed track, without reflowing the label or row. */
-.app-shell .switch { --switch-travel:.875rem; }
-.app-shell .switch--sm { --switch-travel:.71875rem; }
-.app-shell .switch--lg { --switch-travel:1.03125rem; }
-.app-shell .switch__control { transition:background-color var(--dur-short) var(--ease-out); }
+/* Let HeroUI move the thumb with its built-in inset-inline-start offset.
+   Translating it as well shifted the selected thumb past the end of the track. */
+.app-shell .switch__control {
+  transition:background-color var(--dur-short) var(--ease-out);
+}
 .app-shell .switch .switch__thumb {
-  margin-inline-start:.125rem;
-  transform:translateX(0);
-  transition:transform var(--dur-short) var(--ease-in-out),background-color var(--dur-short) var(--ease-out);
+  border-radius:999px;
+  transform:none;
+  transition:inset-inline-start var(--dur-short) var(--ease-in-out),background-color var(--dur-short) var(--ease-out);
 }
-.app-shell .switch:is([aria-checked="true"],[data-selected="true"]) .switch__thumb {
-  margin-inline-start:.125rem;
-  transform:translateX(var(--switch-travel));
+.app-shell .switch:not([data-disabled="true"]) .switch__thumb {
+  background-color:#fff;
 }
-.app-shell .switch:has([data-focus-visible="true"]) .switch__thumb { transition:none; }
-.app-shell .switch:dir(rtl):is([aria-checked="true"],[data-selected="true"]) .switch__thumb { transform:translateX(calc(-1 * var(--switch-travel))); }
 
 /* CSS display transitions retain a closing picker without keeping it interactive. */
 .app-shell .picker[data-open="true"] { z-index:21; }
