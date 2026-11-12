@@ -114,6 +114,24 @@ try {
   await page.goto(base+prefix+'/library');
   const input=page.getByRole('combobox',{name:'Path',exact:true});
   await input.waitFor();await page.locator('.splash-screen').waitFor({state:'hidden'});
+  if(width===1440){
+    const headerNav=page.locator('.desktop-nav');
+    for(const [section,category] of [['library','Movies'],['favorites','Series']]){
+      const sectionLabel=section==='library'?'Library':'Favorites';
+      await headerNav.getByRole('link',{name:sectionLabel,exact:true}).click();
+      await page.waitForURL(base+prefix+'/'+section);
+      const movies=headerNav.getByRole('button',{name:'Movies',exact:true});
+      const series=headerNav.getByRole('button',{name:'Series',exact:true});
+      check(await movies.isVisible()&&await series.isVisible(),label+' '+section+' keeps Home categories visible');
+      check(await movies.getAttribute('aria-pressed')==='false'&&await series.getAttribute('aria-pressed')==='false',label+' '+section+' has no active Home category');
+      await headerNav.getByRole('button',{name:category,exact:true}).click();
+      await page.waitForFunction(home=>location.pathname===home||location.pathname===home+'/',prefix||'/');
+      check(await headerNav.getByRole('button',{name:category,exact:true}).getAttribute('aria-pressed')==='true',label+' '+category+' navigates Home with its filter selected');
+    }
+    await headerNav.getByRole('link',{name:'Library',exact:true}).click();
+    await page.waitForURL(base+prefix+'/library');
+    await input.waitFor();
+  }
   check(await page.locator('.library-layout-switch,.folder-options').count()===0,label+' layout and folder option controls are absent from the library');
   await page.getByRole('button',{name:'Search',exact:true}).click();
   const search=page.getByRole('textbox',{name:'Search library',exact:true});
