@@ -27,6 +27,10 @@ export function Header() {
     const frame = window.requestAnimationFrame(() => searchInputRef.current?.focus());
     return () => window.cancelAnimationFrame(frame);
   }, [searchOpen]);
+  const selectHomeCategory = (category: 'movie' | 'series') => {
+    setHomeFilter(category);
+    if (!isHome) void navigate({to:'/app'});
+  };
   const toggleSearch = () => {
     const nextOpen = !searchOpen;
     setMobileSearchOpen(nextOpen);
@@ -42,8 +46,8 @@ export function Header() {
         </Link>
         <nav className="desktop-nav" aria-label={t("Main navigation")}>
           <Link to="/app" activeOptions={{exact:true}} activeProps={homeFilter==='all'?{className:'active'}:{}} onClick={()=>setHomeFilter('all')}>{t("Home")}</Link>
-          {isHome&&<><button className="home-header-category" aria-pressed={homeFilter==='movie'} onClick={()=>setHomeFilter('movie')}>{t("Movies")}</button>
-            <button className="home-header-category" aria-pressed={homeFilter==='series'} onClick={()=>setHomeFilter('series')}>{t("Series")}</button></>}
+          <button className="home-header-category" aria-pressed={isHome&&homeFilter==='movie'} onClick={()=>selectHomeCategory('movie')}>{t("Movies")}</button>
+          <button className="home-header-category" aria-pressed={isHome&&homeFilter==='series'} onClick={()=>selectHomeCategory('series')}>{t("Series")}</button>
           <Link to="/app/library" activeProps={{className:'active'}}>{t("Library")}</Link>
           <Link to="/app/shorts" search={{}} activeProps={{className:'active'}}>{t("Shorts")}</Link>
           <Link to="/app/favorites" activeProps={{className:'active'}}>{t("Favorites")}</Link>
