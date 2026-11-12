@@ -59,13 +59,14 @@ test('closing dropdowns stay visually present but become inert and hidden to ass
   assert.match(motion, /data-animate="false"[^}]*transition:none!important/);
 });
 
-test('switch motion transforms a fixed thumb and preserves keyboard and reduced-motion feedback', async () => {
+test('switch uses the built-in logical thumb offset with consistent color and reduced motion', async () => {
   const motion = await source('ui-motion.css');
-  assert.match(motion, /transition:transform var\(--dur-short\) var\(--ease-in-out\)/);
-  assert.match(motion, /switch:has\(\[data-focus-visible="true"\]\)[^}]*transition:none/);
+  assert.match(motion, /transition:inset-inline-start var\(--dur-short\) var\(--ease-in-out\)/);
+  assert.match(motion, /\.switch \.switch__thumb \{[^}]*transform:none/);
+  assert.match(motion, /\.switch:not\(\[data-disabled="true"\]\) \.switch__thumb \{[^}]*background-color:#fff/);
+  assert.doesNotMatch(motion, /--switch-travel|translateX\(/);
   assert.match(motion, /prefers-reduced-motion:reduce/);
   assert.match(motion, /switch__thumb \{ transition-property:background-color!important/);
-  assert.match(motion, /:dir\(rtl\)/);
 });
 
 test('modal exit is owned by the overlay lifecycle rather than cancelled CSS transitions', async () => {
