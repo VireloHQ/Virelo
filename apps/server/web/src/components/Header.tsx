@@ -4,6 +4,7 @@ import { Link, useLocation, useNavigate } from '@tanstack/react-router';
 import { Button, Input } from '@heroui/react';
 import { MagnifyingGlass, Gear, X } from '@phosphor-icons/react';
 import { useUIStore } from '@virelo/web-ui/store.ts';
+import { HeaderNavLabel } from '@virelo/web-ui/components/HeaderNavLabel.tsx';
 import { NotificationBell } from './Notifications';
 
 export function Header() {
@@ -46,13 +47,13 @@ export function Header() {
           <span className="brand-name">{t("Virelo")}</span>
         </Link>
         <nav className="desktop-nav" aria-label={t("Main navigation")}>
-          <Link to="/" activeOptions={{exact:true}} activeProps={homeFilter==='all'?{className:'active'}:{}} onClick={()=>setHomeFilter('all')}>{t("Home")}</Link>
-          <button className="home-header-category" aria-pressed={isHome&&homeFilter==='movie'} onClick={()=>selectHomeCategory('movie')}>{t("Movies")}</button>
-          <button className="home-header-category" aria-pressed={isHome&&homeFilter==='series'} onClick={()=>selectHomeCategory('series')}>{t("Series")}</button>
-          <Link to="/library" activeProps={{className:'active'}}>{t("Library")}</Link>
-          <Link to="/shorts" search={{}} activeProps={{className:'active'}}>{t("Shorts")}</Link>
-          <Link to="/favorites" activeProps={{className:'active'}}>{t("Favorites")}</Link>
-          <Link to="/playlists" activeProps={{className:'active'}}>{t("Playlists")}</Link>
+          <Link to="/" activeOptions={{exact:true}} activeProps={homeFilter==='all'?{className:'active'}:{}} onClick={()=>setHomeFilter('all')}><HeaderNavLabel section="home">{t("Home")}</HeaderNavLabel></Link>
+          <button className="home-header-category" aria-pressed={isHome&&homeFilter==='movie'} onClick={()=>selectHomeCategory('movie')}><HeaderNavLabel section="movies">{t("Movies")}</HeaderNavLabel></button>
+          <button className="home-header-category" aria-pressed={isHome&&homeFilter==='series'} onClick={()=>selectHomeCategory('series')}><HeaderNavLabel section="series">{t("Series")}</HeaderNavLabel></button>
+          <Link to="/library" activeProps={{className:'active'}}><HeaderNavLabel section="library">{t("Library")}</HeaderNavLabel></Link>
+          <Link to="/shorts" search={{}} activeProps={{className:'active'}}><HeaderNavLabel section="shorts">{t("Shorts")}</HeaderNavLabel></Link>
+          <Link to="/favorites" activeProps={{className:'active'}}><HeaderNavLabel section="favorites">{t("Favorites")}</HeaderNavLabel></Link>
+          <Link to="/playlists" activeProps={{className:'active'}}><HeaderNavLabel section="playlists">{t("Playlists")}</HeaderNavLabel></Link>
         </nav>
         <div className="topbar-actions">
           <NotificationBell/>
