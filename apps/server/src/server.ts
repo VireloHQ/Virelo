@@ -462,7 +462,7 @@ export async function createVireloServer(config: RuntimeConfig, pickFolder: (sig
     return db.listMedia({
       search: q.search?.slice(0, 200),
       kind: q.kind,
-      seriesTitle: q.seriesTitle?.trim().slice(0, 512),
+      seriesTitle: typeof q.seriesTitle === 'string' ? q.seriesTitle : undefined,
       limit: q.limit ? Number(q.limit) : 100,
       offset: q.offset ? Number(q.offset) : 0,
       libraryId: q.libraryId ? Number(q.libraryId) : undefined,

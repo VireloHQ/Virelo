@@ -15,10 +15,10 @@ test('series Play all uses natural season and episode order', () => {
 });
 
 test('series Play all excludes titles containing the query and other libraries', () => {
-  const items = [episode(1, 1, 'Northbound', 1, 1), episode(2, 1, 'Northbound Extended', 1, 2),
-    episode(3, 2, 'Northbound', 1, 3), episode(4, 1, 'northbound ', 1, 4),
-    episode(5, 1, 'Northbound', 1, 5, 'movie')];
-  assert.deepEqual(sortSeriesEpisodes(items, ' Northbound ', 1).map(item => item.id), [1, 4]);
+  const items = [episode(1, 1, 'ÉTÉ', 1, 1), episode(2, 1, 'Été Extended', 1, 2),
+    episode(3, 2, 'Été', 1, 3), episode(4, 1, '\tété ', 1, 4),
+    episode(5, 1, 'Été', 1, 5, 'movie')];
+  assert.deepEqual(sortSeriesEpisodes(items, ' Été ', 1).map(item => item.id), [1, 4]);
 });
 
 test('unnumbered episodes follow numbered episodes', () => {

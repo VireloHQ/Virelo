@@ -9,11 +9,15 @@ export interface SeriesEpisode {
   title: string;
 }
 
+export function seriesTitleKey(title: string): string {
+  return title.trim().toLowerCase();
+}
+
 export function sortSeriesEpisodes<T extends SeriesEpisode>(items: readonly T[], seriesTitle: string, libraryId: number): T[] {
-  const title = seriesTitle.trim().toLocaleLowerCase();
+  const title = seriesTitleKey(seriesTitle);
   return items.filter(item =>
     item.kind === 'series' && item.library_id === libraryId
-    && item.series_title?.trim().toLocaleLowerCase() === title
+    && item.series_title !== null && seriesTitleKey(item.series_title) === title
   ).sort((a, b) =>
     (a.season ?? Number.MAX_SAFE_INTEGER) - (b.season ?? Number.MAX_SAFE_INTEGER)
     || (a.episode ?? Number.MAX_SAFE_INTEGER) - (b.episode ?? Number.MAX_SAFE_INTEGER)
