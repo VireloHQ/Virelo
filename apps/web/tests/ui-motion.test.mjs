@@ -61,12 +61,14 @@ test('closing dropdowns stay visually present but become inert and hidden to ass
 
 test('switch anchors a white thumb inside both track edges at every size', async () => {
   const motion = await source('ui-motion.css');
-  assert.match(motion, /--virelo-switch-thumb-width:1\.375rem/);
-  assert.match(motion, /--virelo-switch-thumb-width:1\.03125rem/);
-  assert.match(motion, /--virelo-switch-thumb-width:1\.71875rem/);
+  assert.match(motion, /--virelo-switch-thumb-size:1rem/);
+  assert.match(motion, /--virelo-switch-thumb-size:\.75rem/);
+  assert.match(motion, /--virelo-switch-thumb-size:1\.25rem/);
+  assert.match(motion, /width:var\(--virelo-switch-thumb-size\);\s*height:var\(--virelo-switch-thumb-size\)/);
+  assert.match(motion, /border-radius:50%/);
   assert.match(motion, /\.switch \.switch__thumb \{[^}]*position:absolute/);
   assert.match(motion, /inset-inline-start:2px/);
-  assert.match(motion, /inset-inline-start:calc\(100% - var\(--virelo-switch-thumb-width\) - 2px\)/);
+  assert.match(motion, /inset-inline-start:calc\(100% - var\(--virelo-switch-thumb-size\) - 2px\)/);
   assert.match(motion, /transition:inset-inline-start var\(--dur-short\) var\(--ease-in-out\)/);
   assert.match(motion, /\.switch \.switch__thumb \{[^}]*background-color:#fff/);
   assert.doesNotMatch(motion, /--switch-travel|translateX\(/);
