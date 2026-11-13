@@ -20,7 +20,7 @@
     "verify:web": "npm run verify:deployment -w apps/web"
   },
   "devDependencies": {
-    "wrangler": "4.153.0"
+    "wrangler": "4.158.0"
   },
   "overrides": {
     "glob": "14.0.4"
