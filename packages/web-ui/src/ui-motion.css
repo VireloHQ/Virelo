@@ -13,19 +13,43 @@
 .app-shell :is(button, a, input, textarea, select):focus-visible,
 :is(.context-popover, .playback-settings-menu, .virelo-confirm-dialog) :focus-visible { transition:none; }
 
-/* Let HeroUI move the thumb with its built-in inset-inline-start offset.
-   Translating it as well shifted the selected thumb past the end of the track. */
-.app-shell .switch__control {
+/* Place the thumb explicitly inside the track in both states. HeroUI's
+   relative margin and calculated selected inset can compound, leaving the
+   selected thumb clipped at the right edge on some switches. */
+.app-shell .switch {
+  --virelo-switch-thumb-width:1.375rem;
+  --virelo-switch-thumb-height:1rem;
+}
+.app-shell .switch--sm {
+  --virelo-switch-thumb-width:1.03125rem;
+  --virelo-switch-thumb-height:.75rem;
+}
+.app-shell .switch--lg {
+  --virelo-switch-thumb-width:1.71875rem;
+  --virelo-switch-thumb-height:1.25rem;
+}
+.app-shell .switch .switch__control {
+  position:relative;
   transition:background-color var(--dur-short) var(--ease-out);
 }
 .app-shell .switch .switch__thumb {
+  position:absolute;
+  inset-block-start:2px;
+  inset-inline-start:2px;
+  inset-inline-end:auto;
+  margin:0;
+  width:var(--virelo-switch-thumb-width);
+  height:var(--virelo-switch-thumb-height);
   border-radius:999px;
+  background-color:#fff;
   transform:none;
   transition:inset-inline-start var(--dur-short) var(--ease-in-out),background-color var(--dur-short) var(--ease-out);
 }
-.app-shell .switch:not([data-disabled="true"]) .switch__thumb {
+.app-shell .switch:is([aria-checked="true"],[data-selected="true"]) .switch__thumb {
+  inset-inline-start:calc(100% - var(--virelo-switch-thumb-width) - 2px);
   background-color:#fff;
 }
+.app-shell .switch:has([data-focus-visible="true"]) .switch__thumb { transition:none; }
 
 /* CSS display transitions retain a closing picker without keeping it interactive. */
 .app-shell .picker[data-open="true"] { z-index:21; }
