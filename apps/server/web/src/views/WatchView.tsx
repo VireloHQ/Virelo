@@ -13,6 +13,7 @@ import { WatchInfo, WatchRecommendations } from '../components/WatchInfo';
 import { queueDestination, type RepeatMode } from '@virelo/core/playback-repeat';
 import { loadFavoriteQueue, loadMediaQueue } from '../utils/favorites';
 import { toggleQueueShuffle } from '@virelo/core/playback-queue';
+import { sortSeriesEpisodes } from '@virelo/core/series-playback';
 import { usePlaybackQueue } from '@virelo/web-ui/hooks/usePlaybackQueue.ts';
 import { useQueueLayout } from '@virelo/web-ui/hooks/useQueueLayout.ts';
 import type { MediaItem, PlaylistDetail, QueueBehavior } from '../types';
@@ -21,16 +22,22 @@ export function WatchView() {
   useLocale();
   const { mediaId } = useParams({ from: '/watch/$mediaId' });
   const searchParams = useSearch({ from: '/watch/$mediaId' });
-  const queueEnabled = Boolean(searchParams.queue || searchParams.playlistId);
+  const seriesQueue = Boolean(searchParams.seriesTitle && searchParams.libraryId);
+  const queueEnabled = Boolean(searchParams.queue || searchParams.playlistId || seriesQueue);
   const playlistQ = useQuery({ queryKey: ['playlist', searchParams.playlistId], queryFn: () => api.playlist(searchParams.playlistId!), enabled: searchParams.playlistId !== undefined });
   const queueLayout = useQueueLayout(state => state.layout);
   const settingsQ = useQuery({ queryKey: ['settings'], queryFn: api.settings });
   const queueQ = useQuery({
     queryKey: ['watch-queue', searchParams],
-    queryFn: () => (searchParams.favorites ? loadFavoriteQueue : loadMediaQueue)((offset, limit) => api.media({
-      liked: searchParams.favorites ? 1 : undefined, search: searchParams.search, folder: searchParams.folder, recursive: searchParams.exactFolder?0:undefined,
-      libraryId: searchParams.libraryId, sort: searchParams.sort === 'random' ? 'title' : searchParams.sort, offset, limit
-    })),
+    queryFn: async () => {
+      const source = await (searchParams.favorites ? loadFavoriteQueue : loadMediaQueue)((offset, limit) => api.media({
+        liked: searchParams.favorites ? 1 : undefined, search: searchParams.search, folder: searchParams.folder, recursive: searchParams.exactFolder?0:undefined,
+        libraryId: searchParams.libraryId, kind: seriesQueue ? 'series' : undefined,
+        seriesTitle: seriesQueue ? searchParams.seriesTitle : undefined,
+        sort: searchParams.sort === 'random' ? 'title' : searchParams.sort, offset, limit
+      }));
+      return seriesQueue ? sortSeriesEpisodes(source, searchParams.seriesTitle!, searchParams.libraryId!) : source;
+    },
     enabled: queueEnabled && searchParams.playlistId === undefined
   });
   const itemQ = useQuery({ queryKey: ['media', Number(mediaId)], queryFn: () => api.mediaById(Number(mediaId)), enabled: !queueEnabled });
@@ -40,7 +47,7 @@ export function WatchView() {
     const retry = () => { void (searchParams.playlistId ? playlistQ.refetch() : queueQ.refetch()); };
     if (error && !source) return <div className="watch-empty" role="alert"><h1>{t("Could not load queue")}</h1><p>{t(error.message)}</p><button onClick={retry}>{t("Try again")}</button></div>;
     if (!source) return <PageSkeleton kind="watch" queueLayout={queueLayout}/>;
-    return <QueuedWatch key={JSON.stringify([mediaId, searchParams.search, searchParams.folder, searchParams.libraryId, searchParams.sort, searchParams.favorites, searchParams.playlistId])}
+    return <QueuedWatch key={JSON.stringify([mediaId, searchParams.search, searchParams.folder, searchParams.libraryId, searchParams.seriesTitle, searchParams.sort, searchParams.favorites, searchParams.playlistId])}
       source={source} initialId={Number(mediaId)} behavior={settingsQ.data?.queueBehavior ?? 'auto'} shuffle={searchParams.sort === 'random'}
       playlist={searchParams.playlistId ? playlistQ.data : undefined} refreshError={error?.message} onRetry={retry}/>;
   }

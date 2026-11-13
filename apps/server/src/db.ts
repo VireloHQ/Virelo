@@ -436,7 +436,7 @@ export class VireloDB {
     for (const row of rows) if (!paths.has(this.pathKey(canonicalMediaPath(row.path)))) del.run(row.id);
   }
 
-  listMedia(options: { search?: string; kind?: MediaKind; limit?: number; offset?: number; libraryId?: number; folder?: string; sort?: SortKey; seed?:number; liked?: boolean } = {}, scope?: CatalogScope) {
+  listMedia(options: { search?: string; kind?: MediaKind; seriesTitle?: string; limit?: number; offset?: number; libraryId?: number; folder?: string; sort?: SortKey; seed?:number; liked?: boolean } = {}, scope?: CatalogScope) {
     const clauses: string[] = [];
     const params: SQLInputValue[] = [];
     const visible = this.catalogClause(scope), joins = this.personalJoins(scope);
@@ -447,6 +447,7 @@ export class VireloDB {
       const q = `%${options.search}%`; params.push(q,q,q);
     }
     if (options.kind) { clauses.push('m.kind=?'); params.push(options.kind); }
+    if (options.seriesTitle?.trim()) { clauses.push('TRIM(m.series_title) = ? COLLATE NOCASE'); params.push(options.seriesTitle.trim()); }
     if (options.libraryId) { clauses.push('m.library_id=?'); params.push(options.libraryId); }
     if (options.folder !== undefined) { clauses.push('m.folder=?'); params.push(options.folder); }
     if (options.liked) clauses.push('l.media_id IS NOT NULL');

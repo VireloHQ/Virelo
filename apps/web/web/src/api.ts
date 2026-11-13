@@ -68,6 +68,7 @@ export const api = {
     if (libraryId !== null) items = items.filter((item) => item.library_id === libraryId);
     if (folder !== null) items = items.filter((item) => item.folder === folder || params.recursive!==0&&params.recursive!=='0'&&item.folder.startsWith(`${folder}/`));
     if (params.kind) items = items.filter((item) => item.kind === params.kind);
+    if (params.seriesTitle) items = items.filter((item) => item.series_title?.trim().toLocaleLowerCase() === String(params.seriesTitle).trim().toLocaleLowerCase());
     if (String(params.liked ?? '') === '1') items = items.filter((item) => Boolean(item.liked));
     items.sort(params.sort==='random'&&params.seed!==undefined?(a,b)=>shortsRank(a.id,Number(params.seed))-shortsRank(b.id,Number(params.seed))||a.id-b.id:compare((params.sort as SortKey | undefined) ?? 'title'));
     const offset = Number(params.offset ?? 0);
