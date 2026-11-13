@@ -124,13 +124,15 @@ try {
         const track = element.closest('.switch__control').getBoundingClientRect(), knob = element.getBoundingClientRect(), style = getComputedStyle(element);
         return {left:knob.left-track.left,right:track.right-knob.right,top:knob.top-track.top,bottom:track.bottom-knob.bottom,
           position:style.position,color:style.backgroundColor,transform:style.transform,
-          width:knob.width,trackWidth:track.width};
+          width:knob.width,height:knob.height,trackWidth:track.width,trackHeight:track.height,borderRadius:style.borderRadius};
       });
       const edge = selected ? geometry.right : geometry.left;
       check(geometry.position==='absolute'&&geometry.color==='rgb(255, 255, 255)'&&geometry.transform==='none'
         &&Math.abs(edge-2)<0.8&&Math.abs(geometry.top-2)<0.8&&Math.abs(geometry.bottom-2)<0.8
-        &&geometry.left>=1&&geometry.right>=1&&geometry.width<geometry.trackWidth,
-        label+' Switch '+phase+' keeps a white thumb with 2px edge padding: '+JSON.stringify(geometry));
+        &&geometry.left>=1&&geometry.right>=1&&geometry.width<geometry.trackWidth
+        &&Math.abs(geometry.width-geometry.height)<0.5
+        &&geometry.borderRadius==='50%',
+        label+' Switch '+phase+' has a circular white thumb with 2px edge padding: '+JSON.stringify(geometry));
     };
     await thumbPlacement(original,'initial '+(original?'ON':'OFF'));
     await page.evaluate(() => { window.__motion = []; });
