@@ -13,7 +13,7 @@ export function mediaGenres(value:string|null):string[] {
   return [...new Set((genres as unknown[]).filter((g):g is string=>typeof g==='string').map(g=>g.trim()).filter(Boolean))];
 }
 const seriesKey=(item:HomeMedia)=>item.kind==='series'&&item.series_title
-  ? JSON.stringify([item.library_id,item.series_title.trim().toLocaleLowerCase()]) : 'item:'+item.id;
+  ? JSON.stringify([item.library_id,item.series_title.trim().toLowerCase()]) : 'item:'+item.id;
 const portrait=(item:HomeMedia)=>Boolean(item.width&&item.height&&item.height>item.width);
 const completed=(item:HomeMedia)=>Boolean(item.progress_completed) ||
   Boolean((item.progress_duration||item.duration)&& (item.progress_position||0)/(item.progress_duration||item.duration!)>=.92);

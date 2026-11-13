@@ -1,4 +1,6 @@
 /** Curated shelves from local history and metadata; no external recommendation service. */
+import { seriesTitleKey } from './series-playback.ts';
+
 export interface HomeMedia {
   id:number; library_id:number; title:string; kind:string; series_title:string|null;
   season:number|null; episode:number|null; duration:number|null; width:number|null; height:number|null;
@@ -13,7 +15,7 @@ export function mediaGenres(value:string|null):string[] {
   return [...new Set((genres as unknown[]).filter((g):g is string=>typeof g==='string').map(g=>g.trim()).filter(Boolean))];
 }
 const seriesKey=(item:HomeMedia)=>item.kind==='series'&&item.series_title
-  ? JSON.stringify([item.library_id,item.series_title.trim().toLocaleLowerCase()]) : 'item:'+item.id;
+  ? JSON.stringify([item.library_id,seriesTitleKey(item.series_title)]) : 'item:'+item.id;
 const portrait=(item:HomeMedia)=>Boolean(item.width&&item.height&&item.height>item.width);
 const completed=(item:HomeMedia)=>Boolean(item.progress_completed) ||
   Boolean((item.progress_duration||item.duration)&& (item.progress_position||0)/(item.progress_duration||item.duration!)>=.92);

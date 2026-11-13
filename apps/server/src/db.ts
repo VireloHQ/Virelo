@@ -28,6 +28,8 @@ export class VireloDB {
       this.db.exec('PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL; PRAGMA foreign_keys=ON; PRAGMA busy_timeout=5000;');
       this.migrate();
       this.db.function('shorts_rank', { deterministic: true }, (id, seed) => shortsRank(Number(id), Number(seed)));
+      // SQLite NOCASE only folds ASCII; use the same Unicode rules as Home and the browser.
+      this.db.function('series_title_key', { deterministic: true }, title => typeof title === 'string' ? title.trim().toLowerCase() : null);
     } catch(error) { this.db.close();throw error; }
   }
 
@@ -436,7 +438,7 @@ export class VireloDB {
     for (const row of rows) if (!paths.has(this.pathKey(canonicalMediaPath(row.path)))) del.run(row.id);
   }
 
-  listMedia(options: { search?: string; kind?: MediaKind; limit?: number; offset?: number; libraryId?: number; folder?: string; sort?: SortKey; seed?:number; liked?: boolean } = {}, scope?: CatalogScope) {
+  listMedia(options: { search?: string; kind?: MediaKind; seriesTitle?: string; limit?: number; offset?: number; libraryId?: number; folder?: string; sort?: SortKey; seed?:number; liked?: boolean } = {}, scope?: CatalogScope) {
     const clauses: string[] = [];
     const params: SQLInputValue[] = [];
     const visible = this.catalogClause(scope), joins = this.personalJoins(scope);
@@ -447,6 +449,7 @@ export class VireloDB {
       const q = `%${options.search}%`; params.push(q,q,q);
     }
     if (options.kind) { clauses.push('m.kind=?'); params.push(options.kind); }
+    if (options.seriesTitle !== undefined) { clauses.push('series_title_key(m.series_title) = series_title_key(?)'); params.push(options.seriesTitle); }
     if (options.libraryId) { clauses.push('m.library_id=?'); params.push(options.libraryId); }
     if (options.folder !== undefined) { clauses.push('m.folder=?'); params.push(options.folder); }
     if (options.liked) clauses.push('l.media_id IS NOT NULL');

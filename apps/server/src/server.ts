@@ -457,11 +457,12 @@ export async function createVireloServer(config: RuntimeConfig, pickFolder: (sig
   app.post('/api/scan', async request => ({ started: await runScan(request.catalogScope!), status: visibleScanStatus(request.account!.isAdmin) }));
   app.get('/api/scan/status', async request => visibleScanStatus(request.account!.isAdmin));
   app.get('/api/home', async request => db.getHome(request.catalogScope!));
-  app.get<{ Querystring: { search?: string; kind?: MediaKind; limit?: string; offset?: string; libraryId?: string; folder?: string; sort?: string; seed?:string; liked?: string } }>('/api/media', async (request) => {
+  app.get<{ Querystring: { search?: string; kind?: MediaKind; seriesTitle?: string; limit?: string; offset?: string; libraryId?: string; folder?: string; sort?: string; seed?:string; liked?: string } }>('/api/media', async (request) => {
     const q = request.query;
     return db.listMedia({
       search: q.search?.slice(0, 200),
       kind: q.kind,
+      seriesTitle: typeof q.seriesTitle === 'string' ? q.seriesTitle : undefined,
       limit: q.limit ? Number(q.limit) : 100,
       offset: q.offset ? Number(q.offset) : 0,
       libraryId: q.libraryId ? Number(q.libraryId) : undefined,
