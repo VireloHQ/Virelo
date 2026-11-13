@@ -119,17 +119,35 @@ try {
     const thumb = page.locator('#settings-panel-shorts .switch__thumb');
     const toggle = page.getByRole('switch', { name: 'Include landscape videos' });
     const original = await toggle.isChecked();
+    const thumbPlacement = async (selected, phase) => {
+      const geometry = await thumb.evaluate(element => {
+        const track = element.closest('.switch__control').getBoundingClientRect(), knob = element.getBoundingClientRect(), style = getComputedStyle(element);
+        return {left:knob.left-track.left,right:track.right-knob.right,top:knob.top-track.top,bottom:track.bottom-knob.bottom,
+          position:style.position,color:style.backgroundColor,transform:style.transform,
+          width:knob.width,height:knob.height,trackWidth:track.width,trackHeight:track.height,borderRadius:style.borderRadius};
+      });
+      const edge = selected ? geometry.right : geometry.left;
+      check(geometry.position==='absolute'&&geometry.color==='rgb(255, 255, 255)'&&geometry.transform==='none'
+        &&Math.abs(edge-2)<0.8&&Math.abs(geometry.top-2)<0.8&&Math.abs(geometry.bottom-2)<0.8
+        &&geometry.left>=1&&geometry.right>=1&&geometry.width<geometry.trackWidth
+        &&Math.abs(geometry.width-geometry.height)<0.5
+        &&geometry.borderRadius==='50%',
+        label+' Switch '+phase+' has a circular white thumb with 2px edge padding: '+JSON.stringify(geometry));
+    };
+    await thumbPlacement(original,'initial '+(original?'ON':'OFF'));
     await page.evaluate(() => { window.__motion = []; });
     const recording = page.evaluate(selector => window.__capture(selector), rowText);
     await page.locator('#settings-panel-shorts .switch__control').click();
     await settled(thumb);
     check((await toggle.isChecked()) !== original, label + ' Switch updates immediately');
     stable(await recording, 'Switch does not move its description');
-    const thumbEvents = await page.evaluate(() => window.__motion.filter(event => event.className.includes('switch__thumb') && event.property === 'transform'));
+    await thumbPlacement(!original,'toggled '+(!original?'ON':'OFF'));
+    const thumbEvents = await page.evaluate(() => window.__motion.filter(event => event.className.includes('switch__thumb') && ['left','right','inset-inline-start'].includes(event.property)));
     check(scenario.reduce ? thumbEvents.length === 0 : thumbEvents.some(event => event.animations.some(animation => animation.duration === 200)),
-      label + ' Switch uses the shared transform timing, with reduced-motion support');
+      label + ' Switch uses the built-in inset offset timing, with reduced-motion support');
     await toggle.focus(); await page.keyboard.press('Space'); await settled(thumb);
     check((await toggle.isChecked()) === original, label + ' keyboard Switch operation stays immediate and reversible');
+    await thumbPlacement(original,'keyboard restored '+(original?'ON':'OFF'));
 
     await settings('playback');
     const trigger = page.getByRole('button', { name: 'Queue advance', exact: true });

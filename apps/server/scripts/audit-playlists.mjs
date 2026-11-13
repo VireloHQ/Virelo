@@ -130,6 +130,35 @@ async function addFromDetails(page, base, prefix, title, id, label) {
   await page.locator('.playlist-save-notice').waitFor({state:'hidden',timeout:5000});
   check(true,label+' playlist save feedback dismisses automatically');
 }
+async function auditLongPlaylistPicker(page,mode,base,prefix,label) {
+  const names=Array.from({length:16},(_,i)=>'Dropdown test '+String(i+1).padStart(2,'0'));
+  const created=[];
+  for(const name of names) created.push(await call(page,mode,'createPlaylist',{name,mediaIds:[1]}));
+  await page.goto(base+prefix+'/title/1');
+  await page.getByRole('button',{name:'Add to playlist',exact:true}).click();
+  const dialog=page.getByRole('dialog',{name:'Save to playlist',exact:true});
+  const trigger=dialog.getByRole('button',{name:'Playlist',exact:true});
+  await trigger.click();
+  const list=dialog.getByRole('listbox',{name:'Playlist',exact:true});
+  await dialog.getByRole('option',{name:names.at(-1),exact:true}).waitFor();
+  const layout=await list.evaluate(element=>{
+    const style=getComputedStyle(element);
+    return {position:style.position,scrollable:element.scrollHeight>element.clientHeight,
+      overflowY:style.overflowY,insideDialog:!!element.closest('.virelo-confirm-body')};
+  });
+  check(layout.position==='static'&&layout.scrollable&&layout.overflowY==='auto'&&layout.insideDialog,
+    label+' a long playlist dropdown scrolls within its dialog: '+JSON.stringify(layout));
+  const last=dialog.getByRole('option',{name:names.at(-1),exact:true});
+  await last.scrollIntoViewIfNeeded();
+  check(await last.isVisible(),label+' the last playlist option can be reached by scrolling');
+  await last.click();
+  check((await trigger.textContent()).includes(names.at(-1)),label+' a previously clipped playlist option can be selected');
+  await dialog.getByRole('button',{name:'Cancel',exact:true}).click();await dialog.waitFor({state:'hidden'});
+  for(const playlist of created) {
+    const current=await call(page,mode,'playlist',playlist.id);
+    await call(page,mode,'deletePlaylist',playlist.id,current.revision);
+  }
+}
 async function removeItem(page, title) {
   await page.getByRole('button',{name:'Options for '+title,exact:true}).click();
   await page.getByRole('menuitem',{name:'Remove from playlist',exact:true}).click();
@@ -224,6 +253,7 @@ api.mediaSource=async id=>{if(!urls.has(id))urls.set(id,URL.createObjectURL(awai
     }
     await auditLibraryNames(page,mode,base,prefix,label);
     await addFromContext(page,mode,base,prefix,label);
+    if(name!=='small')await auditLongPlaylistPicker(page,mode,base,prefix,label);
     await page.goto(base+prefix+'/library');
     if(mode==='web') check(await page.evaluate(async()=>{const item=await(await import('/src/local-library.ts')).getStoredMedia(1);return item.liked===1&&item.progress_position===12;}),label+' upgrading browser storage preserves existing favorites and progress');
     const playlistEntry=page.locator('.heading-controls').getByRole('link',{name:'Playlists',exact:true});
