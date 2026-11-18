@@ -5,6 +5,10 @@
 ## 0.6.1
 
 - Share browser and self-hosted player development in one repository. The npm command, data directory, accounts and saved libraries are unchanged.
+- Add Play all to series details, starting at the first episode in season and episode order. Match series names consistently across Unicode case variants without mixing libraries.
+- Restart the current video with Previous after three seconds; press again near the start to select the preceding queue item. Single videos can restart too.
+- Keep Movies and Series available in desktop navigation, add navigation icons and balance compact header spacing.
+- Keep selected switch thumbs inside their tracks and prevent the playlist picker from being clipped by its dialog.
 
 ## 0.6.0
 
