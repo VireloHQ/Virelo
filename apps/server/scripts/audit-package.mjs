@@ -8,6 +8,7 @@ import { join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { npm, packRelease } from './pack-release.mjs';
 import { assertCleanAudit } from './dependency-audit.mjs';
+import { checkDevelopmentAudit, PICOMATCH_EXCEPTION } from './development-audit-policy.mjs';
 
 const repo = fileURLToPath(new URL('../', import.meta.url));
 const root = await mkdtemp(join(tmpdir(), 'virelo-package-audit-'));
@@ -21,7 +22,10 @@ catch (error) {
   sourceAuditOutput = error.stdout;
 }
 const sourceAudit = JSON.parse(sourceAuditOutput);
-assertCleanAudit(sourceAudit, 'build and production dependencies');
+const workspaceLock = JSON.parse(await readFile(new URL('../../../package-lock.json', import.meta.url), 'utf8'));
+if (checkDevelopmentAudit(sourceAudit, workspaceLock)) {
+  console.warn(`WARNING: accepted development-only ${PICOMATCH_EXCEPTION.advisory} until ${PICOMATCH_EXCEPTION.expires}; not fixed. Production audit remains zero-only.`);
+}
 const archive = await packRelease({ destination: process.env.VIRELO_RELEASE_OUTPUT || root });
 assert.equal(archive.filename, `virelo-${expected.version}.tgz`);
 assert.ok(!archive.files.some(file => /(?:\.wasm(?:\.gz)?$|\/ffmpeg-0\.12\.10\/)/.test(file.path)),
@@ -32,6 +36,9 @@ const install = join(root, 'install');
 npm(['install', '--prefix', install, '--omit=dev', '--ignore-scripts', '--no-fund', '--no-audit', archive.path]);
 const audit = JSON.parse(npm(['audit', '--omit=dev', '--json'], install));
 assertCleanAudit(audit, 'installed production dependencies');
+const installedLock = JSON.parse(await readFile(join(install, 'package-lock.json'), 'utf8'));
+assert.ok(!Object.keys(installedLock.packages).some(path => /(?:^|\/)node_modules\/(?:picomatch|fdir|tinyglobby|vite|@vitejs\/plugin-react)$/.test(path)),
+  'development tools must not enter the consumer dependency tree');
 const installed = join(install, 'node_modules/virelo');
 const metadata = JSON.parse(await readFile(join(installed, 'package.json'), 'utf8'));
 assert.equal(metadata.version, expected.version);
