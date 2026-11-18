@@ -23,6 +23,7 @@ import { usePlaybackVolume } from '@virelo/web-ui/hooks/usePlaybackVolume.ts';
 import { usePlaybackSpeed } from '@virelo/web-ui/hooks/usePlaybackSpeed.ts';
 import { PlayerControls } from '@virelo/web-ui/components/PlayerControls.tsx';
 import { previousVideoAction } from '@virelo/core/playback-previous';
+import { initialPlaybackPosition } from '@virelo/core/playback-initial-position';
 import { usePlaybackActivity } from '../hooks/usePlaybackActivity';
 import { useVideoPresentation } from '@virelo/web-ui/hooks/useVideoPresentation.ts';
 import { VideoSettingsPanel } from '@virelo/web-ui/components/VideoSettingsPanel.tsx';
@@ -42,6 +43,7 @@ interface PlayerProps {
   canGoNext?: boolean;
   canGoPrev?: boolean;
   autoPlay?: boolean;
+  resumeFromHistory?: boolean;
   shorts?: ShortsPlaybackOptions;
   repeatMode?: RepeatMode;
   onRepeatChange?: (mode:RepeatMode) => void;
@@ -50,8 +52,9 @@ interface PlayerProps {
 const DIRECT_AUDIO_CODECS=new Set(['aac','flac','mp3','opus','vorbis']);
 type HlsInstance=InstanceType<(typeof import('hls.js/light'))['default']>;
 
-export function Player({item,queue,queueIndex,shuffled,onShuffle,onEnded,onNext,onPrev,canGoNext=true,canGoPrev=true,autoPlay,shorts,repeatMode,onRepeatChange}:PlayerProps) {
+export function Player({item,queue,queueIndex,shuffled,onShuffle,onEnded,onNext,onPrev,canGoNext=true,canGoPrev=true,autoPlay,resumeFromHistory=true,shorts,repeatMode,onRepeatChange}:PlayerProps) {
   useLocale();
+  const historyPosition = initialPlaybackPosition(item.progress_position, resumeFromHistory);
   const canTranscode=useAccount()?.user.permissions.transcode!==false;
   const localPlayback=isLocalPlaybackHost();
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -192,12 +195,12 @@ export function Player({item,queue,queueIndex,shuffled,onShuffle,onEnded,onNext,
         if(info.requiresTranscode||videoRef.current?.error){
           videoFallbackRequested.current=true;
           const video=videoRef.current;
-          const position=video?.currentTime||item.progress_position||0;
+          const position=video?.currentTime||historyPosition;
           sourceTransition.current=true;
           video?.pause();
           await startFallback(audio??undefined,position,wantsPlayback.current);
         }else if(audio!==null&&audio!==info.defaultAudioStream){
-          const resume=item.progress_position||0;
+          const resume=historyPosition;
           const position=initialResumeItem.current===item.id?(video?.currentTime||0):resume>5&&(!item.duration||resume<item.duration*.92)?resume:0;
           await prepareAudio(audio,info,true,true,position);
         }else{
@@ -206,7 +209,7 @@ export function Player({item,queue,queueIndex,shuffled,onShuffle,onEnded,onNext,
         }
         return;
       }
-      const adaptiveReady=await startQuality(audio??undefined,item.progress_position||0,wantsPlayback.current);
+      const adaptiveReady=await startQuality(audio??undefined,historyPosition,wantsPlayback.current);
       if(!alive)return;
       if(adaptiveReady){
         setPlaybackReady(true);
@@ -740,7 +743,7 @@ export function Player({item,queue,queueIndex,shuffled,onShuffle,onEnded,onNext,
         const v=e.currentTarget;playbackItemId.current=item.id;setDuration(fullDuration(v.duration,item.duration));
         if(initialResumeItem.current!==item.id){
           initialResumeItem.current=item.id;
-          const resume=item.progress_position||0;
+          const resume=historyPosition;
           if(resume>5 && (!v.duration || resume < v.duration*.92)) v.currentTime=resume;
         }
       }}

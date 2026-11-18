@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { auditQueueResume } from '../../../scripts/audit-queue-resume.mjs';
 import { auditPlaylistField } from './helpers/playlist-field-audit.mjs';
 import { auditPlaylistListLayout } from './helpers/compact-library-audit.mjs';
 import { createRequire } from 'node:module';
@@ -178,15 +179,15 @@ async function addFromContext(page,mode,base,prefix,label) {
   check(await page.getByRole('menu',{name:'Clip 4 actions',exact:true}).count()===0,label+' playlist dialog replaces the menu without navigating to details');
   check(new URL(page.url()).pathname===prefix+'/library',label+' dialog clicks do not follow the enclosing video-card link');
   await page.keyboard.press('Escape');await dialog.waitFor({state:'hidden'});
-  await page.waitForFunction(()=>document.activeElement?.classList.contains('media-card'));
-  check(await card.evaluate(element=>element===document.activeElement),label+' Escape restores focus to the originating video');
+  await page.waitForFunction(()=>document.activeElement?.classList.contains('media-card-link'));
+  check(await card.locator('.media-card-link').evaluate(element=>element===document.activeElement),label+' Escape restores focus to the originating video');
   menu=await open();await menu.press('End');await page.keyboard.press('Enter');
   dialog=page.getByRole('dialog',{name:'Save to playlist',exact:true});await dialog.waitFor();
   check(await dialog.evaluate(element=>element.closest('.virelo-confirm-backdrop').dataset.animate==='false'),label+' keyboard playlist action opens without pointer animation');
   const title='Context '+label;
   await dialog.getByRole('textbox',{name:'Playlist name',exact:true}).fill(title);
   await dialog.getByRole('button',{name:'Save',exact:true}).click();await dialog.waitFor({state:'hidden'});
-  await page.waitForFunction(()=>document.activeElement?.classList.contains('media-card'));
+  await page.waitForFunction(()=>document.activeElement?.classList.contains('media-card-link'));
   const saved=(await call(page,mode,'playlists')).find(row=>row.name===title);
   check(Boolean(saved)&&(await call(page,mode,'playlist',saved.id)).items.map(item=>item.id).join(',')==='4',label+' context action creates a playlist containing the selected video');
   menu=await open();await menu.getByRole('menuitem',{name:'Add to playlist',exact:true}).click();
@@ -353,6 +354,7 @@ api.mediaSource=async id=>{if(!urls.has(id))urls.set(id,URL.createObjectURL(awai
     await page.getByRole('button',{name:'Play all',exact:true}).click();
     await page.waitForFunction(()=>{const video=document.querySelector('.player video');return video&&!video.paused&&video.currentTime>.2;});
     check(new URL(page.url()).searchParams.get('playlistId')===String(id),label+' Play all opens this playlist rather than the full library');
+    await auditQueueResume(page,mode,base,prefix,id,label,check);
     await auditWatchActions(page,label+' horizontal');
     await page.getByRole('button',{name:'Queue options',exact:true}).click();
     check(await page.getByRole('menuitem',{name:'Save current order',exact:true}).isDisabled(),label+' an unchanged order cannot be saved again');

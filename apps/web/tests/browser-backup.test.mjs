@@ -7,7 +7,7 @@ const api = await loadAppearanceTestModule('browser-backup.ts', {
 });
 const INVALID = 'This backup contains invalid or unsafe data.';
 const NOT_EMPTY = 'Library backups can only be imported into an empty browser library.';
-const settings = { audioAnalysisEnabled: true, shortsIncludeLandscapes: true, queueBehavior: 'manual' };
+const settings = { audioAnalysisEnabled: true, shortsIncludeLandscapes: true, queueBehavior: 'manual', queueResumePosition: true };
 const track = JSON.stringify(['ja', 'original', 'aac', 2, 'stereo', false]);
 const preferences = {
   'virelo.appearance.v1': JSON.stringify({ controllerStyle: 'theater', accentColor: '#ABCDEF' }),
@@ -15,6 +15,7 @@ const preferences = {
   'virelo.explorer-width': '320', 'virelo.playback-speed:v1': '1.5', 'virelo-playback-quality:v1': '1080',
   'virelo-playback-audio:v1': JSON.stringify({ configuration: JSON.stringify([track]), selection: track }),
   'virelo-playback-subtitles:v1': JSON.stringify({ configuration: JSON.stringify([track]), selection: null }),
+  'virelo-preview-muted:v1': 'false',
   'virelo-playback-volume:v1': JSON.stringify({ volume: .65, muted: true }), 'virelo-volume-leveling:v1': 'true'
 };
 function stableId(value) {
@@ -148,7 +149,7 @@ test('settings-only export has no catalog data and restores legacy preferences t
   env.records.set('virelo-public-locale:v1', 'ru'); env.records.set('virelo-playback-quality', 'source');
   const before = env.snapshot();
   const result = await api.readBrowserBackup(await api.exportBrowserData('settings'));
-  assert.deepEqual(result.settings, { audioAnalysisEnabled: false, shortsIncludeLandscapes: false, queueBehavior: 'auto' });
+  assert.deepEqual(result.settings, { audioAnalysisEnabled: false, shortsIncludeLandscapes: false, queueBehavior: 'auto', queueResumePosition: true });
   assert.deepEqual(result.preferences, { 'virelo.language.v1': 'ru', 'virelo-playback-quality:v1': 'source' });
   assert.deepEqual(api.backupSummary(result), { kind: 'settings', libraries: 0, videos: 0, playlists: 0 });
   assert.deepEqual(env.snapshot(), before);
@@ -226,12 +227,51 @@ test('both modes validate and normalize without database reads or writes', async
   assert.deepEqual(env.events, []);
 });
 
+test('legacy backups without queue resume settings import with the behavior-preserving default', async t => {
+  const env = environment(t);
+  for (const kind of ['settings', 'library']) {
+    const value = fixture(kind); delete value.settings.queueResumePosition;
+    assert.equal((await read(value)).settings.queueResumePosition, true);
+  }
+  assert.deepEqual(env.events, []);
+  const value = fixture('settings'); delete value.settings.queueResumePosition;
+  await api.importBrowserBackup(value);
+  assert.equal(env.stores.get('settings').get('current').queueResumePosition, true);
+});
+
+test('queue resume false survives settings export, validation and import', async t => {
+  const env = environment(t, { settings: [{ ...settings, queueResumePosition: false }] });
+  const value = await api.readBrowserBackup(await api.exportBrowserData('settings'));
+  assert.equal(value.settings.queueResumePosition, false);
+  await api.importBrowserBackup(value);
+  assert.equal(env.stores.get('settings').get('current').queueResumePosition, false);
+});
+
+test('both raw preview mute booleans survive settings export and import', async t => {
+  const env = environment(t);
+  for (const value of ['true', 'false']) {
+    env.records.set('virelo-preview-muted:v1', value);
+    const exported = await api.readBrowserBackup(await api.exportBrowserData('settings'));
+    assert.equal(exported.preferences['virelo-preview-muted:v1'], value);
+    env.records.set('virelo-preview-muted:v1', value === 'true' ? 'false' : 'true');
+    await api.importBrowserBackup(exported);
+    assert.equal(env.records.get('virelo-preview-muted:v1'), value);
+  }
+});
+
+test('an explicitly undefined queue resume property is invalid on direct import', async t => {
+  const env = environment(t), value = fixture('settings'); value.settings.queueResumePosition = undefined;
+  await assert.rejects(api.importBrowserBackup(value), { message: INVALID });
+  assert.deepEqual(env.events, []);
+});
+
 const corruptions = [
   ['unknown top-level token', value => { value.token = 'secret'; }],
   ['prototype pollution', value => { Object.defineProperty(value.preferences, '__proto__', { enumerable: true, value: 'pollute' }); }],
   ['arbitrary storage keys', value => { value.preferences['auth-token'] = 'secret'; }],
   ['unknown settings', value => { value.settings.tmdbApiKey = 'secret'; }],
   ['invalid settings type', value => { value.settings.audioAnalysisEnabled = 'true'; }],
+  ...[null, 'false', 0, 1, [], {}].map(invalid => ['invalid queue resume boolean ' + JSON.stringify(invalid), value => { value.settings.queueResumePosition = invalid; }]),
   ['unsupported queue', value => { value.settings.queueBehavior = 'shuffle'; }],
   ['unknown library handle', value => { value.libraries[0].handle = {}; }],
   ['persistent imported library', value => { value.libraries[0].persistent = true; }],
@@ -263,6 +303,7 @@ const corruptions = [
   ['unknown appearance property', value => { value.preferences['virelo.appearance.v1'] = '{"controllerStyle":"theater","accentColor":"#abcdef","token":"secret"}'; }],
   ['invalid volume', value => { value.preferences['virelo-playback-volume:v1'] = '{"volume":2,"muted":false}'; }],
   ['unknown volume property', value => { value.preferences['virelo-playback-volume:v1'] = '{"volume":1,"muted":false,"token":"secret"}'; }],
+  ...['', 'TRUE', 'False', '1', '0', 'null', '{}', '"false"', ' true', 'false ', true, false, null].map(invalid => ['invalid preview mute value ' + JSON.stringify(invalid), value => { value.preferences['virelo-preview-muted:v1'] = invalid; }]),
   ['invalid language', value => { value.preferences['virelo.language.v1'] = 'unsupported'; }],
   ['invalid playback speed', value => { value.preferences['virelo.playback-speed:v1'] = '5'; }],
   ['invalid quality', value => { value.preferences['virelo-playback-quality:v1'] = 'javascript:bad'; }],

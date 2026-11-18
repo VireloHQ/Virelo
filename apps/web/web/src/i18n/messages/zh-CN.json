@@ -1,4 +1,12 @@
 {
+  "Resume watched positions during autoplay": "自动播放时从上次观看位置继续",
+  "When the queue advances automatically, resume each video's saved position. Turn off to start from the beginning.": "队列自动播放下一个视频时，从该视频保存的播放位置继续。关闭后将从头开始播放。",
+  "Mute preview": "静音预览",
+  "Unmute preview": "取消预览静音",
+  "Could not save queue.": "无法保存队列。",
+  "Saved queue not found.": "找不到已保存的队列。",
+  "Invalid saved queue.": "已保存的队列格式无效。",
+  "Sign in to resume a queue.": "请登录以继续播放队列。",
   "Export / Import": "导出 / 导入",
   "Settings and library backups": "设置和媒体库备份",
   "Back up settings or move your library to another browser.": "备份设置，或将媒体库迁移到其他浏览器。",

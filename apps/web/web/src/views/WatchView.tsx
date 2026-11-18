@@ -15,6 +15,8 @@ import { loadFavoriteQueue, loadMediaQueue } from '../utils/favorites';
 import { toggleQueueShuffle } from '@virelo/core/playback-queue';
 import { sortSeriesEpisodes } from '@virelo/core/series-playback';
 import { usePlaybackQueue } from '@virelo/web-ui/hooks/usePlaybackQueue.ts';
+import { useQueueSession } from '@virelo/web-ui/hooks/useQueueSession.ts';
+import type { SavedQueueState } from '@virelo/core/queue-session';
 import { useQueueLayout } from '@virelo/web-ui/hooks/useQueueLayout.ts';
 import type { MediaItem, PlaylistDetail, QueueBehavior } from '../types';
 
@@ -23,8 +25,10 @@ export function WatchView() {
   const { mediaId } = useParams({ from: '/app/watch/$mediaId' });
   const searchParams = useSearch({ from: '/app/watch/$mediaId' });
   const seriesQueue = Boolean(searchParams.seriesTitle && searchParams.libraryId);
-  const queueEnabled = Boolean(searchParams.queue || searchParams.playlistId || seriesQueue);
-  const playlistQ = useQuery({ queryKey: ['playlist', searchParams.playlistId], queryFn: () => api.playlist(searchParams.playlistId!), enabled: searchParams.playlistId !== undefined });
+  const queueEnabled = Boolean(searchParams.queue || searchParams.playlistId || seriesQueue || searchParams.resumeSession);
+  const resumeQ = useQuery({ queryKey: ['queue-session', searchParams.resumeSession], queryFn: () => api.queueSession(searchParams.resumeSession!), enabled: Boolean(searchParams.resumeSession), staleTime: 0 });
+  const playlistId = searchParams.resumeSession ? resumeQ.data?.playlistId : searchParams.playlistId;
+  const playlistQ = useQuery({ queryKey: ['playlist', playlistId], queryFn: () => api.playlist(playlistId!), enabled: playlistId !== undefined });
   const queueLayout = useQueueLayout(state => state.layout);
   const settingsQ = useQuery({ queryKey: ['settings'], queryFn: api.settings });
   const queueQ = useQuery({
@@ -38,27 +42,31 @@ export function WatchView() {
       }));
       return seriesQueue ? sortSeriesEpisodes(source, searchParams.seriesTitle!, searchParams.libraryId!) : source;
     },
-    enabled: queueEnabled && searchParams.playlistId === undefined
+    enabled: queueEnabled && playlistId === undefined && !searchParams.resumeSession
   });
   const itemQ = useQuery({ queryKey: ['media', Number(mediaId)], queryFn: () => api.mediaById(Number(mediaId)), enabled: !queueEnabled });
   if (queueEnabled) {
-    const source = searchParams.playlistId ? playlistQ.data?.items : queueQ.data;
-    const error = searchParams.playlistId ? playlistQ.error : queueQ.error;
-    const retry = () => { void (searchParams.playlistId ? playlistQ.refetch() : queueQ.refetch()); };
+    const source = searchParams.resumeSession && !resumeQ.data ? undefined : playlistId ? playlistQ.data?.items : searchParams.resumeSession ? resumeQ.data?.items : queueQ.data;
+    const error = searchParams.resumeSession && resumeQ.error ? resumeQ.error : playlistId ? playlistQ.error : queueQ.error;
+    const retry = () => { if (searchParams.resumeSession) void resumeQ.refetch(); if (playlistId) void playlistQ.refetch(); else if (!searchParams.resumeSession) void queueQ.refetch(); };
     if (error && !source) return <div className="watch-empty" role="alert"><h1>{t("Could not load queue")}</h1><p>{t(error.message)}</p><button onClick={retry}>{t("Try again")}</button></div>;
-    if (!source) return <PageSkeleton kind="watch" queueLayout={queueLayout}/>;
-    return <QueuedWatch key={JSON.stringify([mediaId, searchParams.search, searchParams.folder, searchParams.libraryId, searchParams.seriesTitle, searchParams.sort, searchParams.favorites, searchParams.playlistId])}
+    if (!source || settingsQ.isPending) return <PageSkeleton kind="watch" queueLayout={queueLayout}/>;
+    return <QueuedWatch key={JSON.stringify([mediaId, searchParams.search, searchParams.folder, searchParams.exactFolder, searchParams.libraryId, searchParams.seriesTitle, searchParams.sort, searchParams.favorites, searchParams.playlistId, searchParams.resumeSession])}
       source={source} initialId={Number(mediaId)} behavior={settingsQ.data?.queueBehavior ?? 'auto'} shuffle={searchParams.sort === 'random'}
-      playlist={searchParams.playlistId ? playlistQ.data : undefined} refreshError={error?.message} onRetry={retry}/>;
+      saved={resumeQ.data?.state} resumeKey={searchParams.resumeSession} queueResumePosition={settingsQ.data?.queueResumePosition ?? true}
+      playlist={playlistId ? playlistQ.data : undefined} refreshError={error?.message} onRetry={retry}/>;
   }
   if (itemQ.isError) return <div className="watch-empty"><h1>{t("Video unavailable")}</h1><p>{t(itemQ.error.message)}</p><button onClick={() => void itemQ.refetch()}>{t("Try again")}</button></div>;
   if (itemQ.isLoading || !itemQ.data) return <PageSkeleton kind="watch"/>;
   return <div className="watch-view"><Player item={itemQ.data} autoPlay/><WatchInfo item={itemQ.data} actions={<SavePlaylist mediaIds={[itemQ.data.id]}/>}/><WatchRecommendations item={itemQ.data}/></div>;
 }
 
-function QueuedWatch({ source, initialId, behavior, shuffle, playlist, refreshError, onRetry }: { source: MediaItem[]; initialId: number; behavior: QueueBehavior; shuffle: boolean; playlist?: PlaylistDetail; refreshError?: string; onRetry: () => void }) {
+function QueuedWatch({ source, initialId, behavior, shuffle, playlist, refreshError, onRetry, saved, resumeKey, queueResumePosition }: { source: MediaItem[]; initialId: number; behavior: QueueBehavior; shuffle: boolean; playlist?: PlaylistDetail; refreshError?: string; onRetry: () => void; saved?: SavedQueueState; resumeKey?: string; queueResumePosition: boolean }) {
   useLocale();
-  const { queue, items, activeIndex, update, select } = usePlaybackQueue(source, initialId, shuffle);
+  const { queue, items, activeIndex, update, select } = usePlaybackQueue(source, initialId, shuffle, saved);
+  const session = useQueueSession(queue, playlist?.id, resumeKey);
+  const [resumeFromHistory, setResumeFromHistory] = useState(true);
+  const selectManually = (index: number) => { setResumeFromHistory(true); select(index); };
   const layout = useQueueLayout(state => state.layout);
   const [repeatOverride, setRepeatOverride] = useState<RepeatMode | null>(null);
   const [saveOpen, setSaveOpen] = useState<'pointer' | 'keyboard' | null>(null);
@@ -74,20 +82,22 @@ function QueuedWatch({ source, initialId, behavior, shuffle, playlist, refreshEr
   const wraps = repeat === 'queue';
   const advance = (direction: 1 | -1, ended = false) => {
     const next = queueDestination(activeIndex, items.length, direction, repeat, ended, behavior !== 'manual');
-    if (next !== null) select(next);
+    if (next !== null) { setResumeFromHistory(ended ? queueResumePosition : true); select(next); }
+    else if (ended && activeIndex === items.length - 1 && repeat === 'off') session.complete();
   };
   return <div className="watch-view has-queue" data-queue-layout={layout}>
     <div className="watch-main">
-      <Player item={current} queue={items} queueIndex={activeIndex} onEnded={() => advance(1, true)}
+      <Player item={current} queue={items} queueIndex={activeIndex} onEnded={() => advance(1, true)} resumeFromHistory={resumeFromHistory}
         onNext={() => advance(1)} onPrev={() => advance(-1)}
         canGoNext={items.length > 1 && (activeIndex < items.length - 1 || wraps)} canGoPrev={items.length > 1 && (activeIndex > 0 || wraps)}
         repeatMode={repeat} onRepeatChange={setRepeatOverride} shuffled={queue.shuffled} onShuffle={()=>update(toggleQueueShuffle)} autoPlay/>
       <WatchInfo item={current} actions={<SavePlaylist mediaIds={[current.id]}/>}>
+        {session.error && <p className="error-copy" role="alert">{t(session.error)}</p>}
         {refreshError && <p className="error-copy" role="alert"><Trans message="Could not refresh the queue. {value0} {value1}" values={{value0:t(refreshError),value1:<button type="button" onClick={onRetry}>{t("Try again")}</button>}}/></p>}
       </WatchInfo>
     </div>
     <PlaybackQueue items={items} activeIndex={activeIndex} repeatMode={repeat} onRepeatChange={setRepeatOverride}
-      onSelect={select} state={queue} onEdit={update}
+      onSelect={selectManually} state={queue} onEdit={change=>{setResumeFromHistory(true);update(change);}}
       heading={playlist && <Link to="/app/playlists/$playlistId" params={{playlistId:String(playlist.id)}} title={playlist.name}>{playlist.name}</Link>}
       menuActions={[
         ...(playlist ? [{label:t("Save current order"),icon:<FloppyDisk/>,disabled:!dirty || save.isPending,action:()=>save.mutate()}] : []),

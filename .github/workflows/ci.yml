@@ -132,6 +132,8 @@ jobs:
       - run: node scripts/audit-volume-controls.mjs
       - run: node scripts/audit-library-duplicates.mjs
       - run: node scripts/audit-browser-backup.mjs
+      - run: node scripts/audit-hover-previews.mjs
+      - run: node scripts/audit-initial-position.mjs
       - run: node scripts/audit-queue.mjs
       - run: node scripts/audit-playlists.mjs
       - run: node scripts/audit-library-explorer.mjs

@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Resume a queue or playlist from Continue watching, retaining the selected video, custom order and shuffle state.
+- Add sound to hover previews with a top-right mute button. Previews start muted and remember an explicit sound preference.
+- Choose whether automatic queue advancement resumes saved watch positions or starts videos from the beginning.
+
 ## 0.6.1
 
 - Share browser and self-hosted player development in one repository. The npm command, data directory, accounts and saved libraries are unchanged.

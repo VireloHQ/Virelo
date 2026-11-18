@@ -1,4 +1,12 @@
 {
+  "Resume watched positions during autoplay": "Возобновлять с сохранённой позиции при автопроигрывании",
+  "When the queue advances automatically, resume each video's saved position. Turn off to start from the beginning.": "При автоматическом переходе к следующему видео в очереди продолжать с сохранённой позиции. Отключите, чтобы начинать сначала.",
+  "Mute preview": "Выключить звук предпросмотра",
+  "Unmute preview": "Включить звук предпросмотра",
+  "Could not save queue.": "Не удалось сохранить очередь.",
+  "Saved queue not found.": "Сохранённая очередь не найдена.",
+  "Invalid saved queue.": "Неверный формат сохранённой очереди.",
+  "Sign in to resume a queue.": "Войдите, чтобы продолжить просмотр очереди.",
   "Virelo control server could not be authenticated. Stop any older Virelo server before updating.": "Не удалось проверить подлинность управляющего сервера Virelo. Перед обновлением остановите старую версию Virelo.",
   "Oversized control request.": "Слишком большой запрос управления.",
   "Invalid Virelo control response signature.": "Недействительная подпись ответа управления Virelo.",

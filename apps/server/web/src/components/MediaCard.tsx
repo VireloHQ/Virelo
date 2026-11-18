@@ -5,12 +5,14 @@ import { Play } from '@phosphor-icons/react';
 import { useEffect, useRef, useState, type MouseEvent, type PointerEvent } from 'react';
 import { artwork } from '../api';
 import type { MediaItem } from '../types';
-import { PreviewPlayer } from './PreviewPlayer';
+import { HoverPreview } from '@virelo/web-ui/components/HoverPreview.tsx';
 import { MediaContextMenu } from '@virelo/web-ui/components/MediaContextMenu.tsx';
 
 const HOVER_CAPABLE = typeof window !== 'undefined' && window.matchMedia('(hover: hover) and (pointer: fine)').matches;
 
-export function MediaCard({item, compact=false, short=false, playDirect=false, preview=false, onHoverChange, layout='auto'}:{item:MediaItem;layout?:'auto'|'landscape'|'poster';compact?:boolean;short?:boolean;playDirect?:boolean;preview?:boolean;onHoverChange?:(hovered:boolean)=>void}) {
+export interface MediaCardProps { item:MediaItem;layout?:'auto'|'landscape'|'poster';compact?:boolean;short?:boolean;playDirect?:boolean;preview?:boolean;onHoverChange?:(hovered:boolean)=>void;resumeSession?:{key:string;label:string}; }
+
+export function MediaCard({item, compact=false, short=false, playDirect=false, preview=false, onHoverChange, layout='auto', resumeSession}:MediaCardProps) {
   useLocale();
   const navigate = useNavigate();
   const { favorite, error: favoriteError, toggle: toggleFavorite } = useFavorite(item);
@@ -39,7 +41,7 @@ export function MediaCard({item, compact=false, short=false, playDirect=false, p
       longPressTimer.current = null;
     }
   };
-  const handlePointerDown = (event:PointerEvent<HTMLAnchorElement>) => {
+  const handlePointerDown = (event:PointerEvent<HTMLDivElement>) => {
     if (event.pointerType !== 'touch') return;
     clearLongPress();
     longPressTriggered.current = false;
@@ -56,29 +58,30 @@ export function MediaCard({item, compact=false, short=false, playDirect=false, p
   };
   const goToPlayback = () => {
     if (short) void navigate({to:'/shorts',search:{startId:item.id}});
-    else void navigate({to:'/watch/$mediaId',params:{mediaId:String(item.id)}});
+    else void navigate({to:'/watch/$mediaId',params:{mediaId:String(item.id)},search:playDirect && resumeSession ? {resumeSession:resumeSession.key} : undefined});
   };
   const goToDetails = () => void navigate({to:'/title/$mediaId',params:{mediaId:String(item.id)}});
   return (
-    <Link ref={cardRef} to={destination} params={short ? undefined : {mediaId:String(item.id)}} search={short ? {startId:item.id} : undefined} aria-label={progressLabel ? `${progressLabel}: ${item.title}` : undefined} className={`media-card ${isPoster?'art-poster':''} ${compact?'compact':''} ${playDirect?'resume-card ':''}${short?`shorts-card ${isPortrait?'art-portrait':'art-landscape'}`:''}${preview?' previewing':''}`} preload="intent"
+    <div className={`media-card ${isPoster?'art-poster':''} ${compact?'compact':''} ${playDirect?'resume-card ':''}${short?`shorts-card ${isPortrait?'art-portrait':'art-landscape'}`:''}${preview?' previewing':''}`}
       onMouseEnter={HOVER_CAPABLE && onHoverChange ? ()=>onHoverChange(true) : undefined}
       onMouseLeave={HOVER_CAPABLE && onHoverChange ? ()=>onHoverChange(false) : undefined}
+      onFocus={onHoverChange ? event=>{if(!event.currentTarget.contains(event.relatedTarget))onHoverChange(true);} : undefined}
+      onBlur={onHoverChange ? event=>{if(!event.currentTarget.contains(event.relatedTarget)&&!event.currentTarget.matches(':hover'))onHoverChange(false);} : undefined}
       onContextMenu={(event) => { event.preventDefault(); openMenu(event.clientX, event.clientY); }}
       onPointerDown={handlePointerDown}
       onPointerMove={clearLongPress}
       onPointerUp={clearLongPress}
-      onPointerCancel={clearLongPress}
-      onClick={handleClick}>
+      onPointerCancel={clearLongPress}>
+      <Link ref={cardRef} to={destination} params={short ? undefined : {mediaId:String(item.id)}} search={short ? {startId:item.id} : playDirect && resumeSession ? {resumeSession:resumeSession.key} : undefined} aria-label={progressLabel ? `${progressLabel}: ${item.title}${resumeSession ? ` · ${resumeSession.label}` : ''}` : undefined} className="media-card-copy media-card-link" preload="intent" onClick={handleClick}>
+        <strong title={item.title}>{item.title}</strong>
+        {(progressLabel || details || resumeSession) && <span title={resumeSession?.label}>{[progressLabel || details, resumeSession?.label].filter(Boolean).join(' · ')}</span>}
+      </Link>
       <div className="media-card-art">
         <img key={imageSources.join('|')} src={imageSources[0]} alt="" loading="lazy" decoding="async" onLoad={(e)=>{const image=e.currentTarget;if(image.naturalWidth>1||image.naturalHeight>1) image.dataset.loaded='true';}} onError={(e)=>{const image=e.currentTarget;delete image.dataset.loaded;const next=Number(image.dataset.fallbackIndex || 0)+1;if(next<imageSources.length){image.dataset.fallbackIndex=String(next);image.src=imageSources[next];}else image.style.display='none';}}/>
         <div className="media-card-fallback"><Play weight="fill"/></div>
         <div className="media-card-play"><span><Play weight="fill"/></span></div>
-        {preview && <PreviewPlayer item={item} start={previewStart} />}
+        {preview && <HoverPreview src={`/api/media/${item.id}/stream`} start={previewStart} />}
         {progress > 0 && <div className="card-progress"><i style={{width:`${progress}%`}}/></div>}
-      </div>
-      <div className="media-card-copy">
-        <strong title={item.title}>{item.title}</strong>
-        {(progressLabel || details) && <span>{progressLabel || details}</span>}
       </div>
       {favoriteError && <span className="error-copy" role="alert">{t(favoriteError)}</span>}
       {menuPosition && <MediaContextMenu
@@ -91,7 +94,7 @@ export function MediaCard({item, compact=false, short=false, playDirect=false, p
         onDetails={goToDetails}
         onClose={() => setMenuPosition(null)}
       />}
-    </Link>
+    </div>
   );
 }
 

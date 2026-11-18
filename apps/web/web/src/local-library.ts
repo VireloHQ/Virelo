@@ -38,7 +38,8 @@ interface StoredThumbnail { id: number; blob: Blob | null; version?: number; siz
 const DEFAULT_SETTINGS: Settings = {
   audioAnalysisEnabled: false,
   shortsIncludeLandscapes: false,
-  queueBehavior: 'auto'
+  queueBehavior: 'auto',
+  queueResumePosition: true
 };
 
 const sessionFiles = new Map<number, File>();
@@ -788,11 +789,13 @@ export async function readSettings() {
   return {
     audioAnalysisEnabled: stored?.audioAnalysisEnabled === true,
     shortsIncludeLandscapes: stored?.shortsIncludeLandscapes ?? DEFAULT_SETTINGS.shortsIncludeLandscapes,
-    queueBehavior: stored?.queueBehavior ?? DEFAULT_SETTINGS.queueBehavior
+    queueBehavior: stored?.queueBehavior ?? DEFAULT_SETTINGS.queueBehavior,
+    queueResumePosition: typeof stored?.queueResumePosition === 'boolean' ? stored.queueResumePosition : DEFAULT_SETTINGS.queueResumePosition
   };
 }
 
 export async function writeSettings(settings: Partial<Settings>) {
+  if (Object.hasOwn(settings, 'queueResumePosition') && typeof settings.queueResumePosition !== 'boolean') throw new Error('Invalid settings.');
   const next = { ...await readSettings(), ...settings };
   next.audioAnalysisEnabled = next.audioAnalysisEnabled === true;
   await writeStore('settings', next, 'current');

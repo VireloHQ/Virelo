@@ -10,7 +10,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   tmdbApiKey: '',
   libraryWatchEnabled: true,
   shortsIncludeLandscapes: false,
-  queueBehavior: 'auto'
+  queueBehavior: 'auto',
+  queueResumePosition: true
 };
 
 export function isSettingValue(key: string, value: unknown): boolean {

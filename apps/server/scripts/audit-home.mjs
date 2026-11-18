@@ -3,13 +3,15 @@ import {mkdtemp,readFile} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import assert from 'node:assert/strict';
-import {buildHome} from '../dist/home.js';
+import {buildHome} from '../../../packages/core/src/utils/home-catalog.ts';
 const require=createRequire(process.env.VIRELO_TEST_NODE_PACKAGE||import.meta.url);
 const {chromium}=require('playwright');
 const screenshots=await mkdtemp(join(tmpdir(),'virelo-home-audit-'));
 const art=await readFile(process.env.VIRELO_TEST_ART||new URL('../web/public/virelo-og.png',import.meta.url)).catch(()=>null);
 const browser=await chromium.launch({headless:true,...(process.env.VIRELO_TEST_CHROMIUM?{executablePath:process.env.VIRELO_TEST_CHROMIUM}:{})});
 let checks=0;const check=(condition,name)=>{assert.ok(condition,name);checks++;};
+const authStatus={setupRequired:false,localAccess:true,user:{id:1,username:'audit',displayName:'Audit',isAdmin:false,enabled:true,allLibraries:true,libraryIds:[],revision:1,createdAt:1,
+  permissions:{manageLibraries:true,scanLibraries:true,manageMetadata:true,play:true,transcode:true}}};
 const fixture=(id,patch={})=>({id,library_id:1,path:'Film '+id+'.mp4',source_path:'Film '+id+'.mp4',filename:'Film '+id+'.mp4',title:'Film '+id,sort_title:'film '+id,kind:'movie',series_title:null,season:null,episode:null,year:2020,
   duration:4800,width:1920,height:1080,video_codec:'h264',audio_codec:'aac',container:'mp4',folder:'',size:100,mtime:1,added_at:id,updated_at:id,
   thumbnail_path:null,poster_path:'/__art?id='+id,backdrop_path:'/__art?id='+id,overview:'A journey through a collection of stories, waiting to be discovered in your own library.',
@@ -28,7 +30,7 @@ try{
   await page.route('**/__art?*',route=>route.fulfill(art?{body:art,contentType:'image/png'}:{body:'<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="700"><rect width="1200" height="700" fill="#324c65"/><circle cx="850" cy="280" r="180" fill="#739799"/></svg>',contentType:'image/svg+xml'}));
   if(mode==='npm')await page.route('**/api/**',route=>{
    const path=new URL(route.request().url()).pathname;
-   const body=path==='/api/home'?buildHome(fixtures,86400000):path==='/api/shorts'?{total:1,items:fixtures.filter(i=>i.id===400)}:path==='/api/libraries'?[]:path==='/api/settings'?{}:path==='/api/scan/status'?{running:false}:{};
+   const body=path==='/api/auth/status'?authStatus:path==='/api/home'?buildHome(fixtures,86400000):path==='/api/shorts'?{total:1,items:fixtures.filter(i=>i.id===400)}:path==='/api/libraries'||path==='/api/queue-sessions'?[]:path==='/api/settings'?{}:path==='/api/scan/status'?{running:false}:{};
    if(path.includes('/artwork'))return route.fulfill(art?{body:art,contentType:'image/webp'}:{body:'<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="700"><rect width="1200" height="700" fill="#324c65"/></svg>',contentType:'image/svg+xml'});
    return route.fulfill({json:body});
   });
@@ -41,11 +43,15 @@ try{
    check(await page.getByRole('heading',{name:title,exact:true}).count()===1,mode+' shelf '+title);
   }
   check(await page.getByRole('heading',{name:'Drama',exact:true}).count()===0,mode+' identical genre collection omitted');
+  check(await page.locator('.media-card').evaluateAll(cards=>cards.length>0&&cards.every(card=>{
+    const link=card.querySelector(':scope > a.media-card-link');
+    return card.tagName!=='A'&&link?.textContent.trim()&&!link.querySelector('button');
+  })),mode+' cards expose named navigation links separate from preview controls');
   const homeData=mode==='web'?await page.evaluate(async()=>{const {api}=await import('/src/api.ts');return api.home();}):buildHome(fixtures);
   check(homeData.nextEpisodes.length===1&&homeData.nextEpisodes[0].id===102,mode+' next episode');
   check(homeData.series.length===3,mode+' unique shows');
-  check(homeData.unwatched.some(i=>i.id===301),mode+' new show starts at E1');
-  const rowIds=title=>page.getByRole('region',{name:title+' titles',exact:true}).locator('a.media-card')
+  check(homeData.series.some(i=>i.id===301),mode+' new show starts at E1');
+  const rowIds=title=>page.getByRole('region',{name:title+' titles',exact:true}).locator('.media-card > a.media-card-link')
     .evaluateAll(cards=>cards.map(card=>Number(new URL(card.href).pathname.split('/').at(-1))));
   const recentIds=new Set(await rowIds('Recently added'));
   const movieIds=await rowIds('Movies');
@@ -83,7 +89,7 @@ try{
   const smallItems=Array.from({length:6},(_,i)=>fixture(i+1,{genres:null,poster_path:null,backdrop_path:null,duration:7200}));
   if(mode==='npm')await smallPage.route('**/api/**',route=>{
    const path=new URL(route.request().url()).pathname;
-   return route.fulfill({json:path==='/api/home'?buildHome(smallItems):path==='/api/shorts'?{total:0,items:[]}:path==='/api/libraries'?[]:path==='/api/scan/status'?{running:false}:{}});
+   return route.fulfill({json:path==='/api/auth/status'?authStatus:path==='/api/home'?buildHome(smallItems):path==='/api/shorts'?{total:0,items:[]}:path==='/api/libraries'||path==='/api/queue-sessions'?[]:path==='/api/scan/status'?{running:false}:{}});
   });
   await smallPage.goto(base+prefix+'/settings');await smallPage.locator('.settings-heading').waitFor();
   await smallPage.locator('.splash-screen').waitFor({state:'hidden'});
@@ -94,7 +100,7 @@ try{
   await smallPage.getByRole('heading',{name:'Recently added',exact:true}).waitFor();
   check(await smallPage.getByRole('heading',{name:'Movies',exact:true}).count()===0,mode+' small library hides duplicate Movies row');
   check(await smallPage.getByRole('heading',{name:'Not watched yet',exact:true}).count()===0,mode+' reordered duplicate discovery row omitted');
-  check(await smallPage.getByRole('region',{name:'Recently added titles'}).locator('a.media-card').count()===6,mode+' small library keeps all recent titles');
+  check(await smallPage.getByRole('region',{name:'Recently added titles'}).locator('.media-card > a.media-card-link').count()===6,mode+' small library keeps all recent titles');
   await smallPage.getByRole('button',{name:'Movies',exact:true}).click();
   check(await smallPage.locator('.home-feature .hero-actions').count()===1,mode+' small library keeps movie-category Play');
   check(await smallPage.locator('.home-category-empty').count()===0,mode+' small movie category is not falsely empty');
@@ -110,7 +116,7 @@ try{
   await smallPage.reload();await smallPage.getByRole('heading',{name:'Recently added',exact:true}).waitFor();
   await smallPage.getByRole('button',{name:'Movies',exact:true}).click();
   await smallPage.getByRole('heading',{name:'Movies',exact:true}).waitFor();
-  check(await smallPage.getByRole('region',{name:'Movies titles'}).locator('a.media-card').count()===6,mode+' older movies remain after only-series Recent');
+  check(await smallPage.getByRole('region',{name:'Movies titles'}).locator('.media-card > a.media-card-link').count()===6,mode+' older movies remain after only-series Recent');
   check(await smallPage.locator('.home-category-empty').count()===0,mode+' absent-from-Recent does not mean empty category');
   check(smallErrors.length===0,mode+' small library no runtime errors '+smallErrors.join('|'));
   await smallContext.close();
@@ -120,7 +126,7 @@ try{
   await rotationPage.route('**/__art?*',route=>route.fulfill({body:'<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="700"><rect width="1200" height="700" fill="#324c65"/></svg>',contentType:'image/svg+xml'}));
   if(mode==='npm')await rotationPage.route('**/api/**',route=>{
     const path=new URL(route.request().url()).pathname;
-    return route.fulfill({json:path==='/api/home'?buildHome(fixtures,86400000):path==='/api/shorts'?{total:0,items:[]}:path==='/api/libraries'?[]:path==='/api/scan/status'?{running:false}:{}});
+    return route.fulfill({json:path==='/api/auth/status'?authStatus:path==='/api/home'?buildHome(fixtures,86400000):path==='/api/shorts'?{total:0,items:[]}:path==='/api/libraries'||path==='/api/queue-sessions'?[]:path==='/api/scan/status'?{running:false}:{}});
   });
   await rotationPage.goto(base+prefix+'/settings');await rotationPage.locator('.settings-heading').waitFor();
   await rotationPage.locator('.splash-screen').waitFor({state:'hidden'});
@@ -130,7 +136,23 @@ try{
   await rotationPage.clock.fastForward(0);
   await rotationPage.mouse.move(1400,10);await rotationPage.clock.runFor(100);
   const current=()=>rotationPage.locator('.home-feature-dots button[aria-pressed="true"]').getAttribute('aria-label');
-  const tick=async()=>{await rotationPage.clock.fastForward(8100);await rotationPage.clock.runFor(50);};
+  const settleBannerVisibility=async visible=>{
+    // The virtual clock does not deliver native IntersectionObserver callbacks.
+    let deadline;
+    try{
+      await Promise.race([
+        rotationPage.locator('.home-feature').evaluate((hero,visible)=>new Promise(resolve=>{
+          const observer=new IntersectionObserver(([entry])=>{
+            if((entry.isIntersecting&&entry.intersectionRatio>=.5)!==visible)return;
+            observer.disconnect();resolve();
+          },{threshold:[0,.5]});
+          observer.observe(hero);
+        }),visible),
+        new Promise((_,reject)=>{deadline=setTimeout(()=>reject(new Error(mode+' banner visibility did not settle: '+visible)),5000);})
+      ]);
+    }finally{clearTimeout(deadline);}
+  };
+  const tick=async(visible=true)=>{await settleBannerVisibility(visible);await rotationPage.clock.fastForward(8100);await rotationPage.clock.runFor(50);};
   check(await rotationPage.locator('.home-browse,.home-feature-previews,.home-feature-navigation').count()===0,mode+' no secondary band, preview cards or counter');
   const headerBox=await rotationPage.locator('.topbar').boundingBox(),filterBox=await rotationPage.getByRole('button',{name:'Movies',exact:true}).boundingBox();
   check(filterBox.y>=headerBox.y&&filterBox.y+filterBox.height<=headerBox.y+headerBox.height,mode+' categories share the header');
@@ -147,7 +169,7 @@ try{
   const dot=rotationPage.locator('.home-feature-dots button').first();await dot.click();await rotationPage.mouse.move(1400,10);
   const manual=await current();await rotationPage.clock.fastForward(7000);check(await current()===manual,mode+' dot selection receives a full reading interval');
   await rotationPage.clock.fastForward(1200);await rotationPage.clock.runFor(50);check(await current()!==manual,mode+' dot selection then returns to auto');
-  const inView=await current();await rotationPage.evaluate(()=>scrollTo(0,900));await rotationPage.clock.runFor(100);await tick();check(await current()===inView,mode+' offscreen banner does not rotate');
+  const inView=await current();await rotationPage.evaluate(()=>scrollTo(0,900));await rotationPage.clock.runFor(100);await tick(false);check(await current()===inView,mode+' offscreen banner does not rotate');
   await rotationPage.evaluate(()=>scrollTo(0,0));await rotationPage.clock.runFor(100);await tick();check(await current()!==inView,mode+' returning to the banner restarts rotation');
   await rotationPage.emulateMedia({reducedMotion:'reduce'});await rotationPage.clock.runFor(100);const reduced=await current();await tick();
   check(await current()===reduced&&await rotationPage.getByRole('button',{name:'Pause banner rotation'}).count()===0,mode+' reduced motion disables automatic rotation');

@@ -1,4 +1,12 @@
 {
+  "Resume watched positions during autoplay": "Возобновлять с сохранённой позиции при автопроигрывании",
+  "When the queue advances automatically, resume each video's saved position. Turn off to start from the beginning.": "При автоматическом переходе к следующему видео в очереди продолжать с сохранённой позиции. Отключите, чтобы начинать сначала.",
+  "Mute preview": "Выключить звук предпросмотра",
+  "Unmute preview": "Включить звук предпросмотра",
+  "Could not save queue.": "Не удалось сохранить очередь.",
+  "Saved queue not found.": "Сохранённая очередь не найдена.",
+  "Invalid saved queue.": "Неверный формат сохранённой очереди.",
+  "Sign in to resume a queue.": "Войдите, чтобы продолжить просмотр очереди.",
   "Export / Import": "Экспорт / Импорт",
   "Settings and library backups": "Резервные копии настроек и медиатеки",
   "Back up settings or move your library to another browser.": "Сохраните настройки или перенесите медиатеку в другой браузер.",

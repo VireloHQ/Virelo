@@ -27,7 +27,7 @@ const STORES = ['libraries', 'media', 'playlists'];
 const PREFERENCE_KEYS = [
   'virelo.appearance.v1', LANGUAGE_KEY, 'virelo.library-layout', 'virelo.queue-layout',
   'virelo.explorer-width', PLAYBACK_SPEED_KEY, 'virelo-playback-quality:v1',
-  'virelo-playback-audio:v1', 'virelo-playback-subtitles:v1', 'virelo-playback-volume:v1', LEVELING_KEY
+  'virelo-playback-audio:v1', 'virelo-playback-subtitles:v1', 'virelo-playback-volume:v1', 'virelo-preview-muted:v1', LEVELING_KEY
 ];
 const MEDIA_TEXT = ['path', 'source_path', 'filename', 'title', 'sort_title', 'folder'] as const;
 const MEDIA_NULL_TEXT = ['series_title', 'video_codec', 'audio_codec', 'container', 'overview', 'genres', 'external_id'] as const;
@@ -67,10 +67,12 @@ function unique<T extends { id: number }>(items: T[]): T[] {
   return items;
 }
 function settings(value: unknown): Settings {
-  const row = record(value, ['audioAnalysisEnabled', 'shortsIncludeLandscapes', 'queueBehavior']);
+  const row = record(value, ['audioAnalysisEnabled', 'shortsIncludeLandscapes', 'queueBehavior', 'queueResumePosition']);
+  const queueResumePosition = Object.hasOwn(row, 'queueResumePosition') ? row.queueResumePosition : true;
   check(typeof row.audioAnalysisEnabled === 'boolean' && typeof row.shortsIncludeLandscapes === 'boolean'
+    && typeof queueResumePosition === 'boolean'
     && ['auto', 'loop', 'manual'].includes(row.queueBehavior as string));
-  return { audioAnalysisEnabled: row.audioAnalysisEnabled, shortsIncludeLandscapes: row.shortsIncludeLandscapes, queueBehavior: row.queueBehavior as Settings['queueBehavior'] };
+  return { audioAnalysisEnabled: row.audioAnalysisEnabled, shortsIncludeLandscapes: row.shortsIncludeLandscapes, queueBehavior: row.queueBehavior as Settings['queueBehavior'], queueResumePosition };
 }
 function trackKey(value: unknown): void {
   const tuple = rows(JSON.parse(text(value, 2048)), 6);
@@ -90,6 +92,7 @@ function preference(key: string, value: unknown): string {
     case LANGUAGE_KEY: check(isLocale(raw)); break;
     case 'virelo.library-layout': check(['grid', 'explorer'].includes(raw)); break;
     case 'virelo.queue-layout': check(['horizontal', 'vertical'].includes(raw)); break;
+    case 'virelo-preview-muted:v1': check(raw === 'true' || raw === 'false'); break;
     case 'virelo.explorer-width': number(Number(raw), false, 160, 720); break;
     case PLAYBACK_SPEED_KEY: check(PLAYBACK_SPEEDS.some(speed => String(speed) === raw)); break;
     case 'virelo-playback-quality:v1': check(raw === 'auto' || raw === 'source' || /^\d+$/.test(raw) && Number.isSafeInteger(Number(raw)) && Number(raw) > 0); break;
@@ -208,7 +211,7 @@ export async function exportBrowserData(kind: BackupKind): Promise<Blob> {
         const [libraries = [], items = [], playlists = []] = requests.map(request => request.result as Record<string, unknown>[]);
         const stored = current.result as Partial<Settings> | undefined;
         resolve(validate({ format: 'virelo-browser-backup', version: 1, kind, createdAt: Date.now(),
-          settings: { audioAnalysisEnabled: stored?.audioAnalysisEnabled ?? false, shortsIncludeLandscapes: stored?.shortsIncludeLandscapes ?? false, queueBehavior: stored?.queueBehavior ?? 'auto' },
+          settings: { audioAnalysisEnabled: stored?.audioAnalysisEnabled ?? false, shortsIncludeLandscapes: stored?.shortsIncludeLandscapes ?? false, queueBehavior: stored?.queueBehavior ?? 'auto', queueResumePosition: stored?.queueResumePosition ?? true },
           preferences: readPreferences(),
           libraries: libraries.map(row => ({ id: row.id, label: row.label, path: row.path, created_at: row.created_at, persistent: false, folderLabels: row.folderLabels ?? {} })),
           media: items.map(row => Object.fromEntries([...MEDIA_TEXT, ...MEDIA_NULL_TEXT, ...MEDIA_NULL_NUMBER, ...MEDIA_NUMBER, ...MEDIA_OPTIONAL, 'kind', 'audio_loudness']

@@ -25,6 +25,7 @@ import type { FolderEntry, HomeData, MediaItem, Settings, ShortsFeed, SortKey } 
 import { buildHome } from '@virelo/core/home-catalog';
 import { seriesTitleKey } from '@virelo/core/series-playback';
 import { createLocalPlaylist, deleteLocalPlaylist, getLocalPlaylist, listLocalPlaylists, updateLocalPlaylist } from './local-playlists';
+import { localQueueSessions, localQueueSession, saveLocalQueueSession, deleteLocalQueueSession } from './local-queue-sessions';
 
 async function hydrated(items: Awaited<ReturnType<typeof listStoredMedia>>) {
   return Promise.all(items.map(hydrateMedia));
@@ -40,6 +41,10 @@ function compare(sort: SortKey) {
 }
 
 export const api = {
+  queueSessions: localQueueSessions,
+  queueSession: localQueueSession,
+  saveQueueSession: saveLocalQueueSession,
+  deleteQueueSession: deleteLocalQueueSession,
   appearance: () => Promise.resolve(readAppearance()),
   saveAppearance: (value: Appearance) => Promise.resolve().then(() => writeAppearance(value)),
   playlists: listLocalPlaylists,

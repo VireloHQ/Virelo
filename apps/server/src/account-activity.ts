@@ -108,7 +108,7 @@ export class AccountActivity {
     if(!this.accounts.get(id))throw new AccountError('Account not found.',404);
     if(this.lastPrune+60_000<Date.now())this.prune();
     const count=(sql:string,...params:number[])=>Number((this.catalog.db.prepare(sql).get(...params) as {n:number}).n);
-    return {history:count('SELECT COUNT(*) n FROM user_progress WHERE user_id=?',id),favorites:count('SELECT COUNT(*) n FROM user_likes WHERE user_id=?',id),
+    return {history:count('SELECT COUNT(*) n FROM user_progress WHERE user_id=?',id)+count('SELECT COUNT(*) n FROM queue_sessions WHERE user_id=?',id),favorites:count('SELECT COUNT(*) n FROM user_likes WHERE user_id=?',id),
       playlists:count('SELECT COUNT(*) n FROM playlists WHERE user_id=?',id),playlistItems:count('SELECT COUNT(*) n FROM playlist_items WHERE playlist_id IN (SELECT id FROM playlists WHERE user_id=?)',id),
       sessions:count('SELECT COUNT(*) n FROM account_sessions WHERE user_id=? AND expires_at>? AND last_seen>?',id,Date.now(),Date.now()-day),
       activityEvents:count('SELECT COUNT(*) n FROM account_activity WHERE actor_id=? OR target_id=?',id,id)};
@@ -118,6 +118,7 @@ export class AccountActivity {
     const queries:Record<AccountDataCategory,string>={history:'DELETE FROM user_progress WHERE user_id=?',favorites:'DELETE FROM user_likes WHERE user_id=?',playlists:'DELETE FROM playlists WHERE user_id=?',sessions:'DELETE FROM account_sessions WHERE user_id=?',activity:'DELETE FROM account_activity WHERE actor_id=? OR target_id=?'};
     if(!Object.hasOwn(queries,category))throw new AccountError('Choose a valid data category.');
     this.catalog.db.prepare(queries[category]).run(...(category==='activity'?[id,id]:[id]));
+    if(category==='history')this.catalog.db.prepare('DELETE FROM queue_sessions WHERE user_id=?').run(id);
     if(category==='sessions')for(const [key,entry] of this.live)if(entry.userId===id)this.live.delete(key);
   }
   clearEvents() {this.catalog.db.exec('DELETE FROM account_activity');}

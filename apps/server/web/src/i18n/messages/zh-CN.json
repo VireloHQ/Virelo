@@ -1,4 +1,12 @@
 {
+  "Resume watched positions during autoplay": "自动播放时从上次观看位置继续",
+  "When the queue advances automatically, resume each video's saved position. Turn off to start from the beginning.": "队列自动播放下一个视频时，从该视频保存的播放位置继续。关闭后将从头开始播放。",
+  "Mute preview": "静音预览",
+  "Unmute preview": "取消预览静音",
+  "Could not save queue.": "无法保存队列。",
+  "Saved queue not found.": "找不到已保存的队列。",
+  "Invalid saved queue.": "已保存的队列格式无效。",
+  "Sign in to resume a queue.": "请登录以继续播放队列。",
   "Virelo control server could not be authenticated. Stop any older Virelo server before updating.": "无法验证 Virelo 管理服务器。请先停止旧版 Virelo，再进行更新。",
   "Oversized control request.": "管理请求过大。",
   "Invalid Virelo control response signature.": "Virelo 管理响应的签名无效。",

@@ -1,0 +1,12 @@
+/* A stretched link leaves the preview button outside the anchor's interactive subtree. */
+.media-card { position:relative; display:flex; flex-direction:column; }
+.media-card>.media-card-art { order:-1; }
+.media-card-link::after { content:""; position:absolute; inset:0; z-index:3; border-radius:4px; }
+.media-card-link:focus-visible { outline:none; }
+.media-card-link:focus-visible::after { outline:2px solid var(--color-focus,#9b87ff); outline-offset:4px; }
+.media-card .hover-preview { pointer-events:none; }
+.preview-audio-button { position:absolute; top:8px; right:8px; z-index:7; display:grid; place-items:center; width:36px; height:36px; padding:0; border:1px solid #ffffff70; border-radius:50%; color:#fff; background:#000b; cursor:pointer; pointer-events:auto; }
+.preview-audio-button svg { width:20px; height:20px; }
+.preview-audio-button:hover { background:#000e; }
+.preview-audio-button:focus-visible { outline:2px solid var(--color-focus,#9b87ff); outline-offset:2px; }
+.preview-audio-button:disabled { opacity:.5; cursor:wait; }
