@@ -131,6 +131,8 @@ try {
     for(const viewportWidth of [1040,920]){
       await page.setViewportSize({width:viewportWidth,height:900});
       await page.waitForFunction(width=>window.innerWidth===width,viewportWidth);
+      // Viewport metrics can change before media-query styles reach the next frame.
+      await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
       const compactSpacing=await headerSpacing();
       check(compactSpacing.items===12&&compactSpacing.label===6,label+' compact header uses consistent gaps at '+viewportWidth+' (observed '+JSON.stringify(compactSpacing)+')');
       const navBox=await headerNav.boundingBox(),actionsBox=await page.locator('.topbar-actions').boundingBox();

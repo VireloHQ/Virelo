@@ -42,12 +42,14 @@ jobs:
           check-latest: true
           cache: npm
       - name: Install FFmpeg
-        timeout-minutes: 5
+        timeout-minutes: 8
         run: |
-          # Avoid the throttled Azure mirror (actions/runner-images#12949).
-          sudo sed -i 's|azure\.archive\.ubuntu\.com|archive.ubuntu.com|g' /etc/apt/apt-mirrors.txt
-          sudo apt-get update -o Acquire::Retries=3
-          sudo apt-get install --yes --no-install-recommends ffmpeg
+          # Regional runner mirrors can throttle large FFmpeg downloads.
+          sudo sed -E -i 's|https?://([^/]+\.)?archive\.ubuntu\.com/ubuntu/?|https://archive.ubuntu.com/ubuntu/|g' /etc/apt/apt-mirrors.txt
+          sudo apt-get update -o Acquire::Retries=3 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30
+          sudo apt-get install --yes --no-install-recommends -o Acquire::Retries=3 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30 ffmpeg
+          ffmpeg -version
+          ffprobe -version
       - run: npm ci
         working-directory: .
       - run: npx playwright install --with-deps chromium
@@ -110,11 +112,14 @@ jobs:
           check-latest: true
           cache: npm
       - name: Install FFmpeg
-        timeout-minutes: 5
+        timeout-minutes: 8
         run: |
-          sudo sed -i 's|azure\.archive\.ubuntu\.com|archive.ubuntu.com|g' /etc/apt/apt-mirrors.txt
-          sudo apt-get update -o Acquire::Retries=3
-          sudo apt-get install --yes --no-install-recommends ffmpeg
+          # Regional runner mirrors can throttle large FFmpeg downloads.
+          sudo sed -E -i 's|https?://([^/]+\.)?archive\.ubuntu\.com/ubuntu/?|https://archive.ubuntu.com/ubuntu/|g' /etc/apt/apt-mirrors.txt
+          sudo apt-get update -o Acquire::Retries=3 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30
+          sudo apt-get install --yes --no-install-recommends -o Acquire::Retries=3 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30 ffmpeg
+          ffmpeg -version
+          ffprobe -version
       - run: npm ci
         working-directory: .
       - run: npx playwright install --with-deps chromium

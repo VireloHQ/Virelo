@@ -23,6 +23,15 @@ the package maintainer publishes it separately after approving the release.
    archive in temporary storage and verifies the CLI, HTTP assets and initial
    administrator setup. It also checks that upgrading from 0.6.0 retains an
    administrator and saved library. It never uses personal libraries or publishes anything.
+
+   Installed production dependencies must have zero findings. The source audit
+   accepts only the exact reviewed development-only picomatch advisory chain
+   until 2026-12-02 00:00 UTC, as documented in [audit exceptions](audit-exceptions.md).
+   This is risk acceptance, not a vulnerability fix. Changed versions/locations,
+   production exposure, new advisories, invalid reports and expiry block release.
+   The accepted warning is printed; raw `npm audit` is not suppressed. There is
+   no environment bypass. Recheck upstream fixes before publishing and do not
+   automatically extend the exception or downgrade to unsupported Vite.
 4. Merge after CI passes. Use the `npm-package` artifact from the matching CI
    run, or run `npm run build -w apps/server` then `npm run audit:package` from the
    repository root and use the exact tarball path and SHA-256 printed by the audit.
