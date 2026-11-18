@@ -23,6 +23,11 @@ the package maintainer publishes it separately after approving the release.
    archive in temporary storage and verifies the CLI, HTTP assets and initial
    administrator setup. It also checks that upgrading from 0.6.0 retains an
    administrator and saved library. It never uses personal libraries or publishes anything.
+
+   One temporary development-only exception is documented in
+   [audit exceptions](audit-exceptions.md). It expires automatically and cannot
+   waive a production dependency or a different advisory. A passing policy check
+   with this warning is not a zero-finding full `npm audit`.
 4. Merge after CI passes. Use the `npm-package` artifact from the matching CI
    run, or run `npm run build -w apps/server` then `npm run audit:package` from the
    repository root and use the exact tarball path and SHA-256 printed by the audit.

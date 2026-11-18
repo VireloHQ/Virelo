@@ -7,17 +7,30 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { npm, packRelease } from './pack-release.mjs';
+import { checkDevelopmentAudit, PICOMATCH_EXCEPTION } from './development-audit-policy.mjs';
 
 const repo = fileURLToPath(new URL('../', import.meta.url));
 const root = await mkdtemp(join(tmpdir(), 'virelo-package-audit-'));
 console.log('Package audit fixtures:', root);
 const expected = JSON.parse(await readFile(join(repo, 'package.json'), 'utf8'));
-const sourceAudit = JSON.parse(npm(['audit', '--json']));
-assert.equal(sourceAudit.metadata.vulnerabilities.total, 0, 'build and production dependencies have no known npm advisories');
+let sourceAuditOutput;
+try { sourceAuditOutput = npm(['audit', '--json']); }
+catch (error) {
+  // npm exits 1 for advisory findings; other command/network failures remain fatal.
+  if (error.status !== 1 || typeof error.stdout !== 'string') throw error;
+  sourceAuditOutput = error.stdout;
+}
+const sourceAudit = JSON.parse(sourceAuditOutput);
+const workspaceLock = JSON.parse(await readFile(new URL('../../../package-lock.json', import.meta.url), 'utf8'));
+if (checkDevelopmentAudit(sourceAudit, workspaceLock)) {
+  console.warn('REVIEWED DEV-ONLY EXCEPTION:', PICOMATCH_EXCEPTION.advisory, 'expires', PICOMATCH_EXCEPTION.expires);
+}
 const archive = await packRelease({ destination: process.env.VIRELO_RELEASE_OUTPUT || root });
 assert.equal(archive.filename, `virelo-${expected.version}.tgz`);
 assert.ok(!archive.files.some(file => /(?:\.wasm(?:\.gz)?$|\/ffmpeg-0\.12\.10\/)/.test(file.path)),
   'browser-only conversion assets are not in the npm package');
+assert.ok(!archive.files.some(file => /(?:^|\/)node_modules\/(?:picomatch|fdir|tinyglobby|vite|@vitejs\/plugin-react)\//.test(file.path)),
+  'reviewed development tools must not enter the npm archive');
 const install = join(root, 'install');
 npm(['install', '--prefix', install, '--omit=dev', '--ignore-scripts', '--no-fund', '--no-audit', archive.path]);
 const audit = JSON.parse(npm(['audit', '--omit=dev', '--json'], install));
