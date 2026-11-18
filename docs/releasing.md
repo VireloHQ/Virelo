@@ -24,10 +24,16 @@ the package maintainer publishes it separately after approving the release.
    administrator setup. It also checks that upgrading from 0.6.0 retains an
    administrator and saved library. It never uses personal libraries or publishes anything.
 
-   One temporary development-only exception is documented in
-   [audit exceptions](audit-exceptions.md). It expires automatically and cannot
-   waive a production dependency or a different advisory. A passing policy check
-   with this warning is not a zero-finding full `npm audit`.
+   Both development/build and installed production audits require zero findings.
+   There is no advisory allowlist or bypass flag. A remaining warning blocks the
+   release, even if the affected package is not part of the distributed server.
+
+   As of 2026-11-18, [GHSA-fc5q-39xc-vjpf](https://github.com/advisories/GHSA-fc5q-39xc-vjpf)
+   in the build toolchain remains unresolved and blocks this release. Upstream
+   lists no patched picomatch release. Do not downgrade to unsupported Vite
+   6.2.7 merely to obtain a different audit result; the supported 6.4 line also
+   depends on picomatch. Recheck upstream fixes and validate the actual
+   replacement dependency tree before considering this blocker resolved.
 4. Merge after CI passes. Use the `npm-package` artifact from the matching CI
    run, or run `npm run build -w apps/server` then `npm run audit:package` from the
    repository root and use the exact tarball path and SHA-256 printed by the audit.
