@@ -21,6 +21,7 @@ import { useBackgroundPlayback } from '@virelo/web-ui/hooks/useBackgroundPlaybac
 import { usePlaybackVolume } from '@virelo/web-ui/hooks/usePlaybackVolume.ts';
 import { usePlaybackSpeed } from '@virelo/web-ui/hooks/usePlaybackSpeed.ts';
 import { PlayerControls } from '@virelo/web-ui/components/PlayerControls.tsx';
+import { previousVideoAction } from '@virelo/core/playback-previous';
 import { useVideoPresentation } from '@virelo/web-ui/hooks/useVideoPresentation.ts';
 import { VideoSettingsPanel } from '@virelo/web-ui/components/VideoSettingsPanel.tsx';
 import type { MediaItem, PlaybackInfo } from '../types';
@@ -376,6 +377,11 @@ export function Player({item,queue,queueIndex,shuffled,onShuffle,onEnded,onNext,
     setCurrent(value);
   }
   function seekBy(seconds:number){const v=videoRef.current;if(!v)return;seek(Math.max(0,Math.min(v.duration || duration,current + seconds)));}
+  function handlePrevious(){
+    const action=previousVideoAction(current,Boolean(onPrev&&canGoPrev));
+    if(action==='restart')seek(0);
+    else if(action==='previous')onPrev?.();
+  }
   function toggleMute(){setMuted(value=>!value);}
   function setVol(value:number){setMuted(false);setVolume(value);}
   async function fullscreen(){const container=containerRef.current;const video=videoRef.current;if(!container||!video)return;await toggleFullscreen(container,video);}
@@ -617,10 +623,10 @@ export function Player({item,queue,queueIndex,shuffled,onShuffle,onEnded,onNext,
     </ShortsPlayerControls>:<PlayerControls current={current} duration={duration} paused={!pauseAction}
       busy={preparing==='audio'||preparing==='quality'}
       volume={volume} muted={muted} pip={pip} pipSupported={pipSupported}
-      canGoPrev={canGoPrev} canGoNext={canGoNext} hasQueue={Boolean(queue?.length)}
+      canGoPrev={previousVideoAction(current,Boolean(onPrev&&canGoPrev))!=='none'} canGoNext={canGoNext} hasQueue={Boolean(queue?.length)}
       queuePosition={queue&&queueIndex!==undefined?`${queueIndex+1} / ${queue.length}`:undefined}
       shuffled={shuffled} onShuffle={onShuffle} repeat={repeat} onRepeat={changeRepeat}
-      onToggle={toggle} onSeek={seek} onSeekBy={seekBy} onPrev={onPrev} onNext={onNext}
+      onToggle={toggle} onSeek={seek} onSeekBy={seekBy} onPrev={handlePrevious} onNext={onNext}
       onVolume={setVol} onMute={toggleMute} onFullscreen={()=>void fullscreen()} onPip={()=>void togglePip()}
       favorite={<FavoriteButton item={item} iconOnly/>} settings={playbackSettings()}/>}
     {contextPosition&&shorts&&<ShortsContextMenu item={item} position={contextPosition} returnFocus={videoRef.current}
