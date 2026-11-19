@@ -84,7 +84,10 @@ export function MediaCard({item, compact=false, short=false, playDirect=false, p
   return (
     <div className={`media-card ${isPoster?'art-poster':''} ${compact?'compact':''} ${playDirect?'resume-card ':''}${short?`shorts-card ${isPortrait?'art-portrait':'art-landscape'}`:''}${preview?' previewing':''}`}
       onMouseEnter={HOVER_CAPABLE && onHoverChange ? ()=>onHoverChange(true) : undefined}
-      onMouseLeave={HOVER_CAPABLE && onHoverChange ? ()=>onHoverChange(false) : undefined}
+      onMouseLeave={HOVER_CAPABLE && onHoverChange ? event=>{
+        if(event.currentTarget.querySelector('.hover-preview')?.contains(document.activeElement))cardRef.current?.focus({preventScroll:true});
+        onHoverChange(false);
+      } : undefined}
       onFocus={onHoverChange ? event=>{if(!event.currentTarget.contains(event.relatedTarget))onHoverChange(true);} : undefined}
       onBlur={onHoverChange ? event=>{if(!event.currentTarget.contains(event.relatedTarget)&&!event.currentTarget.matches(':hover'))onHoverChange(false);} : undefined}
       onContextMenu={(event) => { event.preventDefault(); openMenu(event.clientX, event.clientY); }}

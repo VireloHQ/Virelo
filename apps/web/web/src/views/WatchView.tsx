@@ -16,19 +16,21 @@ import { toggleQueueShuffle } from '@virelo/core/playback-queue';
 import { sortSeriesEpisodes } from '@virelo/core/series-playback';
 import { usePlaybackQueue } from '@virelo/web-ui/hooks/usePlaybackQueue.ts';
 import { useQueueSession } from '@virelo/web-ui/hooks/useQueueSession.ts';
+import { waitForQueueSessionWrites } from '@virelo/web-ui/utils/queue-session-writes.ts';
 import type { SavedQueueState } from '@virelo/core/queue-session';
 import { useQueueLayout } from '@virelo/web-ui/hooks/useQueueLayout.ts';
 import type { MediaItem, PlaylistDetail, QueueBehavior } from '../types';
 
 export function WatchView() {
   useLocale();
+  const client = useQueryClient();
   const { mediaId } = useParams({ from: '/app/watch/$mediaId' });
   const searchParams = useSearch({ from: '/app/watch/$mediaId' });
   const seriesQueue = Boolean(searchParams.seriesTitle && searchParams.libraryId);
   const queueEnabled = Boolean(searchParams.queue || searchParams.playlistId || seriesQueue || searchParams.resumeSession);
-  const resumeQ = useQuery({ queryKey: ['queue-session', searchParams.resumeSession], queryFn: () => api.queueSession(searchParams.resumeSession!), enabled: Boolean(searchParams.resumeSession), staleTime: 0 });
+  const resumeQ = useQuery({ queryKey: ['queue-session', searchParams.resumeSession], queryFn: async ({ signal }) => { await waitForQueueSessionWrites(client, searchParams.resumeSession!); if (signal.aborted) throw signal.reason; return api.queueSession(searchParams.resumeSession!); }, enabled: Boolean(searchParams.resumeSession), staleTime: 0, refetchOnMount: 'always' });
   const playlistId = searchParams.resumeSession ? resumeQ.data?.playlistId : searchParams.playlistId;
-  const playlistQ = useQuery({ queryKey: ['playlist', playlistId], queryFn: () => api.playlist(playlistId!), enabled: playlistId !== undefined });
+  const playlistQ = useQuery({ queryKey: ['playlist', playlistId], queryFn: () => api.playlist(playlistId!), enabled: playlistId !== undefined, ...(searchParams.resumeSession ? { staleTime: 0, refetchOnMount: 'always' as const } : {}) });
   const queueLayout = useQueueLayout(state => state.layout);
   const settingsQ = useQuery({ queryKey: ['settings'], queryFn: api.settings });
   const queueQ = useQuery({
@@ -49,8 +51,8 @@ export function WatchView() {
     const source = searchParams.resumeSession && !resumeQ.data ? undefined : playlistId ? playlistQ.data?.items : searchParams.resumeSession ? resumeQ.data?.items : queueQ.data;
     const error = searchParams.resumeSession && resumeQ.error ? resumeQ.error : playlistId ? playlistQ.error : queueQ.error;
     const retry = () => { if (searchParams.resumeSession) void resumeQ.refetch(); if (playlistId) void playlistQ.refetch(); else if (!searchParams.resumeSession) void queueQ.refetch(); };
-    if (error && !source) return <div className="watch-empty" role="alert"><h1>{t("Could not load queue")}</h1><p>{t(error.message)}</p><button onClick={retry}>{t("Try again")}</button></div>;
-    if (!source || settingsQ.isPending) return <PageSkeleton kind="watch" queueLayout={queueLayout}/>;
+    if (error && (!source || searchParams.resumeSession)) return <div className="watch-empty" role="alert"><h1>{t("Could not load queue")}</h1><p>{t(error.message)}</p><button onClick={retry}>{t("Try again")}</button></div>;
+    if (!source || settingsQ.isPending || searchParams.resumeSession && (!resumeQ.isFetchedAfterMount || playlistId && !playlistQ.isFetchedAfterMount)) return <PageSkeleton kind="watch" queueLayout={queueLayout}/>;
     return <QueuedWatch key={JSON.stringify([mediaId, searchParams.search, searchParams.folder, searchParams.exactFolder, searchParams.libraryId, searchParams.seriesTitle, searchParams.sort, searchParams.favorites, searchParams.playlistId, searchParams.resumeSession])}
       source={source} initialId={Number(mediaId)} behavior={settingsQ.data?.queueBehavior ?? 'auto'} shuffle={searchParams.sort === 'random'}
       saved={resumeQ.data?.state} resumeKey={searchParams.resumeSession} queueResumePosition={settingsQ.data?.queueResumePosition ?? true}

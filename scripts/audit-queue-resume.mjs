@@ -10,7 +10,7 @@ export async function auditQueueResume(page, mode, base, prefix, playlistId, lab
   const play = async id => { await page.locator('[data-queue-id="' + id + '"] .playback-queue-item').click(); await selected(id); };
   const roundTrip = async (key, current, order) => {
     await stored(key, current);
-    await page.goto(base + prefix + '/');
+    await page.getByRole('link', { name: 'Home', exact: true }).first().click();
     const row = page.getByRole('region', { name: 'Continue watching titles', exact: true });
     const link = row.locator('.media-card-link[href*="resumeSession=' + key + '"]');
     await link.waitFor();
@@ -33,6 +33,8 @@ export async function auditQueueResume(page, mode, base, prefix, playlistId, lab
   }, mode);
   const order = await ids();
   await roundTrip(key, 3, order);
+  await play(order[1]);
+  await roundTrip(key, order[1], order);
   check(await page.locator('.playback-queue').getByRole('button', { name: 'Shuffle queue', exact: true }).getAttribute('aria-pressed') === 'true', label + ' restores shuffle without reintroducing removed videos');
   await play(order.at(-1));
   await page.locator('.player video').evaluate(video => video.dispatchEvent(new Event('ended')));
@@ -47,4 +49,5 @@ export async function auditQueueResume(page, mode, base, prefix, playlistId, lab
   await roundTrip('playlist-' + playlistId, 1, [2, 1, 3]);
   check(await page.locator('.playback-queue h2 a').getAttribute('href') === prefix + '/playlists/' + playlistId, label + ' resumed playlists retain their named playlist link');
   await play(2);
+  await roundTrip('playlist-' + playlistId, 2, [2, 1, 3]);
 }

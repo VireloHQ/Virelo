@@ -149,6 +149,17 @@ try {
       await first().getByRole('button').press('Enter');
       await first().getByRole('button', { name: 'Mute preview', exact: true }).waitFor();
       check(page.url() === base + '/__preview-audit', 'Enter toggles audio without navigating');
+      const leavingPreview = await first().locator('video').elementHandle();
+      await first().getByRole('button').focus();
+      await page.mouse.move(1100, 700);
+      await first().locator('video').waitFor({ state: 'detached' });
+      check(await first().locator('.media-card-link').evaluate(link => link === document.activeElement),
+        'pointer leave returns focused speaker control to the card link before teardown');
+      check(await leavingPreview.evaluate(video => video.paused && video.muted && !video.hasAttribute('src')),
+        'pointer leave pauses, mutes and unloads the focused audible preview');
+      await page.waitForTimeout(220);
+      check(await first().locator('video').count() === 0 && await leavingPreview.evaluate(video => video.paused && !video.hasAttribute('src')),
+        'returned link focus never restarts a preview after pointer leave');
       await second().hover(); await waitPlaying(second());
       check(await page.evaluate(() => window.__videos.filter(video => !video.paused && !video.muted).length) === 1, 'only one card across rows can play audio');
       check(await page.evaluate(() => window.__videos.filter(video => video.paused).every(video => video.muted && !video.hasAttribute('src'))), 'superseded previews pause, mute and unload');

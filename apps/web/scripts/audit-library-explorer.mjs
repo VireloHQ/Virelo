@@ -196,7 +196,7 @@ try {
   await page.getByRole('option',{name:'Random',exact:true}).click();
   await page.waitForFunction(()=>document.querySelectorAll('.media-card').length===200);
   await page.getByRole('button',{name:'Load more',exact:true}).click();await page.waitForFunction(()=>document.querySelectorAll('.media-card').length===201);
-  check(await page.locator('.media-card').evaluateAll(cards=>new Set(cards.map(card=>card.getAttribute('href'))).size===cards.length),label+' random pagination never repeats a video');
+  check(await page.locator('.media-card-link').evaluateAll(cards=>new Set(cards.map(card=>card.getAttribute('href'))).size===cards.length),label+' random pagination never repeats a video');
   await page.getByRole('button',{name:'Sort',exact:true}).click();await page.getByRole('option',{name:'Title',exact:true}).click();
   await input.fill('/Clips/Sh');await input.press('Tab');
   check(await input.evaluate(element=>getComputedStyle(element).outlineStyle==='none'),label+' address focus uses one neutral field boundary');
