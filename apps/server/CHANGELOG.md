@@ -1,13 +1,11 @@
 # Changelog
 
-## Unreleased
-
-- Allow every user to disable video previews in Playback settings on this browser.
-
 ## 0.7.0
 
 - Resume a queue or playlist from Continue watching, retaining the selected video, custom order and shuffle state.
 - Add full-length hover previews with a seekable timeline and an icon-only top-right mute button. Previews start muted and remember an explicit sound preference; stale end positions no longer trap playback in a few frames.
+- Apply the player's saved volume and volume leveling to hover previews, using validated scan measurements when available and live adjustment otherwise. Preview mute remains independent.
+- Allow every user to disable video previews in Playback settings on this browser.
 - Choose whether automatic queue advancement resumes saved watch positions or starts videos from the beginning.
 
 ## 0.6.1

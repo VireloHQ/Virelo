@@ -8,14 +8,14 @@ import { sharedModuleBase } from '../../../scripts/vite-audit-url.mjs';
 
 const { chromium } = createRequire(process.env.VIRELO_TEST_NODE_PACKAGE || import.meta.url)('playwright');
 // Synthetic video with a real soundtrack; never reads or converts user media.
-function syntheticClip(seconds) {
+function syntheticClip(seconds, volume = 1) {
   return execFileSync(process.env.VIRELO_TEST_FFMPEG || 'ffmpeg', [
     '-hide_banner', '-loglevel', 'error', '-f', 'lavfi', '-i', `testsrc2=s=160x90:r=10:d=${seconds}`,
     '-f', 'lavfi', '-i', `sine=frequency=440:duration=${seconds}`, '-c:v', 'libx264', '-preset', 'ultrafast',
-    '-g', '10', '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-movflags', 'frag_keyframe+empty_moov', '-f', 'mp4', 'pipe:1'
+    '-g', '10', '-pix_fmt', 'yuv420p', '-af', `volume=${volume}`, '-c:a', 'aac', '-movflags', 'frag_keyframe+empty_moov', '-f', 'mp4', 'pipe:1'
   ], { windowsHide: true });
 }
-const clip = syntheticClip(24), shortClip = syntheticClip(2);
+const clip = syntheticClip(24), shortClip = syntheticClip(2), loudClip = syntheticClip(24, 6);
 const PREVIEW_ENABLED_KEY = 'virelo-preview-enabled:v1';
 let checks = 0;
 const browser = await chromium.launch({ headless: true, executablePath: process.env.VIRELO_TEST_CHROMIUM,
@@ -74,11 +74,17 @@ try {
         body: '<!doctype html><html><body><div id="fixture" class="app-shell"></div></body></html>' }));
       await page.route('**/__preview-clip.mp4', serveClip);
       await page.route('**/api/**', route => route.request().url().endsWith('/stream') ? serveClip(route) : route.fulfill({ json: [] }));
-      const setup = async (saved, { position = 0, short = false, settings = false } = {}) => {
-        activeClip = short ? shortClip : clip;
+      const setup = async (saved, { position = 0, short = false, settings = false, audio } = {}) => {
+        activeClip = audio ? loudClip : short ? shortClip : clip;
         await page.goto(base + '/__preview-audit' + (settings ? (edition === 'web' ? '?section=playback' : '#playback') : ''));
-        await evaluateWithoutGesture(async ({ shared, edition, saved, position, short, settings }) => {
+        await evaluateWithoutGesture(async ({ shared, edition, saved, position, short, settings, audio, size }) => {
           if (saved !== undefined) localStorage.setItem('virelo-preview-muted:v1', saved);
+          if (audio) {
+            localStorage.removeItem('virelo-preview-enabled:v1');
+            localStorage.setItem('virelo-playback-volume:v1', JSON.stringify({ volume: audio.volume, muted: false }));
+            localStorage.setItem('virelo-volume-leveling:v1', String(audio.leveling));
+            if (audio.unavailable) window.AudioContext = class { constructor() { throw new Error('Unavailable test context'); } };
+          }
           const Refresh = (await import('/@react-refresh')).default;
           Refresh.injectIntoGlobalHook(window);
           window.$RefreshReg$ = () => {}; window.$RefreshSig$ = () => type => type;
@@ -90,6 +96,32 @@ try {
           const { QueryClient, QueryClientProvider } = await import(imports.find(url => url.includes('react-query')));
           const { createRootRoute, createRoute, createRouter, RouterProvider } = await import(imports.find(url => url.includes('react-router')));
           const { api } = await import('/src/api.ts');
+          window.__saveVolume = (await import(shared + 'utils/playback-volume.ts')).savePlaybackVolume;
+          window.__saveLeveling = (await import(shared + 'utils/volume-leveling.ts')).saveLevelingPreference;
+          const { VolumeLeveler } = await import(shared + 'utils/volume-leveler.ts');
+          window.__previewLevelers = []; window.__playVolumes = [];
+          const bind = VolumeLeveler.prototype.bind;
+          VolumeLeveler.prototype.bind = function (elements) {
+            if (!window.__previewLevelers.includes(this)) window.__previewLevelers.push(this);
+            return bind.call(this, elements);
+          };
+          window.__currentLeveler = () => window.__previewLevelers.find(leveler => leveler.has(document.querySelector('.media-card video')));
+          window.__outputRms = async () => {
+            const leveler = window.__currentLeveler(), graph = leveler.graphs.get(document.querySelector('.media-card video'));
+            if (!graph.probe) {
+              graph.probe = leveler.context.createAnalyser(); graph.probe.fftSize = 2048;
+              graph.output.disconnect(leveler.context.destination);
+              graph.output.connect(graph.probe); graph.probe.connect(leveler.context.destination);
+            }
+            const data = new Float32Array(graph.probe.fftSize);
+            let power = 0;
+            for (let count = 0; count < 10; count++) {
+              await new Promise(resolve => setTimeout(resolve, 30));
+              graph.probe.getFloatTimeDomainData(data);
+              power += data.reduce((sum, value) => sum + value * value, 0) / data.length;
+            }
+            return Math.sqrt(power / 10);
+          };
           window.__sourceRequests = []; window.__settingsWrites = 0; window.__playCalls = 0;
           api.mediaSource = async id => { window.__sourceRequests.push(id); return location.origin + '/__preview-clip.mp4'; };
           api.thumbnail = async () => null;
@@ -116,12 +148,16 @@ try {
           const items = Array.from({ length: 5 }, (_, index) => ({ id: index + 1, library_id: 1,
             title: `Preview ${index + 1}`, kind: 'video', duration: short ? 2 : 24,
             progress_position: index === 0 ? (position === 'invalid' ? Infinity : position) : 0,
-            width: 160, height: 90, season: null, episode: null, year: null, liked: 0,
+            width: 160, height: 90, season: null, episode: null, year: null, liked: 0, size, mtime: 1,
+            audio_loudness: audio?.measurement ? JSON.stringify({ version: 1, size: audio.measurement === 'stale' ? size + 1 : size,
+              mtime: 1, defaultAudioStream: 0, tracks: [{ index: 0, loudness: { integratedLufs: -6, truePeakDb: -1 } }] }) : null,
             thumbnail_path: null, poster_path: null, backdrop_path: null }));
           window.__videos = []; window.__rejections = [];
           const nativePlay = HTMLMediaElement.prototype.play;
           HTMLMediaElement.prototype.play = function () {
             window.__playCalls++;
+            const owner = window.__previewLevelers.find(leveler => leveler.has(this));
+            window.__playVolumes.push(owner ? owner.graphs.get(this).output.gain.value : this.volume);
             if (!window.__videos.includes(this)) window.__videos.push(this);
             const promise = nativePlay.call(this);
             promise.catch(error => window.__rejections.push(error.name));
@@ -151,7 +187,7 @@ try {
           const root = (dom.createRoot || dom.default.createRoot)(document.getElementById('fixture'));
           window.__unmount = () => root.unmount();
           root.render(h(React.StrictMode, null, h(QueryClientProvider, { client }, h(RouterProvider, { router }))));
-        }, { shared: sharedModuleBase, edition, saved, position, short, settings });
+        }, { shared: sharedModuleBase, edition, saved, position, short, settings, audio, size: activeClip.length });
         await waitWithoutGesture(() => Boolean(document.querySelector('.media-card-link')));
       };
       const check = (condition, label) => { assert.ok(condition, `${edition}: ${label}`); checks++; console.log('PASS', edition, label); };
@@ -453,6 +489,85 @@ try {
         await first().hover(); await page.waitForTimeout(300);
         check(await page.evaluate(() => !document.querySelector('.hover-preview, .media-card video')), 'imported disabled preference prevents hover autoplay');
       }
+      await setup('true', { audio: { volume: .03, leveling: false } });
+      await first().hover(); await waitPlaying(first());
+      check(await first().locator('video').evaluate(video => video.muted && Math.abs(video.volume - .03) < .000001),
+        'preview restores the player volume before muted playback');
+      await first().getByRole('button', { name: 'Unmute preview', exact: true }).click();
+      await first().getByRole('button', { name: 'Mute preview', exact: true }).waitFor();
+      check(await page.evaluate(() => window.__playVolumes.every(volume => volume <= .030001)),
+        'initial playback and explicit unmute never exceed the saved low volume');
+      await page.evaluate(() => window.__saveVolume({ volume: .12 }));
+      await page.waitForFunction(() => Math.abs(document.querySelector('.media-card video')?.volume - .12) < .000001);
+      check(true, 'active preview follows player volume changes');
+      await first().getByRole('button').click();
+      check(await page.evaluate(() => JSON.parse(localStorage.getItem('virelo-playback-volume:v1')).muted === false
+        && JSON.parse(localStorage.getItem('virelo-playback-volume:v1')).volume === .12), 'preview mute does not overwrite player mute or volume');
+      await page.evaluate(() => window.__saveVolume({ volume: 0 }));
+      await first().getByRole('button', { name: 'Unmute preview', exact: true }).click();
+      check(await first().locator('video').evaluate(video => !video.muted && video.volume === 0), 'unmuting cannot override player volume zero');
+      await page.evaluate(() => window.__saveVolume({ volume: .03 }));
+      await second().hover(); await waitPlaying(second());
+      check(await second().locator('video').evaluate(video => !video.muted && Math.abs(video.volume - .03) < .000001), 'the next preview keeps saved volume and independent sound preference');
+
+      await setup('true', { audio: { volume: .1, leveling: true, measurement: 'cached' } });
+      await first().hover(); await waitPlaying(first());
+      await first().getByRole('button', { name: 'Unmute preview', exact: true }).click();
+      await first().getByRole('button', { name: 'Mute preview', exact: true }).waitFor();
+      await page.waitForFunction(() => window.__currentLeveler()?.context.state === 'running');
+      await page.waitForFunction(() => {
+        const video = document.querySelector('.media-card video');
+        return Math.abs(window.__currentLeveler()?.graphs.get(video)?.output.gain.value - .1) < .000001;
+      }, undefined, { timeout: 2000 });
+      check(await page.evaluate(() => {
+        const video = document.querySelector('.media-card video'), leveler = window.__currentLeveler();
+        return leveler.measured?.integratedLufs === -6 && leveler.measured?.truePeakDb === -1
+          && video.volume === 1 && Math.abs(leveler.graphs.get(video).output.gain.value - .1) < .000001;
+      }), 'real preview uses its validated default-track measurement and saved output gain');
+      check(await page.evaluate(() => window.__playVolumes.every(volume => volume <= .100001)), 'leveling startup never exposes full-volume output');
+      const measuredRms = await page.evaluate(() => window.__outputRms());
+      await page.evaluate(() => window.__saveLeveling(false));
+      await page.waitForTimeout(150);
+      const originalRms = await page.evaluate(() => window.__outputRms());
+      check(originalRms > .001 && measuredRms > originalRms * .1 && measuredRms < originalRms * .4,
+        `cached leveling really attenuates decoded preview audio (${measuredRms.toFixed(4)} vs ${originalRms.toFixed(4)})`);
+      await page.evaluate(() => { window.__saveVolume({ volume: .02 }); window.__saveLeveling(true); });
+      await page.waitForTimeout(150);
+      const lowRms = await page.evaluate(() => window.__outputRms());
+      check(lowRms > measuredRms * .1 && lowRms < measuredRms * .3, 'player volume applies after leveling without changing its detector');
+      await first().getByRole('button').click();
+      await first().getByRole('button', { name: 'Unmute preview', exact: true }).waitFor();
+      check(await page.evaluate(() => {
+        const video = document.querySelector('.media-card video');
+        return video.muted && window.__currentLeveler().graphs.get(video).output.gain.value === 0;
+      }), 'preview mute also silences the leveled audio graph');
+      await page.mouse.move(1100, 700);
+      await page.waitForFunction(() => window.__previewLevelers.every(leveler => leveler.context.state === 'closed'));
+      check(true, 'pointer leave releases every preview audio context under StrictMode');
+
+      await setup('true', { audio: { volume: .1, leveling: true, measurement: 'stale' } });
+      await first().hover(); await waitPlaying(first());
+      await first().getByRole('button', { name: 'Unmute preview', exact: true }).click();
+      await first().getByRole('button', { name: 'Mute preview', exact: true }).waitFor();
+      await page.waitForFunction(() => window.__currentLeveler()?.context.state === 'running');
+      check(await page.evaluate(() => window.__currentLeveler().measured === null), 'stale scan measurements are rejected and use live leveling');
+      await page.waitForTimeout(250);
+      const liveRms = await page.evaluate(() => window.__outputRms());
+      await page.evaluate(() => window.__saveLeveling(false));
+      await page.waitForTimeout(150);
+      const bypassRms = await page.evaluate(() => window.__outputRms());
+      check(bypassRms > .001 && liveRms > 0 && liveRms < bypassRms * .75, 'unmeasured previews really attenuate loud audio through the live detector');
+      await page.evaluate(() => window.dispatchEvent(new Event('pagehide')));
+      await page.waitForFunction(() => window.__previewLevelers.every(leveler => leveler.context.state === 'closed'));
+      check(await first().count() === 1 && await first().locator('video').count() === 0,
+        'stopping an off-page preview closes its graph even while the card stays mounted');
+
+      await setup('true', { audio: { volume: .03, leveling: true, unavailable: true } });
+      await first().hover(); await waitPlaying(first());
+      await first().getByRole('button', { name: 'Unmute preview', exact: true }).click();
+      await first().getByRole('button', { name: 'Mute preview', exact: true }).waitFor();
+      check(await first().locator('video').evaluate(video => !video.muted && Math.abs(video.volume - .03) < .000001)
+        && await page.evaluate(() => window.__previewLevelers.length === 0), 'unavailable leveling falls back to native audio at the saved volume, not full volume');
       assert.deepEqual(errors, []);
       await context.close();
     } finally { server.kill(); }

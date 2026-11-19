@@ -6,6 +6,7 @@ import { useEffect, useRef, useState, type MouseEvent, type PointerEvent } from 
 import { artwork } from '../api';
 import type { MediaItem } from '../types';
 import { HoverPreview } from '@virelo/web-ui/components/HoverPreview.tsx';
+import { audioMeasurement } from '@virelo/web-ui/utils/volume-leveling.ts';
 import { usePreviewEnabled } from '@virelo/web-ui/hooks/usePreviewEnabled.ts';
 import { MediaContextMenu } from '@virelo/web-ui/components/MediaContextMenu.tsx';
 
@@ -85,7 +86,8 @@ export function MediaCard({item, compact=false, short=false, playDirect=false, p
         <img key={imageSources.join('|')} src={imageSources[0]} alt="" loading="lazy" decoding="async" onLoad={(e)=>{const image=e.currentTarget;if(image.naturalWidth>1||image.naturalHeight>1) image.dataset.loaded='true';}} onError={(e)=>{const image=e.currentTarget;delete image.dataset.loaded;const next=Number(image.dataset.fallbackIndex || 0)+1;if(next<imageSources.length){image.dataset.fallbackIndex=String(next);image.src=imageSources[next];}else image.style.display='none';}}/>
         <div className="media-card-fallback"><Play weight="fill"/></div>
         <div className="media-card-play"><span><Play weight="fill"/></span></div>
-        {showPreview && <HoverPreview src={`/api/media/${item.id}/stream`} start={previewStart} />}
+        {showPreview && <HoverPreview src={`/api/media/${item.id}/stream`} start={previewStart}
+          measurement={audioMeasurement(item.audio_loudness, item.size, item.mtime)} />}
         {progress > 0 && <div className="card-progress"><i style={{width:`${progress}%`}}/></div>}
       </div>
       {favoriteError && <span className="error-copy" role="alert">{t(favoriteError)}</span>}
