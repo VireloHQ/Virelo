@@ -546,8 +546,17 @@ try {
         const video = document.querySelector('.media-card video');
         return video.muted && window.__currentLeveler().graphs.get(video).output.gain.value === 0;
       }), 'preview mute also silences the leveled audio graph');
-      await page.mouse.move(1100, 700);
-      await page.waitForFunction(() => window.__previewLevelers.every(leveler => leveler.context.state === 'closed'));
+      // Fixed viewport coordinates may hit another card after its hover expansion.
+      await page.getByRole('heading', { name: 'First row', exact: true }).hover();
+      await first().locator('video').waitFor({ state: 'detached' });
+      check(await page.locator('.media-card:hover').count() === 0, 'context teardown starts with the pointer outside every card');
+      await page.waitForFunction(() => window.__previewLevelers.every(leveler => leveler.context.state === 'closed'), undefined, { timeout: 5000 })
+        .catch(async error => {
+          console.error('Preview audio teardown:', await page.evaluate(() => window.__previewLevelers.map(leveler => ({
+            state: leveler.context.state, media: [...leveler.graphs.keys()].map(video => ({ connected: video.isConnected, paused: video.paused, muted: video.muted }))
+          }))));
+          throw error;
+        });
       check(true, 'pointer leave releases every preview audio context under StrictMode');
 
       await setup('true', { audio: { volume: .1, leveling: true, measurement: 'stale' } });
