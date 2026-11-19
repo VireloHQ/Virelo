@@ -537,6 +537,11 @@ try {
       check(lowRms > measuredRms * .1 && lowRms < measuredRms * .3, 'player volume applies after leveling without changing its detector');
       await first().getByRole('button').click();
       await first().getByRole('button', { name: 'Unmute preview', exact: true }).waitFor();
+      // The DOM label can update before the audio thread applies AudioParam automation.
+      await page.waitForFunction(() => {
+        const video = document.querySelector('.media-card video');
+        return video?.muted && window.__currentLeveler()?.graphs.get(video)?.output.gain.value === 0;
+      }, undefined, { timeout: 2000 });
       check(await page.evaluate(() => {
         const video = document.querySelector('.media-card video');
         return video.muted && window.__currentLeveler().graphs.get(video).output.gain.value === 0;
