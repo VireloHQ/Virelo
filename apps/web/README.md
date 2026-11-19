@@ -86,6 +86,11 @@ video, custom order, removed entries and shuffle state. The 12 most recent queue
 skipped and completed queues disappear. Queue sessions are not included in
 library backups; playlists and individual watch positions still are.
 
+Card previews are on by default. Disable **Settings → Playback → Video previews**
+to stop active previews and prevent preview videos from loading, including on
+keyboard focus. This browser-local choice syncs across tabs and is included in
+settings backups; it does not change the separate preview mute preference.
+
 Card previews start muted. Use the speaker button at the top right to enable
 sound; the browser remembers that choice, including in settings backups. If
 audible autoplay is blocked, click the speaker button again. Leaving the card or

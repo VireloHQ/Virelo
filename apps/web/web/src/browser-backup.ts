@@ -6,6 +6,7 @@ import { libraryFolder, libraryName } from '@virelo/core/library-names';
 import { playlistIds, playlistName, playlistRevision, type StoredPlaylist } from './utils/playlist-values';
 import { PLAYBACK_SPEED_KEY, PLAYBACK_SPEEDS } from '@virelo/core/playback-speed';
 import { LEVELING_KEY, readAudioAnalysis } from '@virelo/web-ui/utils/volume-leveling.ts';
+import { PREVIEW_ENABLED_KEY, refreshPreviewEnabled } from '@virelo/web-ui/utils/preview-preference.ts';
 
 export type BackupKind = 'settings' | 'library';
 interface BackupLibrary {
@@ -27,7 +28,7 @@ const STORES = ['libraries', 'media', 'playlists'];
 const PREFERENCE_KEYS = [
   'virelo.appearance.v1', LANGUAGE_KEY, 'virelo.library-layout', 'virelo.queue-layout',
   'virelo.explorer-width', PLAYBACK_SPEED_KEY, 'virelo-playback-quality:v1',
-  'virelo-playback-audio:v1', 'virelo-playback-subtitles:v1', 'virelo-playback-volume:v1', 'virelo-preview-muted:v1', LEVELING_KEY
+  'virelo-playback-audio:v1', 'virelo-playback-subtitles:v1', 'virelo-playback-volume:v1', 'virelo-preview-muted:v1', PREVIEW_ENABLED_KEY, LEVELING_KEY
 ];
 const MEDIA_TEXT = ['path', 'source_path', 'filename', 'title', 'sort_title', 'folder'] as const;
 const MEDIA_NULL_TEXT = ['series_title', 'video_codec', 'audio_codec', 'container', 'overview', 'genres', 'external_id'] as const;
@@ -93,6 +94,7 @@ function preference(key: string, value: unknown): string {
     case 'virelo.library-layout': check(['grid', 'explorer'].includes(raw)); break;
     case 'virelo.queue-layout': check(['horizontal', 'vertical'].includes(raw)); break;
     case 'virelo-preview-muted:v1': check(raw === 'true' || raw === 'false'); break;
+    case PREVIEW_ENABLED_KEY: check(raw === 'true' || raw === 'false'); break;
     case 'virelo.explorer-width': number(Number(raw), false, 160, 720); break;
     case PLAYBACK_SPEED_KEY: check(PLAYBACK_SPEEDS.some(speed => String(speed) === raw)); break;
     case 'virelo-playback-quality:v1': check(raw === 'auto' || raw === 'source' || /^\d+$/.test(raw) && Number.isSafeInteger(Number(raw)) && Number(raw) > 0); break;
@@ -290,7 +292,7 @@ export async function importBrowserBackup(value: BrowserBackup): Promise<{ prefe
   // IDB has committed; localStorage is separate and may partially fail. Never claim rollback.
   let preferencesRestored = true;
   for (const [key, value] of Object.entries(backup.preferences)) {
-    try { localStorage.setItem(key, value); }
+    try { localStorage.setItem(key, value); if (key === PREVIEW_ENABLED_KEY) refreshPreviewEnabled(); }
     catch { preferencesRestored = false; }
   }
   return { preferencesRestored };

@@ -16,6 +16,7 @@ const preferences = {
   'virelo-playback-audio:v1': JSON.stringify({ configuration: JSON.stringify([track]), selection: track }),
   'virelo-playback-subtitles:v1': JSON.stringify({ configuration: JSON.stringify([track]), selection: null }),
   'virelo-preview-muted:v1': 'false',
+  'virelo-preview-enabled:v1': 'false',
   'virelo-playback-volume:v1': JSON.stringify({ volume: .65, muted: true }), 'virelo-volume-leveling:v1': 'true'
 };
 function stableId(value) {
@@ -247,16 +248,32 @@ test('queue resume false survives settings export, validation and import', async
   assert.equal(env.stores.get('settings').get('current').queueResumePosition, false);
 });
 
-test('both raw preview mute booleans survive settings export and import', async t => {
+test('both raw preview mute/enabled booleans survive settings export and import', async t => {
   const env = environment(t);
-  for (const value of ['true', 'false']) {
-    env.records.set('virelo-preview-muted:v1', value);
+  for (const key of ['virelo-preview-muted:v1', 'virelo-preview-enabled:v1']) for (const value of ['true', 'false']) {
+    env.records.set(key, value);
     const exported = await api.readBrowserBackup(await api.exportBrowserData('settings'));
-    assert.equal(exported.preferences['virelo-preview-muted:v1'], value);
-    env.records.set('virelo-preview-muted:v1', value === 'true' ? 'false' : 'true');
+    assert.equal(exported.preferences[key], value);
+    env.records.set(key, value === 'true' ? 'false' : 'true');
     await api.importBrowserBackup(exported);
-    assert.equal(env.records.get('virelo-preview-muted:v1'), value);
+    assert.equal(env.records.get(key), value);
   }
+});
+
+test('older settings backups without preview enablement preserve the current choice', async t => {
+  const env = environment(t), value = fixture('settings');
+  delete value.preferences['virelo-preview-enabled:v1'];
+  env.records.set('virelo-preview-enabled:v1', 'false');
+  await api.importBrowserBackup(await read(value));
+  assert.equal(env.records.get('virelo-preview-enabled:v1'), 'false');
+});
+
+test('a blocked preview preference import reports partial failure without claiming it was restored', async t => {
+  const env = environment(t), value = fixture('settings');
+  env.records.set('virelo-preview-enabled:v1', 'true');
+  env.storageFailures.add('virelo-preview-enabled:v1');
+  assert.equal((await api.importBrowserBackup(value)).preferencesRestored, false);
+  assert.equal(env.records.get('virelo-preview-enabled:v1'), 'true');
 });
 
 test('an explicitly undefined queue resume property is invalid on direct import', async t => {
@@ -304,6 +321,7 @@ const corruptions = [
   ['invalid volume', value => { value.preferences['virelo-playback-volume:v1'] = '{"volume":2,"muted":false}'; }],
   ['unknown volume property', value => { value.preferences['virelo-playback-volume:v1'] = '{"volume":1,"muted":false,"token":"secret"}'; }],
   ...['', 'TRUE', 'False', '1', '0', 'null', '{}', '"false"', ' true', 'false ', true, false, null].map(invalid => ['invalid preview mute value ' + JSON.stringify(invalid), value => { value.preferences['virelo-preview-muted:v1'] = invalid; }]),
+  ...['', 'TRUE', 'False', '1', '0', 'null', '{}', '"false"', ' true', 'false ', true, false, null].map(invalid => ['invalid preview enabled value ' + JSON.stringify(invalid), value => { value.preferences['virelo-preview-enabled:v1'] = invalid; }]),
   ['invalid language', value => { value.preferences['virelo.language.v1'] = 'unsupported'; }],
   ['invalid playback speed', value => { value.preferences['virelo.playback-speed:v1'] = '5'; }],
   ['invalid quality', value => { value.preferences['virelo-playback-quality:v1'] = 'javascript:bad'; }],

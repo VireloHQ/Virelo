@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type CSSProperties } from 'react';
+import { useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 import { SpeakerHigh, SpeakerSlash } from '@phosphor-icons/react';
 import { t, useLocale } from '@edition/i18n';
 import { createHoverPreview } from '../utils/hover-preview';
@@ -12,7 +12,8 @@ export function HoverPreview({ src, start }: { src: string; start: number }) {
   const [state, setState] = useState({ muted: true, playing: false, progress: 0, duration: 0 });
   const [stopped, setStopped] = useState(false);
 
-  useEffect(() => {
+  // Restore focus and unload before a settings change removes the controls.
+  useLayoutEffect(() => {
     const root = rootRef.current, video = videoRef.current;
     if (!root || !video || !src || stopped) return;
     const returnFocus = () => {

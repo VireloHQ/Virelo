@@ -122,6 +122,12 @@ its current order, removed entries and shuffle state. The 12 most recent queues
 videos are skipped; completed queues disappear. Clearing an account's history
 also clears these saved queues. This does not change the saved playlist itself.
 
+Video previews are on by default. Every signed-in user can disable
+**Settings → Playback → Video previews** without administrator access. This is
+a browser-origin preference, not a global server setting; it syncs across tabs.
+Disabling it stops active previews and prevents preview video loading on hover
+or keyboard focus. The separate remembered preview mute choice is unchanged.
+
 Hover a card to preview it. The speaker button at its top right switches sound
 on or off; previews start muted and remember your choice on this browser origin.
 If the browser blocks audible autoplay, use the speaker button to enable sound.

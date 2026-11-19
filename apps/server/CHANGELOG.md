@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Allow every user to disable video previews in Playback settings on this browser.
+
 ## 0.7.0
 
 - Resume a queue or playlist from Continue watching, retaining the selected video, custom order and shuffle state.

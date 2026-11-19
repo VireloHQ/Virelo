@@ -16,6 +16,7 @@ function syntheticClip(seconds) {
   ], { windowsHide: true });
 }
 const clip = syntheticClip(24), shortClip = syntheticClip(2);
+const PREVIEW_ENABLED_KEY = 'virelo-preview-enabled:v1';
 let checks = 0;
 const browser = await chromium.launch({ headless: true, executablePath: process.env.VIRELO_TEST_CHROMIUM,
   args: ['--autoplay-policy=document-user-activation-required', '--disable-features=PreloadMediaEngagementData,MediaEngagementBypassAutoplayPolicies'] });
@@ -56,7 +57,9 @@ try {
       };
       page.on('pageerror', error => errors.push(error.message));
       let activeClip = clip;
+      let streamRequests = 0;
       const serveClip = route => {
+        streamRequests++;
         const range = /^bytes=(\d+)-(\d*)$/.exec(route.request().headers().range || '');
         const start = range ? Number(range[1]) : 0;
         const end = Math.min(range?.[2] ? Number(range[2]) : activeClip.length - 1, activeClip.length - 1);
@@ -67,14 +70,14 @@ try {
             ...(range ? { 'Content-Range': `bytes ${start}-${end}/${activeClip.length}` } : {}) },
           body: activeClip.subarray(start, end + 1) });
       };
-      await page.route(base + '/__preview-audit', route => route.fulfill({ contentType: 'text/html',
+      await page.route(url => url.origin === base && url.pathname === '/__preview-audit', route => route.fulfill({ contentType: 'text/html',
         body: '<!doctype html><html><body><div id="fixture" class="app-shell"></div></body></html>' }));
       await page.route('**/__preview-clip.mp4', serveClip);
       await page.route('**/api/**', route => route.request().url().endsWith('/stream') ? serveClip(route) : route.fulfill({ json: [] }));
-      const setup = async (saved, { position = 0, short = false } = {}) => {
+      const setup = async (saved, { position = 0, short = false, settings = false } = {}) => {
         activeClip = short ? shortClip : clip;
-        await page.goto(base + '/__preview-audit');
-        await evaluateWithoutGesture(async ({ shared, edition, saved, position, short }) => {
+        await page.goto(base + '/__preview-audit' + (settings ? (edition === 'web' ? '?section=playback' : '#playback') : ''));
+        await evaluateWithoutGesture(async ({ shared, edition, saved, position, short, settings }) => {
           if (saved !== undefined) localStorage.setItem('virelo-preview-muted:v1', saved);
           const Refresh = (await import('/@react-refresh')).default;
           Refresh.injectIntoGlobalHook(window);
@@ -87,11 +90,28 @@ try {
           const { QueryClient, QueryClientProvider } = await import(imports.find(url => url.includes('react-query')));
           const { createRootRoute, createRoute, createRouter, RouterProvider } = await import(imports.find(url => url.includes('react-router')));
           const { api } = await import('/src/api.ts');
-          api.mediaSource = async () => location.origin + '/__preview-clip.mp4';
+          window.__sourceRequests = []; window.__settingsWrites = 0; window.__playCalls = 0;
+          api.mediaSource = async id => { window.__sourceRequests.push(id); return location.origin + '/__preview-clip.mp4'; };
           api.thumbnail = async () => null;
+          if (settings) {
+            api.settings = async () => ({ queueBehavior: 'auto', queueResumePosition: true, audioAnalysisEnabled: false,
+              shortsIncludeLandscapes: false, libraryWatchEnabled: false, externalMetadataEnabled: false, externalImagesEnabled: false });
+            api.saveSettings = async () => { window.__settingsWrites++; throw new Error('Preview toggle must not write server/global settings'); };
+            api.libraries = async () => [];
+            api.capabilities = async () => ({ secureContext: true, directoryPicker: true });
+            api.scanStatus = async () => ({ running: false, message: 'Ready' });
+            api.language = async () => ({ locale: 'en' });
+            api.authStatus = async () => ({ setupRequired: false, localAccess: false, user: {
+              id: 7, username: 'preview-user', displayName: 'Preview user', isAdmin: false, enabled: true,
+              allLibraries: true, libraryIds: [], revision: 1, createdAt: 0,
+              permissions: { manageLibraries: false, scanLibraries: false, manageMetadata: false, play: true, transcode: true }
+            } });
+          }
           await import('/src/styles.css'); await import('/src/streaming-ui.css');
           const { MediaRow } = await import(shared + 'components/MediaRow.tsx');
           const { MediaCard } = await import('/src/components/MediaCard.tsx');
+          const SettingsView = settings ? (await import('/src/views/SettingsView.tsx')).SettingsView : null;
+          const AccountSession = settings && edition === 'server' ? (await import('/src/components/AccountSession.tsx')).AccountSession : null;
           const h = React.createElement;
           const items = Array.from({ length: 5 }, (_, index) => ({ id: index + 1, library_id: 1,
             title: `Preview ${index + 1}`, kind: 'video', duration: short ? 2 : 24,
@@ -101,6 +121,7 @@ try {
           window.__videos = []; window.__rejections = [];
           const nativePlay = HTMLMediaElement.prototype.play;
           HTMLMediaElement.prototype.play = function () {
+            window.__playCalls++;
             if (!window.__videos.includes(this)) window.__videos.push(this);
             const promise = nativePlay.call(this);
             promise.catch(error => window.__rejections.push(error.name));
@@ -113,10 +134,13 @@ try {
               h(MediaRow, { title: 'Second row', items: items.slice(2, 4) }),
               h('div', { style: { width: 250 } }, h(MediaCard, { item: items[4], playDirect: true,
                 resumeSession: { key: 'queue-fixture', label: 'Queue · Test context' } }))),
+              settings && h('div', { id: 'settings-fixture', style: { position: 'fixed', right: 0, top: 0, width: 750,
+                height: '100vh', overflow: 'auto', zIndex: 20 } }, h(SettingsView)),
               h('div', { style: { height: 2000 } }));
           }
           const rootRoute = createRootRoute();
-          const fixtureRoute = createRoute({ getParentRoute: () => rootRoute, path: '/__preview-audit', component: Fixture });
+          const fixtureRoute = createRoute({ getParentRoute: () => rootRoute, path: '/__preview-audit',
+            component: AccountSession ? () => h(AccountSession, null, h(Fixture)) : Fixture });
           const watchRoute = createRoute({ getParentRoute: () => rootRoute,
             path: edition === 'web' ? '/app/watch/$mediaId' : '/watch/$mediaId',
             validateSearch: search => ({ resumeSession: search.resumeSession }), component: () => h('p', null, 'Navigated to video') });
@@ -127,7 +151,7 @@ try {
           const root = (dom.createRoot || dom.default.createRoot)(document.getElementById('fixture'));
           window.__unmount = () => root.unmount();
           root.render(h(React.StrictMode, null, h(QueryClientProvider, { client }, h(RouterProvider, { router }))));
-        }, { shared: sharedModuleBase, edition, saved, position, short });
+        }, { shared: sharedModuleBase, edition, saved, position, short, settings });
         await waitWithoutGesture(() => Boolean(document.querySelector('.media-card-link')));
       };
       const check = (condition, label) => { assert.ok(condition, `${edition}: ${label}`); checks++; console.log('PASS', edition, label); };
@@ -343,6 +367,92 @@ try {
       await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
       await page.getByText('Navigated to details', { exact: true }).waitFor();
       check(page.url().includes('/title/1'), 'thumbnail still navigates to card destination');
+
+      await setup('true', { settings: true });
+      const previewToggle = () => page.getByRole('switch', { name: 'Video previews', exact: true });
+      await previewToggle().waitFor();
+      check(await previewToggle().isChecked() && await page.evaluate(key => localStorage.getItem(key) === null, PREVIEW_ENABLED_KEY),
+        'Playback settings default previews on without an existing preference');
+      if (edition === 'server') check(await page.getByRole('switch', { name: 'Resume watched positions during autoplay', exact: true }).count() === 0
+        && await previewToggle().isEnabled(), 'ordinary npm user can change previews without administrator queue policy access');
+      await first().hover(); await waitPlaying(first());
+      const disabledVideo = await first().locator('video').elementHandle();
+      await previewToggle().focus();
+      check(await playing(first()), 'active preview remains live while the local setting gains keyboard focus');
+      await previewToggle().press('Space');
+      await first().locator('video').waitFor({ state: 'detached' });
+      check(!await previewToggle().isChecked() && await page.evaluate(key => localStorage.getItem(key) === 'false', PREVIEW_ENABLED_KEY),
+        'real Playback switch stores the disabled preference locally');
+      check(await disabledVideo.evaluate(video => video.paused && video.muted && !video.hasAttribute('src')),
+        'disabling immediately pauses, mutes and unloads the active real video');
+      const disabledCounts = await page.evaluate(() => ({ sources: window.__sourceRequests.length, plays: window.__playCalls }));
+      const disabledRequests = streamRequests;
+      await second().hover(); await second().locator('.media-card-link').focus();
+      await page.waitForTimeout(300);
+      check(await page.evaluate(({ sources, plays }) => !document.querySelector('.hover-preview, .media-card video')
+        && window.__sourceRequests.length === sources && window.__playCalls === plays, disabledCounts)
+        && streamRequests === disabledRequests, 'disabled hover and keyboard focus create no preview DOM, acquire no source and never autoplay');
+      check(await page.evaluate(() => window.__settingsWrites === 0), 'preview switch never calls global/server settings save');
+      const reloadRequests = streamRequests;
+      await setup('true', { settings: true });
+      await previewToggle().waitFor();
+      await first().hover(); await first().locator('.media-card-link').focus();
+      await page.waitForTimeout(300);
+      check(!await previewToggle().isChecked() && await page.evaluate(() => !document.querySelector('.hover-preview, .media-card video')
+        && window.__sourceRequests.length === 0 && window.__playCalls === 0) && streamRequests === reloadRequests,
+        'disabled preference survives a document reload without source acquisition or autoplay');
+      await previewToggle().press('Space');
+      await page.mouse.move(1100, 700); await first().hover(); await waitPlaying(first());
+      check(await previewToggle().isChecked() && await page.evaluate(key => localStorage.getItem(key) === 'true', PREVIEW_ENABLED_KEY),
+        're-enabling the real Playback switch restores hover playback');
+
+      const peer = await context.newPage();
+      try {
+        await peer.route('**/*', route => route.fulfill({ contentType: 'text/html', body: '<!doctype html><title>Preference peer</title>' }));
+        await peer.goto(base + '/__preview-peer');
+        await page.bringToFront();
+        await page.mouse.move(1100, 700); await first().hover(); await waitPlaying(first());
+        const crossTabVideo = await first().locator('video').elementHandle();
+        await page.evaluate(key => {
+          window.__nativePreferenceEvents = [];
+          window.addEventListener('storage', event => { if (event.key === key) window.__nativePreferenceEvents.push({ trusted: event.isTrusted, value: event.newValue }); });
+        }, PREVIEW_ENABLED_KEY);
+        await peer.evaluate(key => localStorage.setItem(key, 'false'), PREVIEW_ENABLED_KEY);
+        await first().locator('video').waitFor({ state: 'detached' });
+        check(!await previewToggle().isChecked() && await page.evaluate(() => window.__nativePreferenceEvents.some(event => event.trusted && event.value === 'false')),
+          'native storage event from another tab disables the Playback switch');
+        check(await crossTabVideo.evaluate(video => video.paused && video.muted && !video.hasAttribute('src')),
+          'cross-tab disable unloads the active video immediately');
+        const crossTabRequests = streamRequests;
+        const crossTabSources = await page.evaluate(() => window.__sourceRequests.length);
+        await second().hover(); await second().locator('.media-card-link').focus();
+        await page.waitForTimeout(300);
+        check(await page.evaluate(sources => !document.querySelector('.hover-preview, .media-card video') && window.__sourceRequests.length === sources, crossTabSources)
+          && streamRequests === crossTabRequests, 'cross-tab disabled hover cannot acquire or request another media source');
+        await peer.evaluate(key => localStorage.removeItem(key), PREVIEW_ENABLED_KEY);
+        await page.waitForFunction(() => window.__nativePreferenceEvents.some(event => event.trusted && event.value === null));
+        await first().hover(); await waitPlaying(first());
+        check(await previewToggle().isChecked(), 'removing the preference in another tab restores the default-on setting and playback');
+      } finally { await peer.close(); }
+
+      if (edition === 'web') {
+        const importedVideo = await first().locator('video').elementHandle();
+        const imported = await page.evaluate(async key => {
+          const backup = await import('/src/browser-backup.ts');
+          const value = JSON.parse(await (await backup.exportBrowserData('settings')).text());
+          value.preferences[key] = 'false';
+          const parsed = await backup.readBrowserBackup(new Blob([JSON.stringify(value)], { type: 'application/json' }));
+          const result = await backup.importBrowserBackup(parsed);
+          const roundTrip = JSON.parse(await (await backup.exportBrowserData('settings')).text());
+          return result.preferencesRestored && roundTrip.preferences[key] === 'false';
+        }, PREVIEW_ENABLED_KEY);
+        await first().locator('video').waitFor({ state: 'detached' });
+        check(imported && !await previewToggle().isChecked(), 'actual Web backup import/export round-trips the disabled preference and updates the live switch');
+        check(await importedVideo.evaluate(video => video.paused && video.muted && !video.hasAttribute('src')),
+          'Web backup import stops and unloads an already active preview without a reload');
+        await first().hover(); await page.waitForTimeout(300);
+        check(await page.evaluate(() => !document.querySelector('.hover-preview, .media-card video')), 'imported disabled preference prevents hover autoplay');
+      }
       assert.deepEqual(errors, []);
       await context.close();
     } finally { server.kill(); }

@@ -1,4 +1,6 @@
 {
+  "Video previews": "動画プレビュー",
+  "Play video previews when hovering over or focusing a card. Saved in this browser.": "カードにカーソルを合わせるかフォーカスすると、動画プレビューを再生します。このブラウザーに保存されます。",
   "Seek preview": "プレビューの再生位置を変更",
   "Queue session writes stopped.": "セッションが変更されたため、キューの保存を停止しました。",
   "Resume watched positions during autoplay": "自動再生時に前回の再生位置から再開",

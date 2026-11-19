@@ -1,4 +1,6 @@
 {
+  "Video previews": "동영상 미리보기",
+  "Play video previews when hovering over or focusing a card. Saved in this browser.": "카드에 마우스를 올리거나 포커스를 맞추면 동영상 미리보기를 재생합니다. 이 브라우저에 저장됩니다.",
   "Seek preview": "미리보기 재생 위치 이동",
   "Queue session writes stopped.": "세션이 변경되어 대기열 저장이 중지되었습니다.",
   "Resume watched positions during autoplay": "자동 재생 시 이전 시청 위치에서 이어서 재생",
