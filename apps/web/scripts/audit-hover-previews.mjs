@@ -149,8 +149,11 @@ try {
       await first().getByRole('button').press('Enter');
       await first().getByRole('button', { name: 'Mute preview', exact: true }).waitFor();
       check(page.url() === base + '/__preview-audit', 'Enter toggles audio without navigating');
+      await page.evaluate(() => document.fonts.ready.then(() => {}));
       const leavingPreview = await first().locator('video').elementHandle();
       await first().getByRole('button').focus();
+      await first().getByRole('button').hover();
+      check(await first().evaluate(card => card.matches(':hover')), 'pointer-leave regression starts with the pointer inside the card');
       await page.mouse.move(1100, 700);
       await first().locator('video').waitFor({ state: 'detached' });
       check(await first().locator('.media-card-link').evaluate(link => link === document.activeElement),
