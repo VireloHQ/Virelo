@@ -8,6 +8,7 @@ import { api, artwork } from '../api';
 import type { MediaItem } from '../types';
 import { useLocalMediaUrl } from '../hooks/useLocalMediaUrl';
 import { HoverPreview } from '@virelo/web-ui/components/HoverPreview.tsx';
+import { audioMeasurement } from '@virelo/web-ui/utils/volume-leveling.ts';
 import { usePreviewEnabled } from '@virelo/web-ui/hooks/usePreviewEnabled.ts';
 import { MediaContextMenu } from '@virelo/web-ui/components/MediaContextMenu.tsx';
 
@@ -105,7 +106,7 @@ export function MediaCard({item, compact=false, short=false, playDirect=false, p
         {imageSources.length > 0 && <img key={imageSources.join('|')} src={imageSources[0]} alt="" loading="lazy" decoding="async" onLoad={(e)=>{const image=e.currentTarget;if(image.naturalWidth>1||image.naturalHeight>1){image.dataset.loaded='true';image.style.display='';}}} onError={(e)=>{const image=e.currentTarget;delete image.dataset.loaded;const next=Number(image.dataset.fallbackIndex || 0)+1;if(next<imageSources.length){image.dataset.fallbackIndex=String(next);image.src=imageSources[next];}else image.style.display='none';}}/>}
         <div className="media-card-fallback"><Play weight="fill"/></div>
         <div className="media-card-play"><span><Play weight="fill"/></span></div>
-        {showPreview && <LocalCardPreview mediaId={item.id} start={previewStart} />}
+        {showPreview && <LocalCardPreview item={item} start={previewStart} />}
         {progress > 0 && <div className="card-progress"><i style={{width:`${progress}%`}}/></div>}
       </div>
       {favoriteError && <span className="error-copy" role="alert">{t(favoriteError)}</span>}
@@ -123,9 +124,10 @@ export function MediaCard({item, compact=false, short=false, playDirect=false, p
   );
 }
 
-function LocalCardPreview({ mediaId, start }: { mediaId:number; start:number }) {
-  const source = useLocalMediaUrl(mediaId);
-  return source.error ? null : <HoverPreview src={source.url} start={start} />;
+function LocalCardPreview({ item, start }: { item:MediaItem; start:number }) {
+  const source = useLocalMediaUrl(item.id);
+  return source.error ? null : <HoverPreview src={source.url} start={start}
+    measurement={audioMeasurement(item.audio_loudness, item.size, item.mtime)} />;
 }
 
 function formatTime(value:number) {
