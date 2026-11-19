@@ -18,7 +18,7 @@ test('both media jobs use the same bounded FFmpeg installation and verify both t
 });
 
 test('CI prefers an Ubuntu archive without removing runner fallbacks or signature checks', () => {
-  const mirror = "printf '%s\\tpriority:1\\n' 'https://mirrors.kernel.org/ubuntu/'";
+  const mirror = "printf '%s\\tpriority:0\\n' 'https://mirrors.kernel.org/ubuntu/'";
   assert.ok(installs[0].includes(mirror + ' | sudo tee -a /etc/apt/apt-mirrors.txt > /dev/null'));
   assert.doesNotMatch(workflow, /(?:sources\.list|ubuntu\.sources|allow-unauthenticated|trusted=yes|sudo sed)/);
   assert.equal(workflow.match(/npx playwright install --with-deps chromium/g)?.length, 2);

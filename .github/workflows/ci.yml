@@ -46,7 +46,7 @@ jobs:
         run: |
           # EC2 mirrors can throttle bulk downloads for FFmpeg and Playwright.
           # Retain runner fallbacks and Ubuntu's original signing-key policy.
-          printf '%s\tpriority:1\n' 'https://mirrors.kernel.org/ubuntu/' | sudo tee -a /etc/apt/apt-mirrors.txt > /dev/null
+          printf '%s\tpriority:0\n' 'https://mirrors.kernel.org/ubuntu/' | sudo tee -a /etc/apt/apt-mirrors.txt > /dev/null
           sudo apt-get update -o Acquire::Retries=3 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30
           sudo apt-get install --yes --no-install-recommends -o Acquire::Retries=3 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30 ffmpeg
           ffmpeg -version
@@ -118,7 +118,7 @@ jobs:
         run: |
           # EC2 mirrors can throttle bulk downloads for FFmpeg and Playwright.
           # Retain runner fallbacks and Ubuntu's original signing-key policy.
-          printf '%s\tpriority:1\n' 'https://mirrors.kernel.org/ubuntu/' | sudo tee -a /etc/apt/apt-mirrors.txt > /dev/null
+          printf '%s\tpriority:0\n' 'https://mirrors.kernel.org/ubuntu/' | sudo tee -a /etc/apt/apt-mirrors.txt > /dev/null
           sudo apt-get update -o Acquire::Retries=3 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30
           sudo apt-get install --yes --no-install-recommends -o Acquire::Retries=3 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30 ffmpeg
           ffmpeg -version
