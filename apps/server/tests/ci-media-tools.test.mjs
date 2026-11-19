@@ -21,3 +21,12 @@ test('CI preserves runner package mirrors for FFmpeg and Playwright dependencies
   assert.doesNotMatch(workflow, /(?:apt-mirrors\.txt|sources\.list|ubuntu\.sources|archive\.ubuntu\.com)/);
   assert.equal(workflow.match(/npx playwright install --with-deps chromium/g)?.length, 2);
 });
+
+test('both full media suites budget for bounded tool setup and all browser audits', () => {
+  const sections = workflow.split(/^  (?=\S)/m);
+  for (const name of ['media-regressions', 'web-regressions']) {
+    const job = sections.find(section => section.startsWith(name + ':'));
+    assert.ok(job, `Missing ${name} job`);
+    assert.match(job, /^    timeout-minutes: 20\r?$/m);
+  }
+});

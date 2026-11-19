@@ -99,7 +99,8 @@ jobs:
       - run: npm run check -w apps/web
   web-regressions:
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    # Allow the bounded 8-minute tool setup plus the complete browser audit suite.
+    timeout-minutes: 20
     defaults:
       run:
         working-directory: apps/web
