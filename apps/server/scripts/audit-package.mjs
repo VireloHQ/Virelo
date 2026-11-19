@@ -92,44 +92,46 @@ try {
   await app.close();
 }
 
-// Install the published predecessor outside the workspace to exercise its actual schema.
-const previous = join(root, 'previous');
-npm(['install', '--prefix', previous, '--omit=dev', '--ignore-scripts', '--no-fund', '--no-audit', 'virelo@0.6.0']);
-const { startServer: startPrevious } = await import(pathToFileURL(join(previous, 'node_modules/virelo/dist/server.js')).href);
-const dataDir = join(root, 'upgrade-data');
-const savedMedia = join(root, 'saved-media');
-await mkdir(savedMedia);
-const options = { dataDir, host: '127.0.0.1', port: 0 };
-const credentials = { username: 'upgrade-owner', password: '1234' };
-const requestHeaders = { 'x-virelo-request': '1' };
-const old = await startPrevious({ ...options, mediaPaths: [media] });
-let libraryId;
-try {
-  const setup = await old.app.inject({ method: 'POST', url: '/api/auth/setup', headers: requestHeaders, payload: credentials });
-  assert.equal(setup.statusCode, 200, setup.body);
-  const cookie = setup.cookies[0];
-  assert.ok(cookie);
-  const library = await old.app.inject({ method: 'POST', url: '/api/libraries', cookies: { [cookie.name]: cookie.value }, headers: requestHeaders,
-    payload: { path: savedMedia, label: 'Saved fixture' } });
-  assert.equal(library.statusCode, 200, library.body);
-  libraryId = library.json().id;
-  assert.ok(libraryId);
-} finally {
-  await old.app.close();
-}
-const upgraded = await startServer({ ...options, mediaPaths: [] });
-try {
-  assert.equal((await upgraded.app.inject('/api/auth/status')).json().setupRequired, false);
-  const login = await upgraded.app.inject({ method: 'POST', url: '/api/auth/login', headers: requestHeaders, payload: credentials });
-  assert.equal(login.statusCode, 200, login.body);
-  assert.equal(login.json().user.isAdmin, true);
-  const cookie = login.cookies[0];
-  const libraries = await upgraded.app.inject({ url: '/api/libraries', cookies: { [cookie.name]: cookie.value } });
-  assert.equal(libraries.statusCode, 200, libraries.body);
-  assert.ok(libraries.json().some(library => library.id === libraryId && library.label === 'Saved fixture'));
-  console.log('PASS upgrade from published virelo@0.6.0 preserves the administrator and saved library ID');
-} finally {
-  await upgraded.app.close();
+// Exercise the actual published schemas without using an existing user profile.
+for (const previousVersion of ['0.6.0', '0.6.1']) {
+  const previous = join(root, 'previous-' + previousVersion);
+  npm(['install', '--prefix', previous, '--omit=dev', '--ignore-scripts', '--no-fund', '--no-audit', 'virelo@' + previousVersion]);
+  const { startServer: startPrevious } = await import(pathToFileURL(join(previous, 'node_modules/virelo/dist/server.js')).href);
+  const dataDir = join(root, 'upgrade-data-' + previousVersion);
+  const savedMedia = join(root, 'saved-media-' + previousVersion);
+  await mkdir(savedMedia);
+  const options = { dataDir, host: '127.0.0.1', port: 0 };
+  const credentials = { username: 'upgrade-owner', password: '1234' };
+  const requestHeaders = { 'x-virelo-request': '1' };
+  const old = await startPrevious({ ...options, mediaPaths: [media] });
+  let libraryId;
+  try {
+    const setup = await old.app.inject({ method: 'POST', url: '/api/auth/setup', headers: requestHeaders, payload: credentials });
+    assert.equal(setup.statusCode, 200, setup.body);
+    const cookie = setup.cookies[0];
+    assert.ok(cookie);
+    const library = await old.app.inject({ method: 'POST', url: '/api/libraries', cookies: { [cookie.name]: cookie.value }, headers: requestHeaders,
+      payload: { path: savedMedia, label: 'Saved fixture' } });
+    assert.equal(library.statusCode, 200, library.body);
+    libraryId = library.json().id;
+    assert.ok(libraryId);
+  } finally {
+    await old.app.close();
+  }
+  const upgraded = await startServer({ ...options, mediaPaths: [] });
+  try {
+    assert.equal((await upgraded.app.inject('/api/auth/status')).json().setupRequired, false);
+    const login = await upgraded.app.inject({ method: 'POST', url: '/api/auth/login', headers: requestHeaders, payload: credentials });
+    assert.equal(login.statusCode, 200, login.body);
+    assert.equal(login.json().user.isAdmin, true);
+    const cookie = login.cookies[0];
+    const libraries = await upgraded.app.inject({ url: '/api/libraries', cookies: { [cookie.name]: cookie.value } });
+    assert.equal(libraries.statusCode, 200, libraries.body);
+    assert.ok(libraries.json().some(library => library.id === libraryId && library.label === 'Saved fixture'));
+    console.log('PASS upgrade from published virelo@' + previousVersion + ' preserves the administrator and saved library ID');
+  } finally {
+    await upgraded.app.close();
+  }
 }
 console.log('Audited tarball:', archive.path, archive.integrity);
 console.log('SHA-256:', createHash('sha256').update(await readFile(archive.path)).digest('hex'));

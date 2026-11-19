@@ -1,5 +1,12 @@
 # Development audit exceptions
 
+## Status recheck — 2026-11-19
+
+The linked GitHub advisory was withdrawn on 2026-11-18. A fresh workspace
+`npm audit` reports zero findings, so the exception below was not used in this
+release preparation. Withdrawal is not a code fix; picomatch remains at 4.0.7.
+The existing exact-match guard and expiry remain unchanged and are not extended.
+
 ## GHSA-fc5q-39xc-vjpf — expires 2026-12-02 00:00 UTC
 
 Reviewed on 2026-11-18. [The picomatch advisory](https://github.com/advisories/GHSA-fc5q-39xc-vjpf)
