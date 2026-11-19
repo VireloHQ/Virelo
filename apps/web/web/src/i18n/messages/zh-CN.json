@@ -1,4 +1,5 @@
 {
+  "Queue session writes stopped.": "会话已更改，队列保存已停止。",
   "Resume watched positions during autoplay": "自动播放时从上次观看位置继续",
   "When the queue advances automatically, resume each video's saved position. Turn off to start from the beginning.": "队列自动播放下一个视频时，从该视频保存的播放位置继续。关闭后将从头开始播放。",
   "Mute preview": "静音预览",
