@@ -127,6 +127,11 @@ on or off; previews start muted and remember your choice on this browser origin.
 If the browser blocks audible autoplay, use the speaker button to enable sound.
 Leaving the card or hiding the page stops the preview.
 
+The preview timeline covers the full video. Click or drag it, or focus it and
+use the arrow, Home and End keys to seek without opening the full player.
+After reaching the end, the preview restarts from the beginning, not a short
+section around a saved watch position.
+
 Administrators can change **Settings → Playback → Resume watched positions during
 autoplay**. It is on by default. Turn it off to start the next video from zero
 when the queue advances automatically. Selecting a video manually or resuming

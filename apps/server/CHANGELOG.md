@@ -5,7 +5,7 @@
 ## 0.7.0
 
 - Resume a queue or playlist from Continue watching, retaining the selected video, custom order and shuffle state.
-- Add sound to hover previews with a top-right mute button. Previews start muted and remember an explicit sound preference.
+- Add full-length hover previews with a seekable timeline and an icon-only top-right mute button. Previews start muted and remember an explicit sound preference; stale end positions no longer trap playback in a few frames.
 - Choose whether automatic queue advancement resumes saved watch positions or starts videos from the beginning.
 
 ## 0.6.1

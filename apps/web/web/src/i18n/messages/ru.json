@@ -1,4 +1,5 @@
 {
+  "Seek preview": "Перемотать предпросмотр",
   "Queue session writes stopped.": "Сеанс изменился. Сохранение очереди остановлено.",
   "Resume watched positions during autoplay": "Возобновлять с сохранённой позиции при автопроигрывании",
   "When the queue advances automatically, resume each video's saved position. Turn off to start from the beginning.": "При автоматическом переходе к следующему видео в очереди продолжать с сохранённой позиции. Отключите, чтобы начинать сначала.",

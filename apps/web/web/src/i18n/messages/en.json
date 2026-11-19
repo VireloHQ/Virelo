@@ -1,4 +1,5 @@
 {
+  "Seek preview": "Seek preview",
   "Queue session writes stopped.": "Queue session writes stopped.",
   "Resume watched positions during autoplay": "Resume watched positions during autoplay",
   "When the queue advances automatically, resume each video's saved position. Turn off to start from the beginning.": "When the queue advances automatically, resume each video's saved position. Turn off to start from the beginning.",

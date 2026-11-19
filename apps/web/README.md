@@ -91,6 +91,11 @@ sound; the browser remembers that choice, including in settings backups. If
 audible autoplay is blocked, click the speaker button again. Leaving the card or
 hiding the page stops its preview.
 
+The preview timeline covers the full video. Click or drag it, or focus it and
+use the arrow, Home and End keys to seek without opening the full player.
+After reaching the end, the preview restarts from the beginning, not a short
+section around a saved watch position.
+
 **Settings → Playback → Resume watched positions during autoplay** controls
 whether automatic queue advancement restores each video's saved position or
 starts from zero. It is on by default. Manually selecting a video or choosing

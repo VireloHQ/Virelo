@@ -1,4 +1,5 @@
 {
+  "Seek preview": "プレビューの再生位置を変更",
   "Queue session writes stopped.": "セッションが変更されたため、キューの保存を停止しました。",
   "Resume watched positions during autoplay": "自動再生時に前回の再生位置から再開",
   "When the queue advances automatically, resume each video's saved position. Turn off to start from the beginning.": "キューが自動的に次の動画へ進むとき、保存された再生位置から再開します。オフにすると最初から再生します。",
