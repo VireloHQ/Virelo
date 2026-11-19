@@ -1,9 +1,10 @@
 import { t, useLocale } from '../i18n';
-import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
 import { QueryClient, QueryClientProvider, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button, Input } from '@heroui/react';
 import { api } from '../api';
 import { useUIStore } from '@virelo/web-ui/store.ts';
+import { activateQueueSessionWrites, stopQueueSessionWrites } from '@virelo/web-ui/utils/queue-session-writes.ts';
 import type { Account, AuthStatus } from '../../../src/auth-types';
 import '../accounts.css';
 import { ActivityDisclosure, ActivityReporter } from './ActivityDisclosure';
@@ -20,9 +21,16 @@ export function PlaybackAccess({children}:{children:ReactNode}) {
 }
 const sessionKey = ['account-session'];
 
-function PrivateSession({ session, children }: { session: SessionContext; children: ReactNode }) {
+function PrivateSession({ session, children, queueClientRef }: { session: SessionContext; children: ReactNode; queueClientRef: RefObject<QueryClient | null> }) {
   // Never reuse another account's query cache, including in-flight optimistic saves.
   const [client] = useState(() => new QueryClient({ defaultOptions: { queries: { staleTime:20_000, refetchOnWindowFocus:false, retry:1 } } }));
+  useLayoutEffect(() => {
+    queueClientRef.current = client;
+    return () => {
+      stopQueueSessionWrites(client);
+      if (queueClientRef.current === client) queueClientRef.current = null;
+    };
+  }, [client, queueClientRef]);
   useEffect(() => () => { void client.cancelQueries(); client.clear(); useUIStore.setState({search:'',mobileSearchOpen:false,homeFilter:'all'}); }, [client]);
   return <Context.Provider value={session}><QueryClientProvider client={client}><AccountLanguage/><ActivityReporter policy={session.monitoring}/>{children}</QueryClientProvider></Context.Provider>;
 }
@@ -32,6 +40,7 @@ export function AccountSession({ children }: {children:ReactNode}) {
   const client = useQueryClient();
   const query = useQuery({ queryKey:sessionKey, queryFn:api.authStatus, retry:false, staleTime:0, refetchOnWindowFocus:true, refetchInterval:60_000 });
   const channel = useRef<BroadcastChannel | null>(null);
+  const queueClientRef = useRef<QueryClient | null>(null);
   const notify = () => {
     try { if (channel.current) { channel.current.postMessage('changed'); return; } } catch { /* Fall back when browser messaging is blocked. */ }
     try { localStorage.setItem('virelo-account-changed', Date.now() + ':' + Math.random()); } catch { /* Focus also rechecks the session. */ }
@@ -39,6 +48,7 @@ export function AccountSession({ children }: {children:ReactNode}) {
   const refresh = async () => { await client.invalidateQueries({queryKey:sessionKey}); };
   useEffect(() => {
     const expired = () => {
+      if (queueClientRef.current) stopQueueSessionWrites(queueClientRef.current);
       client.setQueryData<AuthStatus>(sessionKey, previous => previous ? {...previous,user:null} : undefined);
       void client.invalidateQueries({queryKey:sessionKey});
     };
@@ -51,11 +61,20 @@ export function AccountSession({ children }: {children:ReactNode}) {
     return () => { window.removeEventListener('virelo-auth-expired',expired); window.removeEventListener('storage',storage); channel.current?.close(); channel.current = null; };
   }, [client]);
   const logout = async () => {
-    await api.signOut();
+    const owner = queueClientRef.current, user = client.getQueryData<AuthStatus>(sessionKey)?.user;
+    if (owner) stopQueueSessionWrites(owner);
+    try { await api.signOut(); }
+    catch (error) {
+      const current = client.getQueryData<AuthStatus>(sessionKey)?.user;
+      if (owner && owner === queueClientRef.current && user && current?.id === user.id && current.revision === user.revision)
+        activateQueueSessionWrites(owner);
+      throw error;
+    }
     client.setQueryData<AuthStatus>(sessionKey, previous => previous ? {...previous,user:null} : undefined);
     notify();
   };
   if (query.data?.user) return <PrivateSession key={query.data.user.id + ':' + query.data.user.revision}
+    queueClientRef={queueClientRef}
     session={{user:query.data.user,localAccess:query.data.localAccess,monitoring:query.data.monitoring,refresh,logout}}>{children}</PrivateSession>;
   const connectionError = query.isError || (query.isPending && query.errorUpdatedAt > 0);
   return <div className={`account-entry app-shell${query.isPending || connectionError ? ' account-connection' : ''}`}>

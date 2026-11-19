@@ -7,6 +7,7 @@ import { Play, Pause, Info } from '@phosphor-icons/react';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { api, artwork } from '../api';
 import { MediaRow } from '@virelo/web-ui/components/MediaRow.tsx';
+import { ContinueWatchingRow } from '@virelo/web-ui/components/ContinueWatchingRow.tsx';
 import { EmptyState } from '../components/EmptyState';
 import { distinctDiscoveryShelves, mediaGenres, moviesOutsideRecent } from '@virelo/core/home-catalog';
 import { useUIStore, type HomeFilter } from '@virelo/web-ui/store.ts';
@@ -91,7 +92,7 @@ function FilteredHome({filter}:{filter:HomeFilter}) {
       </div>}
     </section>:<header className="home-simple-heading"><h1>{filter==='series'?t("Series"):filter==='movie'?t("Movies"):t("Your library")}</h1></header>}
     <div className="home-rows home-curated-rows">
-      <MediaRow title={t("Continue watching")} items={pick(data.continueWatching)} playDirect/>
+      <ContinueWatchingRow items={pick(data.continueWatching)} kind={filter}/>
       <MediaRow title={t("Up next")} items={pick(data.nextEpisodes)} playDirect/>
       <MediaRow title={t("Not watched yet")} items={unwatched} poster/>
       <MediaRow title={t("Your favorites")} items={pick(data.favorites)} poster action={<Link to="/app/favorites">{t("View all")}</Link>}/>

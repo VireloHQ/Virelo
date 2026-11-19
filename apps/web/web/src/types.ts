@@ -17,6 +17,7 @@ export interface Settings {
   audioAnalysisEnabled: boolean;
   shortsIncludeLandscapes: boolean;
   queueBehavior: QueueBehavior;
+  queueResumePosition: boolean;
 }
 export interface ScanStatus {
   audioTotal?: number;

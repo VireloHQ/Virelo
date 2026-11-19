@@ -1,4 +1,13 @@
 {
+  "Queue session writes stopped.": "Queue session writes stopped.",
+  "Resume watched positions during autoplay": "Resume watched positions during autoplay",
+  "When the queue advances automatically, resume each video's saved position. Turn off to start from the beginning.": "When the queue advances automatically, resume each video's saved position. Turn off to start from the beginning.",
+  "Mute preview": "Mute preview",
+  "Unmute preview": "Unmute preview",
+  "Could not save queue.": "Could not save queue.",
+  "Saved queue not found.": "Saved queue not found.",
+  "Invalid saved queue.": "Invalid saved queue.",
+  "Sign in to resume a queue.": "Sign in to resume a queue.",
   "Virelo control server could not be authenticated. Stop any older Virelo server before updating.": "Virelo control server could not be authenticated. Stop any older Virelo server before updating.",
   "Oversized control request.": "Oversized control request.",
   "Invalid Virelo control response signature.": "Invalid Virelo control response signature.",

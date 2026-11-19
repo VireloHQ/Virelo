@@ -5,8 +5,9 @@ import type { MediaItem } from '@edition/types';
 import { MediaCard } from '@edition/components/MediaCard';
 import { useRowWheel } from '../hooks/useRowWheel';
 
-export function MediaRow({title,items,playDirect=false,poster=false,short=false,seriesTitles=false,action}:{
+export function MediaRow({title,items,playDirect=false,poster=false,short=false,seriesTitles=false,action,resumeSessions}:{
   title:string;items:MediaItem[];playDirect?:boolean;poster?:boolean;short?:boolean;seriesTitles?:boolean;action?:ReactNode;
+  resumeSessions?: Record<number, { key: string; label: string }>;
 }) {
   useLocale();
   const ref=useRef<HTMLDivElement>(null);
@@ -49,7 +50,7 @@ export function MediaRow({title,items,playDirect=false,poster=false,short=false,
     <div className={'media-row'+(posterLayout?' poster-row':'')+(short?' shorts-row':'')} ref={ref} role="region" aria-label={t("{value0} titles", { value0: title })} tabIndex={0}
       onKeyDown={event=>{if(event.target===event.currentTarget&&(event.key==='ArrowRight'||event.key==='ArrowLeft')){event.preventDefault();scroll(event.key==='ArrowRight'?1:-1);}}}>
       {items.map(item=><MediaCard key={item.id} item={seriesTitles?{...item,title:item.series_title||item.title}:item}
-        layout={posterLayout?'poster':'landscape'} short={short} playDirect={playDirect} preview={!short&&activeId===item.id} onHoverChange={!short?hover(item.id):undefined}/>)}
+        layout={posterLayout?'poster':'landscape'} short={short} playDirect={playDirect} resumeSession={resumeSessions?.[item.id]} preview={!short&&activeId===item.id} onHoverChange={!short?hover(item.id):undefined}/>)}
     </div>
   </section>;
 }

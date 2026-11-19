@@ -132,6 +132,9 @@ try {
       api.mediaFile = async () => new File([await (await fetch(base + '/__queue-clip.mp4')).arrayBuffer()], 'clip.mp4', { type: 'video/mp4' });
       api.playbackInfo = async id => { window.__sourceLoads++; window.__loadsByMediaId[id]=(window.__loadsByMediaId[id]??0)+1; return { audioTracks: [], subtitleTracks: [], qualityOptions: [], defaultAudioStream: null, requiresTranscode: false }; };
       api.progress = async () => {}; api.thumbnail = async () => null;
+      window.__queueSaves = [];
+      api.saveQueueSession = async session => { window.__queueSaves.push(session); return { ok: true }; };
+      api.deleteQueueSession = async () => ({ ok: true });
       api.settings = async () => ({ queueBehavior: 'auto', externalMetadataEnabled: false });
       api.libraries = async () => []; api.folders = async () => [];
       for (const key of ['saveSettings', 'removeLibrary', 'deleteAccount', 'setLike']) api[key] = async () => { window.__mutations.push(key); throw new Error('Queue must not mutate library or settings'); };
@@ -358,6 +361,7 @@ try {
     check(await queue.getByRole('button', { name: 'Shuffle queue', exact: true }).getAttribute('aria-pressed') === 'true', label + ' random queue starts in shuffle mode');
     check(await page.evaluate(() => window.__requests.filter(params => params.sort).every(params => params.sort === 'title')), label + ' random pagination uses stable source order');
     check(await page.evaluate(() => window.__mutations.length === 0 && window.__items.length === 24) && writes.length === 0, label + ' no library or source mutations');
+    check(await page.evaluate(() => window.__queueSaves.length > 0 && window.__queueSaves.every(({state}) => state.ids.includes(state.selectedId) && state.ids.every(id => state.sourceIds.includes(id)))), label + ' queue history saves valid snapshots separately from library data');
     check(errors.length === 0, label + ' no uncaught browser errors: ' + errors.join('; '));
     await context.close(); lastPage = null;
   }

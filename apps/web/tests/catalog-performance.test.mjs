@@ -12,7 +12,7 @@ async function catalog(t,count=5000){
   globalThis[key]=state;t.after(()=>delete globalThis[key]);
   const other=['addLocalLibrary','renameLocalLibrary','browserCapabilities','clearLocalMetadata','clearAllLocalMetadata',
     'getLocalScanStatus','getStoredMedia','ensureLocalThumbnail','listLocalLibraries','localMediaFile','localMediaUrl',
-    'reconnectLocalLibrary','removeLocalLibrary','updateStoredMedia','startLocalScan','writeSettings'];
+    'reconnectLocalLibrary','removeLocalLibrary','updateStoredMedia','startLocalScan','writeSettings','openDatabase','hydrateMediaIds'];
   const library=`const state=globalThis[${JSON.stringify(key)}];
     export const listStoredMedia=async()=>[...state.items];
     export const readSettings=async()=>state.settings;

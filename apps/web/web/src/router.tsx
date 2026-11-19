@@ -36,6 +36,7 @@ function viewForPath(pathname: string) {
 }
 
 export interface WatchRouteSearch {
+  resumeSession?: string;
   queue?: boolean;
   favorites?: boolean;
   playlistId?: number;
@@ -49,6 +50,7 @@ export interface WatchRouteSearch {
 
 function validateWatchSearch(input: Record<string, unknown>): WatchRouteSearch {
   return {
+    resumeSession: typeof input.resumeSession === 'string' && /^(queue|playlist)-[a-zA-Z0-9-]{1,80}$/.test(input.resumeSession) ? input.resumeSession : undefined,
     queue: input.queue === true || input.queue === '1' || input.queue === 'true',
     favorites: input.favorites === true || input.favorites === '1' || input.favorites === 'true',
     playlistId: (typeof input.playlistId === 'number' || typeof input.playlistId === 'string' && /^\d+$/.test(input.playlistId)) && Number.isSafeInteger(Number(input.playlistId)) && Number(input.playlistId) > 0 ? Number(input.playlistId) : undefined,

@@ -22,6 +22,7 @@ import { usePlaybackVolume } from '@virelo/web-ui/hooks/usePlaybackVolume.ts';
 import { usePlaybackSpeed } from '@virelo/web-ui/hooks/usePlaybackSpeed.ts';
 import { PlayerControls } from '@virelo/web-ui/components/PlayerControls.tsx';
 import { previousVideoAction } from '@virelo/core/playback-previous';
+import { initialPlaybackPosition } from '@virelo/core/playback-initial-position';
 import { useVideoPresentation } from '@virelo/web-ui/hooks/useVideoPresentation.ts';
 import { VideoSettingsPanel } from '@virelo/web-ui/components/VideoSettingsPanel.tsx';
 import type { MediaItem, PlaybackInfo } from '../types';
@@ -40,13 +41,15 @@ interface PlayerProps {
   canGoNext?: boolean;
   canGoPrev?: boolean;
   autoPlay?: boolean;
+  resumeFromHistory?: boolean;
   shorts?: ShortsPlaybackOptions;
   repeatMode?: RepeatMode;
   onRepeatChange?: (mode:RepeatMode) => void;
 }
 
-export function Player({item,queue,queueIndex,shuffled,onShuffle,onEnded,onNext,onPrev,canGoNext=true,canGoPrev=true,autoPlay,shorts,repeatMode,onRepeatChange}:PlayerProps) {
+export function Player({item,queue,queueIndex,shuffled,onShuffle,onEnded,onNext,onPrev,canGoNext=true,canGoPrev=true,autoPlay,resumeFromHistory=true,shorts,repeatMode,onRepeatChange}:PlayerProps) {
   useLocale();
+  const historyPosition = initialPlaybackPosition(item.progress_position, resumeFromHistory);
   const aviSource = /\.avi$/i.test(item.filename);
   const videoRef = useRef<HTMLVideoElement>(null);
   const sourceTransition = useRef(false);
@@ -178,7 +181,7 @@ export function Player({item,queue,queueIndex,shuffled,onShuffle,onEnded,onNext,
       }
       qualityBlocked.current=false;
       if(audio!==null&&(audio!==info.defaultAudioStream||info.requiresAudioTranscode)){
-        const resume=item.progress_position||0;
+        const resume=historyPosition;
         const position=initialPositionApplied.current?(videoRef.current?.currentTime||0):resume>5&&(!item.duration||resume<item.duration*.92)?resume:0;
         await prepareAudio(audio,file,info,true,position);
       }
@@ -368,6 +371,7 @@ export function Player({item,queue,queueIndex,shuffled,onShuffle,onEnded,onNext,
   }
   function seek(value:number){
     const video=videoRef.current;if(!video)return;
+    if(!shorts)initialPositionApplied.current=true;
     if(playbackInfo?.requiresVideoTranscode&&pendingQuality.current&&selectedQuality!==null){
       setCurrent(value);void prepareQuality(selectedQuality,latestAudio.current,mediaFile,playbackInfo,false,value);return;
     }
@@ -439,7 +443,7 @@ export function Player({item,queue,queueIndex,shuffled,onShuffle,onEnded,onNext,
     const controller = new AbortController(); qualityPreparationAbort.current = controller;
     audioPreparationToken.current++; audioPreparationAbort.current?.abort(); pendingAudio.current = null;
     const video=videoRef.current;
-    const position=seekAt??(initial?(item.progress_position||0):(video?.currentTime||0));
+    const position=seekAt??(initial?historyPosition:(video?.currentTime||0));
     const shouldPlay=wantsPlayback.current;
     sourceTransition.current=true;
     qualityBlocked.current=true;
@@ -487,6 +491,7 @@ export function Player({item,queue,queueIndex,shuffled,onShuffle,onEnded,onNext,
     if(quality&&quality.token===qualityPreparationToken.current){
       if(!quality.url||video.currentSrc!==quality.url)return;
       video.currentTime=quality.position;
+      if(!shorts)initialPositionApplied.current=true;
       pendingQuality.current=null;
       setPreparing(null);
       sourceTransition.current=false;
@@ -501,7 +506,7 @@ export function Player({item,queue,queueIndex,shuffled,onShuffle,onEnded,onNext,
     }
     if(initialPositionApplied.current)return;
     initialPositionApplied.current=true;
-    const resume=item.progress_position||0;
+    const resume=historyPosition;
     if(resume>5&&(!video.duration||resume<video.duration*.92))video.currentTime=resume;
   }
   function selectAudio(stream:number){

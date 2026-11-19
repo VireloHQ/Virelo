@@ -80,6 +80,22 @@ edits. Browser playlists are not cloud-synced; clearing this site's browser data
 also removes them. Missing library references are retained and skipped during
 playback. Concurrent edits cannot silently overwrite each other.
 
+**Continue watching** can resume a queue or playlist, preserving its selected
+video, custom order, removed entries and shuffle state. The 12 most recent queues
+(up to 10,000 videos each) stay in this browser's storage. Unavailable videos are
+skipped and completed queues disappear. Queue sessions are not included in
+library backups; playlists and individual watch positions still are.
+
+Card previews start muted. Use the speaker button at the top right to enable
+sound; the browser remembers that choice, including in settings backups. If
+audible autoplay is blocked, click the speaker button again. Leaving the card or
+hiding the page stops its preview.
+
+**Settings → Playback → Resume watched positions during autoplay** controls
+whether automatic queue advancement restores each video's saved position or
+starts from zero. It is on by default. Manually selecting a video or choosing
+Continue watching still restores the saved position.
+
 ## Development
 
 Use stable Node.js 22.23.4+, 24.22.1+ or 26.12.1+ within those release lines.

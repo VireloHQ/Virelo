@@ -51,7 +51,7 @@ const QUEUE_OPTIONS = [
 ];
 const sectionFields: Record<string, readonly (keyof Settings)[]> = {
   libraries:['libraryWatchEnabled','audioAnalysisEnabled'], network:['externalMetadataEnabled','externalImagesEnabled'],
-  playback:['queueBehavior'], shorts:['shortsIncludeLandscapes']
+  playback:['queueBehavior','queueResumePosition'], shorts:['shortsIncludeLandscapes']
 };
 export function SettingsView(){
   useLocale();
@@ -129,6 +129,7 @@ export function SettingsView(){
           <VolumeLevelingSetting/>
           {isAdmin&&<div className="setting-row"><div className="setting-copy"><div><strong>{t("Queue advance")}</strong><p>{t("Auto-advance, loop, or manually step through the folder.")}</p></div></div>
             <Select className="settings-picker" label={t("Queue advance")} value={form.queueBehavior} options={QUEUE_OPTIONS.map(option=>({...option,label:t(option.label)}))} align="end" onChange={(value)=>setForm({...form,queueBehavior:value as QueueBehavior})}/></div>}
+          {isAdmin&&<SettingSwitch checked={form.queueResumePosition} onChange={v=>setForm({...form,queueResumePosition:v})} title={t("Resume watched positions during autoplay")} description={t("When the queue advances automatically, resume each video's saved position. Turn off to start from the beginning.")}/>}
           {saveAction}
         </section>}
 

@@ -76,6 +76,7 @@ export interface AppSettings {
   libraryWatchEnabled: boolean;
   shortsIncludeLandscapes: boolean;
   queueBehavior: QueueBehavior;
+  queueResumePosition: boolean;
 }
 
 export interface ShortsItem extends MediaRecord {

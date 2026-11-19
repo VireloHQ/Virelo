@@ -18,6 +18,7 @@ import { demandManifest, demandSegment, initializeDemandCache, playbackCacheLimi
 import { dataUsage, assertSeparateCache } from './data-management.js';
 import { directLocal, registerAccounts } from './auth.js';
 import { registerPlaylists } from './playlists.js';
+import { registerQueueSessions } from './queue-sessions.js';
 import type { CatalogScope } from './auth-types.js';
 import { pickNativeFolder } from './folder-picker.js';
 import { isMediaFile, isVideoPath, mediaWatchFilter, resolveLibraryFile } from './media-files.js';
@@ -146,6 +147,7 @@ export async function createVireloServer(config: RuntimeConfig, pickFolder: (sig
   });
   registerCustomCommands(app, commands, request => fresh(request, true));
   registerPlaylists(app, db);
+  registerQueueSessions(app, db);
   let activePicker: AbortController | null = null;
   let closing = false;
   const scanAbort = new AbortController();
@@ -372,7 +374,7 @@ export async function createVireloServer(config: RuntimeConfig, pickFolder: (sig
       || body.clearTmdbApiKey !== undefined && typeof body.clearTmdbApiKey !== 'boolean'
       || body.tmdbApiKey !== undefined && typeof body.tmdbApiKey !== 'string') throw new AccountError('Invalid settings.');
     const patch: Partial<AppSettings> = {};
-    for (const key of ['audioAnalysisEnabled','externalMetadataEnabled','externalImagesEnabled','metadataProvider','metadataLanguage','libraryWatchEnabled','shortsIncludeLandscapes','queueBehavior'] as const) {
+    for (const key of ['audioAnalysisEnabled','externalMetadataEnabled','externalImagesEnabled','metadataProvider','metadataLanguage','libraryWatchEnabled','shortsIncludeLandscapes','queueBehavior','queueResumePosition'] as const) {
       if (body[key] !== undefined) (patch as any)[key] = body[key];
     }
     if (body.clearTmdbApiKey === true) patch.tmdbApiKey = '';

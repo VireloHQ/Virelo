@@ -116,6 +116,22 @@ favorites or watch history. Playlists are private to their account, and library
 permissions continue to apply. Conflicting saves require a reload instead of
 silently overwriting another edit.
 
+**Continue watching** also resumes the queue or playlist around a video, including
+its current order, removed entries and shuffle state. The 12 most recent queues
+(up to 10,000 videos each) are saved privately to the signed-in account. Unavailable
+videos are skipped; completed queues disappear. Clearing an account's history
+also clears these saved queues. This does not change the saved playlist itself.
+
+Hover a card to preview it. The speaker button at its top right switches sound
+on or off; previews start muted and remember your choice on this browser origin.
+If the browser blocks audible autoplay, use the speaker button to enable sound.
+Leaving the card or hiding the page stops the preview.
+
+Administrators can change **Settings → Playback → Resume watched positions during
+autoplay**. It is on by default. Turn it off to start the next video from zero
+when the queue advances automatically. Selecting a video manually or resuming
+through Continue watching still restores its saved position.
+
 ## 🧭 CLI
 
 ```text

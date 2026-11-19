@@ -1,4 +1,13 @@
 {
+  "Queue session writes stopped.": "세션이 변경되어 대기열 저장이 중지되었습니다.",
+  "Resume watched positions during autoplay": "자동 재생 시 이전 시청 위치에서 이어서 재생",
+  "When the queue advances automatically, resume each video's saved position. Turn off to start from the beginning.": "대기열이 자동으로 다음 동영상으로 넘어갈 때 저장된 재생 위치에서 이어서 재생합니다. 끄면 처음부터 재생합니다.",
+  "Mute preview": "미리보기 음소거",
+  "Unmute preview": "미리보기 음소거 해제",
+  "Could not save queue.": "대기열을 저장하지 못했습니다.",
+  "Saved queue not found.": "저장된 대기열을 찾을 수 없습니다.",
+  "Invalid saved queue.": "저장된 대기열 형식이 올바르지 않습니다.",
+  "Sign in to resume a queue.": "대기열을 이어서 재생하려면 로그인하세요.",
   "Export / Import": "내보내기 / 가져오기",
   "Settings and library backups": "설정 및 라이브러리 백업",
   "Back up settings or move your library to another browser.": "설정을 백업하거나 라이브러리를 다른 브라우저로 옮기세요.",

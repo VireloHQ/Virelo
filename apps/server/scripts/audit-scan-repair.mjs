@@ -101,7 +101,7 @@ try{
   await fault.goto(base);
   await fault.locator('.media-card').first().waitFor();
   await fault.locator('.splash-screen').waitFor({state:'hidden'});
-  await fault.locator('.media-card[href^="/title/"]').first().click();
+  await fault.locator('.media-card-link[href^="/title/"]').first().click();
   await fault.locator('.route-recovery-notice').waitFor();
   assert.equal(new URL(fault.url()).pathname,'/','failed navigation keeps Home mounted');
   const contrast=await fault.locator('.route-recovery-notice p').evaluate(element=>{

@@ -57,7 +57,7 @@ try {
   },items);
   await page.getByRole('link',{name:'Home',exact:true}).first().click();
   const card=page.locator('.shorts-card').first();await card.waitFor();
-  const href=await card.getAttribute('href'),selected=Number(new URL(href,base).searchParams.get('startId'));
+  const href=await card.locator('.media-card-link').getAttribute('href'),selected=Number(new URL(href,base).searchParams.get('startId'));
   check(selected>0,mode+' card URL identifies its video');
   const active=page.locator('.short-video[tabindex="0"]');
   const expectClip=async id=>{
@@ -92,7 +92,7 @@ try {
   if(mode==='npm')check(requests.some(q=>q.offset===0&&q.startId===chosen)&&requests.some(q=>q.offset===0&&q.startId===undefined),mode+' API distinguishes pinned and random entries');
   await page.getByRole('link',{name:'Home',exact:true}).first().click();
   const another=page.locator('.shorts-card').nth(1);await another.waitFor();
-  const second=Number(new URL(await another.getAttribute('href'),base).searchParams.get('startId'));
+  const second=Number(new URL(await another.locator('.media-card-link').getAttribute('href'),base).searchParams.get('startId'));
   await another.click({button:'right'});await page.getByRole('menuitem',{name:/Resume playback|Play now/}).click();await expectClip(second);
   await page.getByRole('link',{name:'Home',exact:true}).first().click();
   await page.locator('a.row-link',{hasText:'View all'}).click();await page.waitForURL(base+prefix+'/shorts');

@@ -1,5 +1,6 @@
 import type { FolderEntry, HomeData, Library, MediaItem, PlaybackInfo, PlaybackQuality, ScanStatus, Settings, ShortsFeed } from './types';
 import type { Appearance } from './utils/appearance';
+import type { QueueSession } from '@virelo/core/queue-session';
 import type { Account, AuthStatus, ActivityPolicy, ActivityHeartbeat, ActivityPage, LiveActivity, AccountDataSummary, AccountDataCategory } from '../../src/auth-types';
 import type { DataUsage } from '../../src/types';
 import type { PlaylistDetail, PlaylistSummary, PlaylistWrite } from './types';
@@ -35,6 +36,10 @@ function withQuery(url: string, params: Record<string, string | number | undefin
 }
 
 export const api = {
+  queueSessions: () => request<Array<{ key: string; playlistId?: number; label?: string; updatedAt: number; item: MediaItem }>>('/api/queue-sessions'),
+  queueSession: (key: string) => request<QueueSession & { items: MediaItem[] }>(`/api/queue-sessions/${encodeURIComponent(key)}`),
+  saveQueueSession: (session: QueueSession) => request<{ ok: boolean }>('/api/queue-sessions', { method: 'PUT', body: JSON.stringify(session) }),
+  deleteQueueSession: (key: string) => request<{ ok: boolean }>(`/api/queue-sessions/${encodeURIComponent(key)}`, { method: 'DELETE' }),
   language: () => request<{locale:string|null}>('/api/account/language'),
   saveLanguage: (locale: string) => request<{locale:string}>('/api/account/language', {method:'PUT',body:JSON.stringify({locale})}),
   appearance: () => request<Appearance>('/api/account/appearance'),
