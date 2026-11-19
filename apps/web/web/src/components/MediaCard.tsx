@@ -8,6 +8,7 @@ import { api, artwork } from '../api';
 import type { MediaItem } from '../types';
 import { useLocalMediaUrl } from '../hooks/useLocalMediaUrl';
 import { HoverPreview } from '@virelo/web-ui/components/HoverPreview.tsx';
+import { usePreviewEnabled } from '@virelo/web-ui/hooks/usePreviewEnabled.ts';
 import { MediaContextMenu } from '@virelo/web-ui/components/MediaContextMenu.tsx';
 
 const HOVER_CAPABLE = typeof window !== 'undefined' && window.matchMedia('(hover: hover) and (pointer: fine)').matches;
@@ -16,6 +17,7 @@ export interface MediaCardProps { item:MediaItem;layout?:'auto'|'landscape'|'pos
 
 export function MediaCard({item, compact=false, short=false, playDirect=false, preview=false, onHoverChange, layout='auto', resumeSession}:MediaCardProps) {
   useLocale();
+  const showPreview = usePreviewEnabled() && preview;
   const navigate = useNavigate();
   const { favorite, error: favoriteError, toggle: toggleFavorite } = useFavorite(item);
   const cardRef = useRef<HTMLAnchorElement>(null);
@@ -82,7 +84,7 @@ export function MediaCard({item, compact=false, short=false, playDirect=false, p
   };
   const goToDetails = () => void navigate({to:'/app/title/$mediaId',params:{mediaId:String(item.id)}});
   return (
-    <div className={`media-card ${isPoster?'art-poster':''} ${compact?'compact':''} ${playDirect?'resume-card ':''}${short?`shorts-card ${isPortrait?'art-portrait':'art-landscape'}`:''}${preview?' previewing':''}`}
+    <div className={`media-card ${isPoster?'art-poster':''} ${compact?'compact':''} ${playDirect?'resume-card ':''}${short?`shorts-card ${isPortrait?'art-portrait':'art-landscape'}`:''}${showPreview?' previewing':''}`}
       onMouseEnter={HOVER_CAPABLE && onHoverChange ? ()=>onHoverChange(true) : undefined}
       onMouseLeave={HOVER_CAPABLE && onHoverChange ? event=>{
         if(event.currentTarget.querySelector('.hover-preview')?.contains(document.activeElement))cardRef.current?.focus({preventScroll:true});
@@ -103,7 +105,7 @@ export function MediaCard({item, compact=false, short=false, playDirect=false, p
         {imageSources.length > 0 && <img key={imageSources.join('|')} src={imageSources[0]} alt="" loading="lazy" decoding="async" onLoad={(e)=>{const image=e.currentTarget;if(image.naturalWidth>1||image.naturalHeight>1){image.dataset.loaded='true';image.style.display='';}}} onError={(e)=>{const image=e.currentTarget;delete image.dataset.loaded;const next=Number(image.dataset.fallbackIndex || 0)+1;if(next<imageSources.length){image.dataset.fallbackIndex=String(next);image.src=imageSources[next];}else image.style.display='none';}}/>}
         <div className="media-card-fallback"><Play weight="fill"/></div>
         <div className="media-card-play"><span><Play weight="fill"/></span></div>
-        {preview && <LocalCardPreview mediaId={item.id} start={previewStart} />}
+        {showPreview && <LocalCardPreview mediaId={item.id} start={previewStart} />}
         {progress > 0 && <div className="card-progress"><i style={{width:`${progress}%`}}/></div>}
       </div>
       {favoriteError && <span className="error-copy" role="alert">{t(favoriteError)}</span>}

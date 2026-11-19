@@ -1,5 +1,4 @@
 const STORAGE_KEY = 'virelo-preview-muted:v1';
-const PREVIEW_WINDOW = 15;
 let sessionMuted: boolean | undefined;
 let active: { stop: () => void } | undefined;
 
@@ -16,17 +15,18 @@ function savePreviewMuted(muted: boolean) {
 }
 
 export function createHoverPreview(video: HTMLVideoElement, start: number, callbacks: {
-  onState: (state: { muted: boolean; playing: boolean; progress: number }) => void;
+  onState: (state: { muted: boolean; playing: boolean; progress: number; duration: number }) => void;
   onStop: () => void;
 }) {
   let disposed = false;
   let attempt = 0;
-  let startAt = Math.max(0, start);
+  const duration = () => Number.isFinite(video.duration) && video.duration > 0 ? video.duration : 0;
   const report = () => {
     if (!disposed) callbacks.onState({
       muted: video.muted || video.paused,
       playing: !video.paused,
-      progress: Math.min(1, Math.max(0, (video.currentTime - startAt) / PREVIEW_WINDOW))
+      progress: duration() && Number.isFinite(video.currentTime) ? Math.min(1, Math.max(0, video.currentTime / duration())) : 0,
+      duration: duration()
     });
   };
   const play = async (muted: boolean) => {
@@ -50,22 +50,25 @@ export function createHoverPreview(video: HTMLVideoElement, start: number, callb
   };
   const startPlayback = () => {
     if (disposed) return;
-    if (Number.isFinite(video.duration)) startAt = Math.min(startAt, Math.max(0, video.duration - .5));
-    try { video.currentTime = startAt; } catch { /* Some sources are not seekable yet. */ }
+    // A stale/finished resume point must not trap the preview in the final half-second.
+    const startAt = Number.isFinite(start) && start > 0 && start < duration() - .5 ? start : 0;
+    if (startAt > 0) try { video.currentTime = startAt; } catch { /* Some sources are not seekable yet. */ }
     void play(readPreviewMuted());
   };
-  const timeUpdate = () => {
-    if (startAt + PREVIEW_WINDOW <= video.duration - .5 && video.currentTime >= startAt + PREVIEW_WINDOW) {
-      video.currentTime = startAt;
-    }
-    report();
-  };
   const ended = () => {
-    video.currentTime = startAt;
+    if (disposed) return;
+    try { video.currentTime = 0; } catch { controller.stop(); return; }
     void play(video.muted);
   };
   const fail = () => controller.stop();
   const controller = {
+    seek(position: number) {
+      if (disposed || !duration() || !Number.isFinite(position)) return;
+      try { video.currentTime = Math.max(0, Math.min(duration(), position)); }
+      catch { return; }
+      if (video.paused) void play(video.muted);
+      report();
+    },
     toggleMuted() {
       if (disposed) return;
       const muted = !video.muted && !video.paused;
@@ -78,7 +81,8 @@ export function createHoverPreview(video: HTMLVideoElement, start: number, callb
       attempt++;
       if (active === controller) active = undefined;
       video.removeEventListener('loadedmetadata', startPlayback);
-      video.removeEventListener('timeupdate', timeUpdate);
+      video.removeEventListener('timeupdate', report);
+      video.removeEventListener('durationchange', report);
       video.removeEventListener('ended', ended);
       video.removeEventListener('volumechange', report);
       video.removeEventListener('pause', report);
@@ -97,7 +101,8 @@ export function createHoverPreview(video: HTMLVideoElement, start: number, callb
   active?.stop();
   active = controller;
   video.muted = readPreviewMuted();
-  video.addEventListener('timeupdate', timeUpdate);
+  video.addEventListener('timeupdate', report);
+  video.addEventListener('durationchange', report);
   video.addEventListener('ended', ended);
   video.addEventListener('volumechange', report);
   video.addEventListener('pause', report);

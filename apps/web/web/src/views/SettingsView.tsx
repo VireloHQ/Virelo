@@ -14,6 +14,7 @@ import { QueueLayoutSetting } from '@virelo/web-ui/components/QueueLayoutSetting
 import { AppearanceSettings } from '../components/AppearanceSettings';
 import { Palette } from '@phosphor-icons/react';
 import { VolumeLevelingSetting } from '@virelo/web-ui/components/VolumeLevelingSetting.tsx';
+import { PreviewSetting } from '@virelo/web-ui/components/PreviewSetting.tsx';
 import { SharingSettings } from '@virelo/web-ui/components/ShareButton.tsx';
 import { QrCode } from '@phosphor-icons/react';
 import type { QueueBehavior } from '../types';
@@ -139,6 +140,7 @@ export function SettingsView() {
           <div className="settings-card-head"><div><h2 id="settings-title-playback" tabIndex={-1}>{t("Playback")}</h2><p>{t("Choose what happens when a video ends in a folder queue.")}</p></div></div>
           <QueueLayoutSetting/>
           <VolumeLevelingSetting/>
+          <PreviewSetting/>
           <div className="setting-row"><div className="setting-copy"><div><strong>{t("Queue advance")}</strong><p>{t("Auto-advance, loop, or manually step through the folder.")}</p></div></div>
             <Select className="settings-picker" label={t("Queue advance")} value={save.isPending&&save.variables.queueBehavior?save.variables.queueBehavior:form.queueBehavior} options={QUEUE_OPTIONS.map(option=>({...option,label:t(option.label)}))} align="end" onChange={(value)=>save.mutate({queueBehavior:value as QueueBehavior})}/></div>
           <SettingSwitch checked={save.isPending&&save.variables.queueResumePosition!==undefined?save.variables.queueResumePosition:form.queueResumePosition} onChange={value=>save.mutate({queueResumePosition:value})} title={t("Resume watched positions during autoplay")} description={t("When the queue advances automatically, resume each video's saved position. Turn off to start from the beginning.")}/>

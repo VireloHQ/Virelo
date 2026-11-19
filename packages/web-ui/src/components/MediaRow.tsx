@@ -4,12 +4,14 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import type { MediaItem } from '@edition/types';
 import { MediaCard } from '@edition/components/MediaCard';
 import { useRowWheel } from '../hooks/useRowWheel';
+import { usePreviewEnabled } from '../hooks/usePreviewEnabled';
 
 export function MediaRow({title,items,playDirect=false,poster=false,short=false,seriesTitles=false,action,resumeSessions}:{
   title:string;items:MediaItem[];playDirect?:boolean;poster?:boolean;short?:boolean;seriesTitles?:boolean;action?:ReactNode;
   resumeSessions?: Record<number, { key: string; label: string }>;
 }) {
   useLocale();
+  const previewsEnabled=usePreviewEnabled();
   const ref=useRef<HTMLDivElement>(null);
   const hoverTimer=useRef<number|null>(null);
   const [activeId,setActiveId]=useState<number|null>(null);
@@ -31,6 +33,11 @@ export function MediaRow({title,items,playDirect=false,poster=false,short=false,
     observer.observe(row);return ()=>observer.disconnect();
   },[items.length]);
   useEffect(()=>()=>{if(hoverTimer.current!==null)clearTimeout(hoverTimer.current);},[]);
+  useEffect(()=>{
+    if(previewsEnabled)return;
+    if(hoverTimer.current!==null){clearTimeout(hoverTimer.current);hoverTimer.current=null;}
+    setActiveId(null);
+  },[previewsEnabled]);
   if(!items.length)return null;
   const scroll=(direction:number)=>{
     if(ref.current)scrollRow(direction*Math.min(ref.current.clientWidth*.86,1000));
@@ -50,7 +57,7 @@ export function MediaRow({title,items,playDirect=false,poster=false,short=false,
     <div className={'media-row'+(posterLayout?' poster-row':'')+(short?' shorts-row':'')} ref={ref} role="region" aria-label={t("{value0} titles", { value0: title })} tabIndex={0}
       onKeyDown={event=>{if(event.target===event.currentTarget&&(event.key==='ArrowRight'||event.key==='ArrowLeft')){event.preventDefault();scroll(event.key==='ArrowRight'?1:-1);}}}>
       {items.map(item=><MediaCard key={item.id} item={seriesTitles?{...item,title:item.series_title||item.title}:item}
-        layout={posterLayout?'poster':'landscape'} short={short} playDirect={playDirect} resumeSession={resumeSessions?.[item.id]} preview={!short&&activeId===item.id} onHoverChange={!short?hover(item.id):undefined}/>)}
+        layout={posterLayout?'poster':'landscape'} short={short} playDirect={playDirect} resumeSession={resumeSessions?.[item.id]} preview={previewsEnabled&&!short&&activeId===item.id} onHoverChange={previewsEnabled&&!short?hover(item.id):undefined}/>)}
     </div>
   </section>;
 }

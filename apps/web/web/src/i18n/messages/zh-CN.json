@@ -1,4 +1,7 @@
 {
+  "Video previews": "视频预览",
+  "Play video previews when hovering over or focusing a card. Saved in this browser.": "鼠标悬停或聚焦卡片时播放视频预览。设置保存在此浏览器中。",
+  "Seek preview": "跳转预览进度",
   "Queue session writes stopped.": "会话已更改，队列保存已停止。",
   "Resume watched positions during autoplay": "自动播放时从上次观看位置继续",
   "When the queue advances automatically, resume each video's saved position. Turn off to start from the beginning.": "队列自动播放下一个视频时，从该视频保存的播放位置继续。关闭后将从头开始播放。",

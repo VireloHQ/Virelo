@@ -56,7 +56,7 @@ test('sound autoplay rejection falls back to muted without overwriting saved cho
   video.behavior.push(new DOMException('Blocked', 'NotAllowedError'));
   const preview = create(module, video); await settle();
   assert.deepEqual(video.plays, [false, true]);
-  assert.deepEqual(preview.state.updates.at(-1), { muted: true, playing: true, progress: 0 });
+  assert.deepEqual(preview.state.updates.at(-1), { muted: true, playing: true, progress: 5 / 120, duration: 120 });
   assert.equal(entries.get('virelo-preview-muted:v1'), 'false');
   assert.equal(module.readPreviewMuted(), false);
   preview.controller.toggleMuted(); await settle();
@@ -114,16 +114,59 @@ test('only one card owns playback even across multiple rows and pending metadata
   assert.equal(next.state.stopped, 1); third.controller.dispose();
 });
 
-test('loop bounds, short clips and stale resume positions remain playable', async () => {
+test('preview plays beyond fifteen seconds and only replays the whole video at its real end', async () => {
   storage(); const module = await fresh(), preview = create(module); await settle();
   preview.video.currentTime = 21; preview.video.dispatchEvent(new Event('timeupdate'));
-  assert.equal(preview.video.currentTime, 5);
+  assert.equal(preview.video.currentTime, 21);
+  assert.equal(preview.state.updates.at(-1).progress, 21 / 120);
+  preview.video.currentTime = 120;
   preview.video.dispatchEvent(new Event('ended')); await settle();
-  assert.equal(preview.video.currentTime, 5); assert.equal(preview.video.plays.length, 2);
+  assert.equal(preview.video.currentTime, 0); assert.equal(preview.video.plays.length, 2);
   preview.controller.dispose();
-  const short = new Video(); short.duration = 2;
-  const second = create(module, short, 200); await settle();
-  assert.equal(short.currentTime, 1.5); second.controller.dispose();
+});
+
+test('short clips and finished/invalid resume positions restart from zero, never the final few frames', async () => {
+  storage(); const module = await fresh();
+  for (const [duration, start] of [[2, 200], [24, 23.8], [24, 24], [.2, 5], [24, NaN], [24, Infinity], [24, -5]]) {
+    const video = new Video(); video.duration = duration;
+    const preview = create(module, video, start); await settle();
+    assert.equal(video.currentTime, 0);
+    video.currentTime = duration; video.dispatchEvent(new Event('ended')); await settle();
+    assert.equal(video.currentTime, 0); preview.controller.dispose();
+  }
+});
+
+test('seeking covers the whole duration, clamps input and retains sound preference', async () => {
+  const entries = storage('false'), module = await fresh(), preview = create(module); await settle();
+  preview.controller.seek(90);
+  assert.equal(preview.video.currentTime, 90); assert.equal(preview.video.muted, false);
+  assert.equal(preview.state.updates.at(-1).progress, .75);
+  preview.controller.seek(-10); assert.equal(preview.video.currentTime, 0);
+  preview.controller.seek(1000); assert.equal(preview.video.currentTime, 120);
+  preview.controller.seek(NaN); preview.controller.seek(Infinity);
+  assert.equal(preview.video.currentTime, 120);
+  preview.video.pause(); preview.controller.seek(40); await settle();
+  assert.equal(preview.video.currentTime, 40); assert.equal(preview.video.paused, false);
+  assert.equal(entries.get('virelo-preview-muted:v1'), 'false');
+  preview.controller.dispose(); preview.controller.seek(80);
+  assert.equal(preview.video.currentTime, 40);
+});
+
+test('unknown/changing duration and rejected seeks never reset playback or report invalid progress', async () => {
+  storage(); const module = await fresh(), video = new Video();
+  video.duration = Infinity;
+  const preview = create(module, video); await settle();
+  assert.equal(video.currentTime, 0); assert.equal(preview.state.updates.at(-1).duration, 0);
+  preview.controller.seek(80); assert.equal(video.currentTime, 0);
+  video.duration = 24; video.dispatchEvent(new Event('durationchange'));
+  assert.equal(preview.state.updates.at(-1).duration, 24);
+  preview.controller.seek(20); assert.equal(video.currentTime, 20);
+  video.duration = NaN; video.dispatchEvent(new Event('durationchange'));
+  assert.equal(preview.state.updates.at(-1).progress, 0);
+  video.duration = 24;
+  Object.defineProperty(video, 'currentTime', { configurable: true, get: () => 20, set: () => { throw new DOMException('Not ready', 'InvalidStateError'); } });
+  assert.doesNotThrow(() => preview.controller.seek(10));
+  assert.equal(video.currentTime, 20); preview.controller.dispose();
 });
 
 test('stop/error unloads the media exactly once and detaches every event handler', async () => {
@@ -131,7 +174,7 @@ test('stop/error unloads the media exactly once and detaches every event handler
   preview.video.dispatchEvent(new Event('error'));
   const count = preview.state.updates.length;
   preview.controller.stop(); preview.controller.dispose(); preview.controller.toggleMuted();
-  for (const name of ['loadedmetadata', 'ended', 'timeupdate', 'volumechange', 'pause', 'error']) preview.video.dispatchEvent(new Event(name));
+  for (const name of ['loadedmetadata', 'durationchange', 'ended', 'timeupdate', 'volumechange', 'pause', 'error']) preview.video.dispatchEvent(new Event(name));
   assert.equal(preview.video.loads, 1); assert.equal(preview.state.stopped, 1);
   assert.equal(preview.state.updates.length, count); assert.equal(preview.video.paused, true);
 });

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 import { SpeakerHigh, SpeakerSlash } from '@phosphor-icons/react';
 import { t, useLocale } from '@edition/i18n';
 import { createHoverPreview } from '../utils/hover-preview';
@@ -9,10 +9,11 @@ export function HoverPreview({ src, start }: { src: string; start: number }) {
   const rootRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const controllerRef = useRef<ReturnType<typeof createHoverPreview> | null>(null);
-  const [state, setState] = useState({ muted: true, playing: false, progress: 0 });
+  const [state, setState] = useState({ muted: true, playing: false, progress: 0, duration: 0 });
   const [stopped, setStopped] = useState(false);
 
-  useEffect(() => {
+  // Restore focus and unload before a settings change removes the controls.
+  useLayoutEffect(() => {
     const root = rootRef.current, video = videoRef.current;
     if (!root || !video || !src || stopped) return;
     const returnFocus = () => {
@@ -50,7 +51,15 @@ export function HoverPreview({ src, start }: { src: string; start: number }) {
   return <div className="preview-player hover-preview" ref={rootRef}>
     <video ref={videoRef} muted playsInline preload="auto" aria-hidden="true"
       style={{ visibility: state.playing ? 'visible' : 'hidden' }} />
-    {state.playing && <div className="preview-progress"><i style={{ width: `${state.progress * 100}%` }} /></div>}
+    <input type="range" className="preview-seek" aria-label={t('Seek preview')}
+      aria-valuetext={t('{value0} of {value1}', { value0: previewTime(state.progress * state.duration), value1: previewTime(state.duration) })}
+      min={0} max={state.duration || 1} step={.1} value={state.progress * state.duration} disabled={!state.duration}
+      style={{ '--preview-progress': `${state.progress * 100}%` } as CSSProperties}
+      onPointerDown={event => { event.stopPropagation(); event.currentTarget.setPointerCapture(event.pointerId); }}
+      onClick={event => event.stopPropagation()}
+      onContextMenu={event => event.stopPropagation()}
+      onKeyDown={event => event.stopPropagation()}
+      onChange={event => controllerRef.current?.seek(Number(event.currentTarget.value))} />
     <button type="button" className="preview-audio-button" aria-label={label} title={label}
       disabled={!src}
       onPointerDown={event => event.stopPropagation()}
@@ -60,4 +69,8 @@ export function HoverPreview({ src, start }: { src: string; start: number }) {
       {state.muted ? <SpeakerSlash aria-hidden="true" weight="fill" /> : <SpeakerHigh aria-hidden="true" weight="fill" />}
     </button>
   </div>;
+}
+
+function previewTime(seconds: number) {
+  return `${Math.floor(seconds / 60)}:${String(Math.floor(seconds % 60)).padStart(2, '0')}`;
 }

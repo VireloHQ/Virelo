@@ -1,4 +1,7 @@
 {
+  "Video previews": "Предпросмотр видео",
+  "Play video previews when hovering over or focusing a card. Saved in this browser.": "Воспроизводить предпросмотр видео при наведении указателя или фокусировке карточки. Настройка сохраняется в этом браузере.",
+  "Seek preview": "Перемотать предпросмотр",
   "Queue session writes stopped.": "Сеанс изменился. Сохранение очереди остановлено.",
   "Resume watched positions during autoplay": "Возобновлять с сохранённой позиции при автопроигрывании",
   "When the queue advances automatically, resume each video's saved position. Turn off to start from the beginning.": "При автоматическом переходе к следующему видео в очереди продолжать с сохранённой позиции. Отключите, чтобы начинать сначала.",
