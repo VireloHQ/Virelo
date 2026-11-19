@@ -1,7 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { execFileSync } from 'node:child_process';
 
 const workflow = await readFile(new URL('../../../.github/workflows/ci.yml', import.meta.url), 'utf8');
 const installs = [...workflow.matchAll(/- name: Install FFmpeg\r?\n([\s\S]*?)(?=\r?\n      - )/g)].map(match => match[1]);
@@ -18,18 +17,7 @@ test('both media jobs use the same bounded FFmpeg installation and verify both t
   assert.match(installs[0], /ffprobe -version/);
 });
 
-test('mirror rewrite covers Azure and EC2 without changing security feeds', { skip: process.platform === 'win32' }, () => {
-  const expression = installs[0].match(/sudo sed -E -i '([^']+)'/)?.[1];
-  assert.ok(expression);
-  const mirrors = [
-    'http://azure.archive.ubuntu.com/ubuntu',
-    'http://us-east-2.ec2.archive.ubuntu.com/ubuntu/',
-    'https://archive.ubuntu.com/ubuntu/',
-    'http://security.ubuntu.com/ubuntu'
-  ];
-  const output = execFileSync('sed', ['-E', expression], { input: mirrors.join('\n') + '\n', encoding: 'utf8' });
-  assert.deepEqual(output.trim().split('\n'), [
-    ...Array(3).fill('https://archive.ubuntu.com/ubuntu/'),
-    'http://security.ubuntu.com/ubuntu'
-  ]);
+test('CI preserves runner package mirrors for FFmpeg and Playwright dependencies', () => {
+  assert.doesNotMatch(workflow, /(?:apt-mirrors\.txt|sources\.list|ubuntu\.sources|archive\.ubuntu\.com)/);
+  assert.equal(workflow.match(/npx playwright install --with-deps chromium/g)?.length, 2);
 });
