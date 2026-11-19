@@ -44,8 +44,7 @@ jobs:
       - name: Install FFmpeg
         timeout-minutes: 8
         run: |
-          # Regional runner mirrors can throttle large FFmpeg downloads.
-          sudo sed -E -i 's|https?://([^/]+\.)?archive\.ubuntu\.com/ubuntu/?|https://archive.ubuntu.com/ubuntu/|g' /etc/apt/apt-mirrors.txt
+          # Keep the runner's regional mirrors, also used by Playwright's OS dependencies.
           sudo apt-get update -o Acquire::Retries=3 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30
           sudo apt-get install --yes --no-install-recommends -o Acquire::Retries=3 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30 ffmpeg
           ffmpeg -version
@@ -114,8 +113,7 @@ jobs:
       - name: Install FFmpeg
         timeout-minutes: 8
         run: |
-          # Regional runner mirrors can throttle large FFmpeg downloads.
-          sudo sed -E -i 's|https?://([^/]+\.)?archive\.ubuntu\.com/ubuntu/?|https://archive.ubuntu.com/ubuntu/|g' /etc/apt/apt-mirrors.txt
+          # Keep the runner's regional mirrors, also used by Playwright's OS dependencies.
           sudo apt-get update -o Acquire::Retries=3 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30
           sudo apt-get install --yes --no-install-recommends -o Acquire::Retries=3 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30 ffmpeg
           ffmpeg -version
