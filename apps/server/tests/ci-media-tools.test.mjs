@@ -11,7 +11,8 @@ test('both media jobs use the same bounded FFmpeg installation and verify both t
   assert.match(installs[0], /timeout-minutes: 8/);
   for (const command of ['update', 'install']) {
     const line = installs[0].split('\n').find(line => line.includes('apt-get ' + command));
-    assert.ok(line?.includes('Acquire::Retries=3') && line.includes('Acquire::https::Timeout=30'));
+    // Match hosted x64 runner bounds so a stalled URI yields to the next mirror promptly.
+    assert.ok(line?.includes('Acquire::Retries=1') && line.includes('Acquire::http::Timeout=15') && line.includes('Acquire::https::Timeout=15'));
   }
   assert.match(installs[0], /ffmpeg -version/);
   assert.match(installs[0], /ffprobe -version/);

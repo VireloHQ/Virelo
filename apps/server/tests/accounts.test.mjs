@@ -25,7 +25,8 @@ test('passwords use salted scrypt and support long Unicode passphrases', async (
   assert.equal(await verifyPassword('秘密の合言葉を十五文字より長く設定する',await hashPassword('秘密の合言葉を十五文字より長く設定する')),true);
 });
 
-test('accounts enforce authentication, catalog privacy and administrative boundaries', {timeout:40000}, async t => {
+// Sequential password-hashing checks share CPU with other files on hosted Intel runners.
+test('accounts enforce authentication, catalog privacy and administrative boundaries', {timeout:90000}, async t => {
   const root = await mkdtemp(join(tmpdir(),'virelo-accounts-test-'));
   const server = await createVireloServer({dataDir:root,mediaPaths:[],host:'127.0.0.1',port:0});
   const {app,db,accounts} = server;
