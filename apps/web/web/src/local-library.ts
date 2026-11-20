@@ -39,7 +39,7 @@ const DEFAULT_SETTINGS: Settings = {
   audioAnalysisEnabled: false,
   shortsIncludeLandscapes: false,
   queueBehavior: 'auto',
-  queueResumePosition: true
+  queueResumePosition: false
 };
 
 const sessionFiles = new Map<number, File>();

@@ -69,7 +69,7 @@ function unique<T extends { id: number }>(items: T[]): T[] {
 }
 function settings(value: unknown): Settings {
   const row = record(value, ['audioAnalysisEnabled', 'shortsIncludeLandscapes', 'queueBehavior', 'queueResumePosition']);
-  const queueResumePosition = Object.hasOwn(row, 'queueResumePosition') ? row.queueResumePosition : true;
+  const queueResumePosition = Object.hasOwn(row, 'queueResumePosition') ? row.queueResumePosition : false;
   check(typeof row.audioAnalysisEnabled === 'boolean' && typeof row.shortsIncludeLandscapes === 'boolean'
     && typeof queueResumePosition === 'boolean'
     && ['auto', 'loop', 'manual'].includes(row.queueBehavior as string));
@@ -213,7 +213,7 @@ export async function exportBrowserData(kind: BackupKind): Promise<Blob> {
         const [libraries = [], items = [], playlists = []] = requests.map(request => request.result as Record<string, unknown>[]);
         const stored = current.result as Partial<Settings> | undefined;
         resolve(validate({ format: 'virelo-browser-backup', version: 1, kind, createdAt: Date.now(),
-          settings: { audioAnalysisEnabled: stored?.audioAnalysisEnabled ?? false, shortsIncludeLandscapes: stored?.shortsIncludeLandscapes ?? false, queueBehavior: stored?.queueBehavior ?? 'auto', queueResumePosition: stored?.queueResumePosition ?? true },
+          settings: { audioAnalysisEnabled: stored?.audioAnalysisEnabled ?? false, shortsIncludeLandscapes: stored?.shortsIncludeLandscapes ?? false, queueBehavior: stored?.queueBehavior ?? 'auto', queueResumePosition: stored?.queueResumePosition ?? false },
           preferences: readPreferences(),
           libraries: libraries.map(row => ({ id: row.id, label: row.label, path: row.path, created_at: row.created_at, persistent: false, folderLabels: row.folderLabels ?? {} })),
           media: items.map(row => Object.fromEntries([...MEDIA_TEXT, ...MEDIA_NULL_TEXT, ...MEDIA_NULL_NUMBER, ...MEDIA_NUMBER, ...MEDIA_OPTIONAL, 'kind', 'audio_loudness']

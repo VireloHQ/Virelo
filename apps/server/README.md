@@ -139,8 +139,9 @@ After reaching the end, the preview restarts from the beginning, not a short
 section around a saved watch position.
 
 Administrators can change **Settings → Playback → Resume watched positions during
-autoplay**. It is on by default. Turn it off to start the next video from zero
-when the queue advances automatically. Selecting a video manually or resuming
+autoplay**. If no preference is saved, it is off: automatic queue advancement
+starts the next video from zero. Enable it to resume saved positions; existing
+saved choices are preserved. Selecting a video manually or resuming
 through Continue watching still restores its saved position.
 
 ## 🧭 CLI

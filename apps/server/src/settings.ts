@@ -11,7 +11,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   libraryWatchEnabled: true,
   shortsIncludeLandscapes: false,
   queueBehavior: 'auto',
-  queueResumePosition: true
+  queueResumePosition: false
 };
 
 export function isSettingValue(key: string, value: unknown): boolean {

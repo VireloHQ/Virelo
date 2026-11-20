@@ -103,7 +103,8 @@ section around a saved watch position.
 
 **Settings → Playback → Resume watched positions during autoplay** controls
 whether automatic queue advancement restores each video's saved position or
-starts from zero. It is on by default. Manually selecting a video or choosing
+starts from zero. If no preference is saved, it is off, so automatic next starts
+from zero. Existing saved choices are preserved. Manually selecting a video or choosing
 Continue watching still restores the saved position.
 
 ## Development

@@ -154,10 +154,10 @@ test('server: compatible HLS conversion gates initial history', async t => {
   assert.equal(env.calls.filter(call => call[0] === 'fallback').at(-1)[2], 125);
 });
 
-test('server settings default on and reject non-boolean patches', async () => {
+test('server autoplay resume defaults off and rejects non-boolean patches', async () => {
   const code = (await source('apps/server/src/settings.ts')).replace("import { AccountError } from './accounts.js';", 'class AccountError extends Error {}');
   const { DEFAULT_SETTINGS, isSettingValue, validateSettingsPatch } = await pure(code);
-  assert.equal(DEFAULT_SETTINGS.queueResumePosition, true);
+  assert.equal(DEFAULT_SETTINGS.queueResumePosition, false);
   for (const value of [true, false]) {
     assert.equal(isSettingValue('queueResumePosition', value), true);
     assert.doesNotThrow(() => validateSettingsPatch({ queueResumePosition: value }));
@@ -168,7 +168,7 @@ test('server settings default on and reject non-boolean patches', async () => {
   }
 });
 
-test('browser settings migrate missing/corrupt values, preserve false and reject invalid writes before storage', async t => {
+test('browser settings default missing/corrupt values off, preserve saved choices and reject invalid writes', async t => {
   const key = '__resumeSettingsTest', previous = Object.getOwnPropertyDescriptor(globalThis, key);
   t.after(() => previous ? Object.defineProperty(globalThis, key, previous) : delete globalThis[key]);
   const env = globalThis[key] = { stored: undefined, writes: 0 };
@@ -182,7 +182,12 @@ test('browser settings migrate missing/corrupt values, preserve false and reject
   `);
   for (const value of [undefined, null, 'false', 0, 1, [], {}]) {
     env.stored = value === undefined ? undefined : { queueResumePosition: value };
-    assert.equal((await readSettings()).queueResumePosition, true);
+    assert.equal((await readSettings()).queueResumePosition, false);
+  }
+  for (const boolean of [true, false]) {
+    env.stored = { queueResumePosition: boolean };
+    assert.equal((await readSettings()).queueResumePosition, boolean);
+    assert.equal((await writeSettings({ queueBehavior: 'loop' })).queueResumePosition, boolean);
   }
   assert.equal((await writeSettings({ queueResumePosition: false })).queueResumePosition, false);
   assert.equal((await readSettings()).queueResumePosition, false);
@@ -192,12 +197,12 @@ test('browser settings migrate missing/corrupt values, preserve false and reject
   assert.equal(env.writes, before);
 });
 
-test('browser backup validation defaults legacy settings to true, preserves false and rejects malformed booleans', async () => {
+test('browser backup validation defaults unset autoplay resume off and preserves explicit choices', async () => {
   const value = { format: 'virelo-browser-backup', version: 1, kind: 'settings', createdAt: 1,
     settings: { audioAnalysisEnabled: false, shortsIncludeLandscapes: false, queueBehavior: 'auto' },
     preferences: {}, libraries: [], media: [], playlists: [] };
   const read = () => backups.readBrowserBackup(new Blob([JSON.stringify(value)], { type: 'application/json' }));
-  assert.equal((await read()).settings.queueResumePosition, true);
+  assert.equal((await read()).settings.queueResumePosition, false);
   for (const boolean of [false, true]) {
     value.settings.queueResumePosition = boolean;
     assert.equal((await read()).settings.queueResumePosition, boolean);
