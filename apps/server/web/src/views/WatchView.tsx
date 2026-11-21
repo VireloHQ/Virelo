@@ -55,7 +55,7 @@ export function WatchView() {
     if (!source || settingsQ.isPending || searchParams.resumeSession && (!resumeQ.isFetchedAfterMount || playlistId && !playlistQ.isFetchedAfterMount)) return <PageSkeleton kind="watch" queueLayout={queueLayout}/>;
     return <QueuedWatch key={JSON.stringify([mediaId, searchParams.search, searchParams.folder, searchParams.exactFolder, searchParams.libraryId, searchParams.seriesTitle, searchParams.sort, searchParams.favorites, searchParams.playlistId, searchParams.resumeSession])}
       source={source} initialId={Number(mediaId)} behavior={settingsQ.data?.queueBehavior ?? 'auto'} shuffle={searchParams.sort === 'random'}
-      saved={resumeQ.data?.state} resumeKey={searchParams.resumeSession} queueResumePosition={settingsQ.data?.queueResumePosition ?? true}
+      saved={resumeQ.data?.state} resumeKey={searchParams.resumeSession} queueResumePosition={settingsQ.data?.queueResumePosition ?? false}
       playlist={playlistId ? playlistQ.data : undefined} refreshError={error?.message} onRetry={retry}/>;
   }
   if (itemQ.isError) return <div className="watch-empty"><h1>{t("Video unavailable")}</h1><p>{t(itemQ.error.message)}</p><button onClick={() => void itemQ.refetch()}>{t("Try again")}</button></div>;

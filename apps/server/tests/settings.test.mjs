@@ -10,6 +10,20 @@ import { authenticatedInjector } from './auth-helper.mjs';
 
 process.env.VIRELO_LOG_LEVEL = 'silent';
 
+test('unset queue autoplay starts at zero while saved choices survive reopening', async t => {
+  const root = await mkdtemp(join(tmpdir(), 'virelo-queue-default-'));
+  let db = new VireloDB(root);
+  t.after(async () => { db.close(); await rm(root, { recursive: true, force: true }); });
+  assert.equal(db.getSettings().queueResumePosition, false);
+  assert.equal(db.db.prepare('SELECT key FROM settings WHERE key = ?').get('queueResumePosition'), undefined);
+  for (const resume of [true, false]) {
+    db.updateSettings({ queueResumePosition: resume });
+    db.updateSettings({ queueBehavior: 'loop' });
+    db.close(); db = new VireloDB(root);
+    assert.equal(db.getSettings().queueResumePosition, resume);
+  }
+});
+
 test('settings reject invalid values atomically and recover malformed stored values', async t => {
   const root=await mkdtemp(join(tmpdir(),'virelo-settings-')),db=new VireloDB(root);
   t.after(async()=>{db.close();await rm(root,{recursive:true,force:true});});

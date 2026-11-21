@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Start the next queued video from the beginning when autoplay resume has never been configured. Preserve saved on/off choices and manual resume behavior.
+
 ## 0.7.0
 
 - Resume a queue or playlist from Continue watching, retaining the selected video, custom order and shuffle state.

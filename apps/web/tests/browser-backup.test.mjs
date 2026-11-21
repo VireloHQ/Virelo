@@ -150,7 +150,7 @@ test('settings-only export has no catalog data and restores legacy preferences t
   env.records.set('virelo-public-locale:v1', 'ru'); env.records.set('virelo-playback-quality', 'source');
   const before = env.snapshot();
   const result = await api.readBrowserBackup(await api.exportBrowserData('settings'));
-  assert.deepEqual(result.settings, { audioAnalysisEnabled: false, shortsIncludeLandscapes: false, queueBehavior: 'auto', queueResumePosition: true });
+  assert.deepEqual(result.settings, { audioAnalysisEnabled: false, shortsIncludeLandscapes: false, queueBehavior: 'auto', queueResumePosition: false });
   assert.deepEqual(result.preferences, { 'virelo.language.v1': 'ru', 'virelo-playback-quality:v1': 'source' });
   assert.deepEqual(api.backupSummary(result), { kind: 'settings', libraries: 0, videos: 0, playlists: 0 });
   assert.deepEqual(env.snapshot(), before);
@@ -228,16 +228,16 @@ test('both modes validate and normalize without database reads or writes', async
   assert.deepEqual(env.events, []);
 });
 
-test('legacy backups without queue resume settings import with the behavior-preserving default', async t => {
+test('legacy backups without queue resume settings import with autoplay resume off', async t => {
   const env = environment(t);
   for (const kind of ['settings', 'library']) {
     const value = fixture(kind); delete value.settings.queueResumePosition;
-    assert.equal((await read(value)).settings.queueResumePosition, true);
+    assert.equal((await read(value)).settings.queueResumePosition, false);
   }
   assert.deepEqual(env.events, []);
   const value = fixture('settings'); delete value.settings.queueResumePosition;
   await api.importBrowserBackup(value);
-  assert.equal(env.stores.get('settings').get('current').queueResumePosition, true);
+  assert.equal(env.stores.get('settings').get('current').queueResumePosition, false);
 });
 
 test('queue resume false survives settings export, validation and import', async t => {

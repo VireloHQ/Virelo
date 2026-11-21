@@ -82,7 +82,7 @@ try {
     args: ['--autoplay-policy=no-user-gesture-required', '--no-proxy-server'] });
   for (const edition of ['web', 'server'].filter(value => !process.env.VIRELO_TEST_INITIAL_EDITION || process.env.VIRELO_TEST_INITIAL_EDITION === value)) {
     const base = await serve(edition), prefix = edition === 'web' ? '/app' : '';
-    for (const path of ['direct', 'quality', 'audio'].filter(value => !process.env.VIRELO_TEST_INITIAL_PATH || process.env.VIRELO_TEST_INITIAL_PATH === value)) for (const resume of [false, true]) {
+    for (const path of ['direct', 'quality', 'audio'].filter(value => !process.env.VIRELO_TEST_INITIAL_PATH || process.env.VIRELO_TEST_INITIAL_PATH === value)) for (const resume of path === 'direct' ? [undefined, false, true] : [false, true]) {
       const label = `${edition} ${path} resume=${resume}`;
       const context = await browser.newContext({ viewport: { width: 1440, height: 1000 }, locale: 'en-US', serviceWorkers: 'block' });
       const page = lastPage = await context.newPage(), errors = [], external = [];
@@ -141,7 +141,7 @@ try {
           api.mediaById = async id => ({ ...items.find(item => item.id === id) });
           api.mediaFile = async id => files[id - 1]; api.mediaSource = async id => base + `/__initial/clip-${id}.mp4`;
           api.playbackInfo = async () => info; api.progress = async (...args) => { window.__progress.push(args); };
-          api.settings = async () => ({ queueBehavior: 'auto', queueResumePosition: resume, audioAnalysisEnabled: false,
+          api.settings = async () => ({ queueBehavior: 'auto', ...(resume === undefined ? {} : { queueResumePosition: resume }), audioAnalysisEnabled: false,
             shortsIncludeLandscapes: false, externalMetadataEnabled: false, externalImagesEnabled: false });
           api.appearance = async () => ({ controllerStyle: 'classic', accentColor: '#c3a6ff' });
           api.saveQueueSession = async session => { window.__sessions.push(session); return { ...session, items }; };
@@ -176,7 +176,7 @@ try {
         await waitPosition(page, 2, resume ? 10 : 0, path);
         check(await page.evaluate(() => window.__ended.length === 1 && window.__ended[0].trusted), `${label}: real ended event advances the queue`);
         check(true, `${label}: automatic next uses ${resume ? 'saved position' : 'the beginning'}`);
-        if (path === 'direct' && !resume) {
+        if (path === 'direct' && resume === false) {
           await seekPaused(page, 7); await selectQuality(page, false); await waitPosition(page, 2, 7, 'quality', true);
           check(true, `${label}: quality conversion preserves live position and paused intent`);
           await selectQuality(page, true); await waitPosition(page, 2, 7, 'direct', true);
