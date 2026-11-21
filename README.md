@@ -3,6 +3,7 @@
   <h1>Virelo</h1>
   <p><strong>Your folders. A streaming library.</strong></p>
   <p>Browse the videos you already have, in your browser or on your own server.<br />Free and open source. No uploads to Virelo.</p>
+  <p><a href="https://www.npmjs.com/package/virelo"><code>npm v0.7.0</code></a> &nbsp; <a href="LICENSE"><code>AGPL-3.0-only</code></a> &nbsp; <code>Local-first</code> &nbsp; <code>Web + self-hosted</code></p>
   <p>
     <a href="https://app.virelo.dev/"><img src="docs/images/readme/open-browser.svg" alt="Try Virelo in your browser" width="194" height="46" /></a>
     &nbsp;
@@ -22,11 +23,20 @@
 - **A feed of your own.** Swipe through portrait clips in Shorts, using files already on your device.
 - **Playback that fits.** Subtitles, audio tracks, speed controls and optional volume leveling, where supported.
 
+Available in English, Japanese, Simplified Chinese, Korean and Russian. [Localization details](docs/LOCALIZATION.md).
+
 <img src="docs/images/readme/player.webp" alt="Virelo playing Sintel with a seek bar, queue controls, volume and fullscreen controls" width="1440" />
 
 <p align="center">Player demo: <a href="https://durian.blender.org/">Sintel</a>, © Blender Foundation · <a href="https://creativecommons.org/licenses/by/3.0/">CC BY 3.0</a></p>
 
 ## Two ways to start
+
+| | Browser app | Self-hosted server |
+| --- | --- | --- |
+| Video files | Folders on this device | Folders on your server |
+| Where you watch | This device | Devices on your trusted network |
+| Accounts | None | Administrator and user accounts |
+| Movie / TV artwork | Locally generated thumbnails | Optional online title and artwork matching |
 
 ### In your browser
 
