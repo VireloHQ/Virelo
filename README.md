@@ -1,76 +1,65 @@
 <div align="center">
-  <img src="https://raw.githubusercontent.com/VireloHQ/Virelo/main/apps/web/web/public/virelo-icon-512.png" alt="Virelo" width="88" />
+  <img src="apps/web/web/public/virelo-icon-512.png" alt="" width="64" height="64" />
   <h1>Virelo</h1>
-  <p><strong>Turn your video folder into a streaming-style library. No uploads required.</strong></p>
+  <p><strong>Your folders. A streaming library.</strong></p>
+  <p>Browse the videos you already have, in your browser or on your own server.<br />Free and open source. No uploads to Virelo.</p>
   <p>
-    <a href="https://app.virelo.dev/"><strong>Try in your browser</strong></a>
-    &nbsp;·&nbsp;
-    <a href="https://virelo.dev/setup">Self-host it</a>
-    &nbsp;·&nbsp;
-    <a href="https://virelo.dev/">Website</a>
+    <a href="https://app.virelo.dev/"><img src="docs/images/readme/open-browser.svg" alt="Try Virelo in your browser" width="194" height="46" /></a>
+    &nbsp;
+    <a href="https://virelo.dev/setup"><img src="docs/images/readme/self-host.svg" alt="Set up your own Virelo server" width="158" height="46" /></a>
   </p>
+  <p><a href="https://virelo.dev/">Website</a> &nbsp;·&nbsp; <a href="https://virelo.dev/blog">What's new</a> &nbsp;·&nbsp; <a href="https://github.com/VireloHQ/Virelo/issues">Feedback</a></p>
 </div>
 
-![Virelo library with movie posters and a continue-watching row](https://virelo.dev/landing/library-movies-desktop.webp)
+<a href="https://app.virelo.dev/"><img src="docs/images/readme/library.webp" alt="Virelo self-hosted library with movie artwork and a Continue Watching row" width="1440" /></a>
 
-*Example library. Virelo does not include movies or other media.*
+<p align="center">Self-hosted demo library. Videos are not included. <a href="docs/images/readme/README.md">Media credits</a></p>
 
-Virelo gives videos you already own a place to browse and watch. Open a folder directly in your browser, or run a self-hosted server for a library shared on your own network.
+## Less searching. More watching.
 
-## Try it
+- **Pick up where you left off.** Continue a video, queue or playlist without rebuilding your session.
+- **Make it your collection.** Search folders, save favorites, arrange playlists and shuffle the queue.
+- **A feed of your own.** Swipe through portrait clips in Shorts, using files already on your device.
+- **Playback that fits.** Subtitles, audio tracks, speed controls and optional volume leveling, where supported.
 
-**In your browser — no signup or installation**
+<img src="docs/images/readme/player.webp" alt="Virelo playing Sintel with a seek bar, queue controls, volume and fullscreen controls" width="1440" />
+
+<p align="center">Player demo: <a href="https://durian.blender.org/">Sintel</a>, © Blender Foundation · <a href="https://creativecommons.org/licenses/by/3.0/">CC BY 3.0</a></p>
+
+## Two ways to start
+
+### In your browser
+
+No installation or account required.
 
 1. Open **[app.virelo.dev](https://app.virelo.dev/)**.
-2. Choose a folder containing your videos and grant the browser read access.
-3. Browse your library, make playlists, and pick up where you left off.
+2. Choose your video folder and grant read access.
+3. Browse, play, and build your first playlist.
 
-The browser version reads files from your device. Your videos are **not uploaded** to Virelo, and your library state stays in your browser. Folder access and playback depend on your browser's capabilities and supported codecs.
+Your files stay on your device. Folder access and supported formats depend on your browser; this mode does not share your folder with other devices.
 
-**Self-hosted — for your own network**
+### On your own server
 
-From a folder containing your videos, run:
+Open a terminal in your video folder:
 
 ```sh
 npx virelo --here
 ```
 
-Or run `npx virelo` to start without implicitly adding your current folder. The server has its own account setup and supports multiple users, library permissions, optional movie/series metadata, and network playback. See the [server and CLI guide](apps/server/README.md) and [setup guide](https://virelo.dev/setup).
+Create the first administrator account from localhost on the server device. The server adds user accounts, shared libraries, access permissions and optional movie/TV metadata and artwork. Use it on your trusted network, not directly on the public internet.
 
-## What you get
+Already have saved libraries? Run `npx virelo` without `--here`.
 
-| | Browser player | Self-hosted server |
-| --- | --- | --- |
-| Start | Open a website and pick a folder | Run `npx virelo` |
-| Account | Not required | Required |
-| Video files | Stay on your device | Served by your server |
-| Library | Thumbnails, search, favorites, playlists, and watch progress | Shared libraries with user permissions |
-| Playback | Videos, your own Shorts, and supported local-format conversion | Streaming over your trusted network with FFmpeg |
+[Self-hosting guide](https://virelo.dev/setup) · [Server and CLI reference](apps/server/README.md) · [Browser player docs](apps/web/README.md)
 
-Both editions are open source, but have independent storage, permissions, and release schedules. The browser player does **not** make a folder available to other devices.
+## Help shape Virelo
 
-### Your videos, your interface
+Something getting in the way of watching your collection? [Report a bug](https://github.com/VireloHQ/Virelo/issues) or [share a feature idea](https://github.com/VireloHQ/Virelo/discussions).
 
-- **A library worth browsing:** posters and thumbnails, search, folders, favorites, and continue watching.
-- **Playlists and queues:** save an order, shuffle, and return later.
-- **Your own Shorts:** swipe through portrait videos from your collection.
-- **Playback controls:** subtitles, audio tracks, speed, picture adjustments, and optional volume leveling where supported.
-- **Personalize it:** player layouts, accent color, and five interface languages.
+If Virelo is useful to you, [star the repository](https://github.com/VireloHQ/Virelo/stargazers) so you can find it again and help others discover it.
 
-![Virelo player preview](https://virelo.dev/landing/player-desktop-v2.webp)
-
-*Sample media is for illustration only. Features and codec support differ by edition and browser.*
-
-## Project links
-
-- **[Live web player](https://app.virelo.dev/)** — try Virelo with your own files.
-- **[Self-hosted setup](https://virelo.dev/setup)** — run Virelo on your computer.
-- **[Web player docs](apps/web/README.md)** · **[Server docs](apps/server/README.md)**
-- **[Issues](https://github.com/VireloHQ/Virelo/issues)** · **[Discussions](https://github.com/VireloHQ/Virelo/discussions)** — feedback, bugs, and ideas are welcome.
-
-If Virelo is useful to you, starring this repository helps other people discover it.
-
-## Development
+<details>
+<summary><strong>Development</strong></summary>
 
 Use Node.js 22.23.4+, 24.22.1+ or 26.12.1+ within those release lines. From the repository root:
 
@@ -79,6 +68,12 @@ npm ci
 npm run check
 ```
 
-Build either edition with `npm run build -w apps/web` or `npm run build -w apps/server`. Read the [workspace structure](docs/workspace.md), [contributing guide](CONTRIBUTING.md), and [release documentation](docs/releasing.md).
+Build either edition with `npm run build -w apps/web` or `npm run build -w apps/server`.
 
-Virelo's player and server are licensed under [AGPL-3.0-only](LICENSE). Third-party code and assets retain their own licenses. The [official website](https://virelo.dev/) is maintained separately.
+[Workspace structure](docs/workspace.md) · [Contributing](CONTRIBUTING.md) · [Release documentation](docs/releasing.md)
+
+</details>
+
+---
+
+Virelo's player and server are [AGPL-3.0-only](LICENSE). Third-party code and artwork retain their own licenses; see the [screenshot credits](docs/images/readme/README.md). The [official website](https://virelo.dev/) is maintained separately. Browser and self-hosted editions have independent storage, permissions and release schedules.

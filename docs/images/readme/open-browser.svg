@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="194" height="46" viewBox="0 0 194 46" role="img" aria-labelledby="title">
+  <title id="title">Try in your browser</title>
+  <rect width="194" height="46" rx="12" fill="#bda6ff"/>
+  <path d="m19 16 11 7-11 7Z" fill="#17131f"/>
+  <text x="108" y="29" text-anchor="middle" font-family="system-ui,Segoe UI,sans-serif" font-size="15" font-weight="650" fill="#17131f">Try in your browser</text>
+</svg>
