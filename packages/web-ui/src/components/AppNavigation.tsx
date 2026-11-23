@@ -2,7 +2,7 @@ import { t, useLocale } from '@edition/i18n';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link, useLocation, useNavigate } from '@tanstack/react-router';
 import { Button, Input } from '@heroui/react';
-import { MagnifyingGlass, Gear, Layout, SidebarSimple, X } from '@phosphor-icons/react';
+import { MagnifyingGlass, Gear, X } from '@phosphor-icons/react';
 import { useUIStore } from '../store';
 import { HeaderNavLabel } from './HeaderNavLabel';
 
@@ -18,7 +18,6 @@ export function AppNavigation({base,notifications,account}:{base:''|'/app';notif
   const isFavorites = pathname === base+'/favorites';
   const searchDestination = base+(isFavorites?'/favorites':'/library');
   const layout = useNavigationLayout(s=>s.layout);
-  const setLayout = useNavigationLayout(s=>s.setLayout);
   const homeFilter = useUIStore(s=>s.homeFilter);
   const setHomeFilter = useUIStore(s=>s.setHomeFilter);
   const search = useUIStore((s)=>s.search);
@@ -47,25 +46,24 @@ export function AppNavigation({base,notifications,account}:{base:''|'/app';notif
   return (
     <header className={'topbar'+(isHome?' home-header':'')}>
       <div className="topbar-inner">
-        <div className="navigation-brand">
-          <Link to={home} className="brand" aria-label={base?t("Virelo app home"):t("Virelo home")} onClick={()=>setHomeFilter('all')}>
-            <span className="brand-mark"><img src="/virelo-icon-180.png?v=ribbon-1" alt="" width="42" height="42" decoding="async" /></span>
-            <span className="brand-name">{t("Virelo")}</span>
-          </Link>
-          <Button className="desktop-only navigation-toggle" isIconOnly variant="ghost"
-            aria-label={layout==='sidebar'?t("Switch to header"):t("Switch to sidebar")}
-            onPress={()=>setLayout(layout==='sidebar'?'header':'sidebar')}>
-            {layout==='sidebar'?<Layout size={22}/>:<SidebarSimple size={22}/>}
-          </Button>
-        </div>
+        <Link to={home} className="brand" aria-label={base?t("Virelo app home"):t("Virelo home")} onClick={()=>setHomeFilter('all')}>
+          <span className="brand-mark"><img src="/virelo-icon-180.png?v=ribbon-1" alt="" width="42" height="42" decoding="async" /></span>
+          <span className="brand-name">{t("Virelo")}</span>
+        </Link>
         <nav className="desktop-nav" aria-label={t("Main navigation")}>
-          <Link to={home} activeOptions={{exact:true}} activeProps={homeFilter==='all'?{className:'active'}:{}} onClick={()=>setHomeFilter('all')}><HeaderNavLabel section="home">{t("Home")}</HeaderNavLabel></Link>
-          <button className="home-header-category" aria-pressed={isHome&&homeFilter==='movie'} onClick={()=>selectHomeCategory('movie')}><HeaderNavLabel section="movies">{t("Movies")}</HeaderNavLabel></button>
-          <button className="home-header-category" aria-pressed={isHome&&homeFilter==='series'} onClick={()=>selectHomeCategory('series')}><HeaderNavLabel section="series">{t("Series")}</HeaderNavLabel></button>
-          <Link to={base+'/library'} activeProps={{className:'active'}}><HeaderNavLabel section="library">{t("Library")}</HeaderNavLabel></Link>
-          <Link to={base+'/shorts'} search={{}} activeProps={{className:'active'}}><HeaderNavLabel section="shorts">{t("Shorts")}</HeaderNavLabel></Link>
-          <Link to={base+'/favorites'} activeProps={{className:'active'}}><HeaderNavLabel section="favorites">{t("Favorites")}</HeaderNavLabel></Link>
-          <Link to={base+'/playlists'} activeProps={{className:'active'}}><HeaderNavLabel section="playlists">{t("Playlists")}</HeaderNavLabel></Link>
+          <Link to={home} activeOptions={{exact:true}} activeProps={homeFilter==='all'?{className:'active'}:{'aria-current':false}} onClick={()=>setHomeFilter('all')}><HeaderNavLabel section="home">{t("Home")}</HeaderNavLabel></Link>
+          <div className="navigation-group" role="group" aria-label={t("Browse videos")}>
+            <span className="navigation-group-label" aria-hidden="true">{t("Browse videos")}</span>
+            <button className="home-header-category" aria-pressed={isHome&&homeFilter==='movie'} onClick={()=>selectHomeCategory('movie')}><HeaderNavLabel section="movies">{t("Movies")}</HeaderNavLabel></button>
+            <button className="home-header-category" aria-pressed={isHome&&homeFilter==='series'} onClick={()=>selectHomeCategory('series')}><HeaderNavLabel section="series">{t("Series")}</HeaderNavLabel></button>
+            <Link to={base+'/library'} activeProps={{className:'active'}}><HeaderNavLabel section="library">{t("Library")}</HeaderNavLabel></Link>
+            <Link to={base+'/shorts'} search={{}} activeProps={{className:'active'}}><HeaderNavLabel section="shorts">{t("Shorts")}</HeaderNavLabel></Link>
+          </div>
+          <div className="navigation-group" role="group" aria-label={t("Saved items")}>
+            <span className="navigation-group-label" aria-hidden="true">{t("Saved items")}</span>
+            <Link to={base+'/favorites'} activeProps={{className:'active'}}><HeaderNavLabel section="favorites">{t("Favorites")}</HeaderNavLabel></Link>
+            <Link to={base+'/playlists'} activeProps={{className:'active'}}><HeaderNavLabel section="playlists">{t("Playlists")}</HeaderNavLabel></Link>
+          </div>
         </nav>
         <div className="topbar-actions">
           {notifications}
@@ -106,7 +104,8 @@ export function AppNavigation({base,notifications,account}:{base:''|'/app';notif
               />
             </div>
           </div>
-          <Button className="desktop-only icon-button settings-button" isIconOnly={layout!=='sidebar'} variant="ghost" aria-label={t("Settings")} onPress={()=>void navigate({to:base+'/settings'})}>
+          <Button className="desktop-only icon-button settings-button" isIconOnly={layout!=='sidebar'} variant="ghost"
+            aria-label={t("Settings")} aria-current={pathname===base+'/settings'?'page':undefined} onPress={()=>void navigate({to:base+'/settings'})}>
             <Gear size={28}/><span className="navigation-settings-label">{t("Settings")}</span>
           </Button>
         </div>
