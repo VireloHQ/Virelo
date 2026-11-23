@@ -37,7 +37,7 @@ function FilteredHome({filter}:{filter:HomeFilter}) {
   const heroRef=useRef<HTMLElement>(null);
   const [shortsSeed]=useState(()=>Math.floor(Date.now()/86400000));
   const home=useQuery({queryKey:['home'],queryFn:api.home,refetchInterval:q=>q.state.data?.total===0?2000:30000});
-  const shorts=useQuery({queryKey:['shorts','row',shortsSeed],queryFn:()=>api.shorts({limit:12,seed:shortsSeed}),staleTime:60000});
+  const shorts=useQuery({queryKey:['shorts','row',shortsSeed],queryFn:()=>api.shorts({limit:12,seed:shortsSeed,home:1}),staleTime:60000,enabled:filter==='all'});
   const data=home.data;
   const heroPool=useMemo(()=>!data?[]:featuredTitles(filter==='movie'?data.movies:filter==='series'?data.series:
     [...(data.unwatched??[]),...data.movies,...data.series,...data.recent]),[data,filter]);
@@ -47,6 +47,7 @@ function FilteredHome({filter}:{filter:HomeFilter}) {
   const pick=(items:MediaItem[]|undefined)=>(items??[]).filter(item=>filter==='all'||item.kind===filter);
   if(home.isLoading)return <PageSkeleton kind="home" />;
   if(home.isError&&!data)return <div className="home-load-error"><h1>{t("Couldn’t load your library")}</h1><p>{t("Try again to reconnect to your videos.")}</p><Button onPress={()=>void home.refetch()}>{t("Try again")}</Button></div>;
+  if(data?.total===0&&data.hiddenLibraryIds?.length)return <div className="home-load-error"><h1>{t("Nothing to show on Home")}</h1><p>{t("Choose which libraries appear on Home in Settings.")}</p><Link to="/settings" hash="libraries">{t("Libraries")}</Link></div>;
   if(!data||data.total===0)return <EmptyState/>;
   const genres=hero?mediaGenres(hero.genres).slice(0,2):[];
   const metadata=hero?[hero.kind==='series'?t('Series'):hero.kind==='movie'?t('Movie'):null,hero.year,
@@ -92,7 +93,7 @@ function FilteredHome({filter}:{filter:HomeFilter}) {
       </div>}
     </section>:<header className="home-simple-heading"><h1>{filter==='series'?t("Series"):filter==='movie'?t("Movies"):t("Your library")}</h1></header>}
     <div className="home-rows home-curated-rows">
-      <ContinueWatchingRow items={pick(data.continueWatching)} kind={filter}/>
+      <ContinueWatchingRow items={pick(data.continueWatching)} kind={filter} hiddenLibraryIds={data.hiddenLibraryIds}/>
       <MediaRow title={t("Up next")} items={pick(data.nextEpisodes)} playDirect/>
       <MediaRow title={t("Not watched yet")} items={unwatched} poster/>
       <MediaRow title={t("Your favorites")} items={pick(data.favorites)} poster action={<Link to="/favorites">{t("View all")}</Link>}/>

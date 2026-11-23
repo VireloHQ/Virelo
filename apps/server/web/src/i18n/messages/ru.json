@@ -1,4 +1,9 @@
 {
+  "Nothing to show on Home": "На главной пока нечего показать",
+  "Choose which libraries appear on Home in Settings.": "Выберите в настройках, какие библиотеки показывать на главной.",
+  "Show on Home": "Показывать на главной",
+  "Show {value0} on Home": "Показывать «{value0}» на главной",
+  "Could not save Home visibility.": "Не удалось сохранить настройку главной.",
   "Video previews": "Предпросмотр видео",
   "Play video previews when hovering over or focusing a card. Saved in this browser.": "Воспроизводить предпросмотр видео при наведении указателя или фокусировке карточки. Настройка сохраняется в этом браузере.",
   "Seek preview": "Перемотать предпросмотр",

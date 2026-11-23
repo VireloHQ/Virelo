@@ -388,17 +388,26 @@ export async function createVireloServer(config: RuntimeConfig, pickFolder: (sig
 
   const namedLibraries = (scope:CatalogScope) => {
     const allowed = new Map<number,Set<string>>();
+    const hidden = new Set(db.hiddenHomeLibraries(scope));
     for (const entry of db.getFolders(scope)) {
       let paths = allowed.get(entry.library_id);
       if (!paths) { paths = new Set(); allowed.set(entry.library_id,paths); }
       const parts = entry.folder.split('/');
       for (let index=1;index<=parts.length;index++) paths.add(parts.slice(0,index).join('/'));
     }
-    return db.visibleLibraries(scope).map(library => ({...library,folderLabels:Object.fromEntries(
+    return db.visibleLibraries(scope).map(library => ({...library,hideOnHome:hidden.has(library.id),folderLabels:Object.fromEntries(
       Object.entries(db.folderLabels(library.id)).filter(([folder]) => allowed.get(library.id)?.has(folder))
     )}));
   };
   app.get('/api/libraries', async request => namedLibraries(request.catalogScope!));
+  app.put<{ Params:{id:string}; Body:{hidden?:boolean} }>('/api/home/libraries/:id', async (request,reply)=>{
+    const scope=accounts.scope(fresh(request)), id=Number(request.params.id);
+    if(!Number.isSafeInteger(id)||!db.visibleLibraries(scope).some(library=>library.id===id))
+      return reply.code(404).send({error:'Library not found.'});
+    if(typeof request.body?.hidden!=='boolean')return reply.code(400).send({error:'Invalid settings.'});
+    db.setHomeLibraryHidden(scope.userId,id,request.body.hidden);
+    return {ok:true};
+  });
   app.patch<{ Params: { id:string }; Body: { label?:unknown; folder?:unknown } }>('/api/libraries/:id', async (request, reply) => {
     const user = fresh(request);
     if (!user.permissions.manageLibraries) return reply.code(403).send({error:'Library management is not allowed.'});
@@ -570,12 +579,13 @@ export async function createVireloServer(config: RuntimeConfig, pickFolder: (sig
     }
   });
 
-  app.get<{ Querystring: { limit?: string; offset?: string; seed?: string; startId?: string } }>('/api/shorts', async (request) => {
+  app.get<{ Querystring: { limit?: string; offset?: string; seed?: string; startId?: string; home?: string } }>('/api/shorts', async (request) => {
     const q = request.query;
     return db.getShorts({
       limit: q.limit ? Number(q.limit) : 50,
       offset: q.offset ? Number(q.offset) : 0,
       seed: q.seed ? Number(q.seed) : 0,
+      home: q.home==='1',
       startId: q.startId ? Number(q.startId) : undefined,
       includeLandscapes: db.getSettings().shortsIncludeLandscapes
     }, request.catalogScope!);

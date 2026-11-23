@@ -12,6 +12,7 @@ export interface Library {
   connected: boolean;
   persistent: boolean;
   folderLabels?: Record<string,string>;
+  hideOnHome?: boolean;
 }
 export interface Settings {
   audioAnalysisEnabled: boolean;

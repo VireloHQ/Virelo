@@ -7,6 +7,7 @@ import { CheckCircle, FolderOpen, FolderPlus, Trash } from '@phosphor-icons/reac
 import { api } from '../api';
 import { useAccount } from './AccountSession';
 import { ScanProgress } from '@virelo/web-ui/components/ScanProgress.tsx';
+import { HomeVisibilitySwitch } from '@virelo/web-ui/components/HomeVisibilitySwitch.tsx';
 import { scanMessage } from '../i18n/scan-status';
 import type { Library } from '../types';
 
@@ -32,10 +33,11 @@ export function LibrarySettings() {
   const saveLibrary = (library:Library) => save.mutate({path:library.path,label:library.label});
   const list = (items:Library[], temporary=false) => <div className="library-list">{items.map(library=><div key={library.id}>
     <div><strong>{library.label}</strong>{canManage&&<span>{library.path}</span>}</div>
-    {canManage&&<div className="library-item-actions">
-      {temporary&&<Button variant="secondary" isPending={save.isPending&&save.variables?.path===library.path} isDisabled={save.isPending} onPress={()=>saveLibrary(library)}>{t("Save library")}</Button>}
-      <Button isIconOnly variant="ghost" isDisabled={remove.isPending} aria-label={t("Remove {value0}", { value0: library.label })} onPress={()=>remove.mutate(library.id)}><Trash/></Button>
-    </div>}
+    <div className="library-item-actions">
+      <HomeVisibilitySwitch library={library} save={api.setHomeLibraryHidden}/>
+      {canManage&&temporary&&<Button variant="secondary" isPending={save.isPending&&save.variables?.path===library.path} isDisabled={save.isPending} onPress={()=>saveLibrary(library)}>{t("Save library")}</Button>}
+      {canManage&&<Button isIconOnly variant="ghost" isDisabled={remove.isPending} aria-label={t("Remove {value0}", { value0: library.label })} onPress={()=>remove.mutate(library.id)}><Trash/></Button>}
+    </div>
   </div>)}</div>;
   return <>
     {canManage&&<form className="library-folder-form" onSubmit={event=>{
