@@ -3,7 +3,11 @@
   <h1>Virelo</h1>
   <p><strong>Your folders. A streaming library.</strong></p>
   <p>Browse the videos you already have, in your browser or on your own server.<br />Free and open source. No uploads to Virelo.</p>
-  <p><a href="https://www.npmjs.com/package/virelo"><code>npm v0.7.0</code></a> &nbsp; <a href="LICENSE"><code>AGPL-3.0-only</code></a> &nbsp; <code>Local-first</code> &nbsp; <code>Web + self-hosted</code></p>
+  <p>
+    <a href="https://www.npmjs.com/package/virelo"><img src="https://img.shields.io/npm/v/virelo?style=flat&amp;logo=npm&amp;logoColor=white&amp;color=cb3837" alt="npm version" height="20" /></a>
+    <a href="LICENSE"><img src="https://img.shields.io/npm/l/virelo?style=flat&amp;color=7c3aed" alt="License: AGPL-3.0-only" height="20" /></a>
+    <a href="https://github.com/VireloHQ/Virelo/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/VireloHQ/Virelo/ci.yml?branch=main&amp;event=push&amp;style=flat&amp;logo=githubactions&amp;logoColor=white&amp;label=CI" alt="CI status on main" height="20" /></a>
+  </p>
   <p>
     <a href="https://app.virelo.dev/"><img src="docs/images/readme/open-browser.svg" alt="Try Virelo in your browser" width="194" height="46" /></a>
     &nbsp;
