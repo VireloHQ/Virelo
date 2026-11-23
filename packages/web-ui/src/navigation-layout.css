@@ -55,5 +55,10 @@
   .app-shell:not([data-navigation="sidebar"]) .navigation-brand { gap:2px; }
   .app-shell:not([data-navigation="sidebar"]) .navigation-brand .brand { font-size:20px; gap:5px; }
   .app-shell:not([data-navigation="sidebar"]) .navigation-brand .brand-mark { width:30px; height:30px; }
-  .app-shell:not([data-navigation="sidebar"]) .topbar .topbar-inner > .desktop-nav { gap:9px; }
+}
+
+@media (min-width:901px) and (max-width:1280px) {
+  .app-shell:not([data-navigation="sidebar"]) .desktop-nav { min-width:0; overflow-x:auto; }
+  .app-shell:not([data-navigation="sidebar"]) .desktop-nav :is(a,button) { flex:none; }
+  .app-shell:not([data-navigation="sidebar"]) .desktop-nav :is(a,button):focus-visible { outline-offset:-2px; }
 }
