@@ -1,4 +1,9 @@
 {
+  "Navigation layout": "Navigation layout",
+  "Header": "Header",
+  "Sidebar": "Sidebar",
+  "Switch to header": "Switch to header",
+  "Switch to sidebar": "Switch to sidebar",
   "Video playback preparation cancelled.": "Video playback preparation cancelled.",
   "Video playback support could not be loaded. Check the connection and try again.": "Video playback support could not be loaded. Check the connection and try again.",
   "The video decoder download is invalid. Reload the app and try again.": "The video decoder download is invalid. Reload the app and try again.",

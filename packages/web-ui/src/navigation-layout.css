@@ -1,0 +1,59 @@
+.navigation-brand { display:flex; align-items:center; gap:6px; }
+.navigation-toggle { width:44px; min-width:44px; height:44px; color:var(--text-muted); flex:none; }
+.navigation-account,.navigation-settings-label,.navigation-search-label { display:none; }
+
+@media (min-width:901px) {
+  .app-shell[data-navigation="sidebar"] {
+    --navigation-rail:clamp(208px,17vw,230px);
+    --topbar:0px;
+    padding-inline-start:var(--navigation-rail);
+  }
+  .app-shell[data-navigation="sidebar"] .topbar {
+    inset:0 auto 0 0; width:var(--navigation-rail); height:100dvh;
+    border-inline-end:1px solid var(--line); background:var(--page);
+  }
+  .app-shell[data-navigation="sidebar"] .topbar-inner {
+    flex-direction:column; align-items:stretch; gap:12px; padding:14px 12px 12px;
+    overflow-y:auto; overscroll-behavior:contain;
+  }
+  [data-navigation="sidebar"] .navigation-brand { justify-content:space-between; padding:0 0 8px 5px; }
+  [data-navigation="sidebar"] .navigation-brand .brand { gap:6px; font-size:22px; }
+  [data-navigation="sidebar"] .navigation-brand .brand-mark { width:31px; height:31px; }
+  .app-shell[data-navigation="sidebar"] .topbar .desktop-nav {
+    flex-direction:column; align-items:stretch; gap:2px; padding:2px;
+  }
+  .app-shell[data-navigation="sidebar"] .desktop-nav :is(a,button) {
+    padding:8px 10px; border-radius:6px; column-gap:11px; min-height:44px;
+  }
+  [data-navigation="sidebar"] .desktop-nav > :nth-child(4),
+  [data-navigation="sidebar"] .desktop-nav > :nth-child(6) { margin-block-start:8px; }
+  .app-shell[data-navigation="sidebar"] .desktop-nav :is(a.active,button[aria-pressed="true"]) {
+    color:var(--text); background:color-mix(in srgb,var(--color-brand) 12%,var(--surface));
+    box-shadow:inset 2px 0 var(--color-brand);
+  }
+  .app-shell[data-navigation="sidebar"] .desktop-nav :is(a,button):focus-visible { outline-offset:-2px; }
+  .app-shell[data-navigation="sidebar"] .desktop-nav :is(a,button):hover { background-color:var(--control-hover); }
+  [data-navigation="sidebar"] .desktop-nav :is(a,button) span { overflow:hidden; text-overflow:ellipsis; }
+  [data-navigation="sidebar"] .topbar-actions { margin:auto 0 0; gap:4px; flex-wrap:wrap; align-items:center; }
+  .app-shell[data-navigation="sidebar"] .header-search-shell { order:-1; width:100%; --search-expanded-width:100%; }
+  [data-navigation="sidebar"] .header-search-shell:not(.open) .header-search-toggle {
+    width:100%!important; justify-content:flex-start; gap:10px; padding-inline:10px!important;
+  }
+  [data-navigation="sidebar"] .header-search-toggle svg { width:21px; height:21px; }
+  [data-navigation="sidebar"] .navigation-settings-label,
+  [data-navigation="sidebar"] .navigation-search-label { display:inline; font-size:14px; font-weight:500; }
+  [data-navigation="sidebar"] .settings-button { flex:1; justify-content:flex-start; gap:10px; padding-inline:10px!important; }
+  [data-navigation="sidebar"] .navigation-account { display:block; border-block-start:1px solid var(--line); padding-top:6px; }
+  .navigation-account a { display:flex; gap:10px; align-items:center; padding-inline:10px; min-height:44px; color:var(--text); border-radius:6px; }
+  .navigation-account a:hover { background:var(--control-hover); }
+  .navigation-account a:focus-visible { outline:2px solid var(--color-focus); outline-offset:-2px; }
+  .navigation-account a svg { width:21px; height:21px; flex:none; color:var(--text-muted); }
+  .navigation-account a span { font-size:14px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+}
+
+@media (min-width:901px) and (max-width:1080px) {
+  .app-shell:not([data-navigation="sidebar"]) .navigation-brand { gap:2px; }
+  .app-shell:not([data-navigation="sidebar"]) .navigation-brand .brand { font-size:20px; gap:5px; }
+  .app-shell:not([data-navigation="sidebar"]) .navigation-brand .brand-mark { width:30px; height:30px; }
+  .app-shell:not([data-navigation="sidebar"]) .topbar .topbar-inner > .desktop-nav { gap:9px; }
+}

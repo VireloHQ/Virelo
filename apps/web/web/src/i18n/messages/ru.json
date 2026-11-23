@@ -1,4 +1,9 @@
 {
+  "Navigation layout": "Расположение меню",
+  "Header": "Верхнее меню",
+  "Sidebar": "Боковая панель",
+  "Switch to header": "Перейти к верхнему меню",
+  "Switch to sidebar": "Перейти к боковой панели",
   "Video playback preparation cancelled.": "Подготовка видео к воспроизведению отменена.",
   "Video playback support could not be loaded. Check the connection and try again.": "Не удалось загрузить поддержку видео. Проверьте соединение и повторите попытку.",
   "The video decoder download is invalid. Reload the app and try again.": "Загруженный декодер видео повреждён или некорректен. Перезагрузите приложение и повторите попытку.",

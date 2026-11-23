@@ -1,4 +1,9 @@
 {
+  "Navigation layout": "ナビゲーションの配置",
+  "Header": "ヘッダー",
+  "Sidebar": "サイドバー",
+  "Switch to header": "ヘッダーに切り替え",
+  "Switch to sidebar": "サイドバーに切り替え",
   "Video playback preparation cancelled.": "動画の再生準備をキャンセルしました。",
   "Video playback support could not be loaded. Check the connection and try again.": "動画の再生機能を読み込めませんでした。接続を確認して、もう一度お試しください。",
   "The video decoder download is invalid. Reload the app and try again.": "ダウンロードした動画デコーダーが無効です。アプリを再読み込みして、もう一度お試しください。",

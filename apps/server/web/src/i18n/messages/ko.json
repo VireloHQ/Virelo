@@ -1,4 +1,9 @@
 {
+  "Navigation layout": "탐색 메뉴 위치",
+  "Header": "헤더",
+  "Sidebar": "사이드바",
+  "Switch to header": "헤더로 전환",
+  "Switch to sidebar": "사이드바로 전환",
   "Video previews": "동영상 미리보기",
   "Play video previews when hovering over or focusing a card. Saved in this browser.": "카드에 마우스를 올리거나 포커스를 맞추면 동영상 미리보기를 재생합니다. 이 브라우저에 저장됩니다.",
   "Seek preview": "미리보기 재생 위치 이동",

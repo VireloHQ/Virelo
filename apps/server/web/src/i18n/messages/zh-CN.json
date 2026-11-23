@@ -1,4 +1,9 @@
 {
+  "Navigation layout": "导航布局",
+  "Header": "顶部导航",
+  "Sidebar": "侧边栏",
+  "Switch to header": "切换到顶部导航",
+  "Switch to sidebar": "切换到侧边栏",
   "Video previews": "视频预览",
   "Play video previews when hovering over or focusing a card. Saved in this browser.": "鼠标悬停或聚焦卡片时播放视频预览。设置保存在此浏览器中。",
   "Seek preview": "跳转预览进度",

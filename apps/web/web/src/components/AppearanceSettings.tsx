@@ -1,4 +1,5 @@
 import { t, useLocale } from '../i18n';
+import { NavigationLayoutSetting } from '@virelo/web-ui/components/NavigationLayoutSetting.tsx';
 import { useEffect, useState, type CSSProperties } from 'react';
 import { Button } from '@heroui/react';
 import { Check, Play } from '@phosphor-icons/react';
@@ -38,6 +39,7 @@ export function AppearanceSettings() {
       <Select className="settings-picker" label={t('Library view')} value={layout} align="end" onChange={value=>setLayout(value as LibraryLayout)}
         options={[{value:'grid',label:t('Grid view')},{value:'explorer',label:t('Explorer view')}]}/>
     </div>
+    <NavigationLayoutSetting/>
     <div className="appearance-form">
       <fieldset disabled={loading || Boolean(error)}>
         <legend>{t("Controller style")}</legend>

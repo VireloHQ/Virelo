@@ -1,4 +1,9 @@
 {
+  "Navigation layout": "导航布局",
+  "Header": "顶部导航",
+  "Sidebar": "侧边栏",
+  "Switch to header": "切换到顶部导航",
+  "Switch to sidebar": "切换到侧边栏",
   "Video playback preparation cancelled.": "视频 播放准备已取消。",
   "Video playback support could not be loaded. Check the connection and try again.": "无法加载 视频 播放功能。请检查连接后重试。",
   "The video decoder download is invalid. Reload the app and try again.": "下载的 视频 解码器无效，请重新加载应用后重试。",

@@ -1,4 +1,9 @@
 {
+  "Navigation layout": "Расположение меню",
+  "Header": "Верхнее меню",
+  "Sidebar": "Боковая панель",
+  "Switch to header": "Перейти к верхнему меню",
+  "Switch to sidebar": "Перейти к боковой панели",
   "Video previews": "Предпросмотр видео",
   "Play video previews when hovering over or focusing a card. Saved in this browser.": "Воспроизводить предпросмотр видео при наведении указателя или фокусировке карточки. Настройка сохраняется в этом браузере.",
   "Seek preview": "Перемотать предпросмотр",

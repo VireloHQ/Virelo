@@ -1,4 +1,9 @@
 {
+  "Navigation layout": "ナビゲーションの配置",
+  "Header": "ヘッダー",
+  "Sidebar": "サイドバー",
+  "Switch to header": "ヘッダーに切り替え",
+  "Switch to sidebar": "サイドバーに切り替え",
   "Video previews": "動画プレビュー",
   "Play video previews when hovering over or focusing a card. Saved in this browser.": "カードにカーソルを合わせるかフォーカスすると、動画プレビューを再生します。このブラウザーに保存されます。",
   "Seek preview": "プレビューの再生位置を変更",

@@ -3,6 +3,7 @@ import { createRouteView, RouteErrorView, RouteNavigationGuard, RoutePendingView
 import { Header } from './components/Header';
 import { AppearanceProvider } from './components/AppearanceProvider';
 import { MobileNav } from './components/MobileNav';
+import { useNavigationLayout } from '@virelo/web-ui/hooks/useNavigationLayout.ts';
 import { NotFoundView } from './views/NotFoundView';
 import type { SortKey } from './types';
 import { validateShortsSearch } from '@virelo/core/shorts-navigation';
@@ -66,7 +67,8 @@ function validateWatchSearch(input: Record<string, unknown>): WatchRouteSearch {
 
 function Shell() {
   const scan = useScanRefresh();
-  return <MediaServicesProvider services={mediaServices}><AppearanceProvider><div className="app-shell"><Header /><main className="page-shell"><BrowserScanWarning status={scan}/><Outlet /></main><MobileNav /></div></AppearanceProvider></MediaServicesProvider>;
+  const layout=useNavigationLayout(s=>s.layout);
+  return <MediaServicesProvider services={mediaServices}><AppearanceProvider><div className="app-shell" data-navigation={layout}><Header /><main className="page-shell"><BrowserScanWarning status={scan}/><Outlet /></main><MobileNav /></div></AppearanceProvider></MediaServicesProvider>;
 }
 
 function Root() {

@@ -3,6 +3,7 @@ import { createRouteView, RouteErrorView, RouteNavigationGuard, RoutePendingView
 import { Header } from './components/Header';
 import { AppearanceProvider } from './components/AppearanceProvider';
 import { MobileNav } from './components/MobileNav';
+import { useNavigationLayout } from '@virelo/web-ui/hooks/useNavigationLayout.ts';
 import { NotFoundView } from './views/NotFoundView';
 import type { SortKey } from './types';
 import { validateShortsSearch } from '@virelo/core/shorts-navigation';
@@ -67,7 +68,8 @@ function validateWatchSearch(input: Record<string, unknown>): WatchRouteSearch {
 function Shell() {
   useScanRefresh();
   const policy=useAccount()?.monitoring;
-  return <MediaServicesProvider services={mediaServices}><AppearanceProvider><div className={'app-shell'+(policy?.enabled?' activity-monitored':'')}><RouteNavigationGuard viewForPath={viewForPath} /><Header /><main className="page-shell"><ActivityDisclosure policy={policy} compact/><Outlet /></main><MobileNav /></div></AppearanceProvider></MediaServicesProvider>;
+  const layout=useNavigationLayout(s=>s.layout);
+  return <MediaServicesProvider services={mediaServices}><AppearanceProvider><div className={'app-shell'+(policy?.enabled?' activity-monitored':'')} data-navigation={layout}><RouteNavigationGuard viewForPath={viewForPath} /><Header /><main className="page-shell"><ActivityDisclosure policy={policy} compact/><Outlet /></main><MobileNav /></div></AppearanceProvider></MediaServicesProvider>;
 }
 
 const rootRoute = createRootRoute({ component: Shell, notFoundComponent: NotFoundView, errorComponent: RouteErrorView });

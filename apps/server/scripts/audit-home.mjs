@@ -69,6 +69,33 @@ try{
   await page.waitForTimeout(100);check(await row.evaluate(e=>e.scrollLeft)>0,mode+' keyboard shelf scroll');
   const play=page.locator('.home-feature').getByRole('button',{name:/^(Play|Resume)$/});
   await play.click();await page.waitForURL('**/watch/*');check(page.url().includes('/watch/'),mode+' hero play destination');await page.goBack();await page.locator('.home-feature').waitFor();
+  await page.setViewportSize({width:1440,height:900});
+  await page.evaluate(()=>{window.fixturePage=document.querySelector('main');});
+  await page.getByRole('button',{name:'Switch to sidebar',exact:true}).focus();
+  await page.keyboard.press('Space');
+  const switchBack=page.getByRole('button',{name:'Switch to header',exact:true});
+  await switchBack.waitFor();
+  check(await switchBack.evaluate(button=>document.activeElement===button),mode+' focus stays on the layout toggle');
+  check(await page.evaluate(()=>window.fixturePage===document.querySelector('main')),mode+' changing navigation does not remount the view');
+  await page.waitForFunction(()=>{
+    const rail=document.querySelector('.topbar').getBoundingClientRect(),main=document.querySelector('main').getBoundingClientRect();
+    return rail.x===0&&rail.width<250&&main.x>=rail.width-1;
+  });
+  check(true,mode+' Sidebar fits beside the content');
+  await page.screenshot({path:join(screenshots,mode+'-sidebar.png')});
+  check(await page.getByRole('link',{name:'Account',exact:true}).count()===(mode==='npm'?1:0),mode+' only the self-hosted sidebar has an account link');
+  await page.reload();await switchBack.waitFor();
+  await page.setViewportSize({width:390,height:844});
+  check(await page.locator('.mobile-nav a:visible').count()===5,mode+' mobile keeps its five navigation links');
+  check(await switchBack.isHidden(),mode+' desktop layout choice does not add controls to mobile');
+  await page.setViewportSize({width:901,height:900});
+  check(await page.locator('body').evaluate(e=>e.scrollWidth<=innerWidth+1),mode+' narrow desktop does not overflow with the sidebar');
+  await page.goto(base+prefix+(mode==='npm'?'/settings#appearance':'/settings?section=appearance'));
+  await page.getByRole('button',{name:/Navigation layout/}).click();
+  await page.getByRole('option',{name:'Header',exact:true}).click();
+  await page.getByRole('button',{name:'Switch to sidebar',exact:true}).waitFor();
+  check(await page.locator('.app-shell').getAttribute('data-navigation')==='header',mode+' settings and navigation change the same preference');
+  await page.getByRole('link',{name:'Home',exact:true}).first().click();await page.locator('.home-feature').waitFor();
   for(const [w,h] of [[1440,1000],[320,720],[375,812],[844,390],[3440,1440]]){
    await page.setViewportSize({width:w,height:h});await page.evaluate(()=>scrollTo(0,0));await page.waitForTimeout(180);
    check(await page.locator('body').evaluate(e=>e.scrollWidth<=innerWidth+1),mode+' no page overflow '+w);
