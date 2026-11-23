@@ -88,12 +88,11 @@ export function probeSoftwareVideo(file: File) {
   return result;
 }
 
-export async function probeAviThumbnail(file: File): Promise<VideoProbe> {
-  const info = await probeSoftwareVideo(file);
-  const thumbnail = await withAvi(file, undefined, async ffmpeg => {
-    for (const position of thumbnailTimes(info.duration!)) {
+export function extractSoftwareThumbnail(file: File, positions: number[], timeout: number) {
+  return withAvi(file, undefined, async ffmpeg => {
+    for (const position of positions) {
       const code = await ffmpeg.exec(['-hide_banner', '-loglevel', 'error', '-ss', String(position), '-i', '/input/source.avi',
-        '-frames:v', '1', '-vf', 'scale=min(480\\,iw):-2', '-q:v', '4', 'frame.jpg'], 30_000);
+        '-map', '0:v:0', '-an', '-frames:v', '1', '-vf', 'scale=min(480\\,iw):-2', '-q:v', '4', 'frame.jpg'], timeout);
       if (code !== 0) continue;
       const bytes = await ffmpeg.readFile('frame.jpg');
       if (typeof bytes === 'string') continue;
@@ -102,6 +101,11 @@ export async function probeAviThumbnail(file: File): Promise<VideoProbe> {
     }
     return null;
   });
+}
+
+export async function probeAviThumbnail(file: File): Promise<VideoProbe> {
+  const info = await probeSoftwareVideo(file);
+  const thumbnail = await extractSoftwareThumbnail(file, thumbnailTimes(info.duration!), 30_000);
   return { duration: info.duration!, width: info.width, height: info.height, thumbnail };
 }
 

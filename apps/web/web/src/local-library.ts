@@ -1,5 +1,5 @@
 import type { BrowserCapabilities, Library, MediaItem, ScanStatus, Settings } from './types';
-import { probeVideo, THUMBNAIL_VERSION, validThumbnail } from './utils/video-thumbnail';
+import { probeVideo, thumbnailTimes, THUMBNAIL_VERSION, validThumbnail } from './utils/video-thumbnail';
 import { libraryName, libraryFolder } from '@virelo/core/library-names';
 import { readAudioAnalysis } from '@virelo/web-ui/utils/volume-leveling.ts';
 import { AVI_MAX_FILE_BYTES } from './utils/avi';
@@ -114,7 +114,7 @@ function startAudioAnalysis(status: ScanStatus) {
       }
     } finally { analyzer?.dispose(); }
   };
-  void (async () => {
+  return (async () => {
     // One full-file worker across tabs as well as within this page; never share the AVI engine.
     if (navigator.locks) await navigator.locks.request('virelo-audio-analysis', { signal }, sweep);
     else await sweep();
@@ -422,17 +422,19 @@ async function runScan(libraryIds?: number[], requestPermission = false) {
   cancelAudioAnalysis(true);
   const libraries = (await readAll<StoredLibrary>('libraries')).filter((library) => !libraryIds || libraryIds.includes(library.id));
   scanStatus = { running: true, startedAt: Date.now(), finishedAt: null, total: 0, scanned: 0, added: 0, updated: 0, skipped: 0, errors: 0, message: 'Reading folders…' };
+  const legacyThumbnails: number[] = [];
   try {
-    for (const library of libraries) await scanLibrary(library, requestPermission);
+    for (const library of libraries) await scanLibrary(library, requestPermission, legacyThumbnails);
   } catch (error) {
     finishScan(scanStatus);
     throw error;
   }
   // Adding/reconnecting waits only for baseline metadata and thumbnails, never for loudness.
-  startAudioAnalysis(scanStatus);
+  const status = scanStatus;
+  void startAudioAnalysis(status).then(() => prepareLegacyThumbnails(status, legacyThumbnails)).catch(() => {});
 }
 
-async function scanLibrary(library: StoredLibrary, allowPermissionRequest: boolean) {
+async function scanLibrary(library: StoredLibrary, allowPermissionRequest: boolean, legacyThumbnails: number[]) {
   scanStatus.message = `Scanning ${library.label}`;
   let files: LocalFile[];
   try {
@@ -466,11 +468,13 @@ async function scanLibrary(library: StoredLibrary, allowPermissionRequest: boole
     const compatibility = unchanged && previous.playback_conversion !== undefined ? null
       : await (await import('./browser-compatibility')).inspectPlaybackCompatibility(file);
     const conversion = compatibility?.requiresConversion ?? (unchanged ? previous.playback_conversion : undefined);
+    const legacyThumbnail = conversion && !/\.avi$/i.test(file.name) && file.size < AVI_MAX_FILE_BYTES;
     if (conversion) scanStatus.playbackWarnings = (scanStatus.playbackWarnings ?? 0) + 1;
     if (previous && previous.size === file.size && previous.mtime === file.lastModified) {
       if (compatibility) await updateStoredMedia(id, item => { item.playback_conversion = compatibility.requiresConversion; });
       // An unchanged file may still have a missing/black thumbnail from an older scan.
-      if (!conversion || /\.avi$/i.test(file.name)) await ensureLocalThumbnail(id, true);
+      if (legacyThumbnail) legacyThumbnails.push(id);
+      else if (!conversion || /\.avi$/i.test(file.name)) await ensureLocalThumbnail(id, true);
       scanStatus.skipped++;
       return;
     }
@@ -516,6 +520,7 @@ async function scanLibrary(library: StoredLibrary, allowPermissionRequest: boole
       };
       await writeStore('media', item);
       await writeStore('thumbnails', { id, blob: probe.thumbnail, version: THUMBNAIL_VERSION, size: file.size, mtime: file.lastModified });
+      if (legacyThumbnail) legacyThumbnails.push(id);
       releaseMediaUrls(id);
       window.dispatchEvent(new CustomEvent('virelo-thumbnail-updated', { detail: { id, url: await localThumbnailUrl(id) } }));
       if (previous) scanStatus.updated++; else scanStatus.added++;
@@ -528,6 +533,38 @@ async function scanLibrary(library: StoredLibrary, allowPermissionRequest: boole
     if (foundIds.has(item.id)) continue;
     await Promise.all([deleteStore('media', item.id), deleteStore('thumbnails', item.id)]);
     releaseMediaUrls(item.id, true);
+  }
+}
+
+async function prepareLegacyThumbnails(status: ScanStatus, ids: number[]) {
+  const current = () => scanStatus === status && !status.running;
+  const canStart = () => current() && !/^\/(?:app\/)?(?:watch|shorts)(?:\/|$)/.test(location.pathname);
+  for (const id of ids) {
+    // Yield between files; don't queue new decoder work over an open player.
+    await new Promise<void>(resolve => setTimeout(resolve, 0));
+    if (!canStart()) return;
+    try {
+      const file = sessionFiles.get(id), item = await getStoredMedia(id);
+      if (!file || !item?.playback_conversion || file.size !== item.size || file.lastModified !== item.mtime) continue;
+      const stored = await readStore<StoredThumbnail>('thumbnails', id);
+      if (stored?.blob && stored.size === item.size && stored.mtime === item.mtime) continue;
+      const { extractSoftwareThumbnail } = await import('./avi-playback');
+      if (!canStart()) return;
+      const thumbnail = await extractSoftwareThumbnail(file, thumbnailTimes(item.duration ?? 0).slice(0, 2), 3_000);
+      if (!thumbnail || !current()) continue;
+      const saved = await editLibraries(async () => {
+        if (!current() || sessionFiles.get(id) !== file) return false;
+        const latest = await getStoredMedia(id);
+        if (!latest?.playback_conversion || latest.size !== item.size || latest.mtime !== item.mtime
+          || latest.library_id !== item.library_id || latest.source_path !== item.source_path) return false;
+        await writeStore('thumbnails', { id, blob: thumbnail, version: THUMBNAIL_VERSION, size: item.size, mtime: item.mtime });
+        return true;
+      });
+      if (saved) {
+        const url = await localThumbnailUrl(id);
+        window.dispatchEvent(new CustomEvent('virelo-thumbnail-updated', { detail: { id, url } }));
+      }
+    } catch { /* A missing thumbnail must not affect the scan or playback. */ }
   }
 }
 

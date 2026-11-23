@@ -83,8 +83,13 @@ playback startup or seeking; its 2 GB input limit does not apply to native playb
 During a library scan, header-only compatibility checks display a dismissible,
 non-blocking warning for videos requiring this fallback. The scan still adds the
 videos without confirmation, media uploads or full-video conversion. Results are
-cached for unchanged files; a new scan can show the warning again. Legacy MKV
-thumbnails and hover previews are not software-converted in the background.
+cached for unchanged files; a new scan can show the warning again. After the
+scan and any optional audio analysis, Virelo tries to save one thumbnail per
+legacy video in the background, without waiting for first playback. Saved
+thumbnails are reused on later scans.
+This reads only enough to extract a still image, not a converted video or hover
+preview. Opening the player stops the remaining thumbnail jobs for that scan;
+scan again to retry missing thumbnails. Unavailable images keep their placeholders.
 
 Open **Playlists** from Library or desktop navigation. Add videos from their
 details or save a playback queue, then use **Save changes** to keep order/name

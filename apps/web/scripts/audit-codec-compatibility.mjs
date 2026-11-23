@@ -5,6 +5,7 @@ import { mkdtemp, readFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { setTimeout as delay } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
 
 const repo=fileURLToPath(new URL('../',import.meta.url));
@@ -31,16 +32,24 @@ try {
     const page=await context.newPage(),codecRequests=[],external=[],errors=[];page.setDefaultTimeout(60000);
     page.on('pageerror',error=>{errors.push(error.message);console.error('BROWSER_ERROR',error.message);});
     page.on('request',request=>{const url=new URL(request.url());if(url.pathname.includes('/ffmpeg-0.12.10/'))codecRequests.push(url.pathname);if(['http:','https:'].includes(url.protocol)&&url.origin!==origin)external.push(url.href);});
-    await context.route(url=>url.origin===origin,async route=>{const response=await route.fetch({maxRetries:2});await route.fulfill({response,headers:{...response.headers(),'content-security-policy':csp,'cross-origin-opener-policy':'same-origin'}});});
+    await context.route(url=>url.origin===origin,async route=>{if(route.request().url().endsWith('/ffmpeg-core.wasm.gz'))return route.continue();const response=await route.fetch({maxRetries:2});await route.fulfill({response,headers:{...response.headers(),'content-security-policy':csp,'cross-origin-opener-policy':'same-origin'}});});
+    let releaseDecoder;
+    const decoderGate=new Promise(resolve=>{releaseDecoder=resolve;});
+    await page.route('**/ffmpeg-core.wasm.gz',async route=>{await decoderGate;await route.fallback();},{times:1});
     await page.route('**/__compatibility-fixture/*',route=>{const item=fixtures[Number(new URL(route.request().url()).pathname.split('/').at(-1))];return route.fulfill({body:item.bytes,contentType:item.name.endsWith('.mp4')?'video/mp4':'video/x-matroska'});});
     // Delay one synthetic header read so the ongoing scan is observable, independent of frame decoding support.
     await page.addInitScript(()=>{
+      const directoryValues=FileSystemDirectoryHandle.prototype.values;
+      FileSystemDirectoryHandle.prototype.values=async function*(){
+        const entries=[];for await(const entry of directoryValues.call(this))entries.push(entry);
+        yield* entries.sort((a,b)=>a.name.localeCompare(b.name));
+      };
       window.__nativeFileSlice=File.prototype.slice;
       File.prototype.slice=function(...args){
         const blob=window.__nativeFileSlice.apply(this,args);
         if(this.name!=='native.mkv'||window.__headerDelayUsed)return blob;
         window.__headerDelayUsed=true;
-        const ready=new Promise(resolve=>setTimeout(resolve,1200)),arrayBuffer=blob.arrayBuffer.bind(blob),stream=blob.stream.bind(blob);
+        const ready=new Promise(resolve=>setTimeout(resolve,2200)),arrayBuffer=blob.arrayBuffer.bind(blob),stream=blob.stream.bind(blob);
         blob.arrayBuffer=async()=>{await ready;return arrayBuffer();};
         blob.stream=()=>{const reader=stream().getReader();return new ReadableStream({async pull(controller){await ready;const chunk=await reader.read();if(chunk.done)controller.close();else controller.enqueue(chunk.value);},cancel:reason=>reader.cancel(reason)});};
         return blob;
@@ -61,23 +70,58 @@ try {
     try { await warning.waitFor({timeout:15000}); }
     catch(error) { console.error('SCAN_STATE',await page.locator('.scan-strip').textContent());throw error; }
     const liveScan=await page.locator('.scan-progress').isVisible();
-    if(!liveScan)console.error('SCAN_FINISHED_BEFORE_WARNING',await page.locator('.scan-strip').textContent());
+    if(!liveScan)console.error('SCAN_FINISHED_BEFORE_WARNING',await page.locator('.scan-strip').textContent(),await page.evaluate(()=>Boolean(window.__headerDelayUsed)));
     check(liveScan,width+' warning appears while scanning continues');
+    check(codecRequests.length===0,width+' header scanning does not start the software decoder');
     check(await page.getByRole('dialog').count()===0&&await page.getByRole('alertdialog').count()===0,width+' warning never pauses for confirmation');
     await page.waitForFunction(()=>[...document.querySelectorAll('button')].some(button=>button.textContent.trim()==='Scan now'&&!button.disabled));
     check((await warning.textContent()).includes('2 videos need browser conversion.'),width+' scan reports exactly the two legacy videos');
-    check(codecRequests.length===0,width+' metadata scan does not download or start FFmpeg');
+    // The background request can already be waiting at the gate when the UI observes completion.
+    if(!codecRequests.some(path=>path.endsWith('.wasm.gz')))await page.waitForRequest('**/ffmpeg-core.wasm.gz');
     check(await warning.evaluate(element=>{const rect=element.getBoundingClientRect();return rect.left>=0&&rect.right<=innerWidth;}),width+' warning fits the viewport');
     await page.screenshot({path:join(root,width+'-warning.png')});
     const records=await page.evaluate(async()=>{const db=await new Promise(resolve=>{const request=indexedDB.open('virelo-web');request.onsuccess=()=>resolve(request.result);});const rows=await new Promise(resolve=>{const request=db.transaction('media').objectStore('media').getAll();request.onsuccess=()=>resolve(request.result);});db.close();return rows.map(({id,filename,playback_conversion})=>({id,filename,playback_conversion}));});
     check(records.length===4&&records.filter(row=>row.playback_conversion).length===2,width+' all videos are added and compatibility decisions cached');
+    const legacyIds=records.filter(row=>row.playback_conversion).map(row=>row.id);
+    const thumbnailState=async ids=>{
+      const db=await new Promise(resolve=>{const request=indexedDB.open('virelo-web');request.onsuccess=()=>resolve(request.result);});
+      try {
+        const store=db.transaction('thumbnails').objectStore('thumbnails');
+        return await Promise.all(ids.map(id=>new Promise(resolve=>{const request=store.get(id);request.onsuccess=()=>resolve(Boolean(request.result?.blob?.size));})));
+      } finally {db.close();}
+    };
+    check((await page.evaluate(thumbnailState,legacyIds)).every(saved=>!saved),width+' scan finishes while the thumbnail decoder is still blocked');
+    releaseDecoder();
+    const deadline=Date.now()+15000;
+    while(!(await page.evaluate(thumbnailState,legacyIds)).every(Boolean)&&Date.now()<deadline)await delay(100);
+    const decoded=await page.evaluate(async ids=>{
+      const db=await new Promise(resolve=>{const request=indexedDB.open('virelo-web');request.onsuccess=()=>resolve(request.result);});
+      try {
+        const store=db.transaction('thumbnails').objectStore('thumbnails');
+        const blobs=await Promise.all(ids.map(id=>new Promise(resolve=>{const request=store.get(id);request.onsuccess=()=>resolve(request.result?.blob);})));
+        if(!blobs.every(blob=>blob?.type==='image/jpeg'))return false;
+        return (await Promise.all(blobs.map(async blob=>{const frame=await createImageBitmap(blob);try{return frame.width===480&&frame.height===270;}finally{frame.close();}}))).every(Boolean);
+      } finally {db.close();}
+    },legacyIds);
+    check(decoded,width+' both legacy JPEG thumbnails are decoded and saved before first playback');
     await page.evaluate(()=>{File.prototype.slice=window.__nativeFileSlice;});
     await warning.getByRole('button',{name:'Dismiss message'}).click();
     check(!await warning.count(),width+' non-blocking warning can be dismissed');
+    await page.reload();if(width<900)await page.locator('#settings-nav-libraries').click();
+    check((await page.evaluate(thumbnailState,legacyIds)).every(Boolean),width+' thumbnail bytes persist across document reload');
+    const decoderRequestsBeforeRescan=codecRequests.length;
     await page.getByRole('button',{name:'Scan now',exact:true}).click();await warning.waitFor();
     await page.waitForFunction(()=>[...document.querySelectorAll('button')].some(button=>button.textContent.trim()==='Scan now'&&!button.disabled));
-    check((await warning.textContent()).includes('2 videos need browser conversion.')&&codecRequests.length===0,width+' rescan reuses compatibility results without downloading FFmpeg');
+    await warning.getByText('2 videos need browser conversion.',{exact:true}).waitFor({timeout:15000});
+    check((await page.evaluate(thumbnailState,legacyIds)).every(Boolean),width+' rescan after reload retains compatibility results and saved thumbnails');
     await warning.getByRole('button',{name:'Dismiss message'}).click();
+    await page.getByRole('link',{name:'Library',exact:true}).first().click();
+    for(const name of ['legacy-mpeg4.mkv','legacy-windows.mkv']) {
+      const card=page.locator('.media-card').filter({hasText:name.replace('.mkv','')}).first();
+      await card.locator('img[src^="blob:"]').waitFor({timeout:10000});
+      check(await card.locator('img[src^="blob:"]').evaluate(async img=>{await img.decode();return img.naturalWidth===480;}),width+' '+name+' artwork displays from storage');
+    }
+    check(codecRequests.length===decoderRequestsBeforeRescan,width+' browsing and rescanning cached thumbnails do not load the decoder again');
     for(const name of ['legacy-mpeg4.mkv','legacy-windows.mkv']) {
       const id=records.find(row=>row.filename===name).id;
       await page.goto(base+'/app/watch/'+id);
@@ -105,7 +149,7 @@ try {
     await page.getByRole('button',{name:'Scan now',exact:true}).click();await warning.waitFor();
     await page.waitForFunction(()=>[...document.querySelectorAll('button')].some(button=>button.textContent.trim()==='Scan now'&&!button.disabled));
     check((await warning.textContent()).includes('1 video needs browser conversion.'),width+' changing a file invalidates its cached compatibility result');
-    check(codecRequests.some(path=>path.endsWith('.wasm.gz')),width+' software decoder is loaded only for playback');
+    check(codecRequests.length>decoderRequestsBeforeRescan,width+' software decoder is available when legacy playback starts');
     check(external.length===0,width+' no media or requests leave the local test origin');
     check(errors.length===0,width+' no browser exceptions');
     await context.close();
