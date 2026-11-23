@@ -1,8 +1,8 @@
 import type { ReactNode } from 'react';
-import { FilmStrip, Heart, House, ListBullets, DeviceMobile, SquaresFour, Television, type Icon } from '@phosphor-icons/react';
+import { Broadcast, FilmStrip, Heart, House, ListBullets, DeviceMobile, SquaresFour, Television, type Icon } from '@phosphor-icons/react';
 import '../header-nav.css';
 
-type HeaderNavSection = 'home' | 'movies' | 'series' | 'library' | 'shorts' | 'favorites' | 'playlists';
+type HeaderNavSection = 'home' | 'movies' | 'series' | 'library' | 'shorts' | 'favorites' | 'playlists' | 'live-tv';
 
 const icons: Record<HeaderNavSection, Icon> = {
   home: House,
@@ -12,6 +12,7 @@ const icons: Record<HeaderNavSection, Icon> = {
   shorts: DeviceMobile,
   favorites: Heart,
   playlists: ListBullets,
+  'live-tv': Broadcast,
 };
 
 export function HeaderNavLabel({ section, children }: { section: HeaderNavSection; children: ReactNode }) {

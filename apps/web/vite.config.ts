@@ -17,7 +17,10 @@ export default defineConfig({
     target: 'es2022',
     cssCodeSplit: true,
     rollupOptions: {
-      input: { app: fileURLToPath(new URL('./web/index.html', import.meta.url)) },
+      input: {
+        app: fileURLToPath(new URL('./web/index.html', import.meta.url)),
+        liveTv: fileURLToPath(new URL('./web/media/iptv/index.html', import.meta.url))
+      },
       output: {
         manualChunks(id) {
           if (id.includes('node_modules/@heroui')) return 'heroui';

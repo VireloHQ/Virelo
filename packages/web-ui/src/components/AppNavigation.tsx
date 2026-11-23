@@ -9,7 +9,7 @@ import { HeaderNavLabel } from './HeaderNavLabel';
 import { useNavigationLayout } from '../hooks/useNavigationLayout';
 import '../navigation-layout.css';
 
-export function AppNavigation({base,notifications,account}:{base:''|'/app';notifications?:ReactNode;account?:ReactNode}) {
+export function AppNavigation({base,notifications,account,liveTv}:{base:''|'/app';notifications?:ReactNode;account?:ReactNode;liveTv?:ReactNode}) {
   useLocale();
   const navigate = useNavigate();
   const pathname = useLocation({select:location=>location.pathname});
@@ -66,6 +66,7 @@ export function AppNavigation({base,notifications,account}:{base:''|'/app';notif
           <Link to={base+'/shorts'} search={{}} activeProps={{className:'active'}}><HeaderNavLabel section="shorts">{t("Shorts")}</HeaderNavLabel></Link>
           <Link to={base+'/favorites'} activeProps={{className:'active'}}><HeaderNavLabel section="favorites">{t("Favorites")}</HeaderNavLabel></Link>
           <Link to={base+'/playlists'} activeProps={{className:'active'}}><HeaderNavLabel section="playlists">{t("Playlists")}</HeaderNavLabel></Link>
+          {liveTv}
         </nav>
         <div className="topbar-actions">
           {notifications}

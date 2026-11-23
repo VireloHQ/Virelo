@@ -19,6 +19,7 @@ import { dataUsage, assertSeparateCache } from './data-management.js';
 import { directLocal, registerAccounts } from './auth.js';
 import { registerPlaylists } from './playlists.js';
 import { registerQueueSessions } from './queue-sessions.js';
+import { registerIptv } from './iptv.js';
 import type { CatalogScope } from './auth-types.js';
 import { pickNativeFolder } from './folder-picker.js';
 import { isMediaFile, isVideoPath, mediaWatchFilter, resolveLibraryFile } from './media-files.js';
@@ -148,6 +149,7 @@ export async function createVireloServer(config: RuntimeConfig, pickFolder: (sig
   registerCustomCommands(app, commands, request => fresh(request, true));
   registerPlaylists(app, db);
   registerQueueSessions(app, db);
+  registerIptv(app,db.db,fresh);
   let activePicker: AbortController | null = null;
   let closing = false;
   const scanAbort = new AbortController();

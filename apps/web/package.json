@@ -52,6 +52,7 @@
     "@tanstack/react-router": "^1.170.46",
     "@virelo/core": "0.0.0",
     "@virelo/web-ui": "0.0.0",
+    "hls.js": "^1.6.16",
     "matroska-subtitles": "^3.3.2",
     "mediabunny": "^1.65.1",
     "qrcode-generator": "2.0.4",
