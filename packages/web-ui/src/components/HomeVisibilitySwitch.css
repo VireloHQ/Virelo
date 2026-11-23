@@ -4,4 +4,7 @@
 .library-list .home-visibility .switch__control { flex:none; }
 @media (max-width:620px) {
   .library-list > div:has(.home-visibility) { flex-wrap:wrap; }
+  .library-list > div:has(.home-visibility) > :is(.library-actions,.library-item-actions) {
+    max-width:100%; flex-wrap:wrap;
+  }
 }
