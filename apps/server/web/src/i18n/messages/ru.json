@@ -1,4 +1,9 @@
 {
+  "Download original": "Скачать оригинал",
+  "Download original videos": "Скачивание оригиналов видео",
+  "Allow this user to save videos they can play. Copies saved on a device cannot be revoked.": "Разрешает сохранять видео, доступные пользователю для просмотра. Уже сохранённые копии отозвать нельзя.",
+  "If saving does not start, open this video in your browser and try again.": "Если сохранение не началось, откройте видео в браузере и попробуйте снова.",
+  "Open in browser": "Открыть в браузере",
   "Video previews": "Предпросмотр видео",
   "Play video previews when hovering over or focusing a card. Saved in this browser.": "Воспроизводить предпросмотр видео при наведении указателя или фокусировке карточки. Настройка сохраняется в этом браузере.",
   "Seek preview": "Перемотать предпросмотр",

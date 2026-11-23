@@ -1,4 +1,9 @@
 {
+  "Download original": "下载原文件",
+  "Download original videos": "下载原始视频",
+  "Allow this user to save videos they can play. Copies saved on a device cannot be revoked.": "允许此用户保存有权播放的视频。已保存到设备的副本无法撤回。",
+  "If saving does not start, open this video in your browser and try again.": "如果未开始保存，请在浏览器中打开此视频并重试。",
+  "Open in browser": "在浏览器中打开",
   "Video previews": "视频预览",
   "Play video previews when hovering over or focusing a card. Saved in this browser.": "鼠标悬停或聚焦卡片时播放视频预览。设置保存在此浏览器中。",
   "Seek preview": "跳转预览进度",

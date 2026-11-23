@@ -1,4 +1,9 @@
 {
+  "Download original": "元ファイルを保存",
+  "Download original videos": "元の動画のダウンロード",
+  "Allow this user to save videos they can play. Copies saved on a device cannot be revoked.": "このユーザーが再生できる動画を端末に保存できます。保存済みのファイルは取り消せません。",
+  "If saving does not start, open this video in your browser and try again.": "保存が始まらない場合は、ブラウザーでこの動画を開いてもう一度お試しください。",
+  "Open in browser": "ブラウザーで開く",
   "Video previews": "動画プレビュー",
   "Play video previews when hovering over or focusing a card. Saved in this browser.": "カードにカーソルを合わせるかフォーカスすると、動画プレビューを再生します。このブラウザーに保存されます。",
   "Seek preview": "プレビューの再生位置を変更",

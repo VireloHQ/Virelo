@@ -1,4 +1,9 @@
 {
+  "Download original": "원본 다운로드",
+  "Download original videos": "동영상 원본 다운로드",
+  "Allow this user to save videos they can play. Copies saved on a device cannot be revoked.": "이 사용자가 재생할 수 있는 동영상을 기기에 저장하도록 허용합니다. 저장된 사본은 회수할 수 없습니다.",
+  "If saving does not start, open this video in your browser and try again.": "저장이 시작되지 않으면 브라우저에서 이 동영상을 열고 다시 시도하세요.",
+  "Open in browser": "브라우저에서 열기",
   "Video previews": "동영상 미리보기",
   "Play video previews when hovering over or focusing a card. Saved in this browser.": "카드에 마우스를 올리거나 포커스를 맞추면 동영상 미리보기를 재생합니다. 이 브라우저에 저장됩니다.",
   "Seek preview": "미리보기 재생 위치 이동",

@@ -51,12 +51,13 @@ export function AccountProfile() {
 
 const permissions: Array<{key:keyof AccountPermissions;title:string;description:string}> = [
   {key:'play',title:'Play videos',description:'Allow video playback in the player and Shorts.'},
+  {key:'download',title:'Download original videos',description:'Allow this user to save videos they can play. Copies saved on a device cannot be revoked.'},
   {key:'transcode',title:'Convert audio and video',description:'Allow quality changes and compatibility conversion, which may use significant CPU. When disabled, playback uses original quality and default audio.'},
   {key:'manageLibraries',title:'Add and remove libraries',description:'Trust this user to access folders readable by the server. New folders are shared with accounts that can access all libraries.'},
   {key:'scanLibraries',title:'Scan libraries',description:'Scan only the libraries this account can view.'},
   {key:'manageMetadata',title:'Edit video metadata',description:'Refresh or clear metadata for accessible videos. Changes are shared with other viewers.'}
 ];
-const viewerPermissions:AccountPermissions = {play:true,transcode:true,manageLibraries:false,scanLibraries:false,manageMetadata:false};
+const viewerPermissions:AccountPermissions = {play:true,transcode:true,manageLibraries:false,scanLibraries:false,manageMetadata:false,download:false};
 
 export function AccountManager() {
   useLocale();
