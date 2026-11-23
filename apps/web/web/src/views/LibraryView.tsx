@@ -96,7 +96,7 @@ export function LibraryView() {
       <div><h1>{searching ? t('Search') : title}</h1><p>{mediaQ.isLoading ? t("Loading…") : t('{count} items',{count:media.length+(!searching&&explorer?(activeLibraryId===null?libraries.length:childFolders.length):0)})}</p></div>
       <div className="heading-controls library-actions">
         <Link to="/app/playlists" className={buttonVariants({variant:'secondary',className:'library-playlists-link'})}><Queue aria-hidden="true"/><span>{t("Playlists")}</span><CaretRight aria-hidden="true"/></Link>
-        <a href="/media/iptv/" className={buttonVariants({variant:'secondary',className:'library-playlists-link'})}><Broadcast aria-hidden="true"/><span>{t("Live TV")}</span><CaretRight aria-hidden="true"/></a>
+        <Link to="/app/live-tv" className={buttonVariants({variant:'secondary',className:'library-playlists-link'})}><Broadcast aria-hidden="true"/><span>{t("Live TV")}</span><CaretRight aria-hidden="true"/></Link>
         <Select label={t("Sort")} value={sort} options={SORT_OPTIONS.map(option=>({...option,label:t(option.label)}))} onChange={(v)=>setSort(v as SortKey)}/>
         {(searching||explorer||folder !== null) && media.length > 0 && <Button className="play-all-btn" onPress={()=>playAll()}><Play weight="fill"/> {t("Play all")}</Button>}
       </div>

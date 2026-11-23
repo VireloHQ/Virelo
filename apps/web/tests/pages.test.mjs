@@ -36,7 +36,7 @@ test('Workers Static Assets receives host rules and custom 404 in the production
 
 test('Workers rewrites application and legacy routes, never missing assets', () => {
   const shell = path => redirects.some(([pattern, target, status]) => matches(pattern, path) && target === '/app' && status === '200');
-  for (const path of ['/app/library', '/app/favorites', '/favorites', '/app/settings', '/app/shorts', '/app/watch/123', '/app/title/123', '/library', '/settings', '/shorts', '/watch/123', '/title/123']) {
+  for (const path of ['/app/library', '/app/favorites', '/favorites', '/app/settings', '/app/shorts', '/app/watch/123', '/app/title/123', '/library', '/settings', '/shorts', '/watch/123', '/title/123', '/app/live-tv', '/live-tv']) {
     assert.ok(shell(path), path);
   }
   for (const path of ['/', '/setup', '/setup/', '/ja', '/ja/setup', '/assets', '/assets/', '/assets/missing.js', '/assets/missing.css', '/assets/nested/missing.wasm', '/sw.js', '/landing/shorts-demo.mp4', '/missing.png', '/unknown','/media/iptv/']) {
@@ -63,7 +63,7 @@ test('Workers CSP permits blob media/workers and WASM without JavaScript eval', 
   assert.equal(csp.includes('https:'), false);
 });
 
-test('only the separate Live TV document can connect to external HTTPS media',async()=>{
+test('Live TV keeps the shell CSP and only the same-origin playback frame can connect to providers',async()=>{
   const normal=headers('/app')['content-security-policy'];
   const live=headers('/media/iptv/');
   const policy=live['content-security-policy'];
@@ -71,10 +71,13 @@ test('only the separate Live TV document can connect to external HTTPS media',as
   assert.match(policy,/media-src 'self' blob: https:;/);
   assert.match(policy,/connect-src 'self' blob: https:;/);
   assert.match(policy,/script-src 'self';/);
+  assert.match(policy,/frame-src 'none'; frame-ancestors 'self';/);
   assert.equal(live['cache-control'],'no-store');
   assert.equal(live['referrer-policy'],'no-referrer');
   assert.equal(live['x-robots-tag'],'noindex');
   assert.equal(headers('/app/library')['content-security-policy'],normal);
+  assert.equal(headers('/app/live-tv')['content-security-policy'],normal);
+  assert.equal(headers('/live-tv')['content-security-policy'],normal);
   assert.equal(headers('/media/other')['content-security-policy'],normal);
   assert.match(await readFile(new URL('media/iptv/index.html',dist),'utf8'),/<title>Live TV \| Virelo<\/title>/);
 });

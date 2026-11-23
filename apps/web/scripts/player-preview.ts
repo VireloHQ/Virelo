@@ -14,7 +14,7 @@ export function playerPreview(): Plugin {
       server.middlewares.use((request, response, next) => {
         const url = new URL(request.url ?? '/', 'http://localhost');
         response.setHeader('Content-Security-Policy',url.pathname.startsWith('/media/iptv/')?liveTvCsp:csp);
-        if (/^\/(?:app(?:\/|$)|(?:library|favorites|playlists|settings|shorts)\/?$|(?:watch|title|playlists)\/)/.test(url.pathname)) request.url = '/app.html' + url.search;
+        if (/^\/(?:app(?:\/|$)|(?:library|favorites|playlists|settings|shorts|live-tv)\/?$|(?:watch|title|playlists)\/)/.test(url.pathname)) request.url = '/app.html' + url.search;
         next();
       });
     }

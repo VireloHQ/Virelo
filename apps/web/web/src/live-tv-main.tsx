@@ -1,26 +1,28 @@
 import { createRoot } from 'react-dom/client';
 import { QueryClient,QueryClientProvider } from '@tanstack/react-query';
-import { ArrowLeft } from '@phosphor-icons/react';
 import { LiveTv } from '@virelo/web-ui/components/LiveTv.tsx';
 import { LocaleRoot } from '@virelo/web-ui/i18n/LocaleRoot.tsx';
 import { localLiveTv } from './iptv-local';
-import { initializeLocale,t,useLocale } from './i18n';
+import { initializeLocale } from './i18n';
 import { APP_ORIGIN,LEGACY_HOST } from './utils/app-location';
+import { appearanceVariables } from './utils/appearance';
+import { readAppearance } from './utils/appearance-storage';
 import '@fontsource-variable/inter';
 import './styles.css';
 import './streaming-ui.css';
 import '@virelo/web-ui/ui-motion.css';
+import './live-tv-frame.css';
 
-initializeLocale();
-const client=new QueryClient({defaultOptions:{queries:{retry:false,staleTime:20000,refetchOnWindowFocus:false}}});
-function LiveTvPage() {
-  useLocale();
-  const back=location.origin===APP_ORIGIN?'/library':location.hostname===LEGACY_HOST?'/app/library?legacy=1':'/app/library';
-  return <main className="app-shell">
-    <a className="live-tv-return library-playlists-link" href={back}><ArrowLeft aria-hidden="true"/>{t("Library")}</a>
-    <LiveTv service={localLiveTv}/>
-  </main>;
+if (window.top === window) {
+  location.replace(location.origin===APP_ORIGIN?'/live-tv':location.hostname===LEGACY_HOST?'/app/live-tv?legacy=1':'/app/live-tv');
+} else {
+  initializeLocale();
+  for (const [name, color] of Object.entries(appearanceVariables(readAppearance().accentColor)))
+    document.documentElement.style.setProperty(name,color);
+  const client=new QueryClient({defaultOptions:{queries:{retry:false,staleTime:20000,refetchOnWindowFocus:false}}});
+  createRoot(document.getElementById('root')!).render(
+    <LocaleRoot><QueryClientProvider client={client}>
+      <div className="app-shell live-tv-embed"><LiveTv service={localLiveTv}/></div>
+    </QueryClientProvider></LocaleRoot>
+  );
 }
-createRoot(document.getElementById('root')!).render(
-  <LocaleRoot><QueryClientProvider client={client}><LiveTvPage/></QueryClientProvider></LocaleRoot>
-);
