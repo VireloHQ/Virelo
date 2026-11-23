@@ -7,6 +7,7 @@ import { NotFoundView } from './views/NotFoundView';
 import type { SortKey } from './types';
 import { validateShortsSearch } from '@virelo/core/shorts-navigation';
 import { useScanRefresh } from './hooks/useScanRefresh';
+import { BrowserScanWarning } from './components/BrowserScanWarning';
 import { MediaServicesProvider } from '@virelo/web-ui/media-services.tsx';
 import { api, artwork } from './api';
 const mediaServices = { api, artwork };
@@ -64,8 +65,8 @@ function validateWatchSearch(input: Record<string, unknown>): WatchRouteSearch {
 }
 
 function Shell() {
-  useScanRefresh();
-  return <MediaServicesProvider services={mediaServices}><AppearanceProvider><div className="app-shell"><Header /><main className="page-shell"><Outlet /></main><MobileNav /></div></AppearanceProvider></MediaServicesProvider>;
+  const scan = useScanRefresh();
+  return <MediaServicesProvider services={mediaServices}><AppearanceProvider><div className="app-shell"><Header /><main className="page-shell"><BrowserScanWarning status={scan}/><Outlet /></main><MobileNav /></div></AppearanceProvider></MediaServicesProvider>;
 }
 
 function Root() {

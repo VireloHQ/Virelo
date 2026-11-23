@@ -51,6 +51,7 @@ export function Player({item,queue,queueIndex,shuffled,onShuffle,onEnded,onNext,
   useLocale();
   const historyPosition = initialPlaybackPosition(item.progress_position, resumeFromHistory);
   const aviSource = /\.avi$/i.test(item.filename);
+  const codecProbeRequired = aviSource || /\.mkv$/i.test(item.filename);
   const videoRef = useRef<HTMLVideoElement>(null);
   const sourceTransition = useRef(false);
   const wantsPlayback = useRef(Boolean(autoPlay));
@@ -191,7 +192,7 @@ export function Player({item,queue,queueIndex,shuffled,onShuffle,onEnded,onNext,
       }
     }).catch((reason)=>{
       if(!current)return;
-      if(aviSource||typeof readQualityPreference(false)==='number'){
+      if(codecProbeRequired||typeof readQualityPreference(false)==='number'){
         qualityBlocked.current=true;
         sourceTransition.current=true;videoRef.current?.pause();audioRef.current?.pause();
         setPlaybackReady(false);
@@ -583,7 +584,7 @@ export function Player({item,queue,queueIndex,shuffled,onShuffle,onEnded,onNext,
       aria-label={shorts?t('{value0}. Press Space to play or pause.',{value0:item.title}):undefined}
       style={presentation.style}
       ref={videoRef}
-      src={qualityUrl||((!aviSource||playbackInfo?.requiresVideoTranscode===false)?source.url:undefined)||undefined}
+      src={qualityUrl||((!codecProbeRequired||playbackInfo?.requiresVideoTranscode===false)?source.url:undefined)||undefined}
       playsInline
       loop={!shorts&&(repeat==='one'||(repeat==='queue'&&queue?.length===1))}
       preload={typeof readQualityPreference(false)==='number'?'none':autoPlay?'auto':'metadata'}
@@ -618,7 +619,7 @@ export function Player({item,queue,queueIndex,shuffled,onShuffle,onEnded,onNext,
     <audio key={externalAudioUrl||'native-audio'} ref={audioRef} src={externalAudioUrl||undefined} preload="auto" onVolumeChange={event=>onVolumeChange(event.currentTarget)} onTimeUpdate={event=>reportBackgroundAudio(event.currentTarget)} onLoadedMetadata={(event)=>finishPreparedAudio(event.currentTarget)} onCanPlay={(event)=>finishPreparedAudio(event.currentTarget)}/>
     <DraggableCaption key={`${item.id}:${selectedSubtitle}`} text={activeCaption} controlsVisible={controlsVisible} containerRef={containerRef} onDraggingChange={(dragging)=>{if(dragging)revealControls();else window.setTimeout(scheduleControlsHide,0);}}/>
     {source.loading && <div className="player-status"><LoadingSpinner/><strong>{t("Opening video…")}</strong><span>{t("Reading the selected local file.")}</span></div>}
-    {aviSource&&!playbackInfo&&!source.loading&&!source.error&&!playbackError&&<div className="player-status"><LoadingSpinner/><strong>{t("Preparing AVI playback…")}</strong></div>}
+    {codecProbeRequired&&!playbackInfo&&!source.loading&&!source.error&&!playbackError&&<div className="player-status"><LoadingSpinner/><strong>{t("Preparing video playback…")}</strong></div>}
     {preparing&&preparing!=='subtitles'&&playRequested&&!playing&&<div className="player-status"><LoadingSpinner/><strong>{preparing==='audio'?t("Preparing audio…"):preparing==='quality'?t("Preparing {value0}…", { value0: selectedQuality&&selectedQuality>=2160?'4K':`${selectedQuality}p` }):t("Preparing subtitles…")}</strong>{preparationProgress>0&&<span>{Math.round(preparationProgress*100)}%</span>}</div>}
     {preparing==='subtitles'&&<span className="sr-only" role="status">{t("Preparing subtitles…")}</span>}
     {(source.error || playbackError) && <div className="player-status error"><strong>{t("Playback unavailable")}</strong><span>{source.error || playbackError}</span></div>}

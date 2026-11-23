@@ -11,13 +11,18 @@ export async function isAviFile(file: File) {
 }
 
 export function aviPlaybackInfo(value: unknown): PlaybackInfo {
+  if ((value as { format?: { format_name?: string } } | null)?.format?.format_name !== 'avi') throw new Error('This file could not be read as an AVI video.');
+  return softwarePlaybackInfo(value);
+}
+
+export function softwarePlaybackInfo(value: unknown): PlaybackInfo {
   const data = value as { streams?: Array<Record<string, any>>; format?: Record<string, any> };
-  if (!data || !Array.isArray(data.streams) || data.format?.format_name !== 'avi') throw new Error('This file could not be read as an AVI video.');
+  if (!data || !Array.isArray(data.streams) || !['avi', 'matroska,webm', 'mov,mp4,m4a,3gp,3g2,mj2', 'asf', 'mpeg', 'mpegts', 'flv', 'ogg'].includes(data.format?.format_name)) throw new Error('This video could not be inspected for browser conversion.');
   const video = data.streams.find(track => track?.codec_type === 'video');
   const width = Number(video?.width), height = Number(video?.height), videoDuration = Number(video?.duration);
-  const duration = Number.isFinite(videoDuration) && videoDuration > 0 ? videoDuration : Number(data.format.duration);
+  const duration = Number.isFinite(videoDuration) && videoDuration > 0 ? videoDuration : Number(data.format?.duration);
   if (!Number.isInteger(width) || !Number.isInteger(height) || width < 1 || height < 1 || width > 16384 || height > 16384 || width * height > 33_177_600
-    || !Number.isFinite(duration) || duration <= 0 || duration > 7 * 86400) throw new Error('The AVI resolution or duration is not supported by browser playback.');
+    || !Number.isFinite(duration) || duration <= 0 || duration > 7 * 86400) throw new Error('The video resolution or duration is not supported by browser playback.');
   const audioTracks = data.streams.filter(track => track?.codec_type === 'audio').map((track, typeIndex) => ({
     index: Number(track.index), typeIndex, codec: String(track.codec_name || 'unknown'),
     language: typeof track.tags?.language === 'string' ? track.tags.language : null,
@@ -26,7 +31,7 @@ export function aviPlaybackInfo(value: unknown): PlaybackInfo {
     channelLayout: typeof track.channel_layout === 'string' ? track.channel_layout : null,
     default: Boolean(track.disposition?.default), forced: Boolean(track.disposition?.forced), supported: true
   }));
-  if (audioTracks.some(track => !Number.isSafeInteger(track.index) || track.index < 0)) throw new Error('The AVI audio tracks could not be inspected.');
+  if (audioTracks.some(track => !Number.isSafeInteger(track.index) || track.index < 0)) throw new Error('The video audio tracks could not be inspected.');
   return { videoCodec: String(video?.codec_name || 'unknown'), width, height, duration,
     qualityOptions: playbackQualities(height, true), audioTracks, subtitleTracks: [],
     defaultAudioStream: (audioTracks.find(track => track.default) || audioTracks[0])?.index ?? null,

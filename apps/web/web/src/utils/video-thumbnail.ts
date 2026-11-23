@@ -1,4 +1,5 @@
 import { isAviFile } from './avi.ts';
+import type { PlaybackCompatibility } from '../browser-compatibility';
 
 export const THUMBNAIL_VERSION = 3;
 
@@ -126,11 +127,13 @@ async function probeNative(file: File): Promise<VideoProbe> {
   } finally { video.removeAttribute('src'); video.load(); URL.revokeObjectURL(url); }
 }
 
-export async function probeVideo(file: File): Promise<VideoProbe> {
+export async function probeVideo(file: File, compatibility?: PlaybackCompatibility | null): Promise<VideoProbe> {
   if (await isAviFile(file)) {
     try { return await (await import('../avi-playback')).probeAviThumbnail(file); }
     catch { return { duration: null, width: null, height: null, thumbnail: null }; }
   }
+  // Never start a software conversion just to scan a legacy container.
+  if (compatibility?.requiresConversion) return { duration: compatibility.duration, width: compatibility.width, height: compatibility.height, thumbnail: null };
   let decoded: VideoProbe | undefined;
   try { decoded = await probeDecoded(file); if (decoded.thumbnail) return decoded; } catch { /* Native decoding is the fallback. */ }
   try { const native = await probeNative(file); return native.thumbnail ? native : decoded ?? native; }

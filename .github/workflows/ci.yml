@@ -143,3 +143,4 @@ jobs:
       - run: node scripts/audit-browser-streaming.mjs
       - run: npm run build
       - run: node scripts/audit-avi.mjs
+      - run: node scripts/audit-codec-compatibility.mjs

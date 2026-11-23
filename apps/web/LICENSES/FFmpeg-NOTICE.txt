@@ -1,4 +1,4 @@
-AVI playback uses @ffmpeg/core 0.12.10 and @ffmpeg/ffmpeg 0.12.15.
+Browser software video playback, including AVI and legacy MKV, uses @ffmpeg/core 0.12.10 and @ffmpeg/ffmpeg 0.12.15.
 
 The FFmpeg WebAssembly core is distributed under GPL-2.0-or-later. Virelo
 distributes this component under GPL version 3, included in LICENSE.txt

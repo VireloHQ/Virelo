@@ -14,4 +14,5 @@ export function useScanRefresh() {
     // Refresh editors and the playing feed on their next visit without resetting unsaved work or playback.
     void client.invalidateQueries({ predicate: query => query.queryKey[0] === 'playlist' || query.queryKey[0] === 'shorts' && query.queryKey[1] !== 'row', refetchType: 'none' });
   }, [client, finishedAt]);
+  return scan.data;
 }

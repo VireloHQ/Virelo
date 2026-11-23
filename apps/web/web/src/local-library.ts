@@ -26,6 +26,7 @@ interface StoredLibrary {
 
 interface StoredMedia extends MediaItem {
   source_path: string;
+  playback_conversion?: boolean;
 }
 
 interface LocalFile {
@@ -404,6 +405,8 @@ function toLibrary(library: StoredLibrary, connected: boolean): Library {
 
 export async function startLocalScan() {
   if (scanTask || scanStatus.running) return false;
+  // Publish the scheduled scan before yielding to the library lock/IndexedDB.
+  scanStatus = { ...idleScanStatus(), running: true, startedAt: Date.now(), message: 'Reading folders…' };
   scanTask = editLibraries(() => runScan(undefined, false)).catch(() => {
     scanStatus.errors++;
     finishScan(scanStatus);
@@ -459,16 +462,23 @@ async function scanLibrary(library: StoredLibrary, allowPermissionRequest: boole
     sessionFiles.set(id, file);
     const previous = previousByPath.get(relativePath);
     scanStatus.scanned++;
+    const unchanged = previous && previous.size === file.size && previous.mtime === file.lastModified;
+    const compatibility = unchanged && previous.playback_conversion !== undefined ? null
+      : await (await import('./browser-compatibility')).inspectPlaybackCompatibility(file);
+    const conversion = compatibility?.requiresConversion ?? (unchanged ? previous.playback_conversion : undefined);
+    if (conversion) scanStatus.playbackWarnings = (scanStatus.playbackWarnings ?? 0) + 1;
     if (previous && previous.size === file.size && previous.mtime === file.lastModified) {
+      if (compatibility) await updateStoredMedia(id, item => { item.playback_conversion = compatibility.requiresConversion; });
       // An unchanged file may still have a missing/black thumbnail from an older scan.
-      await ensureLocalThumbnail(id, true);
+      if (!conversion || /\.avi$/i.test(file.name)) await ensureLocalThumbnail(id, true);
       scanStatus.skipped++;
       return;
     }
     try {
       const parsed = parseMediaName(relativePath);
-      const probe = await probeVideo(file);
+      const probe = await probeVideo(file, compatibility);
       const item: StoredMedia = {
+        playback_conversion: conversion,
         audio_loudness: null,
         id,
         library_id: library.id,
@@ -485,8 +495,8 @@ async function scanLibrary(library: StoredLibrary, allowPermissionRequest: boole
         duration: probe.duration ?? previous?.duration ?? null,
         width: probe.width ?? previous?.width ?? null,
         height: probe.height ?? previous?.height ?? null,
-        video_codec: null,
-        audio_codec: null,
+        video_codec: compatibility?.videoCodec ?? null,
+        audio_codec: compatibility?.audioCodec ?? null,
         container: extensionOf(file.name),
         folder: relativePath.includes('/') ? relativePath.slice(0, relativePath.lastIndexOf('/')) : '',
         size: file.size,
