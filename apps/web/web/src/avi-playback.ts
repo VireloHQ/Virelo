@@ -1,6 +1,6 @@
 import { FFmpeg, FFFSType } from '@ffmpeg/ffmpeg';
 import { ALL_FORMATS, BlobSource, Input } from 'mediabunny';
-import { AVI_CORE_PATH, AVI_MAX_FILE_BYTES, aviPlaybackInfo } from './utils/avi';
+import { AVI_CORE_PATH, AVI_MAX_FILE_BYTES, softwarePlaybackInfo } from './utils/avi';
 import type { PlaybackInfo } from './types';
 import { thumbnailTimes, validThumbnail, type VideoProbe } from './utils/video-thumbnail';
 import type { BrowserStreamOptions } from './browser-stream';
@@ -10,17 +10,17 @@ let engine: Promise<FFmpeg> | undefined;
 let tail: Promise<unknown> = Promise.resolve();
 let idleTimer: ReturnType<typeof setTimeout> | undefined;
 const probes = new WeakMap<File, Promise<PlaybackInfo>>();
-const aborted = () => new DOMException('AVI playback preparation cancelled.', 'AbortError');
+const aborted = () => new DOMException('Video playback preparation cancelled.', 'AbortError');
 
 async function loadEngine() {
   if (!engine) {
     const pending = (async () => {
       const response = await fetch(AVI_CORE_PATH + '/ffmpeg-core.wasm.gz', { signal: AbortSignal.timeout(60_000) });
-      if (!response.ok || !response.body) throw new Error('AVI playback support could not be loaded. Check the connection and try again.');
+      if (!response.ok || !response.body) throw new Error('Video playback support could not be loaded. Check the connection and try again.');
       const downloaded = new Uint8Array(await response.arrayBuffer());
       // Some static hosts transparently decompress .gz assets before fetch exposes the body.
       const decoded = downloaded[0] === 0 && downloaded[1] === 97 && downloaded[2] === 115 && downloaded[3] === 109;
-      if (!decoded && !(downloaded[0] === 31 && downloaded[1] === 139)) throw new Error('The AVI decoder download is invalid. Reload the app and try again.');
+      if (!decoded && !(downloaded[0] === 31 && downloaded[1] === 139)) throw new Error('The video decoder download is invalid. Reload the app and try again.');
       const bytes = decoded ? downloaded : await new Response(new Blob([downloaded]).stream().pipeThrough(new DecompressionStream('gzip'))).arrayBuffer();
       const wasmURL = URL.createObjectURL(new Blob([bytes], { type: 'application/wasm' }));
       const ffmpeg = new FFmpeg();
@@ -40,7 +40,7 @@ async function loadEngine() {
 function withAvi<T>(file: File, signal: AbortSignal | undefined, action: (ffmpeg: FFmpeg) => Promise<T>): Promise<T> {
   const job = tail.then(async () => {
     if (signal?.aborted) throw aborted();
-    if (file.size >= AVI_MAX_FILE_BYTES) throw new Error('Browser AVI playback supports files smaller than 2 GB. Use the local Virelo server for larger AVI files.');
+    if (file.size >= AVI_MAX_FILE_BYTES) throw new Error('Browser conversion supports files smaller than 2 GB. Use the local Virelo server for larger files.');
     clearTimeout(idleTimer);
     const pending = loadEngine(), ffmpeg = await pending;
     const cancel = () => { ffmpeg.terminate(); engine = undefined; };
@@ -48,18 +48,18 @@ function withAvi<T>(file: File, signal: AbortSignal | undefined, action: (ffmpeg
     signal?.addEventListener('abort', cancel, { once: true });
     let timer: ReturnType<typeof setTimeout> | undefined;
     const deadline = new Promise<never>((_, reject) => {
-      timer = setTimeout(() => { reject(new Error('AVI decoding timed out. Try a lower quality, or use the local Virelo server.')); cancel(); }, 60_000);
+      timer = setTimeout(() => { reject(new Error('Video decoding timed out. Try a lower quality, or use the local Virelo server.')); cancel(); }, 60_000);
     });
     try {
       return await Promise.race([(async () => {
         // WORKERFS reads slices from the immutable Blob instead of copying the full video into WASM memory.
-        if (!await ffmpeg.mount(FFFSType.WORKERFS, { blobs: [{ name: 'source.avi', data: file }] }, '/input')) throw new Error('This browser cannot read AVI files safely.');
+        if (!await ffmpeg.mount(FFFSType.WORKERFS, { blobs: [{ name: 'source.avi', data: file }] }, '/input')) throw new Error('This browser cannot read video files safely.');
         return action(ffmpeg);
       })(), deadline]);
     } catch (error) {
       ffmpeg.terminate(); engine = undefined;
       if (signal?.aborted) throw aborted();
-      throw error instanceof Error ? error : new Error('The AVI could not be decoded.');
+      throw error instanceof Error ? error : new Error('The video could not be decoded.');
     } finally {
       clearTimeout(timer);
       signal?.removeEventListener('abort', cancel);
@@ -74,13 +74,13 @@ function withAvi<T>(file: File, signal: AbortSignal | undefined, action: (ffmpeg
   return job;
 }
 
-export function probeAvi(file: File) {
+export function probeSoftwareVideo(file: File) {
   let result = probes.get(file);
   if (!result) {
     result = withAvi(file, undefined, async ffmpeg => {
       // Core 0.12.10 may return -1 after writing valid ffprobe output; validate the complete JSON instead.
       await ffmpeg.ffprobe(['-v', 'error', '-show_format', '-show_streams', '-of', 'json', '-o', 'probe.json', '/input/source.avi'], 30_000);
-      return aviPlaybackInfo(JSON.parse(await ffmpeg.readFile('probe.json', 'utf8') as string));
+      return softwarePlaybackInfo(JSON.parse(await ffmpeg.readFile('probe.json', 'utf8') as string));
     });
     probes.set(file, result);
     void result.catch(() => { if (probes.get(file) === result) probes.delete(file); });
@@ -88,12 +88,11 @@ export function probeAvi(file: File) {
   return result;
 }
 
-export async function probeAviThumbnail(file: File): Promise<VideoProbe> {
-  const info = await probeAvi(file);
-  const thumbnail = await withAvi(file, undefined, async ffmpeg => {
-    for (const position of thumbnailTimes(info.duration!)) {
+export function extractSoftwareThumbnail(file: File, positions: number[], timeout: number) {
+  return withAvi(file, undefined, async ffmpeg => {
+    for (const position of positions) {
       const code = await ffmpeg.exec(['-hide_banner', '-loglevel', 'error', '-ss', String(position), '-i', '/input/source.avi',
-        '-frames:v', '1', '-vf', 'scale=min(480\\,iw):-2', '-q:v', '4', 'frame.jpg'], 30_000);
+        '-map', '0:v:0', '-an', '-frames:v', '1', '-vf', 'scale=min(480\\,iw):-2', '-q:v', '4', 'frame.jpg'], timeout);
       if (code !== 0) continue;
       const bytes = await ffmpeg.readFile('frame.jpg');
       if (typeof bytes === 'string') continue;
@@ -102,6 +101,11 @@ export async function probeAviThumbnail(file: File): Promise<VideoProbe> {
     }
     return null;
   });
+}
+
+export async function probeAviThumbnail(file: File): Promise<VideoProbe> {
+  const info = await probeSoftwareVideo(file);
+  const thumbnail = await extractSoftwareThumbnail(file, thumbnailTimes(info.duration!), 30_000);
   return { duration: info.duration!, width: info.width, height: info.height, thumbnail };
 }
 
@@ -113,18 +117,18 @@ async function encodeSegment(file: File, height: number, audio: number | null, s
     if (audio === null) args.push('-an');
     else args.push('-map', `0:${audio}`, '-c:a', 'aac', '-b:a', '192k', '-ac', '2', '-af', 'aresample=async=1:first_pts=0');
     args.push('-movflags', 'frag_keyframe+empty_moov+default_base_moof', '-f', 'mp4', '-fs', String(32 * 1024 * 1024), 'segment.mp4');
-    if (await ffmpeg.exec(args, 45_000) !== 0) throw new Error('AVI conversion failed or timed out. Try a lower quality, or use the local Virelo server.');
+    if (await ffmpeg.exec(args, 45_000) !== 0) throw new Error('Video conversion failed or timed out. Try a lower quality, or use the local Virelo server.');
     const bytes = await ffmpeg.readFile('segment.mp4');
-    if (typeof bytes === 'string' || !bytes.length || bytes.length >= 32 * 1024 * 1024) throw new Error('The converted AVI segment exceeds browser playback limits. Choose a lower quality.');
+    if (typeof bytes === 'string' || !bytes.length || bytes.length >= 32 * 1024 * 1024) throw new Error('The converted video segment exceeds browser playback limits. Choose a lower quality.');
     return new Uint8Array(bytes);
   });
 }
 
-export async function streamAvi(file: File, height: number, audio: number | null, options: BrowserStreamOptions): Promise<string> {
+export async function streamSoftwareVideo(file: File, height: number, audio: number | null, options: BrowserStreamOptions): Promise<string> {
   if (options.signal.aborted) throw aborted();
-  if (typeof MediaSource === 'undefined') throw new Error('AVI playback requires a browser with MediaSource support.');
-  const info = await probeAvi(file), duration = info.duration!;
-  if (!info.qualityOptions.some(quality => quality.height === height) || (audio !== null && !info.audioTracks.some(track => track.index === audio))) throw new Error('The selected AVI quality or audio track is unavailable.');
+  if (typeof MediaSource === 'undefined') throw new Error('Video playback requires a browser with MediaSource support.');
+  const info = await probeSoftwareVideo(file), duration = info.duration!;
+  if (!info.qualityOptions.some(quality => quality.height === height) || (audio !== null && !info.audioTracks.some(track => track.index === audio))) throw new Error('The selected video quality or audio track is unavailable.');
   const start = Math.max(0, Math.min(Math.floor(options.position), Math.max(0, duration - 1)));
   const source = new MediaSource(), url = URL.createObjectURL(source);
   let buffer: SourceBuffer | null = null, element: HTMLMediaElement | null = null, disposed = false, redirected = false;
@@ -140,7 +144,7 @@ export async function streamAvi(file: File, height: number, audio: number | null
     if (!buffer || disposed) { reject(aborted()); return; }
     const cleanup = () => { buffer?.removeEventListener('updateend', done); buffer?.removeEventListener('error', failed); controller.signal.removeEventListener('abort', failed); };
     const done = () => { cleanup(); resolve(); };
-    const failed = () => { cleanup(); reject(disposed ? aborted() : new Error('The converted AVI could not be buffered.')); };
+    const failed = () => { cleanup(); reject(disposed ? aborted() : new Error('The converted video could not be buffered.')); };
     buffer.addEventListener('updateend', done, { once: true }); buffer.addEventListener('error', failed, { once: true }); controller.signal.addEventListener('abort', failed, { once: true });
     try { operation(); } catch (error) { cleanup(); reject(error); }
   });
@@ -163,7 +167,7 @@ export async function streamAvi(file: File, height: number, audio: number | null
         const input = new Input({ formats: ALL_FORMATS, source: new BlobSource(new Blob([bytes], { type: 'video/mp4' })) });
         try {
           const mime = await input.getMimeType();
-          if (!MediaSource.isTypeSupported(mime)) throw new Error('This browser cannot play the converted AVI format.');
+          if (!MediaSource.isTypeSupported(mime)) throw new Error('This browser cannot play the converted video format.');
           buffer = source.addSourceBuffer(mime);
         } finally { input.dispose(); }
       }
@@ -176,7 +180,7 @@ export async function streamAvi(file: File, height: number, audio: number | null
     }
   };
   const opened = () => { void run().catch(reason => {
-    if (!disposed && !options.signal.aborted) options.onError(reason instanceof Error ? reason : new Error('AVI playback failed.'));
+    if (!disposed && !options.signal.aborted) options.onError(reason instanceof Error ? reason : new Error('Video playback failed.'));
     cancel();
   }); };
   options.signal.addEventListener('abort', cancel, { once: true });

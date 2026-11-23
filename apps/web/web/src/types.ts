@@ -20,6 +20,7 @@ export interface Settings {
   queueResumePosition: boolean;
 }
 export interface ScanStatus {
+  playbackWarnings?: number;
   audioTotal?: number;
   audioAnalyzed?: number;
   running:boolean; startedAt:number|null; finishedAt:number|null; total:number; scanned:number; added:number; updated:number; skipped:number; errors:number; message:string;

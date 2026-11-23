@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
-import {AVI_CORE_PATH,AVI_MAX_FILE_BYTES,isAviFile,aviPlaybackInfo} from '../web/src/utils/avi.ts';
+import {createRequire} from 'node:module';
+import {AVI_CORE_PATH,AVI_MAX_FILE_BYTES,isAviFile,aviPlaybackInfo,softwarePlaybackInfo} from '../web/src/utils/avi.ts';
 
 const metadata=()=>({format:{format_name:'avi',duration:'40.048'},streams:[
  {index:0,codec_type:'video',codec_name:'mpeg4',width:960,height:540,duration:'40'},
@@ -41,4 +42,28 @@ test('AVI codec assets are versioned with the pinned package and a conservative 
  const pkg=JSON.parse(await readFile(new URL('../package.json',import.meta.url),'utf8'));
  assert.equal(AVI_CORE_PATH,'/assets/ffmpeg-'+pkg.dependencies['@ffmpeg/core']);
  assert.ok(AVI_MAX_FILE_BYTES<=2**31);
+});
+test('legacy Matroska uses the same bounded playback pipeline without weakening AVI validation',()=>{
+ const data=metadata();data.format.format_name='matroska,webm';
+ data.streams[0].codec_name='wmv3';data.streams[1].codec_name='wmav2';
+ const info=softwarePlaybackInfo(data);
+ assert.equal(info.videoCodec,'wmv3');assert.equal(info.audioTracks[0].codec,'wmav2');
+ assert.equal(info.requiresVideoTranscode,true);assert.equal(info.defaultAudioStream,2);
+ assert.throws(()=>aviPlaybackInfo(data));
+ data.streams[0].codec_name='mpeg4';assert.equal(softwarePlaybackInfo(data).videoCodec,'mpeg4');
+ data.format.format_name='hls';assert.throws(()=>softwarePlaybackInfo(data));
+ data.format.format_name='matroska,webm';data.streams[0].height=30000;assert.throws(()=>softwarePlaybackInfo(data));
+});
+test('the pinned software core actually includes WMV3, WMA2 and MPEG-4 decoders',async()=>{
+ const previousSelf=globalThis.self,previousLocation=globalThis.location;
+ try {
+  globalThis.self=globalThis;globalThis.location={href:'file:///'};
+  const require=createRequire(import.meta.url),entry=require.resolve('@ffmpeg/core');
+  const core=await require('@ffmpeg/core')({wasmBinary:await readFile(entry.replace(/\.js$/,'.wasm'))});
+  const decoders=[];core.setLogger(({message})=>decoders.push(message));core.exec('-hide_banner','-decoders');
+  for(const codec of ['wmv3','wmav2','mpeg4'])assert.ok(decoders.some(line=>new RegExp('\\b'+codec+'\\b').test(line)),codec+' must be a registered decoder');
+ } finally {
+  if(previousSelf===undefined)delete globalThis.self;else globalThis.self=previousSelf;
+  if(previousLocation===undefined)delete globalThis.location;else globalThis.location=previousLocation;
+ }
 });

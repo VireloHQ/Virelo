@@ -17,13 +17,14 @@ import type { PlaybackInfo, PlaybackTrack } from './types';
 import { streamBrowserConversion, type BrowserStreamOptions } from './browser-stream';
 import { isAviFile } from './utils/avi';
 import { playbackQualities, qualityBitrate } from './utils/playback-quality';
+import { DIRECT_AUDIO_CODECS, needsSoftwarePlayback } from './browser-compatibility';
 
-const DIRECT_AUDIO_CODECS=new Set(['aac','flac','mp3','opus','vorbis']);
 const MATROSKA_EXTENSIONS=new Set(['mkv','mka','mks','webm']);
 const audioCache=new Map<string,string>();
 const qualityCache=new Map<string,string>();
 const subtitleCache=new Map<string,Promise<Map<number,string>>>();
 const probeCache=new WeakMap<File,Promise<PlaybackInfo>>();
+const softwareFiles=new WeakSet<File>();
 let encoderReady:Promise<void>|null=null;
 let parserReady:Promise<MatroskaSubtitleModule>|null=null;
 
@@ -38,7 +39,7 @@ export function probeBrowserPlayback(file:File){
 }
 
 async function probe(file:File):Promise<PlaybackInfo>{
-  if (await isAviFile(file)) return (await import('./avi-playback')).probeAvi(file);
+  if (await isAviFile(file)) return (await import('./avi-playback')).probeSoftwareVideo(file);
   const input=createInput(file);
   try{
     const [allTracks,videoTracks,audioTracks,primaryAudio,subtitleTracks]=await Promise.all([
@@ -85,10 +86,16 @@ async function probe(file:File):Promise<PlaybackInfo>{
     const defaultAudio=audioInfo.find((track)=>track.index===defaultAudioIndex)??audioInfo[0];
     const requiresAudioTranscode=Boolean(defaultAudio&&!DIRECT_AUDIO_CODECS.has(defaultAudio.codec));
     const primaryVideo=videoTracks[0];
+    const videoCodec=await primaryVideo?.getCodec()??null;
+    if (primaryVideo && needsSoftwarePlayback(videoCodec, !defaultAudio || DIRECT_AUDIO_CODECS.has(defaultAudio.codec) || defaultAudio.supported)) {
+      const info=await (await import('./avi-playback')).probeSoftwareVideo(file);
+      softwareFiles.add(file);
+      return { ...info, subtitleTracks: subtitleInfo };
+    }
     const [width,height]=primaryVideo?await Promise.all([primaryVideo.getDisplayWidth(),primaryVideo.getDisplayHeight()]):[null,null];
     const canCreateLowerQualities=Boolean(primaryVideo&&await canEncodeVideo('avc'));
     return {
-      videoCodec:await primaryVideo?.getCodec()??null,
+      videoCodec,
       width,
       height,
       qualityOptions:playbackQualities(height,canCreateLowerQualities),
@@ -129,9 +136,9 @@ async function configureConversion(file: File, output: Output, stream: number | 
 export async function prepareBrowserQuality(file: File, height: number, audioStream: number | null,
   onProgress?: (progress: number) => void, options?: BrowserStreamOptions) {
   if (options?.signal.aborted) throw new DOMException('Playback preparation cancelled.', 'AbortError');
-  if (await isAviFile(file)) {
-    if (!options) throw new Error('AVI playback requires incremental browser streaming.');
-    return (await import('./avi-playback')).streamAvi(file, height, audioStream, options);
+  if (softwareFiles.has(file) || await isAviFile(file)) {
+    if (!options) throw new Error('Video playback requires incremental browser streaming.');
+    return (await import('./avi-playback')).streamSoftwareVideo(file, height, audioStream, options);
   }
   const key = `${file.name}:${file.size}:${file.lastModified}:quality:${height}:audio:${audioStream ?? 'none'}`;
   const cached = qualityCache.get(key); if (cached) return cached;

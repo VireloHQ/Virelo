@@ -412,6 +412,12 @@ button,[role="button"],summary,.app-shell :is(header,footer,nav,.settings-view),
 .library-list strong { font-size:13px; }
 .library-list span { color:#666; font-size:11px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:2px; }
 .scan-strip { display:flex; align-items:center; justify-content:space-between; gap:12px; border-top:1px solid var(--line); margin-top:18px; padding-top:18px; }
+.browser-scan-warning { display:flex; align-items:flex-start; gap:12px; width:min(1100px,calc(100% - 40px)); margin:20px auto; padding:16px; border:1px solid #9b783d; border-radius:12px; background:#241e13; color:#f4d8a4; }
+.browser-scan-warning>svg { flex:none; width:21px; height:21px; margin-top:2px; }
+.browser-scan-warning>div { flex:1; min-width:0; }
+.browser-scan-warning strong { display:block; font-size:14px; }
+.browser-scan-warning p { margin:5px 0 0; font-size:13px; line-height:1.6; overflow-wrap:anywhere; }
+.browser-scan-warning .button { flex:none; color:inherit; }
 .scan-strip>div,.settings-actions,.tool-status,.settings-actions>span { display:flex; align-items:center; gap:9px; }
 .scan-strip>div { color:#aaa; font-size:12px; }
 .scan-strip>div svg { width:19px; height:19px; color:#ddd; }

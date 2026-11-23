@@ -74,6 +74,23 @@ slower devices or for larger AVI files, use the [local Virelo server](https://gi
 Native MP4/WebM playback does not load this decoder. See the
 [FFmpeg notice and corresponding-source links](LICENSES/FFmpeg-NOTICE.txt).
 
+Legacy codecs inside MKV, including WMV video/WMA audio and MPEG-4 Part 2
+(DivX), use the same on-demand browser conversion when the normal decoder cannot
+handle them. The player converts short sections to AVC/AAC while preserving the
+original file and selectable text subtitles. Software conversion can delay
+playback startup or seeking; its 2 GB input limit does not apply to native playback.
+
+During a library scan, header-only compatibility checks display a dismissible,
+non-blocking warning for videos requiring this fallback. The scan still adds the
+videos without confirmation, media uploads or full-video conversion. Results are
+cached for unchanged files; a new scan can show the warning again. After the
+scan and any optional audio analysis, Virelo tries to save one thumbnail per
+legacy video in the background, without waiting for first playback. Saved
+thumbnails are reused on later scans.
+This reads only enough to extract a still image, not a converted video or hover
+preview. Opening the player stops the remaining thumbnail jobs for that scan;
+scan again to retry missing thumbnails. Unavailable images keep their placeholders.
+
 Open **Playlists** from Library or desktop navigation. Add videos from their
 details or save a playback queue, then use **Save changes** to keep order/name
 edits. Browser playlists are not cloud-synced; clearing this site's browser data
