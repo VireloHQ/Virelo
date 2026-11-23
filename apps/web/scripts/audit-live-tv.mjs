@@ -48,6 +48,8 @@ try {
     return route.fulfill({status:404,headers});
   });
   const page=await context.newPage();
+  const playerModules=[];
+  page.on('request',request=>{if(/\/assets\/hls\.light-/.test(request.url()))playerModules.push(request.url());});
   const errors=[];page.on('pageerror',error=>errors.push(error.message));
   const normal=await page.goto(base+'/app/library');
   const csp=normal.headers()['content-security-policy'];
@@ -63,6 +65,7 @@ try {
   const first=page.getByRole('button',{name:'Studio One',exact:true}),second=page.getByRole('button',{name:'Studio Two',exact:true});
   await first.waitFor();
   assert.deepEqual(requests,['/channels'],'import does not probe the channels');
+  assert.deepEqual(playerModules,[],'HLS code is not fetched before choosing a channel');
   await page.getByLabel('Channel group').selectOption('Music');
   assert.ok(await first.isHidden());
   await page.getByLabel('Channel group').selectOption('');
@@ -76,6 +79,11 @@ try {
   assert.ok(await page.locator('body').evaluate(body=>body.scrollWidth<=innerWidth+1));
   await page.reload();await first.waitFor();
   assert.equal(await page.locator('video').count(),0,'reload does not restart a stream');
+  const [returnDocument]=await Promise.all([
+    page.waitForResponse(response=>response.request().isNavigationRequest()&&new URL(response.url()).pathname.endsWith('/library')),
+    page.getByRole('link',{name:'Library',exact:true}).click()
+  ]);
+  assert.match(returnDocument.headers()['content-security-policy'],/connect-src 'self' blob:;/);
   assert.deepEqual(errors,[]);
   console.log('PASS isolated Live TV CSP, M3U import, deferred HLS playback, switching, persistence and mobile layout');
 } finally {
