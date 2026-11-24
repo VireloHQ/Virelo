@@ -37,7 +37,14 @@ try {
   }
   browser=await chromium.launch({headless:true,executablePath:process.env.VIRELO_TEST_CHROMIUM});
   const context=await browser.newContext({viewport:{width:390,height:844},serviceWorkers:'block',reducedMotion:'reduce'});
+  // Use the same HLS.js path in every Chromium build; native HLS can report no DVR window.
+  await context.addInitScript(()=>{
+    const canPlayType=HTMLMediaElement.prototype.canPlayType;
+    HTMLMediaElement.prototype.canPlayType=function(type){return type==='application/vnd.apple.mpegurl'?'':canPlayType.call(this,type);};
+  });
   const requests=[];
+  const segments=(await readFile(join(directory,'index.m3u8'),'utf8')).match(/#EXTINF:[^\r\n]+\r?\n[^\r\n]+/g);
+  let liveStart=0,liveEnd=10;
   let releaseDelayed;
   const delayed=new Promise(resolve=>{releaseDelayed=resolve;});
   await context.route(provider+'/**',async route=>{
@@ -48,6 +55,8 @@ try {
     if(pathname==='/station-0/index.m3u8')return route.fulfill({status:503,headers});
     if(pathname==='/station-1/index.m3u8')return route.abort('failed');
     if(pathname==='/station-12/index.m3u8')await delayed;
+    if(pathname==='/two/index.m3u8')return route.fulfill({contentType:'application/vnd.apple.mpegurl',headers,body:
+      ['#EXTM3U','#EXT-X-VERSION:3','#EXT-X-TARGETDURATION:1','#EXT-X-MEDIA-SEQUENCE:'+liveStart,...segments.slice(liveStart,liveEnd),''].join('\n')});
     const name=basename(pathname);
     if(name==='index.m3u8'||/^index\d+\.ts$/.test(name))return route.fulfill({
       body:await readFile(join(directory,name)),contentType:name.endsWith('.ts')?'video/mp2t':'application/vnd.apple.mpegurl',headers
@@ -189,14 +198,18 @@ try {
   await page.evaluate(()=>localStorage.setItem('virelo.appearance.v1',JSON.stringify({controllerStyle:'theater',accentColor:'#c3a6ff'})));
   await player.waitForFunction(()=>document.querySelector('.player-controls')?.getAttribute('data-controller-style')==='theater');
   const video=frame.locator('.live-tv-player video');
+  const seek=liveTransport.getByRole('slider',{name:'Seek',exact:true});
   assert.equal(await video.evaluate(element=>element.controls),false);
-  assert.equal(await liveTransport.locator('.player-seek,.repeat-control').count(),0);
+  assert.equal(await liveTransport.locator('.repeat-control').count(),0);
+  assert.ok(Math.abs(Number(await seek.getAttribute('max'))-12)<.25,'a finite HLS stream shows its duration');
   const pause=liveTransport.getByRole('button',{name:'Pause',exact:true});
   const play=liveTransport.getByRole('button',{name:'Play',exact:true});
   await video.hover({position:{x:12,y:20}});await pause.click();
   await player.waitForFunction(()=>document.querySelector('.live-tv-player video')?.paused===true);
   await play.waitFor();
   assert.ok(await video.evaluate(element=>element.paused));
+  await seek.press('Home');await seek.press('ArrowRight');
+  await player.waitForFunction(()=>{const v=document.querySelector('video');return !v.seeking&&Math.abs(v.currentTime-5)<.25;});
   const volume=liveTransport.getByRole('button',{name:'Volume',exact:true});
   await volume.click();
   const volumeDialog=frame.getByRole('dialog',{name:'Volume',exact:true});
@@ -211,12 +224,30 @@ try {
   await page.keyboard.press('Escape');
   await liveTransport.getByRole('button',{name:'Fullscreen',exact:true}).click();
   await player.waitForFunction(()=>document.fullscreenElement?.classList.contains('live-tv-player'));
+  assert.ok(await seek.isVisible());
   await liveTransport.getByRole('button',{name:'Fullscreen',exact:true}).click();
   await player.waitForFunction(()=>!document.fullscreenElement);
   await play.click();await pause.waitFor();
   await second.click();
   await player.waitForFunction(()=>document.querySelector('video[aria-label="Studio Two"]')?.videoWidth===160);
   assert.ok(requests.some(path=>path.startsWith('/two/')));
+  await liveTransport.getByText('Live',{exact:true}).waitFor();
+  await player.waitForFunction(()=>Math.abs(Number(document.querySelector('.player-seek')?.max)-10)<.3);
+  await video.hover({position:{x:12,y:20}});await pause.click();
+  await seek.press('Home');
+  await player.waitForFunction(()=>document.querySelector('video').currentTime<1);
+  liveStart=3;liveEnd=12;
+  await player.waitForFunction(()=>Math.abs(Number(document.querySelector('.player-seek')?.max)-9)<.3);
+  await seek.press('Home');
+  await player.waitForFunction(()=>{const v=document.querySelector('video');return v.currentTime>=3&&v.currentTime<4;});
+  await seek.press('End');
+  await player.waitForFunction(()=>{const v=document.querySelector('video');return !v.seeking&&v.currentTime>6&&v.currentTime<12;});
+  await video.evaluate(element=>{
+    Object.defineProperty(element,'seekable',{configurable:true,value:{length:0}});
+    element.dispatchEvent(new Event('progress'));
+  });
+  await player.waitForFunction(()=>document.querySelector('.player-seek')?.disabled);
+  assert.ok(await seek.isVisible()&&await seek.isDisabled(),'without a seekable range the live bar remains visible but inactive');
   await page.setViewportSize({width:320,height:740});
   await player.waitForFunction(()=>document.documentElement.scrollHeight<=innerHeight+1&&document.documentElement.scrollWidth<=innerWidth+1);
   assert.ok(await page.locator('body').evaluate(body=>body.scrollWidth<=innerWidth+1));
@@ -228,11 +259,11 @@ try {
   await dialog.waitFor({state:'hidden'});
   const lastCheckTime=await lastChecked.getAttribute('datetime');
   const cached=await frame.getByRole('button',{name:/^Check Studio One: [1-9]\d* ms$/}).getAttribute('aria-label');
-  const beforeReload=requests.length;
   await page.goBack();
   assert.equal(new URL(page.url()).pathname,'/app/library');
   assert.ok(await page.locator('.topbar').evaluate((current,previous)=>current===previous,nav));
   await page.locator('.live-tv-frame').waitFor({state:'detached'});
+  const beforeReload=requests.length;
   await page.goForward();await first.waitFor();
   await page.reload();await first.waitFor();
   await frame.getByRole('button',{name:cached,exact:true}).waitFor();
@@ -311,7 +342,7 @@ try {
   await first.waitFor();
   assert.ok(await rail.isVisible());
   assert.deepEqual(errors,[]);
-  console.log('PASS playlist dialog (URL, file and paste), automatic 124-channel check, cancel/resume, persisted results and timestamp, filtered and individual checks, scoped CSP, player controls and navigation');
+  console.log('PASS playlist dialog (URL, file and paste), automatic 124-channel check, cache, scoped CSP, finite and live HLS seek bars, fullscreen and navigation');
 } finally {
   await browser?.close();
   child?.kill();

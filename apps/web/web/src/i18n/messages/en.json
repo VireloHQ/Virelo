@@ -1444,6 +1444,8 @@
   "What is the difference between the web player and the self-hosted server?": "What is the difference between the web player and the self-hosted server?",
   "The web player opens files on the device you are using and needs no account. The self-hosted npm version runs on your computer and adds accounts, library permissions, automatic movie and series metadata, and network playback.": "The web player opens files on the device you are using and needs no account. The self-hosted npm version runs on your computer and adds accounts, library permissions, automatic movie and series metadata, and network playback.",
   "Live TV": "Live TV",
+  "Live": "Live",
+  "{value0} behind live": "{value0} behind live",
   "Watch channels from your own M3U or M3U8 playlists.": "Watch channels from your own M3U or M3U8 playlists.",
   "Add playlist": "Add playlist",
   "Channels": "Channels",

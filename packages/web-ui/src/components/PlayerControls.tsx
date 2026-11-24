@@ -15,22 +15,26 @@ interface TransportProps {
   onToggle: () => void; onVolume: (value: number) => void; onMute: () => void;
   onFullscreen: () => void; onPip: () => void;
 }
-interface VideoControlsProps {
+interface TimelineProps {
+  current: number; duration: number; rolling?: boolean;
+  onSeek: (position: number) => void;
+}
+interface VideoControlsProps extends TimelineProps {
   live?: false;
-  current: number; duration: number;
   canGoPrev: boolean; canGoNext: boolean; hasQueue: boolean; queuePosition?: string;
   shuffled?: boolean; onShuffle?: () => void;
   repeat: RepeatMode; onRepeat: (mode: RepeatMode) => void;
-  onSeek: (position: number) => void; onSeekBy: (seconds: number) => void;
+  onSeekBy: (seconds: number) => void;
   onPrev?: () => void; onNext?: () => void;
   favorite: ReactNode; settings: ReactNode;
 }
-type PlayerControlsProps = TransportProps & (VideoControlsProps | { live: true });
+type PlayerControlsProps = TransportProps & (VideoControlsProps | { live: true; timeline: TimelineProps });
 
 export function PlayerControls(props: PlayerControlsProps) {
   useLocale();
   const { paused, busy } = props;
   const style = useAppearance().value.controllerStyle;
+  const timeline = props.live ? props.timeline : props;
   const play = <button type="button" className="player-play-button" aria-label={paused ? t("Play") : t("Pause")} aria-busy={busy} onClick={props.onToggle}>{paused ? <Play weight="fill"/> : <Pause weight="fill"/>}</button>;
   const controls: Record<string, ReactNode> = props.live ? {play} : {
     shuffle: <button type="button" aria-label={t("Shuffle queue")} aria-pressed={Boolean(props.shuffled)} disabled={!props.onShuffle || !props.hasQueue} onClick={props.onShuffle}><Shuffle/></button>,
@@ -45,9 +49,9 @@ export function PlayerControls(props: PlayerControlsProps) {
     ? ['play','rewind','forward','previous','next','shuffle','repeat']
     : ['shuffle','previous','rewind','play','forward','next','repeat'];
   return <div className="player-controls" data-controller-style={style} data-live={props.live || undefined} onDoubleClick={event => event.stopPropagation()}>
-    {!props.live && <PlayerTimeline current={props.current} duration={props.duration} onSeek={props.onSeek}/>}
+    <PlayerTimeline current={timeline.current} duration={timeline.duration} rolling={timeline.rolling} onSeek={timeline.onSeek}/>
     <div className="player-toolbar">
-      <div className="player-queue-position">{props.live ? <small className="player-queue">{t("Live TV")}</small> : props.queuePosition && <small className="player-queue">{props.queuePosition}</small>}</div>
+      <div className="player-queue-position">{props.live ? !timeline.rolling && <small className="player-queue">{t("Live TV")}</small> : props.queuePosition && <small className="player-queue">{props.queuePosition}</small>}</div>
       <div className="player-transport" role="group" aria-label={t("Playback controls")}>
         {props.live ? play : order.map(key => <Fragment key={key}>{controls[key]}</Fragment>)}
       </div>
@@ -62,20 +66,24 @@ export function PlayerControls(props: PlayerControlsProps) {
   </div>;
 }
 
-function PlayerTimeline({current, duration, onSeek}: Pick<VideoControlsProps,'current'|'duration'|'onSeek'>) {
+function PlayerTimeline({current, duration, rolling = false, onSeek}: TimelineProps) {
   const progress = duration > 0 ? Math.max(0, Math.min(100, current / duration * 100)) : 0;
+  const remaining = playerTime(Math.max(0, duration - current));
+  const rangeMax = duration > 0 ? duration : 1;
   return <div className="player-timeline">
-    <span className="player-time" aria-label={t("Elapsed time")}>{playerTime(current)}</span>
+    <span className="player-time" aria-label={rolling?undefined:t("Elapsed time")}>{rolling ? duration>0 ? `−${remaining}` : '—' : playerTime(current)}</span>
     <input className="player-seek" style={{ '--range-fill': progress + '%' } as CSSProperties} aria-label={t("Seek")}
-      aria-valuetext={t('{value0} of {value1}',{value0:playerTime(current),value1:playerTime(duration)})} type="range" min={0} max={Math.max(duration, 1)} step={.1}
-      disabled={duration <= 0} value={Math.max(0, Math.min(current, Math.max(duration, 1)))} onChange={event => onSeek(Number(event.currentTarget.value))}
+      aria-valuetext={rolling ? duration>0 ? t("{value0} behind live",{value0:remaining}) : t("Live") : t('{value0} of {value1}',{value0:playerTime(current),value1:playerTime(duration)})}
+      type="range" min={0} max={rangeMax} step={.1}
+      disabled={duration <= 0} value={Math.max(0, Math.min(current, rangeMax))} onChange={event => onSeek(Number(event.currentTarget.value))}
       onKeyDown={event => {
         const value = Number(event.currentTarget.value), step = event.shiftKey ? 30 : 5;
         const target = event.key === 'ArrowLeft' ? value - step : event.key === 'ArrowRight' ? value + step
           : event.key === 'Home' ? 0 : event.key === 'End' ? duration : null;
         if (target !== null) { event.preventDefault(); onSeek(Math.max(0, Math.min(duration, target))); }
       }}/>
-    <span className="player-time player-time-remaining" aria-label={t("Remaining time")} title={t("Remaining time")}>{playerTime(Math.max(0, duration - current))}</span>
+    {rolling ? <span className="player-time">{t("Live")}</span>
+      : <span className="player-time player-time-remaining" aria-label={t("Remaining time")} title={t("Remaining time")}>{remaining}</span>}
   </div>;
 }
 

@@ -1415,6 +1415,8 @@
   "Virelo will briefly disconnect connected devices while it restarts.": "Virelo will briefly disconnect connected devices while it restarts.",
   "Virelo will stop serving videos until it is started again.": "Virelo will stop serving videos until it is started again.",
   "Live TV": "Live TV",
+  "Live": "Live",
+  "{value0} behind live": "{value0} behind live",
   "Watch channels from your own M3U or M3U8 playlists.": "Watch channels from your own M3U or M3U8 playlists.",
   "Add playlist": "Add playlist",
   "Channels": "Channels",

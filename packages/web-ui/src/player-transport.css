@@ -8,6 +8,9 @@
 .player:not(.short-player):not(.controls-visible) .player-controls { transform:translateY(12px); }
 .player-timeline { display:grid; grid-template-columns:auto minmax(0,1fr) auto; align-items:center; gap:14px; }
 .player-timeline .player-time { font-size:11px; font-variant-numeric:tabular-nums; color:#e2dfe7; }
+.player-controls[data-live="true"] .player-seek:disabled { cursor:default; }
+.player-controls[data-live="true"] .player-seek:disabled::-webkit-slider-thumb { opacity:0; }
+.player-controls[data-live="true"] .player-seek:disabled::-moz-range-thumb { opacity:0; }
 .player:not(.short-player) .player-toolbar { display:grid; grid-template-columns:minmax(0,1fr) auto minmax(0,1fr); align-items:center; gap:16px; margin-top:6px; }
 .player-queue-position { min-width:0; display:flex; align-items:center; }
 .player-queue-position .player-queue { flex:none; min-width:0; padding:0; border:0; color:#c2bec6; font-size:11px; font-weight:500; }
