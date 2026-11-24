@@ -86,6 +86,10 @@ try {
   assert.deepEqual(playerModules,[],'HLS code is not fetched before choosing a channel');
   assert.equal(await frame.locator('select,input[type=file]:visible').count(),0,'no native select or file input is visible');
   const groupPicker=frame.getByRole('button',{name:'Channel group',exact:true});
+  const filterIcons=frame.locator('.live-tv-filters .picker-leading-icon');
+  assert.equal(await filterIcons.count(),2);
+  assert.ok(await filterIcons.evaluateAll(icons=>icons.every(icon=>icon.getAttribute('aria-hidden')==='true'&&icon.querySelector('svg')?.getBoundingClientRect().width===16)));
+  assert.notEqual(...await filterIcons.evaluateAll(icons=>icons.map(icon=>icon.querySelector('svg')?.innerHTML)));
   await groupPicker.focus();await groupPicker.press('Enter');
   await frame.getByRole('option',{name:'Music',exact:true}).click();
   await first.waitFor({state:'hidden'});
@@ -191,6 +195,7 @@ try {
   await page.setViewportSize({width:320,height:740});
   await player.waitForFunction(()=>document.documentElement.scrollHeight<=innerHeight+1&&document.documentElement.scrollWidth<=innerWidth+1);
   assert.ok(await page.locator('body').evaluate(body=>body.scrollWidth<=innerWidth+1));
+  assert.ok(await frame.locator('.live-tv-filters .picker-value').evaluateAll(labels=>labels.every(label=>label.scrollWidth<=label.clientWidth+1)),'filter icons leave the labels readable on a narrow screen');
   const remove=frame.getByRole('button',{name:'Remove playlist',exact:true});
   await remove.click();
   const dialog=frame.getByRole('alertdialog');
@@ -229,6 +234,7 @@ try {
   await first.waitFor();
   assert.ok(await rail.isVisible());
   assert.equal(await desktop.getByRole('link',{name:'Live TV',exact:true}).getAttribute('aria-current'),'page');
+  assert.ok(await frame.locator('.live-tv-filters .picker-value').evaluateAll(labels=>labels.every(label=>label.scrollWidth<=label.clientWidth+1)),'default filter labels fit beside the desktop sidebar');
   if(process.env.VIRELO_TEST_LIVE_TV_SCREENSHOT){
     await frame.getByRole('button',{name:'Check Studio One: Not checked',exact:true}).click();
     await frame.getByRole('button',{name:/^Check Studio One: [1-9]\d* ms$/}).waitFor();

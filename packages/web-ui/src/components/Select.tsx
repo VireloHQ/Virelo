@@ -1,15 +1,16 @@
-import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { CaretDown, Check } from '@phosphor-icons/react';
 
 export interface SelectOption { value: string; label: string }
 
-export function Select({ value, options, onChange, label, align = 'start', className }: {
+export function Select({ value, options, onChange, label, align = 'start', className, icon }: {
   value: string;
   options: SelectOption[];
   onChange: (value: string) => void;
   label?: string;
   align?: 'start' | 'end';
   className?: string;
+  icon?: ReactNode;
 }) {
   const [open, setOpen] = useState(false);
   const [animate, setAnimate] = useState(false);
@@ -93,7 +94,8 @@ export function Select({ value, options, onChange, label, align = 'start', class
   return <div className={`picker${className ? ` ${className}` : ''}`} ref={rootRef} data-align={align} data-animate={animate} data-open={open} onKeyDown={onRootKeyDown}>
     <button type="button" ref={triggerRef} className="picker-trigger" aria-haspopup="listbox" aria-expanded={open} aria-controls={menuId} aria-label={label}
       onClick={event => open ? close() : openMenu('current', event.detail > 0)} onKeyDown={onTriggerKeyDown}>
-      <span>{current?.label ?? value}</span>
+      {icon && <span className="picker-leading-icon" aria-hidden="true">{icon}</span>}
+      <span className="picker-value">{current?.label ?? value}</span>
       <CaretDown weight="bold"/>
     </button>
     <div ref={menuRef} id={menuId} hidden={!open} inert={!open} aria-hidden={!open} className="picker-menu" role="listbox" aria-label={label} style={align === 'end' ? { right: 0, left: 'auto' } : undefined}>

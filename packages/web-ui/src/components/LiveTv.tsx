@@ -1,6 +1,6 @@
 import { useDeferredValue, useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Button, Input, TextArea } from '@heroui/react';
-import { MagnifyingGlass, Play, Plus, Pulse, Television, Trash, UploadSimple } from '@phosphor-icons/react';
+import { Broadcast, MagnifyingGlass, Play, Plus, Pulse, TagSimple, Television, Trash, UploadSimple } from '@phosphor-icons/react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { IPTV_MAX_BYTES, type IptvChannelInfo, type IptvCheckResult, type IptvImport, type IptvSourceInfo } from '@virelo/core/iptv';
 import { t, useLocale } from '@edition/i18n';
@@ -114,8 +114,8 @@ export function LiveTv({service,admin}:{service:LiveTvService;admin?:ReactNode})
               onChange={event => { setSearch(event.currentTarget.value); setLimit(pageSize); }}/>
           </div>
           <div className="live-tv-filters">
-            {groups.length > 1 && <Select label={t("Channel group")} value={group} options={groups} onChange={value => { setGroup(value); setLimit(pageSize); }}/>}
-            <Select label={t("Stream status")} value={statusFilter} options={statusOptions} onChange={value => { setStatusFilter(value as StatusFilter); setLimit(pageSize); }}/>
+            {groups.length > 1 && <Select label={t("Channel group")} icon={<TagSimple/>} value={group} options={groups} onChange={value => { setGroup(value); setLimit(pageSize); }}/>}
+            <Select label={t("Stream status")} icon={<Broadcast/>} value={statusFilter} options={statusOptions} onChange={value => { setStatusFilter(value as StatusFilter); setLimit(pageSize); }}/>
           </div>
           <div className="live-tv-check-tools">
             <Button variant="ghost" aria-describedby={id+'-check-help'} isDisabled={!visible.length&&!checks.running} onPress={checkMatches}>
