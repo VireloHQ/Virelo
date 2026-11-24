@@ -121,6 +121,9 @@ try {
   assert.ok(await list.evaluate(node=>{node.scrollTop=200;const scrollable=node.scrollTop>0;node.scrollTop=0;return scrollable;}));
   const checkChannels=frame.getByRole('button',{name:'Check channels',exact:true});
   const recheck=frame.getByRole('button',{name:'Recheck channels',exact:true});
+  const checkBox=await checkChannels.boundingBox();
+  assert.ok(checkBox&&checkBox.width===44&&checkBox.height===44,'bulk checking uses a compact touch target');
+  assert.equal(await checkChannels.getAttribute('title'),'Check channels');
   await player.evaluate(()=>{
     const get=IDBObjectStore.prototype.get;
     window.channelReads=0;
@@ -130,7 +133,7 @@ try {
     };
   });
   await groupPicker.click();await frame.getByRole('option',{name:'Music',exact:true}).click();
-  await checkChannels.click();
+  await checkChannels.press('Enter');
   await recheck.waitFor();
   assert.deepEqual(requests,['/channels','/two/index.m3u8'],'bulk checks respect the current group');
   await groupPicker.click();await frame.getByRole('option',{name:'All groups',exact:true}).click();

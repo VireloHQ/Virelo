@@ -4,7 +4,7 @@ Open **Live TV** in the desktop header or sidebar, or from **Library** on a phon
 
 For a single HLS stream, add its HTTPS link. For a channel list imported from a file or pasted text, channel URLs must be absolute. Relative channel URLs in a remote list are resolved against that list's URL.
 
-Choose **Check channels** to check the entire playlist or the current filtered results, including channels behind **Load more**. Click the result at the end of a row to check just that channel. Checks run a few at a time and show progress; you can cancel and continue with the remaining channels on the same page. Use the tag icon for **Channel group** and the broadcast icon for **Stream status** to filter the guide.
+Use the pulse button beside **Channels** to check the entire playlist or the current filtered results, including channels behind **Load more**. Click the result at the end of a row to check just that channel. Checks run a few at a time and show progress beside a stop button; you can cancel and continue with the remaining channels on the same page. Use the tag icon for **Channel group** and the broadcast icon for **Stream status** to filter the guide.
 
 The displayed milliseconds measure the response to an HLS playlist request, not when playback starts. An accessible playlist does not guarantee its segments will play. If the browser cannot read a response, it shows **Could not confirm**.
 

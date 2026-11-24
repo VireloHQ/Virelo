@@ -3,9 +3,9 @@
 .live-tv-grid { display:grid; grid-template-columns:minmax(260px,28%) minmax(0,1fr); gap:clamp(18px,2.5vw,36px); align-items:start; }
 .live-tv-directory { min-width:0; border:1px solid var(--line); border-radius:12px; background:var(--surface); }
 .live-tv-directory-head { display:grid; gap:10px; padding:16px; border-bottom:1px solid var(--line); }
-.live-tv-directory-title { display:flex; flex-wrap:wrap; justify-content:space-between; align-items:baseline; gap:4px 12px; }
+.live-tv-directory-title { display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:4px 8px; }
 .live-tv-directory-title h2 { margin:0; font-size:17px; font-weight:600; }
-.live-tv-directory-title span,.live-tv-field>span,.live-tv-message { color:var(--text-muted); font-size:13px; }
+.live-tv-channel-count,.live-tv-field>span,.live-tv-message { color:var(--text-muted); font-size:13px; }
 .live-tv-source { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:8px; }
 .live-tv .live-tv-source>.button { width:44px; min-width:44px; min-height:44px; padding:0; }
 .live-tv .live-tv-directory .picker-trigger { min-width:0; width:100%; }
@@ -15,16 +15,16 @@
 .live-tv-search>svg { position:absolute; z-index:1; left:12px; top:50%; transform:translateY(-50%); color:var(--text-muted); pointer-events:none; }
 .live-tv .live-tv-search .input { width:100%; min-height:44px; padding-inline-start:38px; }
 .live-tv .live-tv-search .input:focus { box-shadow:none; outline:2px solid var(--color-focus); outline-offset:0; border-color:transparent; }
-.live-tv-filters { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,126px),1fr)); gap:8px; }
-.live-tv-filters .picker { min-width:0; }
+.live-tv-filters { display:flex; flex-wrap:wrap; gap:8px; }
+.live-tv-filters .picker { flex:1 1 max-content; min-width:0; max-width:100%; }
 .live-tv-directory .live-tv-filters .picker-trigger { gap:4px; padding-inline:7px; }
 .live-tv-filters .picker-value { flex:1; }
 .live-tv-filters .picker-leading-icon { display:grid; place-items:center; flex:0 0 16px; color:var(--text-muted); }
 .live-tv-directory .live-tv-filters .picker-leading-icon svg { color:inherit; transform:none; }
 .live-tv-directory .live-tv-filters .picker-trigger>svg { width:12px; }
-.live-tv-check-tools { display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:2px 8px; }
+.live-tv-check-tools { display:flex; align-items:center; gap:8px; margin-inline-start:auto; }
 .live-tv-check-progress { color:var(--text-muted); font-size:12px; font-variant-numeric:tabular-nums; }
-.live-tv .live-tv-check-tools .button { min-height:40px; padding-inline:8px; gap:6px; color:var(--text-muted); }
+.live-tv .live-tv-check-button { width:44px; min-width:44px; height:44px; min-height:44px; padding:0; }
 .live-channels { list-style:none; padding:6px; margin:0; max-height:20rem; overflow-y:auto; scrollbar-width:none; }
 .live-channels::-webkit-scrollbar { display:none; }
 .live-channels:focus-visible { outline:2px solid var(--color-focus); outline-offset:-2px; border-radius:0 0 12px 12px; }
