@@ -233,21 +233,25 @@ try {
   assert.ok(requests.some(path=>path.startsWith('/two/')));
   await liveTransport.getByText('Live',{exact:true}).waitFor();
   await player.waitForFunction(()=>Math.abs(Number(document.querySelector('.player-seek')?.max)-10)<.3);
+  await player.waitForFunction(()=>document.querySelector('.player-seek').style.getPropertyValue('--range-fill')==='100%');
   await video.hover({position:{x:12,y:20}});await pause.click();
   await seek.press('Home');
-  await player.waitForFunction(()=>document.querySelector('video').currentTime<1);
+  await player.waitForFunction(()=>document.querySelector('video').currentTime<1&&
+    parseFloat(document.querySelector('.player-seek').style.getPropertyValue('--range-fill'))<100);
   liveStart=3;liveEnd=12;
   await player.waitForFunction(()=>Math.abs(Number(document.querySelector('.player-seek')?.max)-9)<.3);
   await seek.press('Home');
   await player.waitForFunction(()=>{const v=document.querySelector('video');return v.currentTime>=3&&v.currentTime<4;});
   await seek.press('End');
   await player.waitForFunction(()=>{const v=document.querySelector('video');return !v.seeking&&v.currentTime>6&&v.currentTime<12;});
+  await player.waitForFunction(()=>document.querySelector('.player-seek').style.getPropertyValue('--range-fill')==='100%');
   await video.evaluate(element=>{
     Object.defineProperty(element,'seekable',{configurable:true,value:{length:0}});
     element.dispatchEvent(new Event('progress'));
   });
   await player.waitForFunction(()=>document.querySelector('.player-seek')?.disabled);
   assert.ok(await seek.isVisible()&&await seek.isDisabled(),'without a seekable range the live bar remains visible but inactive');
+  assert.equal(await seek.evaluate(element=>element.style.getPropertyValue('--range-fill')),'100%','a non-seekable live stream still paints a full track');
   await page.setViewportSize({width:320,height:740});
   await player.waitForFunction(()=>document.documentElement.scrollHeight<=innerHeight+1&&document.documentElement.scrollWidth<=innerWidth+1);
   assert.ok(await page.locator('body').evaluate(body=>body.scrollWidth<=innerWidth+1));

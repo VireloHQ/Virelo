@@ -16,7 +16,7 @@ interface TransportProps {
   onFullscreen: () => void; onPip: () => void;
 }
 interface TimelineProps {
-  current: number; duration: number; rolling?: boolean;
+  current: number; duration: number; rolling?: boolean; atLiveEdge?: boolean;
   onSeek: (position: number) => void;
 }
 interface VideoControlsProps extends TimelineProps {
@@ -49,7 +49,7 @@ export function PlayerControls(props: PlayerControlsProps) {
     ? ['play','rewind','forward','previous','next','shuffle','repeat']
     : ['shuffle','previous','rewind','play','forward','next','repeat'];
   return <div className="player-controls" data-controller-style={style} data-live={props.live || undefined} onDoubleClick={event => event.stopPropagation()}>
-    <PlayerTimeline current={timeline.current} duration={timeline.duration} rolling={timeline.rolling} onSeek={timeline.onSeek}/>
+    <PlayerTimeline current={timeline.current} duration={timeline.duration} rolling={timeline.rolling} atLiveEdge={timeline.atLiveEdge} onSeek={timeline.onSeek}/>
     <div className="player-toolbar">
       <div className="player-queue-position">{props.live ? !timeline.rolling && <small className="player-queue">{t("Live TV")}</small> : props.queuePosition && <small className="player-queue">{props.queuePosition}</small>}</div>
       <div className="player-transport" role="group" aria-label={t("Playback controls")}>
@@ -66,18 +66,20 @@ export function PlayerControls(props: PlayerControlsProps) {
   </div>;
 }
 
-function PlayerTimeline({current, duration, rolling = false, onSeek}: TimelineProps) {
-  const progress = duration > 0 ? Math.max(0, Math.min(100, current / duration * 100)) : 0;
+function PlayerTimeline({current, duration, rolling = false, atLiveEdge = false, onSeek}: TimelineProps) {
+  const live = rolling && (atLiveEdge || duration <= 0);
   const remaining = playerTime(Math.max(0, duration - current));
   const rangeMax = duration > 0 ? duration : 1;
+  const position = live ? rangeMax : duration > 0 ? Math.max(0, Math.min(current, rangeMax)) : 0;
+  const progress = position / rangeMax * 100;
   return <div className="player-timeline">
-    <span className="player-time" aria-label={rolling?undefined:t("Elapsed time")}>{rolling ? duration>0 ? `−${remaining}` : '—' : playerTime(current)}</span>
+    <span className="player-time" aria-label={rolling?undefined:t("Elapsed time")}>{rolling ? live ? '—' : `−${remaining}` : playerTime(current)}</span>
     <input className="player-seek" style={{ '--range-fill': progress + '%' } as CSSProperties} aria-label={t("Seek")}
-      aria-valuetext={rolling ? duration>0 ? t("{value0} behind live",{value0:remaining}) : t("Live") : t('{value0} of {value1}',{value0:playerTime(current),value1:playerTime(duration)})}
+      aria-valuetext={rolling ? live ? t("Live") : t("{value0} behind live",{value0:remaining}) : t('{value0} of {value1}',{value0:playerTime(current),value1:playerTime(duration)})}
       type="range" min={0} max={rangeMax} step={.1}
-      disabled={duration <= 0} value={Math.max(0, Math.min(current, rangeMax))} onChange={event => onSeek(Number(event.currentTarget.value))}
+      disabled={duration <= 0} value={position} onChange={event => onSeek(Number(event.currentTarget.value))}
       onKeyDown={event => {
-        const value = Number(event.currentTarget.value), step = event.shiftKey ? 30 : 5;
+        const value = live ? current : Number(event.currentTarget.value), step = event.shiftKey ? 30 : 5;
         const target = event.key === 'ArrowLeft' ? value - step : event.key === 'ArrowRight' ? value + step
           : event.key === 'Home' ? 0 : event.key === 'End' ? duration : null;
         if (target !== null) { event.preventDefault(); onSeek(Math.max(0, Math.min(duration, target))); }

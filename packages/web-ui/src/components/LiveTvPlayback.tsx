@@ -12,7 +12,7 @@ import { toggleFullscreen } from '../utils/fullscreen';
 import type { LiveTvService } from './LiveTv';
 import '../player-ui.css';
 
-const emptyTimeline={start:0,current:0,duration:0,rolling:false};
+const emptyTimeline={start:0,current:0,duration:0,rolling:false,atLiveEdge:false};
 const timelineEvents=['durationchange','timeupdate','progress'] as const;
 
 function streamTimeline(video:HTMLVideoElement,hls:import('hls.js').default|null) {
@@ -25,7 +25,8 @@ function streamTimeline(video:HTMLVideoElement,hls:import('hls.js').default|null
   const end=Math.min(seekable.end(last),details?.live?details.edge:(Number.isFinite(video.duration)?video.duration:Infinity));
   const duration=end-start;
   if(!Number.isFinite(duration)||duration<=0)return {...emptyTimeline,rolling};
-  return {start,duration,current:Math.max(0,Math.min(duration,video.currentTime-start)),rolling};
+  const atLiveEdge=rolling&&video.currentTime>=Math.min(end,hls?.liveSyncPosition??end)-1;
+  return {start,duration,current:Math.max(0,Math.min(duration,video.currentTime-start)),rolling,atLiveEdge};
 }
 
 export function LiveTvPlayback({title, service, source, channel}: {title:string; service:LiveTvService; source:string; channel:number}) {
@@ -49,7 +50,7 @@ export function LiveTvPlayback({title, service, source, channel}: {title:string;
   const updateTimeline=useCallback(()=>{
     if(!videoRef.current)return;
     const next=streamTimeline(videoRef.current,hlsRef.current);
-    setTimeline(previous=>previous.current===next.current&&previous.duration===next.duration&&previous.start===next.start&&previous.rolling===next.rolling?previous:next);
+    setTimeline(previous=>previous.current===next.current&&previous.duration===next.duration&&previous.start===next.start&&previous.rolling===next.rolling&&previous.atLiveEdge===next.atLiveEdge?previous:next);
   },[]);
 
   useEffect(() => {

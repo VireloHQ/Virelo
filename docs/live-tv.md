@@ -2,7 +2,7 @@
 
 Open **Live TV** in the desktop header or sidebar, or from **Library** on a phone. Select **Add playlist** to open the import dialog, then add an M3U or M3U8 playlist from an HTTPS link, a file, or pasted text. Search or filter the channel list and select a channel. Live TV uses the usual Virelo playback, volume, and fullscreen controls, without queue controls. Virelo does not include streams.
 
-The player shows a progress bar for every stream. On-demand streams use their normal timeline. For live streams you can seek within the broadcaster's available window; if the stream does not offer seeking, the bar is visible but disabled.
+The player shows a progress bar for every stream. On-demand streams use their normal timeline. The live bar is full when you are watching live, and shows your position if you rewind. If the stream does not offer seeking, the bar is full but disabled.
 
 For a single HLS stream, add its HTTPS link. For a channel list imported from a file or pasted text, channel URLs must be absolute. Relative channel URLs in a remote list are resolved against that list's URL.
 
