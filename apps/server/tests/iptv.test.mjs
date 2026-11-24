@@ -9,7 +9,7 @@ import { Readable } from 'node:stream';
 import { EventEmitter } from 'node:events';
 import { createVireloServer } from '../dist/server.js';
 import { hashPassword } from '../dist/accounts.js';
-import { parseIptvChannels,IPTV_MAX_BYTES } from '../dist/iptv-parser.js';
+import { parseIptvChannels,IPTV_MAX_BYTES,sniffIptvManifest } from '../dist/iptv-parser.js';
 import { approvedIptvUrl,publicIptvAddress,readIptvOrigins } from '../dist/iptv-network.js';
 import { relayIptvManifest } from '../dist/iptv-manifest.js';
 
@@ -45,6 +45,17 @@ test('the relay accepts only configured HTTPS origins and publicly routable addr
   assert.match(relayIptvManifest(media,map),/URI="\/media\/2"/);
   assert.deepEqual(references,[{value:'variant.m3u8',kind:'manifest'},{value:'init.mp4',kind:'segment'},{value:'segment.m4s',kind:'segment'}]);
   assert.throws(()=>relayIptvManifest(media.replace('#EXTINF','#EXT-X-KEY:METHOD=AES-128,URI="key"\n#EXTINF'),map),/unencrypted HLS/);
+});
+
+test('connection checks identify an HLS playlist with bounded reads',async()=>{
+  const chunks=['#EXT','M3U\r\n#EXT-X-TARGET','DURATION:2\r\n'];
+  let reads=0;
+  assert.equal(await sniffIptvManifest(async()=>Buffer.from(chunks[reads++])),true);
+  assert.equal(reads,3);
+  reads=0;
+  assert.equal(await sniffIptvManifest(async()=>{reads++;return Buffer.alloc(65536,32);}),false);
+  assert.equal(reads,1);
+  assert.equal(await sniffIptvManifest(async()=>Buffer.from('<html>Not a stream</html>')),false);
 });
 
 test('Live TV sources and relay sessions are private, bounded to allowed origins and stream the original segment',async t=>{
@@ -96,6 +107,18 @@ test('Live TV sources and relay sessions are private, bounded to allowed origins
   assert.ok(!info.body.includes(provider));
   // Use the relative reference at its expected base.
   const other=await call('POST',prefix+'/sources',{name:'Second',text:c.replace('./news.m3u8',provider+'/playlists/news.m3u8?key=fixture-token')},viewer);
+  const probe={sourceId:other.json().id,channel:0};
+  const before=fetched.length;
+  assert.equal((await call('POST',prefix+'/check',probe)).statusCode,401);
+  assert.equal((await call('POST',prefix+'/check',probe,admin)).statusCode,404);
+  assert.equal((await call('POST',prefix+'/check',{...probe,channel:200},viewer)).statusCode,404);
+  assert.equal(fetched.length,before);
+  const reachable=await call('POST',prefix+'/check',probe,viewer);
+  assert.equal(reachable.statusCode,200,reachable.body);
+  assert.equal(reachable.json().status,'responding');
+  assert.ok(reachable.json().milliseconds>0);
+  assert.ok(!reachable.body.includes('fixture-token'));
+  assert.deepEqual(fetched.slice(before),[provider+'/playlists/news.m3u8?key=fixture-token']);
   const session=await call('POST',prefix+'/sessions',{sourceId:other.json().id,channel:0},viewer);
   assert.equal(session.statusCode,201,session.body);
   const {url}=session.json();
@@ -111,7 +134,11 @@ test('Live TV sources and relay sessions are private, bounded to allowed origins
   assert.equal((await call('GET',segment,undefined,viewer)).body,'generated test segment');
   const redirect=await call('POST',prefix+'/sessions',{sourceId:id,channel:1},viewer);
   assert.equal((await call('GET',redirect.json().url,undefined,viewer)).statusCode,403);
+  assert.deepEqual((await call('POST',prefix+'/check',{sourceId:id,channel:1},viewer)).json(),{status:'not-allowed'});
   assert.ok(fetched.every(value=>value.startsWith(provider)));
   assert.equal((await call('PUT',prefix+'/origins',{origins:[]},admin)).statusCode,200);
+  const beforeBlocked=fetched.length;
+  assert.deepEqual((await call('POST',prefix+'/check',probe,viewer)).json(),{status:'not-allowed'});
+  assert.equal(fetched.length,beforeBlocked);
   assert.equal((await call('GET',url,undefined,viewer)).statusCode,404);
 });

@@ -1,4 +1,4 @@
-import { IPTV_MAX_BYTES,IPTV_MAX_SOURCES,iptvUrl,parseIptvChannels,type IptvChannel,type IptvSourceInfo } from '@virelo/core/iptv';
+import { IPTV_CHECK_TIMEOUT_MS,IPTV_MAX_BYTES,IPTV_MAX_SOURCES,iptvUrl,parseIptvChannels,sniffIptvManifest,type IptvChannel,type IptvSourceInfo } from '@virelo/core/iptv';
 import type { LiveTvService } from '@virelo/web-ui/components/LiveTv.tsx';
 
 function open() {
@@ -68,6 +68,22 @@ export const localLiveTv:LiveTvService={
     return source;
   },
   remove:id=>change({id,name:''}),
+  check:async (id,index,signal)=>{
+    const channel=(await channels(id))?.[index];
+    const url=channel&&iptvUrl(channel.url);
+    if(!url)return {status:'unavailable'};
+    const started=performance.now();
+    try{
+      const response=await fetch(url,{credentials:'omit',referrerPolicy:'no-referrer',cache:'no-store',
+        signal:AbortSignal.any([signal,AbortSignal.timeout(IPTV_CHECK_TIMEOUT_MS)])});
+      const reader=response.body?.getReader();
+      try{
+        if(!response.ok||!iptvUrl(response.url)||!reader||!await sniffIptvManifest(async()=>(await reader.read()).value))
+          return {status:'unavailable'};
+        return {status:'responding',milliseconds:Math.max(1,Math.round(performance.now()-started))};
+      }finally{void reader?.cancel().catch(()=>{});}
+    }catch{return {status:'unconfirmed'};}
+  },
   play:async (id,index)=>{
     const channel=(await channels(id))?.[index];
     if(!channel)throw new Error('Playlist not found.');

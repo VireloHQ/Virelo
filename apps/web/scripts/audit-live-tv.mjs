@@ -37,11 +37,16 @@ try {
   browser=await chromium.launch({headless:true,executablePath:process.env.VIRELO_TEST_CHROMIUM});
   const context=await browser.newContext({viewport:{width:390,height:844},serviceWorkers:'block',reducedMotion:'reduce'});
   const requests=[];
+  let releaseDelayed;
+  const delayed=new Promise(resolve=>{releaseDelayed=resolve;});
   await context.route(provider+'/**',async route=>{
     const {pathname}=new URL(route.request().url());
     requests.push(pathname);
     const headers={'Access-Control-Allow-Origin':'*'};
     if(pathname==='/channels')return route.fulfill({body:collection,contentType:'text/plain',headers});
+    if(pathname==='/station-0/index.m3u8')return route.fulfill({status:503,headers});
+    if(pathname==='/station-1/index.m3u8')return route.abort('failed');
+    if(pathname==='/station-12/index.m3u8')await delayed;
     const name=basename(pathname);
     if(name==='index.m3u8'||/^index\d+\.ts$/.test(name))return route.fulfill({
       body:await readFile(join(directory,name)),contentType:name.endsWith('.ts')?'video/mp2t':'application/vnd.apple.mpegurl',headers
@@ -85,12 +90,45 @@ try {
   await groupPicker.click();await frame.getByRole('option',{name:'All groups',exact:true}).click();
   const search=frame.getByRole('textbox',{name:'Search channels',exact:true});
   await search.fill('Studio One');await second.waitFor({state:'hidden'});
+  const focus=await search.evaluate(element=>{
+    const css=getComputedStyle(element);
+    return {outline:css.outlineWidth,shadow:css.boxShadow,spellcheck:element.spellcheck};
+  });
+  assert.deepEqual(focus,{outline:'2px',shadow:'none',spellcheck:false});
   await search.clear();await second.waitFor();
+  const list=frame.locator('.live-channels');
+  assert.equal(await list.evaluate(node=>getComputedStyle(node).scrollbarWidth),'none');
+  assert.ok(await list.evaluate(node=>{node.scrollTop=200;const scrollable=node.scrollTop>0;node.scrollTop=0;return scrollable;}));
+  await frame.getByRole('button',{name:'Check visible',exact:true}).click();
+  await frame.getByRole('button',{name:/^Check Studio One: [1-9]\d* ms$/}).waitFor();
+  await frame.getByRole('button',{name:'Check Field Station 1: Unavailable',exact:true}).waitFor();
+  await frame.getByRole('button',{name:'Check Field Station 2: Could not confirm',exact:true}).waitFor();
+  await frame.getByRole('button',{name:'Check visible',exact:true}).waitFor();
+  assert.ok(!requests.includes('/station-13/index.m3u8'),'checking visible rows does not probe the rest of the playlist');
+  assert.ok(requests.every(path=>path==='/channels'||path.endsWith('.m3u8')),'checking never downloads a video segment');
+  assert.deepEqual(playerModules,[],'checks do not load the HLS player');
+  assert.equal(await frame.locator('video').count(),0);
+  const statusPicker=frame.getByRole('button',{name:'Stream status',exact:true});
+  await statusPicker.click();await frame.getByRole('option',{name:'Unavailable',exact:true}).click();
+  await first.waitFor({state:'hidden'});
+  await frame.getByRole('button',{name:'Field Station 1',exact:true}).waitFor();
+  await statusPicker.click();await frame.getByRole('option',{name:'All statuses',exact:true}).click();
+  await search.fill('Field Station 14');
+  await frame.getByRole('button',{name:'Check Field Station 14: Not checked',exact:true}).click();
+  await frame.getByRole('button',{name:/^Check Field Station 14: [1-9]\d* ms$/}).waitFor();
+  await search.fill('Field Station 13');
+  const delayedCheck=frame.getByRole('button',{name:'Check Field Station 13: Not checked',exact:true});
+  await Promise.all([page.waitForRequest(provider+'/station-12/index.m3u8'),delayedCheck.click()]);
+  await frame.getByRole('button',{name:'Cancel checks',exact:true}).click();
+  await delayedCheck.waitFor();
+  releaseDelayed();
+  await search.clear();
+  const checksBeforePlay=requests.length;
   await first.click();
   const player=page.frames().find(child=>child.url()===base+'/media/iptv/');
   await player.waitForFunction(()=>{const video=document.querySelector('video');return video?.videoWidth===160&&!video.paused&&video.currentTime>.05;});
   assert.ok(requests.some(path=>/^\/one\/index\d+\.ts$/.test(path)));
-  assert.ok(!requests.some(path=>path.startsWith('/two/')));
+  assert.ok(!requests.slice(checksBeforePlay).some(path=>path.startsWith('/two/')));
   const liveTransport=frame.locator('.player-controls[data-live="true"]');
   await page.evaluate(()=>localStorage.setItem('virelo.appearance.v1',JSON.stringify({controllerStyle:'theater',accentColor:'#c3a6ff'})));
   await player.waitForFunction(()=>document.querySelector('.player-controls')?.getAttribute('data-controller-style')==='theater');
@@ -165,6 +203,8 @@ try {
   assert.ok(await rail.isVisible());
   assert.equal(await desktop.getByRole('link',{name:'Live TV',exact:true}).getAttribute('aria-current'),'page');
   if(process.env.VIRELO_TEST_LIVE_TV_SCREENSHOT){
+    await frame.getByRole('button',{name:'Check visible',exact:true}).click();
+    await frame.getByRole('button',{name:/^Check Studio One: [1-9]\d* ms$/}).waitFor();
     await first.click();
     await video.hover({position:{x:12,y:20}});await pause.click();await play.waitFor();
     await page.screenshot({path:process.env.VIRELO_TEST_LIVE_TV_SCREENSHOT});
@@ -179,7 +219,7 @@ try {
   await first.waitFor();
   assert.ok(await rail.isVisible());
   assert.deepEqual(errors,[]);
-  console.log('PASS app navigation, scoped CSP, styled guide, M3U/HLS, shared transport, volume, fullscreen, history, persistence, mobile fit and retry');
+  console.log('PASS focus, hidden but scrollable guide, visible and individual HLS checks, status filtering, scoped CSP, player controls and navigation');
 } finally {
   await browser?.close();
   child?.kill();

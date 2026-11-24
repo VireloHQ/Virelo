@@ -7,7 +7,7 @@ import { AccountError } from './accounts.js';
 import type { Account } from './auth-types.js';
 import { approvedIptvUrl,createIptvUpstream,readIptvOrigins } from './iptv-network.js';
 import { relayIptvManifest,type IptvResourceKind } from './iptv-manifest.js';
-import { IPTV_MAX_BYTES,IPTV_MAX_SOURCES,parseIptvChannels,type IptvChannel,type IptvImport,type IptvSourceInfo } from './iptv-parser.js';
+import { IPTV_CHECK_TIMEOUT_MS,IPTV_MAX_BYTES,IPTV_MAX_SOURCES,parseIptvChannels,sniffIptvManifest,type IptvChannel,type IptvCheckResult,type IptvImport,type IptvSourceInfo } from './iptv-parser.js';
 
 const root='/api/iptv';
 const expiry=15*60_000;
@@ -16,10 +16,10 @@ const maxReferences=4096,maxReferenceChars=1024*1024;
 type Resource={url:string;kind:IptvResourceKind};
 type Session={user:number;source:string;at:number;resources:Map<string,Resource>;referenceChars:number;stop:AbortController};
 
-function requestSignal(reply:FastifyReply,session?:AbortSignal) {
+function requestSignal(reply:FastifyReply,session?:AbortSignal,timeout=25000) {
   const controller=new AbortController();
   reply.raw.once('close',()=>controller.abort());
-  return AbortSignal.any([controller.signal,AbortSignal.timeout(25000),...(session?[session]:[])]);
+  return AbortSignal.any([controller.signal,AbortSignal.timeout(timeout),...(session?[session]:[])]);
 }
 
 async function readText(response:IncomingMessage) {
@@ -44,9 +44,12 @@ export function registerIptv(app:FastifyInstance,db:DatabaseSync,fresh:(request:
   catch{ /* A damaged allowlist must fail closed without disabling the video library. */ }
   const upstream=createIptvUpstream(()=>origins);
   const sessions=new Map<string,Session>();
+  const checksByUser=new Map<number,number>();
+  let activeChecks=0;
+  let checkPolicy=new AbortController();
   const stop=(id:string)=>{sessions.get(id)?.stop.abort();sessions.delete(id);};
   const sweep=()=>{for(const [id,session] of sessions)if(Date.now()-session.at>=expiry)stop(id);};
-  app.addHook('onClose',async()=>{for(const id of sessions.keys())stop(id);upstream.close();});
+  app.addHook('onClose',async()=>{checkPolicy.abort();for(const id of sessions.keys())stop(id);upstream.close();});
 
   const viewer=(request:FastifyRequest)=>{
     const user=fresh(request);
@@ -58,12 +61,22 @@ export function registerIptv(app:FastifyInstance,db:DatabaseSync,fresh:(request:
     if(!row)throw new AccountError('Playlist not found.',404);
     return {id,name:row.name,channels:JSON.parse(row.channels) as IptvChannel[]};
   };
+  const channelFor=db.prepare('SELECT json_extract(channels, ?) AS channel FROM iptv_sources WHERE id=? AND user_id=?');
+  const storedChannel=(body:{sourceId:string;channel:number}|undefined,user:number):IptvChannel=>{
+    if(typeof body?.sourceId!=='string'||!Number.isSafeInteger(body.channel)||body.channel<0)
+      throw new AccountError('Playlist not found.',404);
+    const row=channelFor.get(`$[${body.channel}]`,body.sourceId,user) as {channel:string|null}|undefined;
+    if(!row?.channel)throw new AccountError('Playlist not found.',404);
+    return JSON.parse(row.channel) as IptvChannel;
+  };
   app.get(root+'/origins',async request=>{fresh(request,true);return {origins:[...origins]};});
   app.put<{Body:{origins?:unknown}}>(root+'/origins',async request=>{
     fresh(request,true);
     const updated=readIptvOrigins(request.body?.origins);
     db.prepare("INSERT INTO settings(key,value) VALUES ('iptvAllowedOrigins',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").run(JSON.stringify(updated));
     origins=new Set(updated);
+    checkPolicy.abort();
+    checkPolicy=new AbortController();
     for(const id of sessions.keys())stop(id);
     return {origins:updated};
   });
@@ -99,12 +112,35 @@ export function registerIptv(app:FastifyInstance,db:DatabaseSync,fresh:(request:
     for(const [key,session] of sessions)if(session.user===owner&&session.source===id)stop(key);
     return {ok:true};
   });
+  app.post<{Body:{sourceId:string;channel:number}}>(root+'/check',{bodyLimit:2048},async(request,reply):Promise<IptvCheckResult>=>{
+    const user=viewer(request);
+    const {url}=storedChannel(request.body,user);
+    if(activeChecks>=6||(checksByUser.get(user)??0)>=3)return {status:'unconfirmed'};
+    activeChecks++;
+    checksByUser.set(user,(checksByUser.get(user)??0)+1);
+    const signal=requestSignal(reply,checkPolicy.signal,IPTV_CHECK_TIMEOUT_MS);
+    const started=performance.now();
+    let body:IncomingMessage|undefined;
+    try{
+      body=(await upstream.fetch(url,signal)).response;
+      const chunks=body[Symbol.asyncIterator]();
+      if(!await sniffIptvManifest(async()=>(await chunks.next()).value as Uint8Array|undefined))
+        return {status:'unavailable'};
+      return {status:'responding',milliseconds:Math.max(1,Math.round(performance.now()-started))};
+    }catch(error){
+      if(error instanceof AccountError&&error.statusCode===403)return {status:'not-allowed'};
+      return {status:signal.aborted||!(error instanceof AccountError)||error.statusCode===503?'unconfirmed':'unavailable'};
+    }finally{
+      body?.destroy();
+      activeChecks--;
+      const remaining=(checksByUser.get(user)??1)-1;
+      if(remaining)checksByUser.set(user,remaining);
+      else checksByUser.delete(user);
+    }
+  });
   app.post<{Body:{sourceId:string;channel:number}}>(root+'/sessions',async(request,reply)=>{
     const user=viewer(request),body=request.body;
-    if(typeof body?.sourceId!=='string'||!Number.isSafeInteger(body?.channel)||body.channel<0)
-      throw new AccountError('Playlist not found.',404);
-    const channel=source(body.sourceId,user).channels[body.channel];
-    if(!channel)throw new AccountError('Playlist not found.',404);
+    const channel=storedChannel(body,user);
     const url=approvedIptvUrl(channel.url,origins).href;
     sweep();
     const owned=[...sessions].filter(([,session])=>session.user===user);

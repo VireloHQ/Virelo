@@ -1,12 +1,13 @@
 import { useDeferredValue, useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Button, Input, TextArea } from '@heroui/react';
-import { MagnifyingGlass, Play, Plus, Television, Trash, UploadSimple } from '@phosphor-icons/react';
+import { MagnifyingGlass, Play, Plus, Pulse, Television, Trash, UploadSimple } from '@phosphor-icons/react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { IPTV_MAX_BYTES, type IptvChannelInfo, type IptvImport, type IptvSourceInfo } from '@virelo/core/iptv';
+import { IPTV_MAX_BYTES, type IptvChannelInfo, type IptvCheckResult, type IptvImport, type IptvSourceInfo } from '@virelo/core/iptv';
 import { t, useLocale } from '@edition/i18n';
 import { ConfirmationDialog } from './ConfirmationDialog';
 import { Select } from './Select';
 import { LiveTvPlayback } from './LiveTvPlayback';
+import { useIptvChecks } from '../hooks/useIptvChecks';
 import './LiveTv.css';
 
 export type LiveTvService = {
@@ -14,6 +15,7 @@ export type LiveTvService = {
   channels: (id:string) => Promise<IptvChannelInfo[]>;
   add: (input:IptvImport) => Promise<IptvSourceInfo>;
   remove: (id:string) => Promise<unknown>;
+  check: (id:string,index:number,signal:AbortSignal) => Promise<IptvCheckResult>;
   play: (id:string,index:number) => Promise<{url:string;release?:()=>void}>;
 };
 type ImportMode = 'url'|'file'|'paste';
@@ -21,16 +23,28 @@ const pageSize = 100;
 const emptyChannels: IptvChannelInfo[] = [];
 const channelName = (entry:IptvChannelInfo,index:number) => entry.name || t("Channel {count}",{count:index+1});
 
+function statusLabels() {
+  return {
+    all:t("All statuses"),responding:t("Responding"),unavailable:t("Unavailable"),
+    unconfirmed:t("Could not confirm"),'not-allowed':t("Not allowed"),unchecked:t("Not checked")
+  };
+}
+type StatusFilter=keyof ReturnType<typeof statusLabels>;
+
 export function LiveTv({service,admin}:{service:LiveTvService;admin?:ReactNode}) {
   const locale = useLocale(), id = useId();
   const client = useQueryClient();
   const screen = useRef<HTMLElement>(null), guide = useRef<HTMLUListElement>(null);
   const [selected,setSelected] = useState<string|null>(null), [tuned,setTuned] = useState<number|null>(null);
   const [search,setSearch] = useState(''), [group,setGroup] = useState(''), [limit,setLimit] = useState(pageSize);
+  const [statusFilter,setStatusFilter] = useState<StatusFilter>('all');
   const query = useDeferredValue(search.trim().toLocaleLowerCase());
   const [adding,setAdding] = useState(false);
   const sources = useQuery({queryKey:['iptv-sources'],queryFn:service.sources});
   const source = sources.data?.find(item => item.id === selected) ?? sources.data?.[0];
+  const checks = useIptvChecks(source?.id,service.check);
+  const statuses = useMemo(statusLabels,[locale]);
+  const statusOptions = useMemo(() => Object.entries(statuses).map(([value,label])=>({value,label})),[statuses]);
   const channels = useQuery({queryKey:['iptv-channels',source?.id],queryFn:() => service.channels(source!.id),enabled:Boolean(source)});
   const list = channels.data ?? emptyChannels;
   const active = tuned === null ? undefined : list[tuned];
@@ -44,15 +58,28 @@ export function LiveTv({service,admin}:{service:LiveTvService;admin?:ReactNode})
     {value:'',label:t("All groups")},
     ...[...new Set(list.flatMap(entry=>entry.groups))].sort((a,b) => a.localeCompare(b,locale)).map(value => ({value,label:value}))
   ],[list,locale]);
-  const visible = useMemo(() => list.flatMap((item,index) => {
+  const matches = useMemo(() => list.flatMap((item,index) => {
     const label = channelName(item,index);
     return (!group || item.groups.includes(group)) && (!query || label.toLocaleLowerCase().includes(query)) ? [{index,label}] : [];
   }),[list,group,query,locale]);
+  const visible = statusFilter==='all'?matches:matches.filter(({index})=>(checks.results.get(index)?.status??'unchecked')===statusFilter);
 
-  useEffect(() => { if (guide.current) guide.current.scrollTop = 0; },[source?.id,group,query]);
+  useEffect(() => { if (guide.current) guide.current.scrollTop = 0; },[source?.id,group,query,statusFilter]);
 
   function choose(next:string|null) {
-    setSelected(next); setTuned(null); setSearch(''); setGroup(''); setLimit(pageSize);
+    checks.cancel();
+    setSelected(next); setTuned(null); setSearch(''); setGroup(''); setStatusFilter('all'); setLimit(pageSize);
+  }
+  function checkVisible() {
+    if(checks.running){checks.cancel();return;}
+    const list=guide.current;
+    if(!list)return;
+    const viewport=list.getBoundingClientRect();
+    const indices=Array.from(list.querySelectorAll<HTMLElement>('[data-channel]')).filter(row=>{
+      const rect=row.getBoundingClientRect();
+      return rect.bottom>viewport.top&&rect.top<viewport.bottom;
+    }).map(row=>Number(row.dataset.channel));
+    void checks.run(indices);
   }
   function tune(index:number, pointer:boolean) {
     setTuned(index);
@@ -88,18 +115,39 @@ export function LiveTv({service,admin}:{service:LiveTvService;admin?:ReactNode})
           </div>
           <div className="live-tv-search">
             <MagnifyingGlass size={18} aria-hidden="true"/>
-            <Input aria-label={t("Search channels")} placeholder={t("Search channels")} inputMode="search" value={search}
+            <Input aria-label={t("Search channels")} placeholder={t("Search channels")} inputMode="search" value={search} spellCheck={false} autoComplete="off"
               onChange={event => { setSearch(event.currentTarget.value); setLimit(pageSize); }}/>
           </div>
-          {groups.length > 1 && <Select label={t("Channel group")} value={group} options={groups} onChange={value => { setGroup(value); setLimit(pageSize); }}/>}
+          <div className="live-tv-filters">
+            {groups.length > 1 && <Select label={t("Channel group")} value={group} options={groups} onChange={value => { setGroup(value); setLimit(pageSize); }}/>}
+            <Select label={t("Stream status")} value={statusFilter} options={statusOptions} onChange={value => { setStatusFilter(value as StatusFilter); setLimit(pageSize); }}/>
+          </div>
+          <div className="live-tv-check-tools">
+            <Button variant="ghost" aria-describedby={id+'-check-help'} isDisabled={!visible.length&&!checks.running} onPress={checkVisible}>
+              <Pulse size={16} aria-hidden="true"/>{checks.running?t("Cancel checks"):t("Check visible")}
+            </Button>
+            <span className="sr-only" id={id+'-check-help'}>{t("Checks the response of the stream playlist without starting playback.")}</span>
+          </div>
         </div>
         {channels.isPending && <p className="live-tv-message" role="status">{t("Loading…")}</p>}
         {channels.isError && <div className="live-tv-notice" role="alert"><p>{t(channels.error.message)}</p><Button variant="secondary" onPress={() => void channels.refetch()}>{t("Try again")}</Button></div>}
         {channels.data && !visible.length && <p className="live-tv-message">{t("No matches")}</p>}
-        <ul className="live-channels" ref={guide}>
-          {visible.slice(0,limit).map(({index,label}) => <li key={index}><Button variant="ghost" aria-pressed={tuned===index} onPress={event => tune(index,event.pointerType!=='keyboard')}>
-            <Play size={16} weight={tuned===index?'fill':'regular'} aria-hidden="true"/><span>{label}</span>
-          </Button></li>)}
+        <ul className="live-channels" ref={guide} tabIndex={visible.length?0:undefined} aria-label={t("Channels")}>
+          {visible.slice(0,limit).map(({index,label}) => {
+            const result=checks.results.get(index), pending=checks.checking.has(index);
+            const status=pending?'checking':result?.status??'unchecked';
+            const text=pending?t("Checking…"):result?.status==='responding'?t("{value0} ms",{value0:result.milliseconds}):statuses[result?.status??'unchecked'];
+            return <li className="live-channel-row" data-channel={index} data-tuned={tuned===index} key={index}>
+              <Button className="live-channel-play" variant="ghost" aria-pressed={tuned===index} onPress={event => tune(index,event.pointerType!=='keyboard')}>
+                <Play size={16} weight={tuned===index?'fill':'regular'} aria-hidden="true"/><span>{label}</span>
+              </Button>
+              <Button className="live-channel-check" variant="ghost" data-status={status}
+                aria-label={t("Check {value0}",{value0:label})+': '+text} aria-describedby={id+'-check-help'}
+                aria-busy={pending} aria-disabled={checks.running||undefined} onPress={()=>void checks.run([index])}>
+                {status==='unchecked'?'—':text}
+              </Button>
+            </li>;
+          })}
         </ul>
         {visible.length > limit && <div className="live-tv-more"><Button variant="ghost" onPress={() => setLimit(value => value+pageSize)}>{t("Load more")}</Button></div>}
       </section>

@@ -2,6 +2,7 @@
 // Copyright (c) 2026 IPTV Player contributors. See IPTV-PLAYER-MIT.txt.
 export const IPTV_MAX_BYTES=8*1024*1024;
 export const IPTV_MAX_SOURCES=12;
+export const IPTV_CHECK_TIMEOUT_MS=4500;
 const maxChannels=20000;
 
 export type IptvChannel={name:string;groups:string[];url:string};
@@ -9,6 +10,7 @@ export type IptvChannelInfo=Omit<IptvChannel,'url'>;
 export type IptvSourceInfo={id:string;name:string};
 export type IptvSource=IptvSourceInfo&{channels:IptvChannel[]};
 export type IptvImport={name:string;url?:string;text?:string};
+export type IptvCheckResult={status:'responding';milliseconds:number}|{status:'unavailable'|'unconfirmed'|'not-allowed'};
 
 export function iptvUrl(value:string,base?:string):URL|null {
   if(!value||value.length>4096)return null;
@@ -23,6 +25,22 @@ export function iptvUrl(value:string,base?:string):URL|null {
 export function isHlsManifest(content:string) {
   return content.trimStart().startsWith('#EXTM3U')&&
     /^#EXT-X-(?:TARGETDURATION|MEDIA-SEQUENCE|STREAM-INF|I-FRAME-STREAM-INF|PLAYLIST-TYPE|ENDLIST|MAP|PART|SERVER-CONTROL)[:\r]?/m.test(content);
+}
+
+// A connection check only identifies the entry playlist, never its variants or segments.
+export async function sniffIptvManifest(read:()=>Promise<Uint8Array|undefined>) {
+  const decoder=new TextDecoder();
+  let text='',remaining=16*1024;
+  while(remaining>0){
+    const chunk=await read();
+    if(!chunk)break;
+    text+=decoder.decode(chunk.subarray(0,remaining),{stream:true});
+    remaining-=chunk.byteLength;
+    const start=text.trimStart();
+    if(start.length>=7&&!start.startsWith('#EXTM3U'))return false;
+    if(isHlsManifest(text))return true;
+  }
+  return false;
 }
 
 function attributes(line:string) {
