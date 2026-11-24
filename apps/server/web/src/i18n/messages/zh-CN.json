@@ -6,6 +6,7 @@
   "Could not confirm": "无法确认",
   "Not allowed": "未获许可",
   "Check channels": "检查频道",
+  "Last checked: {value0}": "上次检查：{value0}",
   "Recheck channels": "重新检查频道",
   "Cancel checks": "取消检查",
   "Check {value0}": "检查 {value0} 的连接",

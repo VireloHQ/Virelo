@@ -1,8 +1,8 @@
-import { useDeferredValue, useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useDeferredValue, useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Button, Input, Modal, TextArea } from '@heroui/react';
-import { Broadcast, CheckCircle, LockSimple, MagnifyingGlass, MinusCircle, Play, Playlist, Plus, Pulse, Question, Stop, TagSimple, Television, Trash, UploadSimple, XCircle } from '@phosphor-icons/react';
+import { Broadcast, CheckCircle, Clock, LockSimple, MagnifyingGlass, MinusCircle, Play, Playlist, Plus, Pulse, Question, Stop, TagSimple, Television, Trash, UploadSimple, XCircle } from '@phosphor-icons/react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { IPTV_MAX_BYTES, type IptvChannelInfo, type IptvCheckResult, type IptvImport, type IptvSourceInfo } from '@virelo/core/iptv';
+import { IPTV_MAX_BYTES, type IptvChannelInfo, type IptvCheckResult, type IptvGuide, type IptvImport, type IptvSourceInfo } from '@virelo/core/iptv';
 import { t, useLocale } from '@edition/i18n';
 import { ConfirmationDialog } from './ConfirmationDialog';
 import { Select } from './Select';
@@ -12,7 +12,7 @@ import './LiveTv.css';
 
 export type LiveTvService = {
   sources: () => Promise<IptvSourceInfo[]>;
-  channels: (id:string) => Promise<IptvChannelInfo[]>;
+  channels: (id:string) => Promise<IptvGuide>;
   add: (input:IptvImport) => Promise<IptvSourceInfo>;
   remove: (id:string) => Promise<unknown>;
   check: (id:string,index:number,signal:AbortSignal) => Promise<IptvCheckResult>;
@@ -22,6 +22,8 @@ type ImportMode = 'url'|'file'|'paste';
 type PlaylistInput = IptvImport & { file?:File };
 const pageSize = 100;
 const emptyChannels: IptvChannelInfo[] = [];
+const emptyChecks:ReadonlyMap<number,IptvCheckResult>=new Map();
+type GuideState={channels:IptvChannelInfo[];results:ReadonlyMap<number,IptvCheckResult>;lastCheckedAt:number};
 const channelName = (entry:IptvChannelInfo,index:number) => entry.name || t("Channel {count}",{count:index+1});
 
 function statusLabels() {
@@ -43,16 +45,41 @@ export function LiveTv({service,admin}:{service:LiveTvService;admin?:ReactNode})
   const [statusFilter,setStatusFilter] = useState<StatusFilter>('all');
   const query = useDeferredValue(search.trim().toLocaleLowerCase());
   const [adding,setAdding] = useState(false);
+  const [firstCheck,setFirstCheck] = useState<string|null>(null);
   const sources = useQuery({queryKey:['iptv-sources'],queryFn:service.sources});
   const source = sources.data?.find(item => item.id === selected) ?? sources.data?.[0];
-  const checks = useIptvChecks(source?.id,service.check);
+  const sourceId=source?.id;
+  const publishChecks=useCallback((id:string,updates:ReadonlyMap<number,IptvCheckResult>)=>{
+    client.setQueryData<GuideState>(['iptv-channels',id],previous=>{
+      if(!previous)return previous;
+      const results=new Map(previous.results);
+      let lastCheckedAt=previous.lastCheckedAt;
+      for(const [index,result] of updates){
+        if(!result.checkedAt&&results.get(index)?.checkedAt)continue;
+        results.set(index,result);
+        lastCheckedAt=Math.max(lastCheckedAt,result.checkedAt??0);
+      }
+      return {...previous,results,lastCheckedAt};
+    });
+  },[client]);
+  const checks = useIptvChecks(sourceId,service.check,publishChecks);
+  const runChecks=checks.run;
+  const dateFormat=useMemo(()=>new Intl.DateTimeFormat(locale,{dateStyle:'short',timeStyle:'short'}),[locale]);
   const statuses = useMemo(statusLabels,[locale]);
   const statusOptions = useMemo(() => (Object.keys(statuses) as StatusFilter[]).map(value => {
     const Icon = statusIcons[value];
     return {value,label:statuses[value],icon:<Icon/>};
   }),[statuses]);
-  const channels = useQuery({queryKey:['iptv-channels',source?.id],queryFn:() => service.channels(source!.id),enabled:Boolean(source)});
-  const list = channels.data ?? emptyChannels;
+  const channels = useQuery({queryKey:['iptv-channels',sourceId],enabled:Boolean(sourceId),refetchOnWindowFocus:false,queryFn:async ():Promise<GuideState>=>{
+    const {channels,checks}=await service.channels(sourceId!);
+    const results=new Map<number,IptvCheckResult>();
+    let lastCheckedAt=0;
+    for(const result of checks){results.set(result.index,result);lastCheckedAt=Math.max(lastCheckedAt,result.checkedAt);}
+    return {channels,results,lastCheckedAt};
+  }});
+  const list = channels.data?.channels ?? emptyChannels;
+  const results = channels.data?.results ?? emptyChecks;
+  const lastChecked = channels.data?.lastCheckedAt ? new Date(channels.data.lastCheckedAt) : null;
   const active = tuned === null ? undefined : list[tuned];
   const add = useMutation({mutationFn:async ({file,...input}:PlaylistInput) => {
     if (!file) return service.add(input);
@@ -63,7 +90,7 @@ export function LiveTv({service,admin}:{service:LiveTvService;admin?:ReactNode})
     return service.add({...input,text});
   },onSuccess:async result => {
     await client.invalidateQueries({queryKey:['iptv-sources']});
-    choose(result.id); setAdding(false);
+    choose(result.id,true); setAdding(false);
   }});
 
   const playlists = useMemo(() => (sources.data ?? []).map(item => ({value:item.id,label:item.name})),[sources.data]);
@@ -75,14 +102,20 @@ export function LiveTv({service,admin}:{service:LiveTvService;admin?:ReactNode})
     const label = channelName(item,index);
     return (!group || item.groups.includes(group)) && (!query || label.toLocaleLowerCase().includes(query)) ? [{index,label}] : [];
   }),[list,group,query,locale]);
-  const visible = useMemo(() => statusFilter==='all'?matches:matches.filter(({index})=>(checks.results.get(index)?.status??'unchecked')===statusFilter),
-    [matches,statusFilter,checks.results]);
-  const unchecked = useMemo(() => visible.filter(({index})=>!checks.results.has(index)),[visible,checks.results]);
+  const visible = useMemo(() => statusFilter==='all'?matches:matches.filter(({index})=>(results.get(index)?.status??'unchecked')===statusFilter),
+    [matches,statusFilter,results]);
+  const unchecked = useMemo(() => visible.filter(({index})=>!results.has(index)),[visible,results]);
 
-  useEffect(() => { if (guide.current) guide.current.scrollTop = 0; },[source?.id,group,query,statusFilter]);
+  useEffect(() => { if (guide.current) guide.current.scrollTop = 0; },[sourceId,group,query,statusFilter]);
+  useEffect(()=>{
+    if(!sourceId||firstCheck!==sourceId||!list.length)return;
+    setFirstCheck(null);
+    void runChecks(list.map((_,index)=>index));
+  },[firstCheck,sourceId,list,runChecks]);
 
-  function choose(next:string|null) {
+  function choose(next:string|null,checkNew=false) {
     checks.cancel();
+    setFirstCheck(checkNew?next:null);
     setSelected(next); setTuned(null); setSearch(''); setGroup(''); setStatusFilter('all'); setLimit(pageSize);
   }
   function checkMatches() {
@@ -167,23 +200,29 @@ export function LiveTv({service,admin}:{service:LiveTvService;admin?:ReactNode})
             <Select label={t("Stream status")} icon={<Broadcast/>} className={statusFilter!=='all'?'live-tv-filter-active':undefined}
               value={statusFilter} options={statusOptions} onChange={value => { setStatusFilter(value as StatusFilter); setLimit(pageSize); }}/>
           </div>
+          {lastChecked && <div className="live-tv-checked">
+            <Clock size={14} aria-hidden="true"/>
+            <time dateTime={lastChecked.toISOString()}>{t("Last checked: {value0}",{value0:dateFormat.format(lastChecked)})}</time>
+          </div>}
         </div>
         {channels.isPending && <p className="live-tv-message" role="status">{t("Loading…")}</p>}
         {channels.isError && <div className="live-tv-notice" role="alert"><p>{t(channels.error.message)}</p><Button variant="secondary" onPress={() => void channels.refetch()}>{t("Try again")}</Button></div>}
         {channels.data && !visible.length && <p className="live-tv-message">{t("No matches")}</p>}
         <ul className="live-channels" ref={guide} tabIndex={visible.length?0:undefined} aria-label={t("Channels")}>
           {visible.slice(0,limit).map(({index,label}) => {
-            const result=checks.results.get(index), pending=checks.checking.has(index);
+            const result=results.get(index), pending=checks.checking.has(index);
             const status=pending?'checking':result?.status??'unchecked';
             const text=pending?t("Checking…"):result?.status==='responding'?t("{value0} ms",{value0:result.milliseconds}):statuses[result?.status??'unchecked'];
+            const collection=group?undefined:list[index].groups[0];
             return <li className="live-channel-row" data-tuned={tuned===index} key={index}>
-              <Button className="live-channel-play" variant="ghost" aria-pressed={tuned===index} onPress={event => tune(index,event.pointerType!=='keyboard')}>
-                <Play size={16} weight={tuned===index?'fill':'regular'} aria-hidden="true"/><span>{label}</span>
+              <Button className="live-channel-play" variant="ghost" aria-label={label} aria-pressed={tuned===index} onPress={event => tune(index,event.pointerType!=='keyboard')}>
+                <span className="live-channel-mark" aria-hidden="true"><Play size={15} weight={tuned===index?'fill':'regular'}/></span>
+                <span className="live-channel-copy"><span>{label}</span>{collection && <small>{collection}</small>}</span>
               </Button>
               <Button className="live-channel-check" variant="ghost" data-status={status}
                 aria-label={t("Check {value0}",{value0:label})+': '+text} aria-describedby={id+'-check-help'}
                 aria-busy={pending} aria-disabled={checks.running||undefined} onPress={()=>void checks.run([index])}>
-                {status==='unchecked'?'—':text}
+                <span className="live-channel-result">{status==='unchecked'?'—':text}</span>
               </Button>
             </li>;
           })}

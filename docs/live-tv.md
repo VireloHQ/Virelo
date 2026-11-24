@@ -1,10 +1,12 @@
 # Live TV
 
-Open **Live TV** in the desktop header or sidebar, or from **Library** on a phone. Select **Add playlist** to open the import dialog, then add an M3U or M3U8 playlist from an HTTPS link, a file, or pasted text. Search or filter the channel list and select a channel. Live TV uses the usual Virelo playback, volume, and fullscreen controls, without the on-demand seek and queue controls. Virelo does not include streams or check every channel when you import a playlist.
+Open **Live TV** in the desktop header or sidebar, or from **Library** on a phone. Select **Add playlist** to open the import dialog, then add an M3U or M3U8 playlist from an HTTPS link, a file, or pasted text. Search or filter the channel list and select a channel. Live TV uses the usual Virelo playback, volume, and fullscreen controls, without the on-demand seek and queue controls. Virelo does not include streams.
 
 For a single HLS stream, add its HTTPS link. For a channel list imported from a file or pasted text, channel URLs must be absolute. Relative channel URLs in a remote list are resolved against that list's URL.
 
-Use the pulse button beside **Channels** to check the entire playlist or the current filtered results, including channels behind **Load more**. Click the result at the end of a row to check just that channel. Checks run a few at a time and show progress beside a stop button; you can cancel and continue with the remaining channels on the same page. Filter by **Channel group** (tag icon) or **Stream status** (broadcast icon). Both menus use the guide width and show icons beside their options. Active filters are highlighted.
+Virelo starts checking channel links in the background after you add a playlist. Checks run a few at a time, including channels behind **Load more**, without opening the player. Use the stop button to cancel; the pulse button lets you continue with unchecked channels or recheck the current filtered results. Click the result at the end of a row to check just that channel.
+
+Results are saved per playlist in your browser or self-hosted account. Opening a saved playlist does not check it again. **Last checked** shows the most recent completed check, which might cover only one channel. Filter by **Channel group** (tag icon) or **Stream status** (broadcast icon). Both menus use the guide width and show icons beside their options. Active filters are highlighted.
 
 The displayed milliseconds measure the response to an HLS playlist request, not when playback starts. An accessible playlist does not guarantee its segments will play. If the browser cannot read a response, it shows **Could not confirm**.
 

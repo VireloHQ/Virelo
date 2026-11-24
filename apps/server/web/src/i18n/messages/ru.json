@@ -6,6 +6,7 @@
   "Could not confirm": "Не удалось проверить",
   "Not allowed": "Не разрешено",
   "Check channels": "Проверить каналы",
+  "Last checked: {value0}": "Последняя проверка: {value0}",
   "Recheck channels": "Проверить каналы снова",
   "Cancel checks": "Отменить проверку",
   "Check {value0}": "Проверить подключение к {value0}",

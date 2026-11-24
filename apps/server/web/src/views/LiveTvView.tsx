@@ -15,7 +15,10 @@ function AllowedOrigins(){
   useLocale();
   const client=useQueryClient(),[open,setOpen]=useState(false),id=useId();
   const settings=useQuery({queryKey:['iptv-origins'],queryFn:api.liveTv.origins,enabled:open});
-  const save=useMutation({mutationFn:api.liveTv.saveOrigins,onSuccess:result=>{client.setQueryData(['iptv-origins'],result);}});
+  const save=useMutation({mutationFn:api.liveTv.saveOrigins,onSuccess:result=>{
+    client.setQueryData(['iptv-origins'],result);
+    void client.invalidateQueries({queryKey:['iptv-channels']});
+  }});
   return <div className="live-tv-admin">
     <Button variant="secondary" aria-expanded={open} aria-controls={open?id:undefined} onPress={()=>setOpen(value=>!value)}>{t("Allowed Live TV sources")}</Button>
     {open&&<form id={id} className="live-tv-origins" onSubmit={event=>{

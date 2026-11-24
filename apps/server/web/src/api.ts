@@ -6,7 +6,7 @@ import type { DataUsage } from '../../src/types';
 import type { PlaylistDetail, PlaylistSummary, PlaylistWrite } from './types';
 import type { CustomCommand, CustomCommandDefinition } from '../../src/custom-command-types';
 import type { Announcement,AnnouncementWrite,NotificationPage } from '../../src/notification-types';
-import type { IptvChannelInfo,IptvCheckResult,IptvImport,IptvSourceInfo } from '@virelo/core/iptv';
+import type { IptvCheckResult,IptvGuide,IptvImport,IptvSourceInfo } from '@virelo/core/iptv';
 
 export interface QualityTranscodeState {
   status:string;
@@ -39,7 +39,7 @@ function withQuery(url: string, params: Record<string, string | number | undefin
 export const api = {
   liveTv: {
     sources:()=>request<IptvSourceInfo[]>('/api/iptv/sources'),
-    channels:async(id:string)=>(await request<{channels:IptvChannelInfo[]}>('/api/iptv/sources/'+encodeURIComponent(id))).channels,
+    channels:(id:string)=>request<IptvGuide>('/api/iptv/sources/'+encodeURIComponent(id)),
     add:(input:IptvImport)=>request<IptvSourceInfo>('/api/iptv/sources',{method:'POST',body:JSON.stringify(input)}),
     remove:(id:string)=>request<{ok:boolean}>('/api/iptv/sources/'+encodeURIComponent(id),{method:'DELETE'}),
     check:(sourceId:string,channel:number,signal:AbortSignal)=>request<IptvCheckResult>('/api/iptv/check',{method:'POST',

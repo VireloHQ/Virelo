@@ -6,6 +6,7 @@
   "Could not confirm": "Could not confirm",
   "Not allowed": "Not allowed",
   "Check channels": "Check channels",
+  "Last checked: {value0}": "Last checked: {value0}",
   "Recheck channels": "Recheck channels",
   "Cancel checks": "Cancel checks",
   "Check {value0}": "Check {value0}",

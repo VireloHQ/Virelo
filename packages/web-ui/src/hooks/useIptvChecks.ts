@@ -1,14 +1,12 @@
-import { useEffect,useRef,useState } from 'react';
+import { useCallback,useEffect,useRef,useState } from 'react';
 import type { IptvCheckResult } from '@virelo/core/iptv';
 
 type CheckChannel=(source:string,index:number,signal:AbortSignal)=>Promise<IptvCheckResult>;
 type CheckProgress={source:string;indexes:ReadonlySet<number>;completed:number;total:number};
-const noResults:ReadonlyMap<number,IptvCheckResult>=new Map();
 const noPending:ReadonlySet<number>=new Set();
 
-export function useIptvChecks(source:string|undefined,check:CheckChannel) {
+export function useIptvChecks(source:string|undefined,check:CheckChannel,publishResults:(source:string,results:ReadonlyMap<number,IptvCheckResult>)=>void) {
   const job=useRef<{source:string;finish:(keepResults:boolean)=>void}|null>(null);
-  const [results,setResults]=useState<{source:string;entries:ReadonlyMap<number,IptvCheckResult>}|null>(null);
   const [pending,setPending]=useState<CheckProgress|null>(null);
   useEffect(()=>()=>{
     if(job.current?.source===source)job.current?.finish(false);
@@ -17,7 +15,7 @@ export function useIptvChecks(source:string|undefined,check:CheckChannel) {
     if(job.current)job.current.finish(true);
     else setPending(null);
   }
-  async function run(indices:readonly number[]) {
+  const run=useCallback(async (indices:readonly number[])=>{
     if(!source||job.current||!indices.length)return;
     const batch=[...new Set(indices)];
     const controller=new AbortController();
@@ -27,11 +25,7 @@ export function useIptvChecks(source:string|undefined,check:CheckChannel) {
       if(buffered.size){
         const updates=new Map(buffered);
         buffered.clear();
-        setResults(previous=>{
-          const entries=new Map(previous?.source===source?previous.entries:noResults);
-          for(const [index,result] of updates)entries.set(index,result);
-          return {source,entries};
-        });
+        publishResults(source,updates);
       }
       setPending(finished?null:{source,indexes:new Set(active),completed,total:batch.length});
     };
@@ -67,10 +61,9 @@ export function useIptvChecks(source:string|undefined,check:CheckChannel) {
       }
     }));
     if(job.current===current)current.finish(true);
-  }
+  },[source,check,publishResults]);
   const progress=pending?.source===source?pending:null;
   return {
-    results:results?.source===source?results?.entries??noResults:noResults,
     checking:progress?.indexes??noPending,
     running:Boolean(progress),progress,run,cancel
   };

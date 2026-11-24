@@ -7,7 +7,7 @@ import { AccountError } from './accounts.js';
 import type { Account } from './auth-types.js';
 import { approvedIptvUrl,createIptvUpstream,readIptvOrigins } from './iptv-network.js';
 import { relayIptvManifest,type IptvResourceKind } from './iptv-manifest.js';
-import { IPTV_CHECK_TIMEOUT_MS,IPTV_MAX_BYTES,IPTV_MAX_SOURCES,parseIptvChannels,sniffIptvManifest,type IptvChannel,type IptvCheckResult,type IptvImport,type IptvSourceInfo } from './iptv-parser.js';
+import { IPTV_CHECK_TIMEOUT_MS,IPTV_MAX_BYTES,IPTV_MAX_SOURCES,parseIptvChannels,sniffIptvManifest,type IptvCachedCheck,type IptvChannel,type IptvCheckResult,type IptvImport,type IptvSourceInfo } from './iptv-parser.js';
 
 const root='/api/iptv';
 const expiry=15*60_000;
@@ -36,7 +36,14 @@ export function registerIptv(app:FastifyInstance,db:DatabaseSync,fresh:(request:
   db.exec(`CREATE TABLE IF NOT EXISTS iptv_sources (
     id TEXT PRIMARY KEY,user_id INTEGER NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
     name TEXT NOT NULL,channels TEXT NOT NULL);
-    CREATE INDEX IF NOT EXISTS iptv_sources_owner ON iptv_sources(user_id);`);
+    CREATE INDEX IF NOT EXISTS iptv_sources_owner ON iptv_sources(user_id);
+    CREATE TABLE IF NOT EXISTS iptv_checks (
+      source_id TEXT NOT NULL REFERENCES iptv_sources(id) ON DELETE CASCADE,
+      channel INTEGER NOT NULL,result TEXT NOT NULL,PRIMARY KEY(source_id,channel));`);
+  const readChecks=db.prepare('SELECT result FROM iptv_checks WHERE source_id=?');
+  const saveCheck=db.prepare(`INSERT INTO iptv_checks(source_id,channel,result)
+    SELECT id,?,? FROM iptv_sources WHERE id=? AND user_id=?
+    ON CONFLICT(source_id,channel) DO UPDATE SET result=excluded.result`);
   const readOrigins=db.prepare("SELECT value FROM settings WHERE key='iptvAllowedOrigins'");
   const stored=readOrigins.get() as {value:string}|undefined;
   let origins=new Set<string>();
@@ -74,6 +81,7 @@ export function registerIptv(app:FastifyInstance,db:DatabaseSync,fresh:(request:
     fresh(request,true);
     const updated=readIptvOrigins(request.body?.origins);
     db.prepare("INSERT INTO settings(key,value) VALUES ('iptvAllowedOrigins',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").run(JSON.stringify(updated));
+    if(updated.length!==origins.size||updated.some(origin=>!origins.has(origin)))db.exec('DELETE FROM iptv_checks');
     origins=new Set(updated);
     checkPolicy.abort();
     checkPolicy=new AbortController();
@@ -83,7 +91,8 @@ export function registerIptv(app:FastifyInstance,db:DatabaseSync,fresh:(request:
   app.get(root+'/sources',async request=>db.prepare('SELECT id,name FROM iptv_sources WHERE user_id=? ORDER BY rowid').all(viewer(request)));
   app.get<{Params:{id:string}}>(root+'/sources/:id',async request=>{
     const result=source(request.params.id,viewer(request));
-    return {...result,channels:result.channels.map(({name,groups})=>({name,groups}))};
+    const checks=readChecks.all(result.id).map(row=>JSON.parse(row.result as string) as IptvCachedCheck);
+    return {...result,channels:result.channels.map(({name,groups})=>({name,groups})),checks};
   });
   app.post<{Body:IptvImport}>(root+'/sources',{bodyLimit:IPTV_MAX_BYTES*2+8192},async(request,reply)=>{
     const owner=viewer(request),input=request.body;
@@ -118,18 +127,19 @@ export function registerIptv(app:FastifyInstance,db:DatabaseSync,fresh:(request:
     if(activeChecks>=6||(checksByUser.get(user)??0)>=3)return {status:'unconfirmed'};
     activeChecks++;
     checksByUser.set(user,(checksByUser.get(user)??0)+1);
-    const signal=requestSignal(reply,checkPolicy.signal,IPTV_CHECK_TIMEOUT_MS);
+    const policy=checkPolicy.signal;
+    const signal=requestSignal(reply,policy,IPTV_CHECK_TIMEOUT_MS);
     const started=performance.now();
     let body:IncomingMessage|undefined;
+    let result:IptvCheckResult;
     try{
       body=(await upstream.fetch(url,signal)).response;
       const chunks=body[Symbol.asyncIterator]();
-      if(!await sniffIptvManifest(async()=>(await chunks.next()).value as Uint8Array|undefined))
-        return {status:'unavailable'};
-      return {status:'responding',milliseconds:Math.max(1,Math.round(performance.now()-started))};
+      result=await sniffIptvManifest(async()=>(await chunks.next()).value as Uint8Array|undefined)
+        ? {status:'responding',milliseconds:Math.max(1,Math.round(performance.now()-started))} : {status:'unavailable'};
     }catch(error){
-      if(error instanceof AccountError&&error.statusCode===403)return {status:'not-allowed'};
-      return {status:signal.aborted||!(error instanceof AccountError)||error.statusCode===503?'unconfirmed':'unavailable'};
+      result={status:error instanceof AccountError&&error.statusCode===403?'not-allowed':
+        signal.aborted||!(error instanceof AccountError)||error.statusCode===503?'unconfirmed':'unavailable'};
     }finally{
       body?.destroy();
       activeChecks--;
@@ -137,6 +147,11 @@ export function registerIptv(app:FastifyInstance,db:DatabaseSync,fresh:(request:
       if(remaining)checksByUser.set(user,remaining);
       else checksByUser.delete(user);
     }
+    if(policy.aborted||reply.raw.destroyed)return {status:'unconfirmed'};
+    if(viewer(request)!==user)throw new AccountError('Please sign in again.',401);
+    const checked={...result,checkedAt:Date.now()};
+    saveCheck.run(request.body.channel,JSON.stringify({...checked,index:request.body.channel}),request.body.sourceId,user);
+    return checked;
   });
   app.post<{Body:{sourceId:string;channel:number}}>(root+'/sessions',async(request,reply)=>{
     const user=viewer(request),body=request.body;

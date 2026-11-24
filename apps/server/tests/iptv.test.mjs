@@ -105,6 +105,7 @@ test('Live TV sources and relay sessions are private, bounded to allowed origins
   assert.equal((await call('GET',prefix+'/sources/'+id,undefined,admin)).statusCode,404);
   const info=await call('GET',prefix+'/sources/'+id,undefined,viewer);
   assert.ok(!info.body.includes(provider));
+  assert.deepEqual(info.json().checks,[]);
   // Use the relative reference at its expected base.
   const other=await call('POST',prefix+'/sources',{name:'Second',text:c.replace('./news.m3u8',provider+'/playlists/news.m3u8?key=fixture-token')},viewer);
   const probe={sourceId:other.json().id,channel:0};
@@ -117,8 +118,14 @@ test('Live TV sources and relay sessions are private, bounded to allowed origins
   assert.equal(reachable.statusCode,200,reachable.body);
   assert.equal(reachable.json().status,'responding');
   assert.ok(reachable.json().milliseconds>0);
+  assert.ok(reachable.json().checkedAt>0);
   assert.ok(!reachable.body.includes('fixture-token'));
   assert.deepEqual(fetched.slice(before),[provider+'/playlists/news.m3u8?key=fixture-token']);
+  const saved=await call('GET',prefix+'/sources/'+probe.sourceId,undefined,viewer);
+  assert.deepEqual(saved.json().checks,[{...reachable.json(),index:0}]);
+  assert.ok(!saved.body.includes('fixture-token'));
+  assert.equal((await call('GET',prefix+'/sources/'+probe.sourceId,undefined,admin)).statusCode,404);
+  assert.equal(fetched.length,before+1,'opening cached checks does not probe again');
   const session=await call('POST',prefix+'/sessions',{sourceId:other.json().id,channel:0},viewer);
   assert.equal(session.statusCode,201,session.body);
   const {url}=session.json();
@@ -134,11 +141,12 @@ test('Live TV sources and relay sessions are private, bounded to allowed origins
   assert.equal((await call('GET',segment,undefined,viewer)).body,'generated test segment');
   const redirect=await call('POST',prefix+'/sessions',{sourceId:id,channel:1},viewer);
   assert.equal((await call('GET',redirect.json().url,undefined,viewer)).statusCode,403);
-  assert.deepEqual((await call('POST',prefix+'/check',{sourceId:id,channel:1},viewer)).json(),{status:'not-allowed'});
+  assert.equal((await call('POST',prefix+'/check',{sourceId:id,channel:1},viewer)).json().status,'not-allowed');
   assert.ok(fetched.every(value=>value.startsWith(provider)));
   assert.equal((await call('PUT',prefix+'/origins',{origins:[]},admin)).statusCode,200);
+  assert.deepEqual((await call('GET',prefix+'/sources/'+probe.sourceId,undefined,viewer)).json().checks,[],'allowlist changes discard results from the old policy');
   const beforeBlocked=fetched.length;
-  assert.deepEqual((await call('POST',prefix+'/check',probe,viewer)).json(),{status:'not-allowed'});
+  assert.equal((await call('POST',prefix+'/check',probe,viewer)).json().status,'not-allowed');
   assert.equal(fetched.length,beforeBlocked);
   assert.equal((await call('GET',url,undefined,viewer)).statusCode,404);
 });
