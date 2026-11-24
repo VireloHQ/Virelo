@@ -1,5 +1,5 @@
 import { useDeferredValue, useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
-import { Button, Input, TextArea } from '@heroui/react';
+import { Button, Input, Modal, TextArea } from '@heroui/react';
 import { Broadcast, MagnifyingGlass, Play, Plus, Pulse, TagSimple, Television, Trash, UploadSimple } from '@phosphor-icons/react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { IPTV_MAX_BYTES, type IptvChannelInfo, type IptvCheckResult, type IptvImport, type IptvSourceInfo } from '@virelo/core/iptv';
@@ -19,6 +19,7 @@ export type LiveTvService = {
   play: (id:string,index:number) => Promise<{url:string;release?:()=>void}>;
 };
 type ImportMode = 'url'|'file'|'paste';
+type PlaylistInput = IptvImport & { file?:File };
 const pageSize = 100;
 const emptyChannels: IptvChannelInfo[] = [];
 const channelName = (entry:IptvChannelInfo,index:number) => entry.name || t("Channel {count}",{count:index+1});
@@ -48,7 +49,14 @@ export function LiveTv({service,admin}:{service:LiveTvService;admin?:ReactNode})
   const channels = useQuery({queryKey:['iptv-channels',source?.id],queryFn:() => service.channels(source!.id),enabled:Boolean(source)});
   const list = channels.data ?? emptyChannels;
   const active = tuned === null ? undefined : list[tuned];
-  const add = useMutation({mutationFn:service.add,onSuccess:async result => {
+  const add = useMutation({mutationFn:async ({file,...input}:PlaylistInput) => {
+    if (!file) return service.add(input);
+    if (file.size>IPTV_MAX_BYTES) throw new Error('This playlist is too large.');
+    let text:string;
+    try { text=await file.text(); }
+    catch { throw new Error('Could not read this playlist.'); }
+    return service.add({...input,text});
+  },onSuccess:async result => {
     await client.invalidateQueries({queryKey:['iptv-sources']});
     choose(result.id); setAdding(false);
   }});
@@ -82,18 +90,35 @@ export function LiveTv({service,admin}:{service:LiveTvService;admin?:ReactNode})
       window.requestAnimationFrame(() => screen.current?.scrollIntoView({block:'nearest',behavior:'instant'}));
   }
 
-  return <div className="content-view live-tv">
+  function changeAdding(open:boolean) {
+    if (add.isPending) return;
+    add.reset(); setAdding(open);
+  }
+
+  const canAdd = !sources.isPending && !sources.isError;
+  const importTitle = id+'-import-title';
+  return <div className="content-view live-tv" data-import-open={adding || undefined}>
     <header className="content-heading">
       <div><h1>{t("Live TV")}</h1><p>{t("Watch channels from your own M3U or M3U8 playlists.")}</p></div>
-      {source && <Button variant="secondary" isDisabled={add.isPending} aria-expanded={adding} aria-controls={adding?id+'-import':undefined}
-        onPress={() => { add.reset(); setAdding(value => !value); }}><Plus size={18} aria-hidden="true"/>{t("Add playlist")}</Button>}
+      {canAdd && <Modal isOpen={adding} onOpenChange={changeAdding}>
+        <Button variant="secondary"><Plus size={18} aria-hidden="true"/>{t("Add playlist")}</Button>
+        <Modal.Backdrop className="virelo-confirm-backdrop live-tv-import-backdrop" isDismissable={!add.isPending} isKeyboardDismissDisabled={add.isPending}>
+          <Modal.Container className="virelo-confirm-container" placement="center" size="sm" scroll="inside">
+            <Modal.Dialog className="virelo-confirm-dialog" aria-labelledby={importTitle}>
+              <Modal.Header className="virelo-confirm-header">
+                <Modal.Heading id={importTitle} className="virelo-confirm-title">{t("Add playlist")}</Modal.Heading>
+              </Modal.Header>
+              <PlaylistImport titleId={importTitle} pending={add.isPending} error={add.error}
+                onImport={input => add.mutate(input)} onCancel={() => changeAdding(false)}/>
+            </Modal.Dialog>
+          </Modal.Container>
+        </Modal.Backdrop>
+      </Modal>}
     </header>
     {admin}
     {sources.isPending && <p role="status" className="live-tv-message">{t("Loading…")}</p>}
     {sources.isError && <div className="live-tv-notice" role="alert"><p>{t(sources.error.message)}</p><Button variant="secondary" onPress={() => void sources.refetch()}>{t("Try again")}</Button></div>}
-    {!sources.isPending && !sources.isError && (adding || !source) &&
-      <PlaylistImport id={id+'-import'} pending={add.isPending} error={add.error} onImport={input => add.mutate(input)}
-        onCancel={source ? () => { add.reset(); setAdding(false); } : undefined}/>}
+    {canAdd && !source && <p className="live-tv-message">{t("No playlists yet")}</p>}
     {source && <div className="live-tv-grid">
       <section className="live-tv-directory" aria-labelledby={id+'-channels'}>
         <div className="live-tv-directory-head">
@@ -162,53 +187,47 @@ export function LiveTv({service,admin}:{service:LiveTvService;admin?:ReactNode})
   </div>;
 }
 
-function PlaylistImport({id,pending,error,onImport,onCancel}: {
-  id:string; pending:boolean; error:Error|null; onImport:(input:IptvImport)=>void; onCancel?:()=>void
+function PlaylistImport({titleId,pending,error,onImport,onCancel}: {
+  titleId:string; pending:boolean; error:Error|null; onImport:(input:PlaylistInput)=>void; onCancel:()=>void
 }) {
   const [mode,setMode] = useState<ImportMode>('url');
   const [name,setName] = useState(''), [url,setUrl] = useState(''), [paste,setPaste] = useState('');
   const fileInput = useRef<HTMLInputElement>(null);
-  const [file,setFile] = useState<File|null>(null), [reading,setReading] = useState(false), [message,setMessage] = useState('');
-  const busy = pending || reading;
-  const submit = async () => {
-    setMessage('');
+  const [file,setFile] = useState<File|null>(null);
+  const submit = () => {
     const label = name.trim() || (mode==='file' ? file?.name.replace(/\.m3u8?$/i,'').slice(0,120) : undefined) || t("Playlist");
     if (mode==='url') { onImport({name:label,url:url.trim()}); return; }
     if (mode==='paste') { onImport({name:label,text:paste}); return; }
-    if (!file) return;
-    if (file.size>IPTV_MAX_BYTES) { setMessage(t("This playlist is too large.")); return; }
-    setReading(true);
-    try { onImport({name:label,text:await file.text()}); }
-    catch { setMessage(t("Could not read this playlist.")); }
-    finally { setReading(false); }
+    if (file) onImport({name:label,file});
   };
 
-  return <form id={id} aria-labelledby={id+'-title'} className="live-tv-import" onSubmit={event => { event.preventDefault(); if (!busy) void submit(); }}>
-    <h2 id={id+'-title'}>{t("Add playlist")}</h2>
-    <div className="live-tv-modes" role="group" aria-label={t("Import from")}>
-      {(['url','file','paste'] as const).map(value => <Button key={value} variant={mode===value?'secondary':'ghost'}
-        aria-pressed={mode===value} isDisabled={busy} onPress={() => { setMode(value); setMessage(''); }}>
-        {value==='url'?t("Playlist link"):value==='file'?t("File"):t("Paste text")}
-      </Button>)}
-    </div>
-    <label className="live-tv-field"><span>{t("Playlist name")}</span>
-      <Input maxLength={120} value={name} onChange={event => setName(event.currentTarget.value)}/>
-    </label>
-    {mode==='url' ? <label className="live-tv-field"><span>{t("Playlist link")}</span>
-      <Input type="url" value={url} maxLength={4096} required autoComplete="off" spellCheck={false}
-        placeholder="https://" onChange={event => setUrl(event.currentTarget.value)}/>
-    </label> : mode==='file' ? <div className="live-tv-file">
-      <input ref={fileInput} type="file" accept=".m3u,.m3u8" hidden
-        onChange={event => { const next=event.currentTarget.files?.[0]; if (next) setFile(next); event.currentTarget.value=''; }}/>
-      <Button variant="secondary" isDisabled={busy} onPress={() => fileInput.current?.click()}><UploadSimple size={18} aria-hidden="true"/>{t("Playlist file")}</Button>
-      {file && <span>{file.name}</span>}
-    </div> : <label className="live-tv-field"><span>{t("Playlist text")}</span>
-      <TextArea rows={4} value={paste} maxLength={IPTV_MAX_BYTES} required spellCheck={false} onChange={event => setPaste(event.currentTarget.value)}/>
-    </label>}
-    {(message || error) && <p className="error-copy" role="alert">{message || t(error!.message)}</p>}
-    <div className="live-tv-form-actions">
-      <Button type="submit" isPending={busy} isDisabled={mode==='file'&&!file}>{t("Add playlist")}</Button>
-      {onCancel && <Button variant="ghost" isDisabled={busy} onPress={onCancel}>{t("Cancel")}</Button>}
-    </div>
+  return <form aria-labelledby={titleId} className="live-tv-import" onSubmit={event => { event.preventDefault(); if (!pending) submit(); }}>
+    <Modal.Body className="virelo-confirm-body live-tv-import-fields">
+      <div className="live-tv-modes" role="group" aria-label={t("Import from")}>
+        {(['url','file','paste'] as const).map(value => <Button key={value} variant={mode===value?'secondary':'ghost'}
+          aria-pressed={mode===value} isDisabled={pending} onPress={() => setMode(value)}>
+          {value==='url'?t("Playlist link"):value==='file'?t("File"):t("Paste text")}
+        </Button>)}
+      </div>
+      <label className="live-tv-field"><span>{t("Playlist name")}</span>
+        <Input maxLength={120} value={name} readOnly={pending} onChange={event => setName(event.currentTarget.value)}/>
+      </label>
+      {mode==='url' ? <label className="live-tv-field"><span>{t("Playlist link")}</span>
+        <Input type="url" value={url} maxLength={4096} required autoComplete="off" spellCheck={false} readOnly={pending}
+          placeholder="https://" onChange={event => setUrl(event.currentTarget.value)}/>
+      </label> : mode==='file' ? <div className="live-tv-file">
+        <input ref={fileInput} type="file" accept=".m3u,.m3u8" hidden
+          onChange={event => { const next=event.currentTarget.files?.[0]; if (next) setFile(next); event.currentTarget.value=''; }}/>
+        <Button variant="secondary" isDisabled={pending} onPress={() => fileInput.current?.click()}><UploadSimple size={18} aria-hidden="true"/>{t("Playlist file")}</Button>
+        {file && <span>{file.name}</span>}
+      </div> : <label className="live-tv-field"><span>{t("Playlist text")}</span>
+        <TextArea rows={4} value={paste} maxLength={IPTV_MAX_BYTES} required spellCheck={false} readOnly={pending} onChange={event => setPaste(event.currentTarget.value)}/>
+      </label>}
+      {error && <p className="error-copy" role="alert">{t(error.message)}</p>}
+    </Modal.Body>
+    <Modal.Footer className="virelo-confirm-footer">
+      <Button type="button" variant="secondary" isDisabled={pending} onPress={onCancel}>{t("Cancel")}</Button>
+      <Button type="submit" isPending={pending} isDisabled={pending || (mode==='file'&&!file)}>{t("Add playlist")}</Button>
+    </Modal.Footer>
   </form>;
 }

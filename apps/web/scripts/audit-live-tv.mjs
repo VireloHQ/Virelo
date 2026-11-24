@@ -77,9 +77,22 @@ try {
   await frame.getByRole('heading',{name:'Live TV',exact:true}).waitFor();
   const player=page.frames().find(child=>child.url()===base+'/media/iptv/');
   assert.equal(requests.length,0,'opening the screen never connects to a provider');
-  await frame.getByLabel('Playlist name').fill('Test channels');
-  await frame.getByLabel('Playlist link',{exact:true}).fill(provider+'/channels');
-  await frame.getByRole('button',{name:'Add playlist',exact:true}).click();
+  const add=frame.locator('.content-heading').getByRole('button',{name:'Add playlist',exact:true});
+  const importDialog=frame.getByRole('dialog',{name:'Add playlist',exact:true});
+  const form=importDialog.getByRole('form',{name:'Add playlist',exact:true});
+  await frame.getByText('No playlists yet',{exact:true}).waitFor();
+  assert.equal(await frame.getByRole('form',{name:'Add playlist',exact:true}).count(),0,'the empty guide has no inline form');
+  await add.press('Enter');
+  await form.getByLabel('Playlist name').fill('Discard this draft');
+  await page.keyboard.press('Escape');
+  await importDialog.waitFor({state:'hidden'});
+  await player.waitForFunction(()=>document.activeElement===document.querySelector('.live-tv .content-heading button'));
+  await add.click();
+  assert.equal(await form.getByLabel('Playlist name').inputValue(),'');
+  await form.getByLabel('Playlist name').fill('Test channels');
+  await form.getByLabel('Playlist link',{exact:true}).fill(provider+'/channels');
+  await form.getByRole('button',{name:'Add playlist',exact:true}).click();
+  await importDialog.waitFor({state:'hidden'});
   const first=frame.getByRole('button',{name:'Studio One',exact:true}),second=frame.getByRole('button',{name:'Studio Two',exact:true});
   await first.waitFor();
   assert.deepEqual(requests,['/channels'],'import does not probe the channels');
@@ -208,18 +221,26 @@ try {
   await page.goForward();await first.waitFor();
   await page.reload();await first.waitFor();
   assert.equal(await frame.locator('video').count(),0,'reload does not restart a stream');
+  await page.setViewportSize({width:320,height:568});
   const importText='#EXTM3U\n#EXTINF:-1,Extra Channel\n'+provider+'/extra/index.m3u8\n';
   for(const mode of ['File','Paste text']){
-    await frame.locator('.content-heading').getByRole('button',{name:'Add playlist',exact:true}).click();
-    const form=frame.getByRole('form',{name:'Add playlist',exact:true});
+    await add.click();
     await form.getByRole('button',{name:mode,exact:true}).click();
     if(mode==='File')await form.locator('input[type=file]').setInputFiles({name:'Extra.m3u',mimeType:'audio/x-mpegurl',buffer:Buffer.from(importText)});
-    else await form.getByLabel('Playlist text').fill(importText);
+    else {
+      await form.getByLabel('Playlist text').fill('Not a playlist');
+      await form.getByRole('button',{name:'Add playlist',exact:true}).click();
+      await form.getByRole('alert').waitFor();
+      await form.getByLabel('Playlist text').fill(importText);
+    }
     await form.getByRole('button',{name:'Add playlist',exact:true}).click();
+    await importDialog.waitFor({state:'hidden'});
     await frame.getByRole('button',{name:'Extra Channel',exact:true}).waitFor();
+    await page.setViewportSize({width:320,height:740});
     await remove.click();
     await dialog.getByRole('button',{name:'Remove playlist',exact:true}).click();
     await first.waitFor();
+    await page.setViewportSize({width:320,height:568});
   }
   await page.setViewportSize({width:1440,height:900});
   const desktop=page.getByRole('navigation',{name:'Main navigation'});
@@ -252,7 +273,7 @@ try {
   await first.waitFor();
   assert.ok(await rail.isVisible());
   assert.deepEqual(errors,[]);
-  console.log('PASS 124-channel queue beyond Load more, filtered and individual checks, cancel/resume, focus, status filtering, scoped CSP, player controls and navigation');
+  console.log('PASS playlist dialog (URL, file and paste), 124-channel queue beyond Load more, filtered and individual checks, cancel/resume, focus, status filtering, scoped CSP, player controls and navigation');
 } finally {
   await browser?.close();
   child?.kill();

@@ -5,9 +5,9 @@ import '../live-tv-frame.css';
 
 export function LiveTvView() {
   useLocale();
-  const observer = useRef<ResizeObserver | null>(null);
+  const cleanupFrame = useRef<(() => void) | null>(null);
   const [failed, setFailed] = useState(false);
-  useEffect(() => () => observer.current?.disconnect(), []);
+  useEffect(() => () => cleanupFrame.current?.(), []);
 
   return <div className="content-view">
     {failed ? <>
@@ -15,16 +15,42 @@ export function LiveTvView() {
       <Button variant="secondary" onPress={() => setFailed(false)}>{t("Try again")}</Button>
     </> : <iframe className="live-tv-frame" src="/media/iptv/" title={t("Live TV")} allowFullScreen
       onLoad={({ currentTarget: frame }) => {
-        observer.current?.disconnect();
-        const root = frame.contentDocument?.getElementById('root');
-        if (!root) { setFailed(true); return; }
+        cleanupFrame.current?.();
+        const doc = frame.contentDocument, root = doc?.getElementById('root');
+        if (!doc || !root) { setFailed(true); return; }
+        const shell = frame.closest('.app-shell');
+        const header = shell?.querySelector('.topbar'), dock = shell?.querySelector('.mobile-nav');
+        const viewport = window.visualViewport;
+        // In-frame dialogs must fit the visible part of the frame, above the app's mobile dock.
+        const position = () => {
+          const bounds = frame.getBoundingClientRect(), bar = header?.getBoundingClientRect();
+          const dockTop = dock?.getClientRects().length ? dock.getBoundingClientRect().top : Infinity;
+          const viewportTop = viewport?.offsetTop ?? 0;
+          const headerBottom = bar && bar.right > bounds.left && bar.left < bounds.right ? bar.bottom : 0;
+          const top = Math.max(bounds.top, viewportTop, headerBottom);
+          const bottom = Math.min(viewportTop + (viewport?.height ?? window.innerHeight), dockTop);
+          doc.documentElement.style.setProperty('--live-tv-viewport-top', `${top - bounds.top}px`);
+          doc.documentElement.style.setProperty('--live-tv-viewport-height', `${Math.max(0, bottom - top)}px`);
+        };
         // Keep scrolling in the app; only the frame's document can connect to stream providers.
         const resize = () => {
           const height = Math.ceil(root.getBoundingClientRect().height);
           if (height > 0) frame.style.height = height + 'px';
+          position();
         };
-        observer.current = new ResizeObserver(resize);
-        observer.current.observe(root);
+        const observer = new ResizeObserver(resize);
+        observer.observe(root);
+        window.addEventListener('scroll', position, { passive: true });
+        window.addEventListener('resize', position);
+        viewport?.addEventListener('resize', position);
+        viewport?.addEventListener('scroll', position);
+        cleanupFrame.current = () => {
+          observer.disconnect();
+          window.removeEventListener('scroll', position);
+          window.removeEventListener('resize', position);
+          viewport?.removeEventListener('resize', position);
+          viewport?.removeEventListener('scroll', position);
+        };
         resize();
       }}/>}
   </div>;
