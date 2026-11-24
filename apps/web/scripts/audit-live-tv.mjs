@@ -95,6 +95,7 @@ try {
   await importDialog.waitFor({state:'hidden'});
   const first=frame.getByRole('button',{name:'Studio One',exact:true}),second=frame.getByRole('button',{name:'Studio Two',exact:true});
   await first.waitFor();
+  await frame.locator('.live-tv-channel-count').getByText(String(stations+2),{exact:true}).waitFor();
   assert.deepEqual(requests,['/channels'],'import does not probe the channels');
   assert.deepEqual(playerModules,[],'HLS code is not fetched before choosing a channel');
   assert.equal(await frame.locator('select,input[type=file]:visible').count(),0,'no native select or file input is visible');
@@ -106,6 +107,7 @@ try {
   await groupPicker.focus();await groupPicker.press('Enter');
   await frame.getByRole('option',{name:'Music',exact:true}).click();
   await first.waitFor({state:'hidden'});
+  assert.ok(await groupPicker.evaluate(button=>button.closest('.live-tv-filter-active')),'the current filter is visually distinct');
   await groupPicker.click();await frame.getByRole('option',{name:'All groups',exact:true}).click();
   await player.waitForFunction(()=>document.activeElement?.getAttribute('aria-label')==='Channel group');
   const search=frame.getByRole('textbox',{name:'Search channels',exact:true});

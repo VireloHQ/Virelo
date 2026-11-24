@@ -1,6 +1,6 @@
 import { useDeferredValue, useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Button, Input, Modal, TextArea } from '@heroui/react';
-import { Broadcast, MagnifyingGlass, Play, Plus, Pulse, Stop, TagSimple, Television, Trash, UploadSimple } from '@phosphor-icons/react';
+import { Broadcast, MagnifyingGlass, Play, Playlist, Plus, Pulse, Stop, TagSimple, Television, Trash, UploadSimple } from '@phosphor-icons/react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { IPTV_MAX_BYTES, type IptvChannelInfo, type IptvCheckResult, type IptvImport, type IptvSourceInfo } from '@virelo/core/iptv';
 import { t, useLocale } from '@edition/i18n';
@@ -124,15 +124,18 @@ export function LiveTv({service,admin}:{service:LiveTvService;admin?:ReactNode})
       <section className="live-tv-directory" aria-labelledby={id+'-channels'}>
         <div className="live-tv-directory-head">
           <div className="live-tv-directory-title">
-            <div><h2 id={id+'-channels'}>{t("Channels")}</h2>
-              {channels.data && <span className="live-tv-channel-count">{t("{count} channels",{count:visible.length})}</span>}
+            <div className="live-tv-directory-meta"><h2 id={id+'-channels'}>{t("Channels")}</h2>
+              {channels.data && <span className="live-tv-channel-count">
+                <span aria-hidden="true">{visible.length.toLocaleString(locale)}</span>
+                <span className="sr-only">{t("{count} channels",{count:visible.length})}</span>
+              </span>}
             </div>
             <div className="live-tv-check-tools">
               {checks.progress && <span className="live-tv-check-progress" role="progressbar" aria-label={t("Checking…")}
                 aria-valuemin={0} aria-valuemax={checks.progress.total} aria-valuenow={checks.progress.completed}>
                 {checks.progress.completed.toLocaleString(locale)} / {checks.progress.total.toLocaleString(locale)}
               </span>}
-              <Button variant="secondary" isIconOnly className="live-tv-check-button" aria-label={checkLabel}
+              <Button variant="ghost" isIconOnly className="live-tv-check-button" aria-label={checkLabel} data-checking={checks.running || undefined}
                 render={props=><button {...props} title={checkLabel}/>}
                 aria-describedby={id+'-check-help'} isDisabled={!visible.length&&!checks.running} onPress={checkMatches}>
                 {checks.running?<Stop size={18} weight="fill" aria-hidden="true"/>:<Pulse size={18} aria-hidden="true"/>}
@@ -141,8 +144,8 @@ export function LiveTv({service,admin}:{service:LiveTvService;admin?:ReactNode})
             </div>
           </div>
           <div className="live-tv-source">
-            <Select label={t("Playlist")} value={source.id} options={playlists} onChange={choose}/>
-            <ConfirmationDialog key={source.id} triggerLabel={t("Remove playlist")} triggerIcon={<Trash size={18}/>} triggerIconOnly
+            <Select label={t("Playlist")} icon={<Playlist/>} value={source.id} options={playlists} onChange={choose}/>
+            <ConfirmationDialog key={source.id} triggerLabel={t("Remove playlist")} triggerIcon={<Trash size={17} aria-hidden="true"/>} triggerIconOnly triggerVariant="ghost"
               title={t("Remove playlist?")} confirmLabel={t("Remove playlist")}
               onConfirm={async () => { await service.remove(source.id); choose(null); await client.invalidateQueries({queryKey:['iptv-sources']}); }}>
               <p>{source.name}</p>
@@ -154,8 +157,10 @@ export function LiveTv({service,admin}:{service:LiveTvService;admin?:ReactNode})
               onChange={event => { setSearch(event.currentTarget.value); setLimit(pageSize); }}/>
           </div>
           <div className="live-tv-filters">
-            {groups.length > 1 && <Select label={t("Channel group")} icon={<TagSimple/>} value={group} options={groups} onChange={value => { setGroup(value); setLimit(pageSize); }}/>}
-            <Select label={t("Stream status")} icon={<Broadcast/>} value={statusFilter} options={statusOptions} onChange={value => { setStatusFilter(value as StatusFilter); setLimit(pageSize); }}/>
+            {groups.length > 1 && <Select label={t("Channel group")} icon={<TagSimple/>} className={group?'live-tv-filter-active':undefined}
+              value={group} options={groups} onChange={value => { setGroup(value); setLimit(pageSize); }}/>}
+            <Select label={t("Stream status")} icon={<Broadcast/>} className={statusFilter!=='all'?'live-tv-filter-active':undefined}
+              value={statusFilter} options={statusOptions} onChange={value => { setStatusFilter(value as StatusFilter); setLimit(pageSize); }}/>
           </div>
         </div>
         {channels.isPending && <p className="live-tv-message" role="status">{t("Loading…")}</p>}
