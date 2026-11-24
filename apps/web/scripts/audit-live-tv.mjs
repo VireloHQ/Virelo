@@ -12,7 +12,7 @@ const provider='https://live-fixture.example';
 const stations=122;
 const collection='#EXTM3U\n#EXTINF:-1 group-title="News",Studio One\n'+provider+'/one/index.m3u8\n'
   +'#EXTINF:-1 group-title="Music",Studio Two\n'+provider+'/two/index.m3u8\n'
-  +Array.from({length:stations},(_,i)=>'#EXTINF:-1 group-title="Documentary",Field Station '+(i+1)+'\n'+provider+'/station-'+i+'/index.m3u8\n').join('');
+  +Array.from({length:stations},(_,i)=>'#EXTINF:-1 group-title="Entertainment",Field Station '+(i+1)+'\n'+provider+'/station-'+i+'/index.m3u8\n').join('');
 let child,browser;
 try {
   execFileSync(process.env.FFMPEG_PATH||'ffmpeg',[
@@ -227,6 +227,25 @@ try {
   await page.reload();await first.waitFor();
   assert.equal(await frame.locator('video').count(),0,'reload does not restart a stream');
   await page.setViewportSize({width:320,height:568});
+  await search.fill('No channel has this name');
+  await frame.getByText('No matches',{exact:true}).waitFor();
+  for(const [label,sample] of [['Channel group','Entertainment'],['Stream status','Could not confirm']]){
+    const trigger=frame.getByRole('button',{name:label,exact:true});
+    const menu=frame.getByRole('listbox',{name:label,exact:true});
+    await trigger.press('Enter');
+    const [bounds,bar]=await Promise.all([menu.boundingBox(),frame.locator('.live-tv-filters').boundingBox()]);
+    assert.ok(bounds&&bar&&Math.abs(bounds.x-bar.x)<=1&&Math.abs(bounds.width-bar.width)<=1,label+' uses the guide width');
+    assert.ok(bounds.height>=44,label+' remains openable with no matching rows');
+    const icons=await menu.locator('.picker-option-icon[aria-hidden="true"] svg').evaluateAll(items=>items.map(item=>item.innerHTML));
+    assert.equal(icons.length,await menu.getByRole('option').count(),label+' has an icon on every option');
+    if(label==='Stream status') assert.equal(new Set(icons).size,icons.length,'each stream status has its own icon');
+    assert.equal(await menu.getByText(sample,{exact:true}).evaluate(element=>{
+      const range=document.createRange(); range.selectNodeContents(element); return range.getClientRects().length;
+    }),1,sample+' fits on one line');
+    await trigger.press('Escape');
+    await menu.waitFor({state:'hidden'});
+  }
+  await search.clear();await first.waitFor();
   const importText='#EXTM3U\n#EXTINF:-1,Extra Channel\n'+provider+'/extra/index.m3u8\n';
   for(const mode of ['File','Paste text']){
     await add.click();

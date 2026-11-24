@@ -21,8 +21,12 @@
 .live-tv-search>svg { position:absolute; z-index:1; inset-inline-start:10px; top:50%; transform:translateY(-50%); color:var(--text-muted); pointer-events:none; }
 .live-tv .live-tv-search .input { width:100%; min-height:44px; padding-inline-start:36px; font-size:14px; }
 .live-tv .live-tv-search .input:focus { box-shadow:none; outline:2px solid var(--color-focus); outline-offset:0; border-color:transparent; }
-.live-tv-filters { display:flex; flex-wrap:wrap; gap:6px; }
-.live-tv-filters .picker { flex:0 1 max-content; min-width:0; max-width:100%; }
+.live-tv-filters { position:relative; display:flex; flex-wrap:wrap; gap:6px; }
+.live-tv-filters .picker { position:static; flex:0 1 max-content; min-width:0; max-width:100%; }
+.live-tv-directory .live-tv-filters .picker-menu { top:calc(100% + 4px); inset-inline:0; width:auto; border-top:1px solid var(--line-strong); border-radius:8px; scrollbar-width:none; }
+.live-tv-filters .picker-option-with-icon { display:flex; align-items:center; gap:9px; min-width:0; }
+.live-tv-filters .picker-option-icon { display:grid; place-items:center; width:16px; flex:none; color:var(--text-muted); }
+.live-tv-directory .live-tv-filters .picker-option-icon svg { color:inherit; }
 .live-tv-directory .live-tv-filters .picker-trigger { min-height:36px; gap:5px; padding:6px 8px; border-radius:6px; background:transparent; font-size:13px; }
 .live-tv-directory .live-tv-filters .picker-trigger:is(:hover,[aria-expanded="true"]) { background:var(--control-hover); }
 .live-tv-directory .live-tv-filter-active .picker-trigger { background:var(--color-brand-soft); border-color:var(--color-brand-soft); }

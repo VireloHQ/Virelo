@@ -1,7 +1,7 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { CaretDown, Check } from '@phosphor-icons/react';
 
-export interface SelectOption { value: string; label: string }
+export interface SelectOption { value: string; label: string; icon?: ReactNode }
 
 export function Select({ value, options, onChange, label, align = 'start', className, icon }: {
   value: string;
@@ -25,8 +25,8 @@ export function Select({ value, options, onChange, label, align = 'start', class
   useLayoutEffect(() => {
     if (!open) return;
     const measure = () => {
-      const bottom=triggerRef.current?.getBoundingClientRect().bottom;
-      if(bottom!==undefined)menuRef.current?.style.setProperty('--picker-max-height',Math.max(0,Math.min(320,innerHeight-bottom-12))+'px');
+      const menu=menuRef.current;
+      if(menu) menu.style.setProperty('--picker-max-height',Math.max(0,Math.min(320,innerHeight-menu.getBoundingClientRect().top-12))+'px');
     };
     measure();
     window.addEventListener('resize',measure);window.addEventListener('scroll',measure,true);
@@ -106,8 +106,10 @@ export function Select({ value, options, onChange, label, align = 'start', class
           className={`picker-option${option.value === value ? ' selected' : ''}`}
           onMouseEnter={() => setFocusIndex(i)}
           onClick={() => { onChange(option.value); close(true); }}>
-          <span>{option.label}</span>
-          {option.value === value && <Check weight="bold"/>}
+          {option.icon ? <span className="picker-option-with-icon">
+            <span className="picker-option-icon" aria-hidden="true">{option.icon}</span><span>{option.label}</span>
+          </span> : <span>{option.label}</span>}
+          {option.value === value && <Check weight="bold" aria-hidden="true"/>}
         </button>
       ))}
     </div>

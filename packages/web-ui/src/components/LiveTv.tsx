@@ -1,6 +1,6 @@
 import { useDeferredValue, useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Button, Input, Modal, TextArea } from '@heroui/react';
-import { Broadcast, MagnifyingGlass, Play, Playlist, Plus, Pulse, Stop, TagSimple, Television, Trash, UploadSimple } from '@phosphor-icons/react';
+import { Broadcast, CheckCircle, LockSimple, MagnifyingGlass, MinusCircle, Play, Playlist, Plus, Pulse, Question, Stop, TagSimple, Television, Trash, UploadSimple, XCircle } from '@phosphor-icons/react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { IPTV_MAX_BYTES, type IptvChannelInfo, type IptvCheckResult, type IptvImport, type IptvSourceInfo } from '@virelo/core/iptv';
 import { t, useLocale } from '@edition/i18n';
@@ -31,6 +31,8 @@ function statusLabels() {
   };
 }
 type StatusFilter=keyof ReturnType<typeof statusLabels>;
+const statusIcons = {all:Broadcast,responding:CheckCircle,unavailable:XCircle,unconfirmed:Question,'not-allowed':LockSimple,unchecked:MinusCircle};
+const groupIcon = <TagSimple/>;
 
 export function LiveTv({service,admin}:{service:LiveTvService;admin?:ReactNode}) {
   const locale = useLocale(), id = useId();
@@ -45,7 +47,10 @@ export function LiveTv({service,admin}:{service:LiveTvService;admin?:ReactNode})
   const source = sources.data?.find(item => item.id === selected) ?? sources.data?.[0];
   const checks = useIptvChecks(source?.id,service.check);
   const statuses = useMemo(statusLabels,[locale]);
-  const statusOptions = useMemo(() => Object.entries(statuses).map(([value,label])=>({value,label})),[statuses]);
+  const statusOptions = useMemo(() => (Object.keys(statuses) as StatusFilter[]).map(value => {
+    const Icon = statusIcons[value];
+    return {value,label:statuses[value],icon:<Icon/>};
+  }),[statuses]);
   const channels = useQuery({queryKey:['iptv-channels',source?.id],queryFn:() => service.channels(source!.id),enabled:Boolean(source)});
   const list = channels.data ?? emptyChannels;
   const active = tuned === null ? undefined : list[tuned];
@@ -63,8 +68,8 @@ export function LiveTv({service,admin}:{service:LiveTvService;admin?:ReactNode})
 
   const playlists = useMemo(() => (sources.data ?? []).map(item => ({value:item.id,label:item.name})),[sources.data]);
   const groups = useMemo(() => [
-    {value:'',label:t("All groups")},
-    ...[...new Set(list.flatMap(entry=>entry.groups))].sort((a,b) => a.localeCompare(b,locale)).map(value => ({value,label:value}))
+    {value:'',label:t("All groups"),icon:groupIcon},
+    ...[...new Set(list.flatMap(entry=>entry.groups))].sort((a,b) => a.localeCompare(b,locale)).map(value => ({value,label:value,icon:groupIcon}))
   ],[list,locale]);
   const matches = useMemo(() => list.flatMap((item,index) => {
     const label = channelName(item,index);
@@ -157,7 +162,7 @@ export function LiveTv({service,admin}:{service:LiveTvService;admin?:ReactNode})
               onChange={event => { setSearch(event.currentTarget.value); setLimit(pageSize); }}/>
           </div>
           <div className="live-tv-filters">
-            {groups.length > 1 && <Select label={t("Channel group")} icon={<TagSimple/>} className={group?'live-tv-filter-active':undefined}
+            {groups.length > 1 && <Select label={t("Channel group")} icon={groupIcon} className={group?'live-tv-filter-active':undefined}
               value={group} options={groups} onChange={value => { setGroup(value); setLimit(pageSize); }}/>}
             <Select label={t("Stream status")} icon={<Broadcast/>} className={statusFilter!=='all'?'live-tv-filter-active':undefined}
               value={statusFilter} options={statusOptions} onChange={value => { setStatusFilter(value as StatusFilter); setLimit(pageSize); }}/>
