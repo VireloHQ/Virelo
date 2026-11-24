@@ -9,9 +9,10 @@ import { chromium } from 'playwright';
 const directory=await mkdtemp(join(tmpdir(),'virelo-live-tv-'));
 const repo=fileURLToPath(new URL('../',import.meta.url));
 const provider='https://live-fixture.example';
+const stations=122;
 const collection='#EXTM3U\n#EXTINF:-1 group-title="News",Studio One\n'+provider+'/one/index.m3u8\n'
   +'#EXTINF:-1 group-title="Music",Studio Two\n'+provider+'/two/index.m3u8\n'
-  +Array.from({length:14},(_,i)=>'#EXTINF:-1 group-title="Documentary",Field Station '+(i+1)+'\n'+provider+'/station-'+i+'/index.m3u8\n').join('');
+  +Array.from({length:stations},(_,i)=>'#EXTINF:-1 group-title="Documentary",Field Station '+(i+1)+'\n'+provider+'/station-'+i+'/index.m3u8\n').join('');
 let child,browser;
 try {
   execFileSync(process.env.FFMPEG_PATH||'ffmpeg',[
@@ -74,6 +75,7 @@ try {
   assert.equal(await dock.getByRole('link',{name:'Library',exact:true}).getAttribute('aria-current'),'location');
   const frame=page.frameLocator('.live-tv-frame');
   await frame.getByRole('heading',{name:'Live TV',exact:true}).waitFor();
+  const player=page.frames().find(child=>child.url()===base+'/media/iptv/');
   assert.equal(requests.length,0,'opening the screen never connects to a provider');
   await frame.getByLabel('Playlist name').fill('Test channels');
   await frame.getByLabel('Playlist link',{exact:true}).fill(provider+'/channels');
@@ -88,6 +90,7 @@ try {
   await frame.getByRole('option',{name:'Music',exact:true}).click();
   await first.waitFor({state:'hidden'});
   await groupPicker.click();await frame.getByRole('option',{name:'All groups',exact:true}).click();
+  await player.waitForFunction(()=>document.activeElement?.getAttribute('aria-label')==='Channel group');
   const search=frame.getByRole('textbox',{name:'Search channels',exact:true});
   await search.fill('Studio One');await second.waitFor({state:'hidden'});
   const focus=await search.evaluate(element=>{
@@ -99,12 +102,47 @@ try {
   const list=frame.locator('.live-channels');
   assert.equal(await list.evaluate(node=>getComputedStyle(node).scrollbarWidth),'none');
   assert.ok(await list.evaluate(node=>{node.scrollTop=200;const scrollable=node.scrollTop>0;node.scrollTop=0;return scrollable;}));
-  await frame.getByRole('button',{name:'Check visible',exact:true}).click();
+  const checkChannels=frame.getByRole('button',{name:'Check channels',exact:true});
+  const recheck=frame.getByRole('button',{name:'Recheck channels',exact:true});
+  await player.evaluate(()=>{
+    const get=IDBObjectStore.prototype.get;
+    window.channelReads=0;
+    IDBObjectStore.prototype.get=function(...args){
+      if(this.name==='channels')window.channelReads++;
+      return get.apply(this,args);
+    };
+  });
+  await groupPicker.click();await frame.getByRole('option',{name:'Music',exact:true}).click();
+  await checkChannels.click();
+  await recheck.waitFor();
+  assert.deepEqual(requests,['/channels','/two/index.m3u8'],'bulk checks respect the current group');
+  await groupPicker.click();await frame.getByRole('option',{name:'All groups',exact:true}).click();
+  await search.fill('Field Station 14');
+  await frame.getByRole('button',{name:'Check Field Station 14: Not checked',exact:true}).click();
+  await frame.getByRole('button',{name:/^Check Field Station 14: [1-9]\d* ms$/}).waitFor();
+  await search.clear();await first.waitFor();
+  const progress=frame.getByRole('progressbar',{name:'Checking…',exact:true});
+  const stalled=page.waitForRequest(provider+'/station-12/index.m3u8');
+  await checkChannels.click();
+  assert.equal(await progress.getAttribute('aria-valuemax'),String(stations),'progress counts the whole unchecked queue');
   await frame.getByRole('button',{name:/^Check Studio One: [1-9]\d* ms$/}).waitFor();
+  await stalled;
+  await frame.getByRole('button',{name:'Cancel checks',exact:true}).click();
+  await progress.waitFor({state:'hidden'});
+  assert.ok(!requests.includes('/station-'+(stations-1)+'/index.m3u8'),'cancelling stops before the end of the queue');
+  releaseDelayed();
+  await checkChannels.click();
+  await recheck.waitFor({timeout:30000});
+  assert.equal(await player.evaluate(()=>window.channelReads),4,'each run reads the playlist once, not once per channel');
+  assert.equal(requests.filter(path=>path==='/one/index.m3u8').length,1,'resuming does not repeat completed checks');
+  assert.equal(requests.filter(path=>path==='/two/index.m3u8').length,1);
+  assert.equal(requests.filter(path=>path==='/station-13/index.m3u8').length,1);
   await frame.getByRole('button',{name:'Check Field Station 1: Unavailable',exact:true}).waitFor();
   await frame.getByRole('button',{name:'Check Field Station 2: Could not confirm',exact:true}).waitFor();
-  await frame.getByRole('button',{name:'Check visible',exact:true}).waitFor();
-  assert.ok(!requests.includes('/station-13/index.m3u8'),'checking visible rows does not probe the rest of the playlist');
+  assert.equal(await list.locator('li').count(),100,'checking does not inflate the rendered guide');
+  assert.ok(requests.includes('/station-'+(stations-1)+'/index.m3u8'),'the last channel was checked before Load more');
+  await frame.getByRole('button',{name:'Load more',exact:true}).click();
+  await frame.getByRole('button',{name:new RegExp('^Check Field Station '+stations+': [1-9]\\d* ms$')}).waitFor();
   assert.ok(requests.every(path=>path==='/channels'||path.endsWith('.m3u8')),'checking never downloads a video segment');
   assert.deepEqual(playerModules,[],'checks do not load the HLS player');
   assert.equal(await frame.locator('video').count(),0);
@@ -113,19 +151,8 @@ try {
   await first.waitFor({state:'hidden'});
   await frame.getByRole('button',{name:'Field Station 1',exact:true}).waitFor();
   await statusPicker.click();await frame.getByRole('option',{name:'All statuses',exact:true}).click();
-  await search.fill('Field Station 14');
-  await frame.getByRole('button',{name:'Check Field Station 14: Not checked',exact:true}).click();
-  await frame.getByRole('button',{name:/^Check Field Station 14: [1-9]\d* ms$/}).waitFor();
-  await search.fill('Field Station 13');
-  const delayedCheck=frame.getByRole('button',{name:'Check Field Station 13: Not checked',exact:true});
-  await Promise.all([page.waitForRequest(provider+'/station-12/index.m3u8'),delayedCheck.click()]);
-  await frame.getByRole('button',{name:'Cancel checks',exact:true}).click();
-  await delayedCheck.waitFor();
-  releaseDelayed();
-  await search.clear();
   const checksBeforePlay=requests.length;
   await first.click();
-  const player=page.frames().find(child=>child.url()===base+'/media/iptv/');
   await player.waitForFunction(()=>{const video=document.querySelector('video');return video?.videoWidth===160&&!video.paused&&video.currentTime>.05;});
   assert.ok(requests.some(path=>/^\/one\/index\d+\.ts$/.test(path)));
   assert.ok(!requests.slice(checksBeforePlay).some(path=>path.startsWith('/two/')));
@@ -203,7 +230,7 @@ try {
   assert.ok(await rail.isVisible());
   assert.equal(await desktop.getByRole('link',{name:'Live TV',exact:true}).getAttribute('aria-current'),'page');
   if(process.env.VIRELO_TEST_LIVE_TV_SCREENSHOT){
-    await frame.getByRole('button',{name:'Check visible',exact:true}).click();
+    await frame.getByRole('button',{name:'Check Studio One: Not checked',exact:true}).click();
     await frame.getByRole('button',{name:/^Check Studio One: [1-9]\d* ms$/}).waitFor();
     await first.click();
     await video.hover({position:{x:12,y:20}});await pause.click();await play.waitFor();
@@ -219,7 +246,7 @@ try {
   await first.waitFor();
   assert.ok(await rail.isVisible());
   assert.deepEqual(errors,[]);
-  console.log('PASS focus, hidden but scrollable guide, visible and individual HLS checks, status filtering, scoped CSP, player controls and navigation');
+  console.log('PASS 124-channel queue beyond Load more, filtered and individual checks, cancel/resume, focus, status filtering, scoped CSP, player controls and navigation');
 } finally {
   await browser?.close();
   child?.kill();

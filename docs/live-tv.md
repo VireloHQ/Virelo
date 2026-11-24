@@ -4,7 +4,9 @@ Open **Live TV** in the desktop header or sidebar, or from **Library** on a phon
 
 For a single HLS stream, add its HTTPS link. For a channel list imported from a file or pasted text, channel URLs must be absolute. Relative channel URLs in a remote list are resolved against that list's URL.
 
-Choose **Check visible** or click the result at the end of a channel row to check its connection before playing. The check reads the start of the HLS playlist only. The displayed milliseconds measure the playlist response, not when video will start; an accessible playlist does not guarantee its segments will play. Use **Stream status** to filter the guide. Checks are limited to a few channels at a time, do not run automatically, and can be cancelled. If the browser cannot read a response, it shows **Could not confirm**.
+Choose **Check channels** to check the entire playlist or the current filtered results, including channels behind **Load more**. Click the result at the end of a row to check just that channel. Checks run a few at a time and show progress; you can cancel and continue with the remaining channels on the same page. Use **Stream status** to filter the guide.
+
+The displayed milliseconds measure the response to an HLS playlist request, not when playback starts. An accessible playlist does not guarantee its segments will play. If the browser cannot read a response, it shows **Could not confirm**.
 
 - **Web:** Your playlists are saved in this browser. Connections go directly to the provider. The provider must allow browser access (CORS) for the playlist and HLS resources. Imported credentials in signed playlist links are kept out of library backups.
 - **Self-hosted:** An administrator first opens **Allowed Live TV sources** and adds each trusted HTTPS origin, including separate origins serving variants or segments. Enter origins only, such as `https://streams.example.com`, without paths. The server relays only the approved public sources. Other users' playlists are not shared with you.

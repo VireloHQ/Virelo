@@ -18,7 +18,8 @@
 .live-tv-filters { display:flex; gap:8px; }
 .live-tv-filters .picker { flex:1; min-width:0; }
 .live-tv-directory .live-tv-filters .picker-trigger { gap:6px; padding-inline:9px; }
-.live-tv-check-tools { display:flex; justify-content:flex-start; }
+.live-tv-check-tools { display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:2px 8px; }
+.live-tv-check-progress { color:var(--text-muted); font-size:12px; font-variant-numeric:tabular-nums; }
 .live-tv .live-tv-check-tools .button { min-height:40px; padding-inline:8px; gap:6px; color:var(--text-muted); }
 .live-channels { list-style:none; padding:6px; margin:0; max-height:20rem; overflow-y:auto; scrollbar-width:none; }
 .live-channels::-webkit-scrollbar { display:none; }

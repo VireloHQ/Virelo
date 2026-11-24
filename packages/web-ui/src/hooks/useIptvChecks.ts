@@ -2,53 +2,76 @@ import { useEffect,useRef,useState } from 'react';
 import type { IptvCheckResult } from '@virelo/core/iptv';
 
 type CheckChannel=(source:string,index:number,signal:AbortSignal)=>Promise<IptvCheckResult>;
+type CheckProgress={source:string;indexes:ReadonlySet<number>;completed:number;total:number};
 const noResults:ReadonlyMap<number,IptvCheckResult>=new Map();
 const noPending:ReadonlySet<number>=new Set();
 
 export function useIptvChecks(source:string|undefined,check:CheckChannel) {
-  const job=useRef<{source:string;controller:AbortController}|null>(null);
+  const job=useRef<{source:string;finish:(keepResults:boolean)=>void}|null>(null);
   const [results,setResults]=useState<{source:string;entries:ReadonlyMap<number,IptvCheckResult>}|null>(null);
-  const [pending,setPending]=useState<{source:string;indexes:ReadonlySet<number>}|null>(null);
+  const [pending,setPending]=useState<CheckProgress|null>(null);
   useEffect(()=>()=>{
-    if(job.current&&job.current.source===source){job.current.controller.abort();job.current=null;}
+    if(job.current?.source===source)job.current?.finish(false);
   },[source]);
   function cancel() {
-    job.current?.controller.abort();
-    job.current=null;
-    setPending(null);
+    if(job.current)job.current.finish(true);
+    else setPending(null);
   }
-  async function run(indices:number[]) {
+  async function run(indices:readonly number[]) {
     if(!source||job.current||!indices.length)return;
-    const batch=[...new Set(indices)].slice(0,12);
+    const batch=[...new Set(indices)];
     const controller=new AbortController();
-    job.current={source,controller};
-    setPending({source,indexes:new Set(batch)});
-    let next=0;
+    const active=new Set<number>(),buffered=new Map<number,IptvCheckResult>();
+    let next=0,nextStart=0,completed=0,timer:number|undefined;
+    const publish=(finished=false)=>{
+      if(buffered.size){
+        const updates=new Map(buffered);
+        buffered.clear();
+        setResults(previous=>{
+          const entries=new Map(previous?.source===source?previous.entries:noResults);
+          for(const [index,result] of updates)entries.set(index,result);
+          return {source,entries};
+        });
+      }
+      setPending(finished?null:{source,indexes:new Set(active),completed,total:batch.length});
+    };
+    const schedulePublish=()=>{
+      // Batch updates so a long queue doesn't render or copy its entire result set per request.
+      timer??=window.setTimeout(()=>{timer=undefined;publish();},200);
+    };
+    const current={source,finish(keepResults:boolean){
+      controller.abort();
+      if(timer!==undefined)window.clearTimeout(timer);
+      job.current=null;
+      if(keepResults)publish(true);
+    }};
+    job.current=current;
+    publish();
     await Promise.all(Array.from({length:Math.min(3,batch.length)},async()=>{
       while(!controller.signal.aborted&&next<batch.length){
         const index=batch[next++];
+        const now=performance.now(),start=Math.max(nextStart,now);
+        nextStart=start+100;
+        if(start>now)await new Promise<void>(resolve=>window.setTimeout(resolve,start-now));
+        if(controller.signal.aborted)return;
+        active.add(index);
+        schedulePublish();
         let result:IptvCheckResult;
         try{result=await check(source,index,controller.signal);}
         catch{result={status:'unconfirmed'};}
         if(controller.signal.aborted)return;
-        setResults(previous=>{
-          const entries=new Map(previous?.source===source?previous.entries:noResults);
-          entries.set(index,result);
-          return {source,entries};
-        });
-        setPending(previous=>{
-          if(previous?.source!==source)return previous;
-          const indexes=new Set(previous.indexes);
-          indexes.delete(index);
-          return {source,indexes};
-        });
+        active.delete(index);
+        buffered.set(index,result);
+        completed++;
+        schedulePublish();
       }
     }));
-    if(job.current?.controller===controller){job.current=null;setPending(null);}
+    if(job.current===current)current.finish(true);
   }
+  const progress=pending?.source===source?pending:null;
   return {
     results:results?.source===source?results?.entries??noResults:noResults,
-    checking:pending?.source===source?pending?.indexes??noPending:noPending,
-    running:Boolean(pending&&pending.source===source),run,cancel
+    checking:progress?.indexes??noPending,
+    running:Boolean(progress),progress,run,cancel
   };
 }

@@ -62,7 +62,9 @@ export function LiveTv({service,admin}:{service:LiveTvService;admin?:ReactNode})
     const label = channelName(item,index);
     return (!group || item.groups.includes(group)) && (!query || label.toLocaleLowerCase().includes(query)) ? [{index,label}] : [];
   }),[list,group,query,locale]);
-  const visible = statusFilter==='all'?matches:matches.filter(({index})=>(checks.results.get(index)?.status??'unchecked')===statusFilter);
+  const visible = useMemo(() => statusFilter==='all'?matches:matches.filter(({index})=>(checks.results.get(index)?.status??'unchecked')===statusFilter),
+    [matches,statusFilter,checks.results]);
+  const unchecked = useMemo(() => visible.filter(({index})=>!checks.results.has(index)),[visible,checks.results]);
 
   useEffect(() => { if (guide.current) guide.current.scrollTop = 0; },[source?.id,group,query,statusFilter]);
 
@@ -70,16 +72,9 @@ export function LiveTv({service,admin}:{service:LiveTvService;admin?:ReactNode})
     checks.cancel();
     setSelected(next); setTuned(null); setSearch(''); setGroup(''); setStatusFilter('all'); setLimit(pageSize);
   }
-  function checkVisible() {
+  function checkMatches() {
     if(checks.running){checks.cancel();return;}
-    const list=guide.current;
-    if(!list)return;
-    const viewport=list.getBoundingClientRect();
-    const indices=Array.from(list.querySelectorAll<HTMLElement>('[data-channel]')).filter(row=>{
-      const rect=row.getBoundingClientRect();
-      return rect.bottom>viewport.top&&rect.top<viewport.bottom;
-    }).map(row=>Number(row.dataset.channel));
-    void checks.run(indices);
+    void checks.run((unchecked.length?unchecked:visible).map(({index})=>index));
   }
   function tune(index:number, pointer:boolean) {
     setTuned(index);
@@ -123,10 +118,14 @@ export function LiveTv({service,admin}:{service:LiveTvService;admin?:ReactNode})
             <Select label={t("Stream status")} value={statusFilter} options={statusOptions} onChange={value => { setStatusFilter(value as StatusFilter); setLimit(pageSize); }}/>
           </div>
           <div className="live-tv-check-tools">
-            <Button variant="ghost" aria-describedby={id+'-check-help'} isDisabled={!visible.length&&!checks.running} onPress={checkVisible}>
-              <Pulse size={16} aria-hidden="true"/>{checks.running?t("Cancel checks"):t("Check visible")}
+            <Button variant="ghost" aria-describedby={id+'-check-help'} isDisabled={!visible.length&&!checks.running} onPress={checkMatches}>
+              <Pulse size={16} aria-hidden="true"/>{checks.running?t("Cancel checks"):!visible.length||unchecked.length?t("Check channels"):t("Recheck channels")}
             </Button>
-            <span className="sr-only" id={id+'-check-help'}>{t("Checks the response of the stream playlist without starting playback.")}</span>
+            {checks.progress && <span className="live-tv-check-progress" role="progressbar" aria-label={t("Checking…")}
+              aria-valuemin={0} aria-valuemax={checks.progress.total} aria-valuenow={checks.progress.completed}>
+              {checks.progress.completed.toLocaleString(locale)} / {checks.progress.total.toLocaleString(locale)}
+            </span>}
+            <span className="sr-only" id={id+'-check-help'}>{t("Checks all matching channels, including channels not yet shown, without starting playback.")}</span>
           </div>
         </div>
         {channels.isPending && <p className="live-tv-message" role="status">{t("Loading…")}</p>}
@@ -137,7 +136,7 @@ export function LiveTv({service,admin}:{service:LiveTvService;admin?:ReactNode})
             const result=checks.results.get(index), pending=checks.checking.has(index);
             const status=pending?'checking':result?.status??'unchecked';
             const text=pending?t("Checking…"):result?.status==='responding'?t("{value0} ms",{value0:result.milliseconds}):statuses[result?.status??'unchecked'];
-            return <li className="live-channel-row" data-channel={index} data-tuned={tuned===index} key={index}>
+            return <li className="live-channel-row" data-tuned={tuned===index} key={index}>
               <Button className="live-channel-play" variant="ghost" aria-pressed={tuned===index} onPress={event => tune(index,event.pointerType!=='keyboard')}>
                 <Play size={16} weight={tuned===index?'fill':'regular'} aria-hidden="true"/><span>{label}</span>
               </Button>

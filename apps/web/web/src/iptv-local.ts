@@ -58,6 +58,8 @@ async function fetchPlaylist(value:string){
   }finally{await reader.cancel().catch(()=>{});}
 }
 const channels=(id:string)=>read<IptvChannel[]|undefined>('channels',id);
+// Reuse the IndexedDB read for the lifetime of the check, not across playlist sessions.
+const checkLists=new WeakMap<AbortSignal,{id:string;list:Promise<IptvChannel[]|undefined>}>();
 export const localLiveTv:LiveTvService={
   sources:()=>read<IptvSourceInfo[]>('sources'),
   channels:async id=>(await channels(id)??[]).map(({name,groups})=>({name,groups})),
@@ -69,7 +71,13 @@ export const localLiveTv:LiveTvService={
   },
   remove:id=>change({id,name:''}),
   check:async (id,index,signal)=>{
-    const channel=(await channels(id))?.[index];
+    let stored=checkLists.get(signal);
+    if(stored?.id!==id){
+      stored={id,list:channels(id)};
+      checkLists.set(signal,stored);
+    }
+    const channel=(await stored.list)?.[index];
+    signal.throwIfAborted();
     const url=channel&&iptvUrl(channel.url);
     if(!url)return {status:'unavailable'};
     const started=performance.now();
