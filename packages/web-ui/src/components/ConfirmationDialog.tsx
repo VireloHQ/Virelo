@@ -7,6 +7,7 @@ import './ConfirmationDialog.css';
 interface ConfirmationDialogProps {
   triggerLabel: string;
   triggerIcon?: ReactNode;
+  triggerIconOnly?: boolean;
   title: string;
   children: ReactNode;
   confirmLabel: string;
@@ -18,7 +19,7 @@ interface ConfirmationDialogProps {
 }
 
 // Shared app confirmation UI. React Aria handles focus trapping, restoration and scroll locking.
-export function ConfirmationDialog({ triggerLabel, triggerIcon, title, children, confirmLabel, onConfirm, confirmVariant = 'danger', onOpen, initialOpen, onAfterClose }: ConfirmationDialogProps) {
+export function ConfirmationDialog({ triggerLabel, triggerIcon, triggerIconOnly, title, children, confirmLabel, onConfirm, confirmVariant = 'danger', onOpen, initialOpen, onAfterClose }: ConfirmationDialogProps) {
   useLocale();
   const [isOpen, setIsOpen] = useState(Boolean(initialOpen));
   const [animate, setAnimate] = useState(initialOpen === 'pointer');
@@ -99,7 +100,8 @@ export function ConfirmationDialog({ triggerLabel, triggerIcon, title, children,
       </Modal.Container>
     </Modal.Backdrop>;
   return initialOpen ? dialog : <Modal isOpen={isOpen} onOpenChange={changeOpen}>
-    <Button variant="secondary" onPressStart={event=>setAnimate(event.pointerType === 'mouse' || event.pointerType === 'touch' || event.pointerType === 'pen')}>{triggerIcon}{triggerLabel}</Button>
+    <Button variant="secondary" isIconOnly={triggerIconOnly} aria-label={triggerIconOnly?triggerLabel:undefined}
+      onPressStart={event=>setAnimate(event.pointerType === 'mouse' || event.pointerType === 'touch' || event.pointerType === 'pen')}>{triggerIcon}{!triggerIconOnly&&triggerLabel}</Button>
     {dialog}
   </Modal>;
 }

@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useLayoutEffect, useRef, type ReactNode } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { api } from '../api';
+import { appearanceStorageApi as api } from '../utils/appearance-storage';
 import { appearanceVariables, DEFAULT_APPEARANCE, normalizeAppearance, type Appearance } from '../utils/appearance';
 import '@virelo/web-ui/appearance.css';
 

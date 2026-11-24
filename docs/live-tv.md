@@ -1,6 +1,6 @@
 # Live TV
 
-Open **Live TV** in the desktop header or sidebar, or from **Library** on a phone. Live TV keeps the app navigation available so you can return to your library or switch sections. Add an M3U or M3U8 playlist from an HTTPS link, a file, or pasted text. Select a channel to start playback. Virelo does not include streams or check every channel when you import a playlist.
+Open **Live TV** in the desktop header or sidebar, or from **Library** on a phone. Add an M3U or M3U8 playlist from an HTTPS link, a file, or pasted text. Search or filter the channel list and select a channel. Live TV uses the usual Virelo playback, volume, and fullscreen controls, without the on-demand seek and queue controls. Virelo does not include streams or check every channel when you import a playlist.
 
 For a single HLS stream, add its HTTPS link. For a channel list imported from a file or pasted text, channel URLs must be absolute. Relative channel URLs in a remote list are resolved against that list's URL.
 

@@ -1,5 +1,4 @@
-import type { Appearance } from './utils/appearance';
-import { readAppearance, writeAppearance } from './utils/appearance-storage';
+import { appearanceStorageApi } from './utils/appearance-storage';
 import {
   addLocalLibrary,
   renameLocalLibrary,
@@ -45,8 +44,7 @@ export const api = {
   queueSession: localQueueSession,
   saveQueueSession: saveLocalQueueSession,
   deleteQueueSession: deleteLocalQueueSession,
-  appearance: () => Promise.resolve(readAppearance()),
-  saveAppearance: (value: Appearance) => Promise.resolve().then(() => writeAppearance(value)),
+  ...appearanceStorageApi,
   playlists: listLocalPlaylists,
   playlist: getLocalPlaylist,
   createPlaylist: createLocalPlaylist,

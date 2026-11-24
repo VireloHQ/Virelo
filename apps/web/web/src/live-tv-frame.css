@@ -2,5 +2,3 @@
 body:has(.live-tv-embed) { min-width:0; min-height:0; }
 .app-shell.live-tv-embed { min-height:0; display:flow-root; }
 .app-shell.live-tv-embed .content-view { width:100%; max-width:none; padding:0; }
-/* The frame grows with its content, so don't size the channel list from its viewport. */
-.live-tv-embed .live-channels { max-height:24rem; }

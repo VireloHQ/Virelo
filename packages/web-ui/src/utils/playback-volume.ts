@@ -3,6 +3,13 @@ const STORAGE_KEY='virelo-playback-volume:v1';
 let session:PlaybackVolume|undefined;
 const listeners=new Set<()=>void>();
 
+// Web Live TV runs in a same-origin frame with a separate module instance.
+if(typeof window!=='undefined')window.addEventListener?.('storage',event=>{
+  if(event.storageArea!==window.localStorage||(event.key!==STORAGE_KEY&&event.key!==null))return;
+  session=undefined;
+  for(const listener of listeners)listener();
+});
+
 export function readPlaybackVolume():PlaybackVolume {
   if(session)return session;
   try {

@@ -10,11 +10,12 @@ const directory=await mkdtemp(join(tmpdir(),'virelo-live-tv-'));
 const repo=fileURLToPath(new URL('../',import.meta.url));
 const provider='https://live-fixture.example';
 const collection='#EXTM3U\n#EXTINF:-1 group-title="News",Studio One\n'+provider+'/one/index.m3u8\n'
-  +'#EXTINF:-1 group-title="Music",Studio Two\n'+provider+'/two/index.m3u8\n';
+  +'#EXTINF:-1 group-title="Music",Studio Two\n'+provider+'/two/index.m3u8\n'
+  +Array.from({length:14},(_,i)=>'#EXTINF:-1 group-title="Documentary",Field Station '+(i+1)+'\n'+provider+'/station-'+i+'/index.m3u8\n').join('');
 let child,browser;
 try {
   execFileSync(process.env.FFMPEG_PATH||'ffmpeg',[
-    '-hide_banner','-loglevel','error','-f','lavfi','-i','testsrc2=s=160x90:r=20:d=4',
+    '-hide_banner','-loglevel','error','-f','lavfi','-i','testsrc2=s=160x90:r=20:d=12',
     '-c:v','libx264','-pix_fmt','yuv420p','-g','20','-hls_time','1','-hls_playlist_type','vod','index.m3u8'
   ],{cwd:directory,windowsHide:true,timeout:20000});
   let base=process.env.VIRELO_TEST_LIVE_TV_URL;
@@ -34,7 +35,7 @@ try {
     });
   }
   browser=await chromium.launch({headless:true,executablePath:process.env.VIRELO_TEST_CHROMIUM});
-  const context=await browser.newContext({viewport:{width:390,height:844},serviceWorkers:'block'});
+  const context=await browser.newContext({viewport:{width:390,height:844},serviceWorkers:'block',reducedMotion:'reduce'});
   const requests=[];
   await context.route(provider+'/**',async route=>{
     const {pathname}=new URL(route.request().url());
@@ -48,6 +49,7 @@ try {
     return route.fulfill({status:404,headers});
   });
   const page=await context.newPage();
+  page.setDefaultTimeout(10000);
   const playerModules=[];
   page.on('request',request=>{if(/\/assets\/hls\.light-/.test(request.url()))playerModules.push(request.url());});
   const errors=[];page.on('pageerror',error=>errors.push(error.message));
@@ -75,14 +77,49 @@ try {
   await first.waitFor();
   assert.deepEqual(requests,['/channels'],'import does not probe the channels');
   assert.deepEqual(playerModules,[],'HLS code is not fetched before choosing a channel');
-  await frame.getByLabel('Channel group').selectOption('Music');
-  assert.ok(await first.isHidden());
-  await frame.getByLabel('Channel group').selectOption('');
+  assert.equal(await frame.locator('select,input[type=file]:visible').count(),0,'no native select or file input is visible');
+  const groupPicker=frame.getByRole('button',{name:'Channel group',exact:true});
+  await groupPicker.focus();await groupPicker.press('Enter');
+  await frame.getByRole('option',{name:'Music',exact:true}).click();
+  await first.waitFor({state:'hidden'});
+  await groupPicker.click();await frame.getByRole('option',{name:'All groups',exact:true}).click();
+  const search=frame.getByRole('textbox',{name:'Search channels',exact:true});
+  await search.fill('Studio One');await second.waitFor({state:'hidden'});
+  await search.clear();await second.waitFor();
   await first.click();
   const player=page.frames().find(child=>child.url()===base+'/media/iptv/');
-  await player.waitForFunction(()=>document.querySelector('video')?.videoWidth===160);
+  await player.waitForFunction(()=>{const video=document.querySelector('video');return video?.videoWidth===160&&!video.paused&&video.currentTime>.05;});
   assert.ok(requests.some(path=>/^\/one\/index\d+\.ts$/.test(path)));
   assert.ok(!requests.some(path=>path.startsWith('/two/')));
+  const liveTransport=frame.locator('.player-controls[data-live="true"]');
+  await page.evaluate(()=>localStorage.setItem('virelo.appearance.v1',JSON.stringify({controllerStyle:'theater',accentColor:'#c3a6ff'})));
+  await player.waitForFunction(()=>document.querySelector('.player-controls')?.getAttribute('data-controller-style')==='theater');
+  const video=frame.locator('.live-tv-player video');
+  assert.equal(await video.evaluate(element=>element.controls),false);
+  assert.equal(await liveTransport.locator('.player-seek,.repeat-control').count(),0);
+  const pause=liveTransport.getByRole('button',{name:'Pause',exact:true});
+  const play=liveTransport.getByRole('button',{name:'Play',exact:true});
+  await video.hover({position:{x:12,y:20}});await pause.click();
+  await player.waitForFunction(()=>document.querySelector('.live-tv-player video')?.paused===true);
+  await play.waitFor();
+  assert.ok(await video.evaluate(element=>element.paused));
+  const volume=liveTransport.getByRole('button',{name:'Volume',exact:true});
+  await volume.click();
+  const volumeDialog=frame.getByRole('dialog',{name:'Volume',exact:true});
+  await volumeDialog.getByRole('button',{name:'Mute',exact:true}).click();
+  await player.waitForFunction(()=>document.querySelector('.live-tv-player video')?.muted===true);
+  assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem('virelo-playback-volume:v1')).muted),true);
+  await page.keyboard.press('Escape');
+  await page.evaluate(()=>localStorage.setItem('virelo-playback-volume:v1',JSON.stringify({volume:.4,muted:false})));
+  await player.waitForFunction(()=>{const video=document.querySelector('.live-tv-player video');return video?.volume===.4&&video.muted===false;});
+  await video.click({button:'right',position:{x:12,y:20}});
+  await frame.getByRole('menu',{name:'Video actions',exact:true}).waitFor();
+  await page.keyboard.press('Escape');
+  await liveTransport.getByRole('button',{name:'Fullscreen',exact:true}).click();
+  await player.waitForFunction(()=>document.fullscreenElement?.classList.contains('live-tv-player'));
+  await liveTransport.getByRole('button',{name:'Fullscreen',exact:true}).click();
+  await player.waitForFunction(()=>!document.fullscreenElement);
+  await play.click();await pause.waitFor();
   await second.click();
   await player.waitForFunction(()=>document.querySelector('video[aria-label="Studio Two"]')?.videoWidth===160);
   assert.ok(requests.some(path=>path.startsWith('/two/')));
@@ -101,6 +138,19 @@ try {
   await page.goForward();await first.waitFor();
   await page.reload();await first.waitFor();
   assert.equal(await frame.locator('video').count(),0,'reload does not restart a stream');
+  const importText='#EXTM3U\n#EXTINF:-1,Extra Channel\n'+provider+'/extra/index.m3u8\n';
+  for(const mode of ['File','Paste text']){
+    await frame.locator('.content-heading').getByRole('button',{name:'Add playlist',exact:true}).click();
+    const form=frame.getByRole('form',{name:'Add playlist',exact:true});
+    await form.getByRole('button',{name:mode,exact:true}).click();
+    if(mode==='File')await form.locator('input[type=file]').setInputFiles({name:'Extra.m3u',mimeType:'audio/x-mpegurl',buffer:Buffer.from(importText)});
+    else await form.getByLabel('Playlist text').fill(importText);
+    await form.getByRole('button',{name:'Add playlist',exact:true}).click();
+    await frame.getByRole('button',{name:'Extra Channel',exact:true}).waitFor();
+    await remove.click();
+    await dialog.getByRole('button',{name:'Remove playlist',exact:true}).click();
+    await first.waitFor();
+  }
   await page.setViewportSize({width:1440,height:900});
   const desktop=page.getByRole('navigation',{name:'Main navigation'});
   assert.equal(await desktop.getByRole('link',{name:'Live TV',exact:true}).getAttribute('aria-current'),'page');
@@ -114,7 +164,11 @@ try {
   await first.waitFor();
   assert.ok(await rail.isVisible());
   assert.equal(await desktop.getByRole('link',{name:'Live TV',exact:true}).getAttribute('aria-current'),'page');
-  if(process.env.VIRELO_TEST_LIVE_TV_SCREENSHOT)await page.screenshot({path:process.env.VIRELO_TEST_LIVE_TV_SCREENSHOT});
+  if(process.env.VIRELO_TEST_LIVE_TV_SCREENSHOT){
+    await first.click();
+    await video.hover({position:{x:12,y:20}});await pause.click();await play.waitFor();
+    await page.screenshot({path:process.env.VIRELO_TEST_LIVE_TV_SCREENSHOT});
+  }
   const oldLocation=await page.goto(base+'/media/iptv/');
   assert.equal(oldLocation.status(),200);
   await page.waitForURL('**/app/live-tv');
@@ -125,7 +179,7 @@ try {
   await first.waitFor();
   assert.ok(await rail.isVisible());
   assert.deepEqual(errors,[]);
-  console.log('PASS app navigation, scoped Live TV CSP, M3U import, HLS playback, history, persistence, mobile fit and retry');
+  console.log('PASS app navigation, scoped CSP, styled guide, M3U/HLS, shared transport, volume, fullscreen, history, persistence, mobile fit and retry');
 } finally {
   await browser?.close();
   child?.kill();

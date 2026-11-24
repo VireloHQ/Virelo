@@ -47,7 +47,7 @@ async function mount(t, api, client = new QueryClient({ defaultOptions: { querie
   const { AppearanceProvider } = await load('components/AppearanceProvider.tsx', {
     react: 'export const {createContext,useContext,useEffect,useLayoutEffect,useRef} = globalThis.__appearanceTest.hooks;',
     '@tanstack/react-query': 'export const {useQueryClient,useQuery,useMutation} = globalThis.__appearanceTest.query;',
-    '../api': 'export const api = globalThis.__appearanceTest.api;'
+    '../utils/appearance-storage': 'export const appearanceStorageApi = globalThis.__appearanceTest.api;'
   });
   const element = AppearanceProvider({ children: null });
   for (const effect of effects) {

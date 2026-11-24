@@ -63,6 +63,7 @@ function environment(t, edition, { preference = 'source', alternateAudio = false
       if (!cell || deps.some((value, i) => value !== cell.deps[i])) effects.push({ setup, cleanup: cell?.cleanup, index });
       cells[index] = { ...cell, deps }; },
     usePlaybackVolume: () => ({ volume: 1, muted: false }), usePlaybackSpeed: () => ({ speed: 1 }),
+    usePlayerControlsVisibility: () => ({ controlsVisible: true, revealControls() {}, scheduleControlsHide() {} }),
     useVideoPresentation: () => ({ style: {} }), useVolumeLeveling: () => ({}),
     useBackgroundPlayback: () => ({ audioIsClock: () => false, handlePause: () => false, suspended: { current: false } }),
     useLocalMediaUrl: id => ({ url: `blob:source-${id}` }), useAdaptiveQuality: () => adaptive, useHlsFallback: () => fallback,
