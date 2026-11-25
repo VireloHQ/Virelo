@@ -168,6 +168,8 @@ const auditAppearance=async(page,mode)=>{
   }
   await page.getByRole('textbox',{name:'Accent color hex code'}).fill('bad');
   check(await page.getByRole('textbox',{name:'Accent color hex code'}).getAttribute('aria-invalid')==='true',mode+' invalid color is identified before persistence');
+  await page.getByRole('textbox',{name:'Accent color hex code'}).press('Tab');
+  check(await page.getByRole('textbox',{name:'Accent color hex code'}).inputValue()==='bad',mode+' invalid color stays visible when leaving the field');
   await page.getByRole('button',{name:'Reset to default',exact:true}).click();
   await page.getByRole('status').filter({hasText:'Saved'}).waitFor();
   if(mode==='npm')await page.route('**/api/account/appearance',async route=>{
