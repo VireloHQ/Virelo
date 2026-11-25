@@ -101,7 +101,8 @@ export async function auditMiniplayer(page, label) {
       await page.waitForFunction(style=>document.querySelector('.miniplayer-controls')?.dataset.controllerStyle===style,style);
       variants.add(await mini.locator('.miniplayer-toggle').evaluate(button=>{
         const bounds=button.getBoundingClientRect(), parent=button.parentElement.getBoundingClientRect();
-        return [Math.round(bounds.x-parent.x),Math.round(bounds.y-parent.y),Math.round(button.firstElementChild.getBoundingClientRect().width)].join(',');
+        const timeline=button.parentElement.querySelector('.miniplayer-timeline').getBoundingClientRect();
+        return [bounds.x-parent.x,bounds.y-parent.y,button.firstElementChild.getBoundingClientRect().width,timeline.x-parent.x].map(Math.round).join(',');
       }));
     }
     assert.equal(variants.size,4,label+' each controller style has its own compact layout');
