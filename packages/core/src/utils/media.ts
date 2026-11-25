@@ -61,6 +61,7 @@ export interface HomeData {
   movies: MediaItem[];
   series: MediaItem[];
   total: number;
+  hiddenLibraryIds?: number[];
 }
 
 export interface ShortItem extends MediaItem {

@@ -9,6 +9,7 @@ import {
   getStoredMedia,
   hydrateMedia,
   ensureLocalThumbnail,
+  hiddenHomeLibraries,
   listLocalLibraries,
   listStoredMedia,
   localMediaFile,
@@ -16,6 +17,7 @@ import {
   readSettings,
   reconnectLocalLibrary,
   removeLocalLibrary,
+  setHomeLibraryHidden,
   updateStoredMedia,
   startLocalScan,
   writeSettings
@@ -51,14 +53,16 @@ export const api = {
   updatePlaylist: updateLocalPlaylist,
   deletePlaylist: deleteLocalPlaylist,
   home: async (): Promise<HomeData> => {
-    const shelves = buildHome(await listStoredMedia());
+    const [items, hiddenLibraryIds] = await Promise.all([listStoredMedia(),hiddenHomeLibraries()]);
+    const hidden = new Set(hiddenLibraryIds);
+    const shelves = buildHome(hidden.size ? items.filter(item=>!hidden.has(item.library_id)) : items);
     // Resolve thumbnails once per displayed title, not once per item in a large library.
     const selected = [...shelves.recent,...shelves.continueWatching,...shelves.favorites,...shelves.movies,
       ...shelves.series,...shelves.nextEpisodes,...shelves.unwatched,...shelves.quickWatches,...shelves.genres.flatMap(g=>g.items)];
     const hydratedItems = await hydrated([...new Map(selected.map(item=>[item.id,item])).values()]);
     const byId = new Map(hydratedItems.map(item=>[item.id,item]));
     const resolve = (items:MediaItem[]) => items.map(item=>byId.get(item.id)!);
-    return {...shelves,recent:resolve(shelves.recent),continueWatching:resolve(shelves.continueWatching),
+    return {...shelves,hiddenLibraryIds,recent:resolve(shelves.recent),continueWatching:resolve(shelves.continueWatching),
       favorites:resolve(shelves.favorites),movies:resolve(shelves.movies),series:resolve(shelves.series),
       nextEpisodes:resolve(shelves.nextEpisodes),unwatched:resolve(shelves.unwatched),quickWatches:resolve(shelves.quickWatches),
       genres:shelves.genres.map(g=>({...g,items:resolve(g.items)}))};
@@ -89,9 +93,10 @@ export const api = {
     if (!item) throw new Error('Video not found.');
     return hydrateMedia(item);
   },
-  shorts: async ({ limit = 40, offset = 0, seed = 0, startId }: { limit?: number; offset?: number; seed?: number; startId?: number } = {}): Promise<ShortsFeed> => {
-    const settings = await readSettings();
-    const all = (await listStoredMedia()).filter((item) => settings.shortsIncludeLandscapes || Boolean(item.width && item.height && item.height > item.width));
+  shorts: async ({ limit = 40, offset = 0, seed = 0, startId, home }: { limit?: number; offset?: number; seed?: number; startId?: number; home?: 1 } = {}): Promise<ShortsFeed> => {
+    const [settings,items,hiddenLibraryIds] = await Promise.all([readSettings(),listStoredMedia(),home?hiddenHomeLibraries():[]]);
+    const hidden = new Set(hiddenLibraryIds);
+    const all = items.filter(item => !hidden.has(item.library_id) && (settings.shortsIncludeLandscapes || Boolean(item.width && item.height && item.height > item.width)));
     all.sort((a, b) => Number(b.id === startId) - Number(a.id === startId) || shortsRank(a.id, seed) - shortsRank(b.id, seed) || a.id - b.id);
     const page = await hydrated(all.slice(offset, offset + limit));
     return { items: page.map((item) => ({ ...item, liked: item.liked ? 1 : 0 })), total: all.length };
@@ -112,6 +117,7 @@ export const api = {
   libraries: listLocalLibraries,
   addLibrary: addLocalLibrary,
   renameLibrary: renameLocalLibrary,
+  setHomeLibraryHidden,
   reconnectLibrary: reconnectLocalLibrary,
   removeLibrary: async (id: number) => { await removeLocalLibrary(id); return { ok: true }; },
   settings: readSettings,

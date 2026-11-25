@@ -4,7 +4,7 @@ import {loadAppearanceTestModule as load} from './appearance-test-loader.mjs';
 
 let serial=0;
 async function catalog(t,count=5000){
-  const key='__catalogPerf'+(++serial),state={reads:[],settings:{shortsIncludeLandscapes:false},items:Array.from({length:count},(_,index)=>({
+  const key='__catalogPerf'+(++serial),state={reads:[],hidden:[],settings:{shortsIncludeLandscapes:false},items:Array.from({length:count},(_,index)=>({
     id:index+1,library_id:index%2+1,filename:'clip-'+index+'.mp4',title:'Clip '+index,sort_title:String(index).padStart(5,'0'),
     kind:'video',folder:index%3?'Movies/Sub':'Movies',width:index%5?1920:1080,height:index%5?1080:1920,
     liked:index%7===0?1:0,mtime:index,thumbnail_path:null
@@ -12,9 +12,10 @@ async function catalog(t,count=5000){
   globalThis[key]=state;t.after(()=>delete globalThis[key]);
   const other=['addLocalLibrary','renameLocalLibrary','browserCapabilities','clearLocalMetadata','clearAllLocalMetadata',
     'getLocalScanStatus','getStoredMedia','ensureLocalThumbnail','listLocalLibraries','localMediaFile','localMediaUrl',
-    'reconnectLocalLibrary','removeLocalLibrary','updateStoredMedia','startLocalScan','writeSettings','openDatabase','hydrateMediaIds'];
+    'reconnectLocalLibrary','removeLocalLibrary','setHomeLibraryHidden','updateStoredMedia','startLocalScan','writeSettings','openDatabase','hydrateMediaIds'];
   const library=`const state=globalThis[${JSON.stringify(key)}];
     export const listStoredMedia=async()=>[...state.items];
+    export const hiddenHomeLibraries=async()=>state.hidden;
     export const readSettings=async()=>state.settings;
     export const hydrateMedia=async item=>{state.reads.push(item.id);return {...item,thumbnail_path:'thumb:'+item.id};};
     ${other.map(name=>'export const '+name+'=()=>{};').join('\n')}`;
@@ -63,6 +64,20 @@ test('a landscape-only library with Shorts disabled performs no thumbnail reads 
   state.items.forEach(item=>{item.width=1920;item.height=1080;});
   assert.deepEqual(await api.shorts({limit:12}),{items:[],total:0});
   assert.deepEqual(state.reads,[]);
+});
+
+test('Home excludes hidden libraries before selecting Shorts or hydrating thumbnails',async t=>{
+  const {api,state}=await catalog(t);
+  state.hidden=[1];
+  const home=await api.home();
+  assert.equal(home.total,2500);
+  assert.deepEqual(home.hiddenLibraryIds,[1]);
+  assert.ok(state.reads.length>0&&state.reads.every(id=>id%2===0));
+  state.reads.length=0;
+  const shorts=await api.shorts({home:1,limit:12});
+  assert.equal(shorts.total,500);
+  assert.equal(state.reads.length,12);
+  assert.ok(state.reads.every(id=>id%2===0));
 });
 
 test('landscape inclusion and unpaginated media remain available',async t=>{

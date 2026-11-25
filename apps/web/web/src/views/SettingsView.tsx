@@ -12,6 +12,7 @@ import { SettingsNavigation } from '@virelo/web-ui/components/SettingsNavigation
 import { ConfirmationDialog } from '@virelo/web-ui/components/ConfirmationDialog.tsx';
 import { QueueLayoutSetting } from '@virelo/web-ui/components/QueueLayoutSetting.tsx';
 import { AppearanceSettings } from '../components/AppearanceSettings';
+import { HomeVisibilitySwitch } from '@virelo/web-ui/components/HomeVisibilitySwitch.tsx';
 import { Palette } from '@phosphor-icons/react';
 import { VolumeLevelingSetting } from '@virelo/web-ui/components/VolumeLevelingSetting.tsx';
 import { PreviewSetting } from '@virelo/web-ui/components/PreviewSetting.tsx';
@@ -52,7 +53,7 @@ export function SettingsView() {
     const value = new URLSearchParams(window.location.search).get('section');
     return settingsSections.find(section => section.id === value)?.id ?? 'libraries';
   });
-  const [mobileDetail,setMobileDetail]=useState(() => new URLSearchParams(window.location.search).get('section') === 'backup');
+  const [mobileDetail,setMobileDetail]=useState(() => settingsSections.some(section=>section.id===new URLSearchParams(window.location.search).get('section')));
   const openSection=(id:string)=>{
     setActiveSection(id as SettingsSectionId);
     setMobileDetail(true);
@@ -116,6 +117,7 @@ export function SettingsView() {
                 <span className={library.connected ? 'library-connected' : 'library-disconnected'}>{library.connected ? <CheckCircle/> : <WarningCircle/>}{library.connected ? t("Connected") : t("Reconnect required")}{!library.persistent && <> · {t("Temporary")}</>}</span>
               </div>
               <div className="library-actions">
+                <HomeVisibilitySwitch library={library} save={api.setHomeLibraryHidden}/>
                 {!library.connected && <Button size="sm" variant="secondary" isPending={reconnect.isPending} onPress={()=>reconnect.mutate(library.id)}>{t("Reconnect")}</Button>}
                 <Button isIconOnly variant="ghost" aria-label={t("Remove {value0}", { value0: library.label })} onPress={()=>remove.mutate(library.id)}><Trash/></Button>
               </div>

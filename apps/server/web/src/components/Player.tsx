@@ -2,7 +2,7 @@ import { t, useLocale } from '../i18n';
 import { useEffect, useRef, useState } from 'react';
 import { useVolumeLeveling } from '@virelo/web-ui/hooks/useVolumeLeveling.ts';
 import { audioMeasurement } from '@virelo/web-ui/utils/volume-leveling.ts';
-import { ArrowsOut, FastForward, Pause, PictureInPicture, Play, Repeat, Rewind, SpeakerHigh, SpeakerSlash } from '@phosphor-icons/react';
+import { ArrowsOut, DownloadSimple, FastForward, Pause, PictureInPicture, Play, Repeat, Rewind, SpeakerHigh, SpeakerSlash } from '@phosphor-icons/react';
 import { LoadingSpinner } from '@virelo/web-ui/components/LoadingSpinner.tsx';
 import { api } from '../api';
 import { useHlsFallback } from '../hooks/useHlsFallback';
@@ -14,6 +14,7 @@ import { toggleFullscreen } from '@virelo/web-ui/utils/fullscreen.ts';
 import { DraggableCaption, HiddenSubtitleTrack } from '@virelo/web-ui/components/DraggableCaption.tsx';
 import { FavoriteButton } from '@virelo/web-ui/components/FavoriteButton.tsx';
 import { useAccount } from './AccountSession';
+import { canDownloadOriginal, startOriginalDownload } from './DownloadOriginal';
 import { PlaybackSettingsMenu } from '@virelo/web-ui/components/PlaybackSettingsMenu.tsx';
 import { ShortsContextMenu, ShortsPlayerControls, type ShortsPlaybackOptions } from '@virelo/web-ui/components/ShortsPlayerControls.tsx';
 import { PlayerActionMenu } from '@virelo/web-ui/components/PlayerActionMenu.tsx';
@@ -56,7 +57,8 @@ type HlsInstance=InstanceType<(typeof import('hls.js/light'))['default']>;
 export function Player({item,queue,queueIndex,shuffled,onShuffle,onEnded,onNext,onPrev,canGoNext=true,canGoPrev=true,autoPlay,resumeFromHistory=true,shorts,repeatMode,onRepeatChange}:PlayerProps) {
   useLocale();
   const historyPosition = initialPlaybackPosition(item.progress_position, resumeFromHistory);
-  const canTranscode=useAccount()?.user.permissions.transcode!==false;
+  const account=useAccount()?.user;
+  const canTranscode=account?.permissions.transcode!==false;
   const localPlayback=isLocalPlaybackHost();
   const videoRef = useRef<HTMLVideoElement>(null);
   const sourceTransition = useRef(false);
@@ -781,6 +783,7 @@ export function Player({item,queue,queueIndex,shuffled,onShuffle,onEnded,onNext,
         {label:muted?'Unmute':'Mute',icon:muted?<SpeakerSlash/>:<SpeakerHigh/>,action:toggleMute},
         {label:t("Repeat video"),icon:<Repeat/>,checked:repeat==='one',action:()=>changeRepeat(repeat==='one'?'off':'one')},
         {label:t("Settings"),content:playbackSettings(true)},
+        ...(canDownloadOriginal(account)?[{label:t("Download original"),icon:<DownloadSimple/>,action:()=>startOriginalDownload(item.id)}]:[]),
         ...(pipSupported?[{label:pip?'Exit Picture in Picture':'Picture in Picture',icon:<PictureInPicture/>,action:()=>void togglePip()}]:[]),
         {label:t("Fullscreen"),icon:<ArrowsOut/>,action:()=>void fullscreen()}
       ]}/>}
