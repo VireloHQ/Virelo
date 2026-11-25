@@ -6,6 +6,8 @@ import { t, useLocale } from '@edition/i18n';
 import { LoadingSpinner } from './LoadingSpinner';
 import { PlayerActionMenu } from './PlayerActionMenu';
 import { PlayerControls } from './PlayerControls';
+import { MiniplayerControls } from './MiniplayerControls';
+import { usePlaybackDock } from './PlaybackDock';
 import { usePlaybackVolume } from '../hooks/usePlaybackVolume';
 import { usePlayerControlsVisibility } from '../hooks/usePlayerControlsVisibility';
 import { toggleFullscreen } from '../utils/fullscreen';
@@ -31,6 +33,7 @@ function streamTimeline(video:HTMLVideoElement,hls:import('hls.js').default|null
 
 export function LiveTvPlayback({title, service, source, channel}: {title:string; service:LiveTvService; source:string; channel:number}) {
   useLocale();
+  const dock=usePlaybackDock(), minimized=dock?.minimized;
   const videoRef = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<import('hls.js').default|null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -125,27 +128,29 @@ export function LiveTvPlayback({title, service, source, channel}: {title:string;
   return <div className={`player live-tv-player${controlsVisible?' controls-visible':''}`} ref={containerRef} tabIndex={0} aria-label={t("{value0} player",{value0:title})}
     onPointerMove={event => { if (event.pointerType === 'mouse') { revealControls(); scheduleControlsHide(); } }}
     onPointerLeave={() => scheduleControlsHide(300)} onFocusCapture={revealControls} onBlurCapture={() => scheduleControlsHide(300)}
-    onDoubleClick={fullscreen}
-    onContextMenu={event => { event.preventDefault(); if (!opening && !failure) { revealControls(); setMenu({x:event.clientX,y:event.clientY}); } }}
+    onDoubleClick={minimized ? dock.restore : fullscreen}
+    onContextMenu={event => { event.preventDefault(); if (!minimized && !opening && !failure) { revealControls(); setMenu({x:event.clientX,y:event.clientY}); } }}
     onKeyDown={event => {
       if (event.target !== event.currentTarget) return;
       if (event.key === ' ' || event.key === 'k') { event.preventDefault(); toggle(); }
-      if (!opening && !failure && (event.key === 'ContextMenu' || (event.shiftKey && event.key === 'F10'))) {
+      if (!minimized && !opening && !failure && (event.key === 'ContextMenu' || (event.shiftKey && event.key === 'F10'))) {
         event.preventDefault();
         const bounds = event.currentTarget.getBoundingClientRect();
         setMenu({x:bounds.left+24,y:bounds.top+24,keyboard:true});
       }
     }}>
     <video className="video-presentation" ref={videoRef} aria-label={title} playsInline crossOrigin="anonymous"
-      onClick={() => { if (controlsVisible) toggle(); else { revealControls(); scheduleControlsHide(); } }}
+      onClick={() => { if (minimized || controlsVisible) toggle(); else { revealControls(); scheduleControlsHide(); } }}
       onPlay={() => { setPaused(false); revealControls(); scheduleControlsHide(); }}
+      onPlaying={dock?.onPlaying}
       onPause={() => { setPaused(true); revealControls(); }}/>
     {opening && <div className="player-status" role="status"><LoadingSpinner/><strong>{t("Opening video…")}</strong></div>}
     {failure ? <div className="player-status error" role="alert"><strong>{t("Playback unavailable")}</strong><span>{t(failure)}</span>
       <Button variant="secondary" onPress={() => { containerRef.current?.focus(); setFailure(''); setPaused(true); setOpening(true); setTimeline(emptyTimeline); setAttempt(value => value+1); }}>{t("Try again")}</Button>
-    </div> : !opening && <PlayerControls live timeline={{...timeline,onSeek:seek}} paused={paused} busy={false} volume={volume} muted={muted} pip={pip} pipSupported={pipSupported}
+    </div> : !opening && !minimized && <PlayerControls live timeline={{...timeline,onSeek:seek}} paused={paused} busy={false} volume={volume} muted={muted} pip={pip} pipSupported={pipSupported}
       onToggle={toggle} onVolume={value => { setMuted(false); setVolume(value); }} onMute={mute} onFullscreen={fullscreen} onPip={togglePip}/>}
-    {menu && <PlayerActionMenu label={t("Video actions")} position={menu} returnFocus={containerRef.current} onClose={() => setMenu(null)}
+    {minimized && <MiniplayerControls title={title} paused={paused} onToggle={toggle}/>}
+    {!minimized && menu && <PlayerActionMenu label={t("Video actions")} position={menu} returnFocus={containerRef.current} onClose={() => setMenu(null)}
       actions={[
         {label:paused?'Play':'Pause',icon:paused?<Play/>:<Pause/>,action:toggle},
         {label:muted?'Unmute':'Mute',icon:muted?<SpeakerSlash/>:<SpeakerHigh/>,action:mute},

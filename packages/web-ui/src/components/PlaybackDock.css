@@ -1,0 +1,47 @@
+.playback-dock { display:contents; }
+.playback-dock[data-minimized="true"] {
+  display:block; position:fixed; z-index:20; inset-inline-end:max(16px,env(safe-area-inset-right));
+  bottom:max(16px,env(safe-area-inset-bottom)); width:min(360px,calc(100vw - 32px));
+  overflow:hidden; border:1px solid var(--line-strong); border-radius:10px; background:var(--surface);
+  box-shadow:0 10px 38px #0008;
+}
+.page-shell:has(> .playback-dock[data-minimized="true"]) { padding-bottom:min(264px,50dvh); }
+.playback-dock[data-minimized="true"] :is(.watch-view,.watch-main,.shorts-view,.shorts-scroller,.short-slot,.short-stage,.live-tv,.live-tv-grid,.content-view) {
+  position:static; display:block; width:100%; height:auto; min-height:0; max-height:none; margin:0; padding:0;
+}
+.playback-dock[data-minimized="true"] .shorts-scroller { overflow:hidden; scroll-snap-type:none; }
+.playback-dock[data-minimized="true"] .short-slot:not([data-active="true"]) { display:none; }
+.playback-dock[data-minimized="true"] :is(.watch-info,.watch-recommendations,.playback-queue,.short-info,.live-tv-directory,.live-tv-channel-info) { display:none; }
+.playback-dock[data-minimized="true"] .player {
+  aspect-ratio:auto; height:auto; min-height:0; max-height:none; border:none; border-radius:0; box-shadow:none;
+}
+.playback-dock[data-minimized="true"] .player .video-stage { position:relative; inset:auto; aspect-ratio:16/9; }
+.playback-dock[data-minimized="true"] .player>video.video-presentation {
+  display:block; width:100%; height:auto; aspect-ratio:16/9; border-radius:0; cursor:pointer;
+}
+.playback-dock[data-minimized="true"] .player .video-presentation { cursor:pointer; }
+.playback-dock[data-minimized="true"] .player .player-caption { bottom:49px; translate:0 0; font-size:13px; }
+.playback-dock[data-minimized="true"] .player-status { bottom:44px; padding:12px; }
+.miniplayer-controls {
+  position:relative; z-index:8; display:grid; grid-template-columns:44px minmax(0,1fr) 44px 44px;
+  align-items:center; min-height:44px; background:var(--surface); color:var(--text);
+}
+.miniplayer-controls>span { overflow:hidden; white-space:nowrap; text-overflow:ellipsis; font-size:13px; font-weight:550; }
+.miniplayer-controls>button {
+  display:grid; place-items:center; width:44px; height:44px; padding:0;
+  border:0; border-radius:4px; background:transparent; color:inherit; cursor:pointer;
+}
+.miniplayer-controls>button svg { width:18px; height:18px; }
+.miniplayer-controls>button:hover { background:var(--control-hover); }
+.miniplayer-controls>button:focus-visible { outline:2px solid var(--color-focus); outline-offset:-3px; }
+@media (max-width:900px) {
+  .playback-dock[data-minimized="true"] {
+    bottom:calc(var(--mobile-dock-offset,62px) + 10px); inset-inline-end:max(10px,env(safe-area-inset-right));
+    width:min(292px,calc(100vw - 20px));
+  }
+}
+@media (max-height:480px) {
+  .playback-dock[data-minimized="true"] { width:min(256px,calc(100vw - 20px)); }
+  /* The Live TV frame measures the picture to set its own height. */
+  :not(.live-tv-embed) > .playback-dock[data-minimized="true"] .player > :is(.video-stage,video.video-presentation) { max-height:calc(100dvh - 138px); }
+}

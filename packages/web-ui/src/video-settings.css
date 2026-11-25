@@ -1,5 +1,6 @@
 /* Video-only presentation; subtitles and controls remain upright and unfiltered. */
-.player video.video-presentation { position:absolute; left:50%; top:50%; max-width:none; max-height:none; }
+.player .video-stage { position:absolute; inset:0; overflow:hidden; border-radius:inherit; }
+.video-stage>video.video-presentation { position:absolute; left:50%; top:50%; max-width:none; max-height:none; }
 .video-settings-menu button { color:var(--text); background:transparent; border:0; cursor:pointer; }
 .video-settings-menu button svg { width:18px; height:18px; flex:none; }
 .video-settings-menu button:hover:not(:disabled) { background:rgba(255,255,255,.1); }

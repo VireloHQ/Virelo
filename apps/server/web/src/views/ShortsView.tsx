@@ -2,7 +2,8 @@ import { t, useLocale } from '../i18n';
 import { PageSkeleton } from '@virelo/web-ui/components/PageSkeleton.tsx';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useInfiniteQuery } from '@tanstack/react-query';
-import { useNavigate, useSearch } from '@tanstack/react-router';
+import { useNavigate } from '@tanstack/react-router';
+import { usePlaybackDock, usePlaybackSource } from '@virelo/web-ui/components/PlaybackDock.tsx';
 import { api } from '../api';
 import { Player } from '../components/Player';
 import type { ShortItem } from '../types';
@@ -11,12 +12,13 @@ const PAGE_SIZE = 40;
 const RENDER_WINDOW = 2;
 
 export function ShortsView() {
-  const { startId } = useSearch({ from: '/shorts' });
+  const { startId } = usePlaybackSource('shorts');
   return <ShortsFeedView key={startId ?? 'random'} startId={startId} />;
 }
 
 function ShortsFeedView({ startId }: { startId?: number }) {
   useLocale();
+  const minimized=usePlaybackDock()?.minimized;
   const scrollerRef = useRef<HTMLDivElement>(null);
   const [activeIndex, setActiveIndex] = useState(0);
   const activeIndexRef = useRef(0);
@@ -44,21 +46,21 @@ function ShortsFeedView({ startId }: { startId?: number }) {
 
   const onScroll = useCallback(() => {
     const el = scrollerRef.current;
-    if (!el || el.clientHeight < 1 || scrollerHeight.current !== el.clientHeight) return;
+    if (minimized || !el || el.clientHeight < 1 || scrollerHeight.current !== el.clientHeight) return;
     const index = Math.round(el.scrollTop / el.clientHeight);
     setActiveIndex((prev) => (prev === index ? prev : index));
-  }, []);
+  }, [minimized]);
 
   const goTo = useCallback((index: number) => {
     const el = scrollerRef.current;
-    if (!el || items.length === 0) return;
+    if (minimized || !el || items.length === 0) return;
     const clamped = Math.max(0, Math.min(index, items.length - 1));
     el.scrollTo({ top: clamped * el.clientHeight, behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' });
-  }, [items.length]);
+  }, [items.length,minimized]);
 
   useLayoutEffect(() => {
     const el = scrollerRef.current;
-    if (!el) return;
+    if (!el || minimized) return;
     const align = () => {
       scrollerHeight.current = el.clientHeight;
       el.scrollTo({ top: activeIndexRef.current * el.clientHeight, behavior: 'instant' });
@@ -67,13 +69,14 @@ function ShortsFeedView({ startId }: { startId?: number }) {
     const observer = new ResizeObserver(align);
     observer.observe(el);
     return () => observer.disconnect();
-  }, [items.length > 0]);
+  }, [items.length > 0,minimized]);
 
   useEffect(() => {
     if (hasNextPage && items.length - activeIndex < 4) void query.fetchNextPage();
   }, [activeIndex, items.length, hasNextPage, query.fetchNextPage]);
 
   useEffect(() => {
+    if (minimized) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.defaultPrevented || (e.target instanceof Element && e.target.closest('input, textarea, select, button, [role="menu"], [role="dialog"]'))) return;
       if (e.key === 'ArrowDown' || e.key === 'PageDown') { e.preventDefault(); goTo(activeIndex + 1); }
@@ -83,7 +86,7 @@ function ShortsFeedView({ startId }: { startId?: number }) {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [goTo, activeIndex, items.length]);
+  }, [goTo, activeIndex, items.length,minimized]);
 
   if (query.isError && items.length === 0) return <div className="shorts-empty"><p>{t("Shorts could not be loaded.")}</p><button onClick={() => void query.refetch()}>{t("Try again")}</button></div>;
   if (query.isLoading) return <PageSkeleton kind="shorts" />;
@@ -104,14 +107,14 @@ function ShortsFeedView({ startId }: { startId?: number }) {
     <div className="shorts-view">
       <div className="shorts-scroller" ref={scrollerRef} onScroll={onScroll}>
         {items.map((item, i) => (
-          <div className="short-slot" key={item.id}>
-            {Math.abs(i - activeIndex) <= RENDER_WINDOW
+          <div className="short-slot" data-active={i===activeIndex || undefined} key={item.id}>
+            {i===activeIndex || !minimized&&Math.abs(i - activeIndex) <= RENDER_WINDOW
               ? <div className="short-stage"><ShortsClip item={item} active={i === activeIndex} onSkip={() => goTo(i + 1)} pipOn={pipOn} onPip={setPipOn} /></div>
               : <div className="short-slot-placeholder" />}
           </div>
         ))}
       </div>
-      {activeItem && (
+      {!minimized && activeItem && (
         <div className="short-info" aria-live="polite">
           <h2>{activeItem.title}</h2>
           <p>{activeItem.filename}</p>

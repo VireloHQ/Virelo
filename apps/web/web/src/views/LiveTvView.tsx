@@ -1,19 +1,37 @@
 import { useEffect, useRef, useState } from 'react';
 import { Button } from '@heroui/react';
+import { usePlaybackDock } from '@virelo/web-ui/components/PlaybackDock.tsx';
 import { t, useLocale } from '../i18n';
 import '../live-tv-frame.css';
 
 export function LiveTvView() {
   useLocale();
+  const playback=usePlaybackDock();
+  const frameRef=useRef<HTMLIFrameElement>(null);
   const cleanupFrame = useRef<(() => void) | null>(null);
   const [failed, setFailed] = useState(false);
   useEffect(() => () => cleanupFrame.current?.(), []);
+  useEffect(() => {
+    if (!playback) return;
+    const onFrameMessage = (event: MessageEvent) => {
+      if (event.origin !== location.origin || event.source !== frameRef.current?.contentWindow) return;
+      switch (event.data) {
+        case 'virelo:live-tv:playing': playback.onPlaying(); break;
+        case 'virelo:live-tv:stopped': playback.onStopped(); break;
+        case 'virelo:live-tv:minimize': playback.minimize(); break;
+        case 'virelo:live-tv:restore': playback.restore(); break;
+        case 'virelo:live-tv:close': playback.close(); break;
+      }
+    };
+    window.addEventListener('message',onFrameMessage);
+    return () => window.removeEventListener('message',onFrameMessage);
+  },[playback]);
 
   return <div className="content-view">
     {failed ? <>
       <p role="alert">{t("The page could not be displayed. You can try opening it again.")}</p>
       <Button variant="secondary" onPress={() => setFailed(false)}>{t("Try again")}</Button>
-    </> : <iframe className="live-tv-frame" src="/media/iptv/" title={t("Live TV")} allowFullScreen
+    </> : <iframe ref={frameRef} className="live-tv-frame" src="/media/iptv/" title={t("Live TV")} allowFullScreen data-minimized={playback?.minimized || undefined}
       onLoad={({ currentTarget: frame }) => {
         cleanupFrame.current?.();
         const doc = frame.contentDocument, root = doc?.getElementById('root');
