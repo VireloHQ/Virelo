@@ -114,6 +114,22 @@ test('accounts enforce authentication, catalog privacy and administrative bounda
     const stream=await call('GET',`/api/media/${items[0].id}/stream`,undefined,viewerCookie,{headers:{range:'bytes=0-6'}});
     assert.equal(stream.statusCode,206);assert.equal(stream.body,'Private');assert.equal(stream.headers['cache-control'],'private, no-store');
     assert.equal((await call('GET',`/api/media/${items[0].id}/artwork/thumbnail`,undefined,viewerCookie)).headers['cache-control'],'private, no-store');
+    const preference = '/api/home/libraries/'+items[0].library_id;
+    assert.equal((await call('PUT',preference,{hidden:true})).statusCode,401);
+    assert.equal((await call('PUT',preference,{hidden:'true'},viewerCookie)).statusCode,400);
+    assert.equal((await call('PUT','/api/home/libraries/'+items[1].library_id,{hidden:true},viewerCookie)).statusCode,404);
+    assert.equal((await call('PUT',preference,{hidden:true},viewerCookie)).statusCode,200);
+    const hiddenHome=(await call('GET','/api/home',undefined,viewerCookie)).json();
+    assert.deepEqual(hiddenHome.hiddenLibraryIds,[items[0].library_id]);
+    assert.equal(hiddenHome.total,0,'all accessible items can be hidden without removing the library');
+    assert.equal((await call('GET','/api/home',undefined,ownerCookie)).json().total,2);
+    assert.equal((await call('GET','/api/shorts?home=1',undefined,viewerCookie)).json().total,0);
+    assert.equal((await call('GET','/api/shorts',undefined,viewerCookie)).json().total,1);
+    assert.equal((await call('GET','/api/media',undefined,viewerCookie)).json().length,1);
+    assert.equal((await call('GET','/api/libraries',undefined,viewerCookie)).json()[0].hideOnHome,true);
+    assert.equal((await call('GET','/api/libraries',undefined,ownerCookie)).json()[0].hideOnHome,false);
+    assert.equal((await call('PUT',preference,{hidden:false},viewerCookie)).statusCode,200);
+    assert.equal((await call('GET','/api/home',undefined,viewerCookie)).json().total,1);
     const secretCache=join(root,'cache','hls',String(items[1].id),'subtitles');await mkdir(secretCache,{recursive:true});await writeFile(join(secretCache,'0.vtt'),'SECRET SUBTITLE');
     for(const traversal of ['../','%2e%2e/','..%2f','%252e%252e/','..%5c']) {
       const result=await call('GET',`/hls/${items[0].id}/${traversal}${items[1].id}/subtitles/0.vtt`,undefined,viewerCookie);

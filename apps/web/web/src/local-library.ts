@@ -22,6 +22,7 @@ interface StoredLibrary {
   persistent: boolean;
   handle?: FileSystemDirectoryHandle;
   folderLabels?: Record<string,string>;
+  hideOnHome?: boolean;
 }
 
 interface StoredMedia extends MediaItem {
@@ -399,8 +400,22 @@ export async function listLocalLibraries(): Promise<Library[]> {
   return Promise.all(libraries.sort((a, b) => a.created_at - b.created_at).map(async (library) => toLibrary(library, await permissionState(library) === 'granted')));
 }
 
+export async function hiddenHomeLibraries() {
+  return (await readAll<StoredLibrary>('libraries')).filter(library=>library.hideOnHome===true).map(library=>library.id);
+}
+
+export function setHomeLibraryHidden(id:number, hidden:boolean) {
+  return editLibraries(async()=>{
+    const library=await readStore<StoredLibrary>('libraries',id);
+    if(!library)throw new Error('Library not found.');
+    const updated={...library,hideOnHome:hidden};
+    await writeStore('libraries',updated);
+    knownLibraries.set(id,updated);
+  });
+}
+
 function toLibrary(library: StoredLibrary, connected: boolean): Library {
-  return { id: library.id, label: library.label, path: library.path, created_at: library.created_at, persistent: library.persistent, connected, folderLabels:library.folderLabels??{} };
+  return { id: library.id, label: library.label, path: library.path, created_at: library.created_at, persistent: library.persistent, connected, folderLabels:library.folderLabels??{}, hideOnHome:library.hideOnHome===true };
 }
 
 export async function startLocalScan() {

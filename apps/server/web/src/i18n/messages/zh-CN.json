@@ -1,4 +1,9 @@
 {
+  "Nothing to show on Home": "首页没有可显示的视频",
+  "Choose which libraries appear on Home in Settings.": "请在设置中选择要在首页显示的媒体库。",
+  "Show on Home": "在首页显示",
+  "Show {value0} on Home": "在首页显示{value0}",
+  "Could not save Home visibility.": "无法保存首页显示设置。",
   "Video previews": "视频预览",
   "Play video previews when hovering over or focusing a card. Saved in this browser.": "鼠标悬停或聚焦卡片时播放视频预览。设置保存在此浏览器中。",
   "Seek preview": "跳转预览进度",

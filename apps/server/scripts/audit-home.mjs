@@ -81,6 +81,54 @@ try{
    await heading.evaluate((e,text)=>{e.textContent=text;},original);
   }
   check(errors.length===0,mode+' no runtime errors '+errors.join('|'));
+  if(mode==='web'){
+   await page.setViewportSize({width:390,height:844});
+   await page.evaluate(async visible=>{
+    const {openDatabase,saveStoredMedia}=await import('/src/local-library.ts'),{api}=await import('/src/api.ts');
+    const db=await openDatabase();
+    try{
+     await new Promise((resolve,reject)=>{
+      const tx=db.transaction('libraries','readwrite');
+      tx.objectStore('libraries').put({id:1,path:'Fixture',label:'Fixture',persistent:true,created_at:1});
+      tx.objectStore('libraries').put({id:2,path:'Second',label:'Second',persistent:true,created_at:2});
+      tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);
+     });
+    }finally{db.close();}
+    await saveStoredMedia(visible);
+    const ids=[1,2];
+    await api.saveQueueSession({key:'queue-hide-test',state:{ids,manualIds:ids,sourceIds:ids,selectedId:1,shuffled:false},updatedAt:1});
+   },fixture(500,{library_id:2,title:'Other library film'}));
+   await page.goto(base+'/app/settings?section=libraries');
+   const toggle=page.getByRole('switch',{name:'Show Fixture on Home'});
+   await toggle.waitFor();
+   check(await toggle.isChecked(),'Web Home visibility defaults on');
+   await toggle.focus();await page.keyboard.press('Space');
+   await page.waitForFunction(()=>document.querySelector('[aria-label="Show Fixture on Home"]')?.checked===false);
+   await page.goto(base+'/app');
+   await page.getByRole('heading',{name:'Other library film',exact:true}).first().waitFor();
+   check(await page.getByRole('heading',{name:'Continue watching',exact:true}).count()===0,'hidden queue has no Home card when other libraries are visible');
+   await page.goto(base+'/app/settings?section=libraries');
+   await page.getByRole('switch',{name:'Show Second on Home'}).focus();
+   await page.keyboard.press('Space');
+   await page.waitForFunction(()=>document.querySelector('[aria-label="Show Second on Home"]')?.checked===false);
+   await page.goto(base+'/app');
+   await page.getByRole('heading',{name:'Nothing to show on Home'}).waitFor();
+   check(await page.locator('.home-rows,.home-feature').count()===0,'hidden library removes all Home surfaces');
+   const untouched=await page.evaluate(async()=>{
+     const {api}=await import('/src/api.ts');
+     return (await api.media()).length>0&&(await api.shorts()).total===1&&
+       (await api.shorts({home:1})).total===0&&(await api.queueSession('queue-hide-test')).state.selectedId===1;
+   });
+   check(untouched,'visibility does not change normal Library, Shorts or queue data');
+   await page.getByRole('link',{name:'Libraries',exact:true}).click();
+   await toggle.waitFor();
+   check(!(await toggle.isChecked()),'Home visibility persisted across reload');
+   await toggle.focus();await page.keyboard.press('Space');
+   await page.waitForFunction(()=>document.querySelector('[aria-label="Show Fixture on Home"]')?.checked===true);
+   await page.goto(base+'/app');
+   await page.locator('.home-feature').waitFor();
+   check(true,'restoring visibility brings Home back without a scan');
+  }
   await context.close();
   // A fresh browser context owns this small fixture database; never alter user data.
   const smallContext=await browser.newContext({serviceWorkers:'block'});
