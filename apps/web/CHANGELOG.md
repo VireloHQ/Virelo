@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add an HTTPS HLS link directly to Live TV as one channel, without importing a channel list.
+
 - Keep playing videos, Shorts and Live TV in an in-app miniplayer when browsing. Queues keep advancing, and expanding the player restores the same playback.
 
 - Make volume leveling attenuation-only, including cancellation of the compressor's automatic makeup gain. Preserve the 30ms lookahead, fast attenuation and stable recovery.

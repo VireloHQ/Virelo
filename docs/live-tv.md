@@ -8,7 +8,7 @@ While a channel plays, browse to another page or select **Minimize player** to k
 
 Drag the picture to move it; it snaps to the nearest corner. The title and timeline stay visible. Hover, tap, or focus the picture to reveal the controls in your selected player style. Use the arrow keys on the focused picture to choose a corner, or focus the timeline to seek when supported.
 
-For a single HLS stream, add its HTTPS link. For a channel list imported from a file or pasted text, channel URLs must be absolute. Relative channel URLs in a remote list are resolved against that list's URL.
+For a single HLS stream, choose **Add playlist → Stream link**, enter its HTTPS URL (for example, a link ending in `.m3u8`), and select **Add stream**. The stream appears as one channel and its connection is checked in the background. Use the hosted URL for an HLS manifest, not a local copy of the file. For a channel list imported from a file or pasted text, channel URLs must be absolute. Relative channel URLs in a remote list are resolved against that list's URL.
 
 Virelo starts checking channel links in the background after you add a playlist. Checks run a few at a time, including channels behind **Load more**, without opening the player. Use the stop button to cancel; the pulse button lets you continue with unchecked channels or recheck the current filtered results. Click the result at the end of a row to check just that channel.
 

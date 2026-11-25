@@ -1,4 +1,4 @@
-import { IPTV_CHECK_TIMEOUT_MS,IPTV_MAX_BYTES,IPTV_MAX_SOURCES,iptvUrl,parseIptvChannels,sniffIptvManifest,type IptvCachedCheck,type IptvChannel,type IptvCheckResult,type IptvSourceInfo } from '@virelo/core/iptv';
+import { IPTV_CHECK_TIMEOUT_MS,IPTV_MAX_BYTES,IPTV_MAX_SOURCES,iptvStreamChannel,iptvUrl,parseIptvChannels,sniffIptvManifest,type IptvCachedCheck,type IptvChannel,type IptvCheckResult,type IptvSourceInfo } from '@virelo/core/iptv';
 import type { LiveTvService } from '@virelo/web-ui/components/LiveTv.tsx';
 
 function open() {
@@ -95,9 +95,12 @@ export const localLiveTv:LiveTvService={
     return {channels:(entries??[]).map(({name,groups})=>({name,groups})),checks};
   },
   add:async input=>{
-    const loaded=input.url?await fetchPlaylist(input.url):{text:input.text??'',url:undefined};
     const source={id:crypto.randomUUID(),name:input.name};
-    await change(source,parseIptvChannels(loaded.text,source.name,loaded.url));
+    if(input.streamUrl!==undefined)await change(source,[iptvStreamChannel(source.name,input.streamUrl)]);
+    else{
+      const loaded=input.url?await fetchPlaylist(input.url):{text:input.text??'',url:undefined};
+      await change(source,parseIptvChannels(loaded.text,source.name,loaded.url));
+    }
     return source;
   },
   remove:id=>change({id,name:''}),

@@ -7,7 +7,7 @@ import { AccountError } from './accounts.js';
 import type { Account } from './auth-types.js';
 import { approvedIptvUrl,createIptvUpstream,readIptvOrigins } from './iptv-network.js';
 import { relayIptvManifest,type IptvResourceKind } from './iptv-manifest.js';
-import { IPTV_CHECK_TIMEOUT_MS,IPTV_MAX_BYTES,IPTV_MAX_SOURCES,parseIptvChannels,sniffIptvManifest,type IptvCachedCheck,type IptvChannel,type IptvCheckResult,type IptvImport,type IptvSourceInfo } from './iptv-parser.js';
+import { IPTV_CHECK_TIMEOUT_MS,IPTV_MAX_BYTES,IPTV_MAX_SOURCES,iptvStreamChannel,parseIptvChannels,sniffIptvManifest,type IptvCachedCheck,type IptvChannel,type IptvCheckResult,type IptvImport,type IptvSourceInfo } from './iptv-parser.js';
 
 const root='/api/iptv';
 const expiry=15*60_000;
@@ -98,16 +98,19 @@ export function registerIptv(app:FastifyInstance,db:DatabaseSync,fresh:(request:
     const owner=viewer(request),input=request.body;
     const name=typeof input?.name==='string'?input.name.trim().slice(0,120):'';
     const url=typeof input?.url==='string'?input.url.trim():'';
+    const streamUrl=typeof input?.streamUrl==='string'?input.streamUrl.trim():'';
     let text=typeof input?.text==='string'?input.text:'';
-    if(!name||Boolean(url)===Boolean(text))throw new AccountError('Choose a playlist file, paste its contents or enter a URL.');
+    if(!name||[url,text,streamUrl].filter(Boolean).length!==1)
+      throw new AccountError('Choose a playlist file, paste its contents or enter a URL.');
     let from:string|undefined;
     if(url){
       const result=await upstream.fetch(url,requestSignal(reply));
       from=result.url.href;
       text=await readText(result.response);
     }
-    const channels=(()=>{try{return parseIptvChannels(text,name,from);}
+    const channels=(()=>{try{return streamUrl?[iptvStreamChannel(name,streamUrl)]:parseIptvChannels(text,name,from);}
       catch(error){throw new AccountError((error as Error).message);}})();
+    if(streamUrl)approvedIptvUrl(channels[0].url,origins);
     if(viewer(request)!==owner)throw new AccountError('Please sign in again.',401);
     const count=db.prepare('SELECT COUNT(*) AS count FROM iptv_sources WHERE user_id=?').get(owner) as {count:number};
     if(count.count>=IPTV_MAX_SOURCES)throw new AccountError('Remove a playlist before adding another.');

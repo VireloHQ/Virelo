@@ -19,7 +19,7 @@ export type LiveTvService = {
   check: (id:string,index:number,signal:AbortSignal) => Promise<IptvCheckResult>;
   play: (id:string,index:number) => Promise<{url:string;release?:()=>void}>;
 };
-type ImportMode = 'url'|'file'|'paste';
+type ImportMode = 'url'|'stream'|'file'|'paste';
 type PlaylistInput = IptvImport & { file?:File };
 const pageSize = 100;
 const emptyChannels: IptvChannelInfo[] = [];
@@ -253,8 +253,10 @@ function PlaylistImport({titleId,pending,error,onImport,onCancel}: {
   const [name,setName] = useState(''), [url,setUrl] = useState(''), [paste,setPaste] = useState('');
   const fileInput = useRef<HTMLInputElement>(null);
   const [file,setFile] = useState<File|null>(null);
+  const stream = mode==='stream';
   const submit = () => {
-    const label = name.trim() || (mode==='file' ? file?.name.replace(/\.m3u8?$/i,'').slice(0,120) : undefined) || t("Playlist");
+    const label = name.trim() || (mode==='file' ? file?.name.replace(/\.m3u8?$/i,'').slice(0,120) : undefined) || (stream?t("Live TV"):t("Playlist"));
+    if (stream) { onImport({name:label,streamUrl:url.trim()}); return; }
     if (mode==='url') { onImport({name:label,url:url.trim()}); return; }
     if (mode==='paste') { onImport({name:label,text:paste}); return; }
     if (file) onImport({name:label,file});
@@ -263,15 +265,15 @@ function PlaylistImport({titleId,pending,error,onImport,onCancel}: {
   return <form aria-labelledby={titleId} className="live-tv-import" onSubmit={event => { event.preventDefault(); if (!pending) submit(); }}>
     <Modal.Body className="virelo-confirm-body live-tv-import-fields">
       <div className="live-tv-modes" role="group" aria-label={t("Import from")}>
-        {(['url','file','paste'] as const).map(value => <Button key={value} variant={mode===value?'secondary':'ghost'}
+        {(['url','stream','file','paste'] as const).map(value => <Button key={value} type="button" variant={mode===value?'secondary':'ghost'}
           aria-pressed={mode===value} isDisabled={pending} onPress={() => setMode(value)}>
-          {value==='url'?t("Playlist link"):value==='file'?t("File"):t("Paste text")}
+          {value==='url'?t("Playlist link"):value==='stream'?t("Stream link"):value==='file'?t("File"):t("Paste text")}
         </Button>)}
       </div>
-      <label className="live-tv-field"><span>{t("Playlist name")}</span>
+      <label className="live-tv-field"><span>{stream?t("Channel name"):t("Playlist name")}</span>
         <Input maxLength={120} value={name} readOnly={pending} onChange={event => setName(event.currentTarget.value)}/>
       </label>
-      {mode==='url' ? <label className="live-tv-field"><span>{t("Playlist link")}</span>
+      {mode==='url'||stream ? <label className="live-tv-field"><span>{stream?t("Stream link"):t("Playlist link")}</span>
         <Input type="url" value={url} maxLength={4096} required autoComplete="off" spellCheck={false} readOnly={pending}
           placeholder="https://" onChange={event => setUrl(event.currentTarget.value)}/>
       </label> : mode==='file' ? <div className="live-tv-file">
@@ -286,7 +288,7 @@ function PlaylistImport({titleId,pending,error,onImport,onCancel}: {
     </Modal.Body>
     <Modal.Footer className="virelo-confirm-footer">
       <Button type="button" variant="secondary" isDisabled={pending} onPress={onCancel}>{t("Cancel")}</Button>
-      <Button type="submit" isPending={pending} isDisabled={pending || (mode==='file'&&!file)}>{t("Add playlist")}</Button>
+      <Button type="submit" isPending={pending} isDisabled={pending || (mode==='file'&&!file)}>{stream?t("Add stream"):t("Add playlist")}</Button>
     </Modal.Footer>
   </form>;
 }
