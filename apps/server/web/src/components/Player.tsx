@@ -763,7 +763,8 @@ export function Player({item,queue,queueIndex,shuffled,onShuffle,onEnded,onNext,
     {audioPreparing&&playRequested&&<div className="player-status"><LoadingSpinner/><strong>{t("Preparing audio…")}</strong></div>}
     {fallback==='starting'&&playRequested&&(!playing||buffering) && <div className="player-status"><LoadingSpinner/><strong>{seekingPosition!==null?t("Seeking…"):playbackInfo?.requiresVideoTranscode?t("Preparing video…"):t("Preparing audio…")}</strong></div>}
     {(qualitySelectionError||fallback==='error'||audioError||(qualityState==='error'&&qualityRequested.current&&!playing)) && <div className="player-status error"><strong>{t("Playback unavailable")}</strong><span>{t(qualitySelectionError||audioError||error||qualityError)}{playbackBlocked.current&&!qualitySelectionError?t(" Choose another quality to continue; your quality limit has been kept."):''}</span></div>}
-    {minimized?<MiniplayerControls paused={!pauseAction} onToggle={toggle}/>:shorts?<ShortsPlayerControls item={item} current={current} duration={duration} muted={muted} pip={pip}
+    {minimized?<MiniplayerControls title={item.title} subtitle={item.series_title??undefined} paused={!pauseAction} onToggle={toggle}
+      timeline={{current,duration,onSeek:seek}}/>:shorts?<ShortsPlayerControls item={item} current={current} duration={duration} muted={muted} pip={pip}
       pipSupported={pipSupported} onSeek={seek} onMute={toggleMute} onPip={()=>void togglePip()} onNext={shorts.onNext}>
       {playbackSettings()}
     </ShortsPlayerControls>:<PlayerControls current={current} duration={duration} paused={!pauseAction}

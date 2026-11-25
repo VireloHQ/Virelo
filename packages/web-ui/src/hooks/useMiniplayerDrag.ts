@@ -52,7 +52,7 @@ export function useMiniplayerDrag() {
   return {
     'data-revealed':revealed || undefined,
     onPointerDown(event:PointerEvent<HTMLElement>) {
-      if(event.button!==0 || !event.isPrimary || grab.current || (event.target as Element).closest('button')) return;
+      if(event.button!==0 || !event.isPrimary || grab.current || (event.target as Element).closest('button,input')) return;
       const node=host(event.currentTarget);
       if(!node) return;
       const start=node.getBoundingClientRect(), {x,y}=point(event);
@@ -80,7 +80,8 @@ export function useMiniplayerDrag() {
     onPointerCancel:(event:PointerEvent<HTMLElement>)=>finish(event,true),
     onLostPointerCapture:(event:PointerEvent<HTMLElement>)=>finish(event,true),
     onKeyDown(event:React.KeyboardEvent<HTMLElement>) {
-      if(grab.current || !['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(event.key)) return;
+      if(event.defaultPrevented || grab.current || (event.target as Element).closest('input')
+        || !['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(event.key)) return;
       const node=host(event.currentTarget);
       if(!node) return;
       const [y,x]=(node.dataset.corner || 'bottom-right').split('-') as ['top'|'bottom','left'|'right'];

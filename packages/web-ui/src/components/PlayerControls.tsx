@@ -4,6 +4,7 @@ import { Button, Popover } from '@heroui/react';
 import { ArrowsOut, Pause, PictureInPicture, Play, Shuffle, SkipBack, SkipForward, SpeakerHigh, SpeakerSlash } from '@phosphor-icons/react';
 import { RepeatControl } from './RepeatControl';
 import { MinimizePlayerButton } from './MiniplayerControls';
+import { PlayerTimeline, type TimelineProps } from './PlayerTimeline';
 import { useAppearance } from '@edition/components/AppearanceProvider';
 import type { RepeatMode } from '@virelo/core/playback-repeat';
 import replay10 from '../assets/icons/replay-10.svg';
@@ -15,10 +16,6 @@ interface TransportProps {
   volume: number; muted: boolean; pip: boolean; pipSupported: boolean;
   onToggle: () => void; onVolume: (value: number) => void; onMute: () => void;
   onFullscreen: () => void; onPip: () => void;
-}
-interface TimelineProps {
-  current: number; duration: number; rolling?: boolean; atLiveEdge?: boolean;
-  onSeek: (position: number) => void;
 }
 interface VideoControlsProps extends TimelineProps {
   live?: false;
@@ -68,29 +65,6 @@ export function PlayerControls(props: PlayerControlsProps) {
   </div>;
 }
 
-function PlayerTimeline({current, duration, rolling = false, atLiveEdge = false, onSeek}: TimelineProps) {
-  const live = rolling && (atLiveEdge || duration <= 0);
-  const remaining = playerTime(Math.max(0, duration - current));
-  const rangeMax = duration > 0 ? duration : 1;
-  const position = live ? rangeMax : duration > 0 ? Math.max(0, Math.min(current, rangeMax)) : 0;
-  const progress = position / rangeMax * 100;
-  return <div className="player-timeline">
-    <span className="player-time" aria-label={rolling?undefined:t("Elapsed time")}>{rolling ? live ? '—' : `−${remaining}` : playerTime(current)}</span>
-    <input className="player-seek" style={{ '--range-fill': progress + '%' } as CSSProperties} aria-label={t("Seek")}
-      aria-valuetext={rolling ? live ? t("Live") : t("{value0} behind live",{value0:remaining}) : t('{value0} of {value1}',{value0:playerTime(current),value1:playerTime(duration)})}
-      type="range" min={0} max={rangeMax} step={.1}
-      disabled={duration <= 0} value={position} onChange={event => onSeek(Number(event.currentTarget.value))}
-      onKeyDown={event => {
-        const value = live ? current : Number(event.currentTarget.value), step = event.shiftKey ? 30 : 5;
-        const target = event.key === 'ArrowLeft' ? value - step : event.key === 'ArrowRight' ? value + step
-          : event.key === 'Home' ? 0 : event.key === 'End' ? duration : null;
-        if (target !== null) { event.preventDefault(); onSeek(Math.max(0, Math.min(duration, target))); }
-      }}/>
-    {rolling ? <span className="player-time">{t("Live")}</span>
-      : <span className="player-time player-time-remaining" aria-label={t("Remaining time")} title={t("Remaining time")}>{remaining}</span>}
-  </div>;
-}
-
 function PlayerVolume({ volume, muted, onVolume, onMute }: { volume: number; muted: boolean; onVolume: (value: number) => void; onMute: () => void }) {
   useLocale();
   const [open, setOpen] = useState(false), [animate, setAnimate] = useState(false);
@@ -111,9 +85,4 @@ function PlayerVolume({ volume, muted, onVolume, onMute }: { volume: number; mut
       </div></Popover.Dialog>
     </Popover.Content>
   </Popover></div>;
-}
-
-export function playerTime(value: number) {
-  const total = Number.isFinite(value) ? Math.max(0, Math.floor(value)) : 0, seconds = total % 60, minutes = Math.floor(total / 60) % 60, hours = Math.floor(total / 3600);
-  return hours ? `${hours}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}` : `${minutes}:${String(seconds).padStart(2, '0')}`;
 }

@@ -273,6 +273,8 @@ try {
   assert.ok(await page.locator('.topbar').evaluate((current,previous)=>current===previous,nav));
   const mini=frame.getByRole('group',{name:'Miniplayer',exact:true});
   await mini.waitFor();
+  assert.equal(await mini.getAttribute('data-controller-style'),'theater');
+  assert.ok(await mini.getByRole('slider',{name:'Seek',exact:true}).isEnabled());
   await player.waitForFunction(()=>{
     const video=document.querySelector('.live-tv-player video'), rect=video.getBoundingClientRect();
     return rect.height>=64&&document.elementFromPoint(rect.x+rect.width/2,rect.y+rect.height/2)?.closest('.miniplayer-controls');

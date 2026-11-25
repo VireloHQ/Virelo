@@ -6,7 +6,10 @@ export async function auditMiniplayerDrag(page, mini, label, touch=false) {
   await page.mouse.move(1,1);
   const controls=()=>pause.evaluate(button=>getComputedStyle(button).pointerEvents);
   assert.equal(await controls(),'none',label+' controls do not intercept idle taps');
-  assert.equal((await mini.textContent()).trim(),'',label+' the picture has no title strip');
+  assert.ok(await mini.evaluate(controls=>{
+    const title=controls.nextElementSibling?.querySelector('strong');
+    return title?.textContent && title.getBoundingClientRect().top>=controls.getBoundingClientRect().bottom;
+  }),label+' title stays below the picture');
   const start=await mini.boundingBox(), x=start.x+start.width*.25, y=start.y+start.height*.65;
   const viewport=page.viewportSize();
   const destination={x:viewport.width*.12,y:viewport.height*.18};
@@ -38,6 +41,8 @@ export async function auditMiniplayerDrag(page, mini, label, touch=false) {
   if(touch) await mini.tap({position:{x:20,y:80}});
   else await mini.hover({position:{x:20,y:80}});
   assert.equal(await controls(),'auto',label+' touching or hovering the picture reveals the actions');
+  assert.ok(await mini.locator('button').evaluateAll(buttons=>buttons.every(button=>getComputedStyle(button).backgroundColor==='rgba(0, 0, 0, 0)')),
+    label+' the overlay buttons have no background');
   console.log('PASS',label+' drag snaps to the corners; the overlay stays out of the picture until interaction');
 }
 
@@ -65,19 +70,43 @@ export async function auditMiniplayer(page, label) {
   assert.ok(await mini.evaluate(controls=>{
     const rect=controls.closest('.playback-dock').getBoundingClientRect();
     const video=controls.closest('.player').querySelector('video'), picture=video.getBoundingClientRect();
+    const seek=controls.querySelector('.player-seek').getBoundingClientRect();
     const nav=document.querySelector('.mobile-nav')?.getBoundingClientRect();
     const bottom=nav?.height ? nav.top : innerHeight;
     return rect.top>=0&&rect.left>=0&&rect.right<=innerWidth&&rect.bottom<=bottom+1
-      &&picture.height>=64&&picture.top>=rect.top&&rect.bottom-picture.bottom<=2
+      &&picture.height>=64&&picture.top>=rect.top&&Math.abs(controls.getBoundingClientRect().bottom-picture.bottom)<2
+      &&seek.width>=picture.width-24&&Math.abs((seek.top+seek.bottom)/2-picture.bottom)<9
       &&controls.contains(document.elementFromPoint(picture.x+picture.width/2,picture.y+picture.height/2))
       &&[...controls.querySelectorAll('button')].every(button=>button.offsetWidth>=44&&button.offsetHeight>=44);
   }),label+' miniplayer and touch targets fit above navigation');
+  const touch=await page.evaluate(()=>matchMedia('(pointer:coarse)').matches);
+  await auditMiniplayerDrag(page,mini,label,touch);
   if(process.env.VIRELO_TEST_MINIPLAYER_SCREENSHOT)
     await page.screenshot({path:process.env.VIRELO_TEST_MINIPLAYER_SCREENSHOT});
-  await auditMiniplayerDrag(page,mini,label,await page.evaluate(()=>matchMedia('(pointer:coarse)').matches));
   await assertSameVideo();
   await mini.getByRole('button',{name:'Pause',exact:true}).click();
   assert.ok(await player.evaluate(video=>video.paused),label+' its pause button works');
+  const corner=await mini.evaluate(node=>node.closest('.playback-dock').dataset.corner);
+  const seek=mini.getByRole('slider',{name:'Seek',exact:true});
+  const box=await seek.boundingBox(), position={x:box.width*.42,y:box.height/2};
+  await (touch ? seek.tap({position}) : seek.click({position}));
+  await page.waitForFunction(video=>video.paused&&!video.seeking&&Math.abs(video.currentTime/video.duration-.42)<.04,original);
+  await seek.press('Home');await seek.press('ArrowRight');
+  await page.waitForFunction(video=>video.paused&&!video.seeking&&Math.abs(video.currentTime-5)<.25,original);
+  assert.equal(await mini.evaluate(node=>node.closest('.playback-dock').dataset.corner),corner,label+' scrubbing does not move the player');
+  if(await page.evaluate(()=>Boolean(window.__client))){
+    const variants=new Set();
+    for(const style of ['classic','streamline','theater','centerstage']){
+      await page.evaluate(controllerStyle=>window.__client.setQueryData(['appearance'],{controllerStyle,accentColor:'#c3a6ff'}),style);
+      await page.waitForFunction(style=>document.querySelector('.miniplayer-controls')?.dataset.controllerStyle===style,style);
+      variants.add(await mini.locator('.miniplayer-toggle').evaluate(button=>{
+        const bounds=button.getBoundingClientRect(), parent=button.parentElement.getBoundingClientRect();
+        return [Math.round(bounds.x-parent.x),Math.round(bounds.y-parent.y),Math.round(button.firstElementChild.getBoundingClientRect().width)].join(',');
+      }));
+    }
+    assert.equal(variants.size,4,label+' each controller style has its own compact layout');
+    await page.evaluate(()=>window.__client.setQueryData(['appearance'],{controllerStyle:'classic',accentColor:'#c3a6ff'}));
+  }
   await mini.getByRole('button',{name:'Play',exact:true}).click();
   await page.waitForFunction(video=>!video.paused,original);
   await mini.getByRole('button',{name:'Expand player',exact:true}).click();

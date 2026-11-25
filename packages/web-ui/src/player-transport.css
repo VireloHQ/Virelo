@@ -99,9 +99,9 @@
   .player:not(.short-player) .player-transport>.repeat-control,
   .player:not(.short-player):not(.has-queue) .player-transport :is(.queue-previous,.queue-next) { display:none; }
   .player.has-queue:not(.short-player):fullscreen .player-transport>button[aria-label="Shuffle queue"] { display:grid; }
-  .player:not(.short-player) .player-timeline { position:absolute; bottom:0; left:12px; right:12px; height:44px; gap:8px; }
-  .app-shell .player:not(.short-player) .player-timeline .player-seek { height:44px; }
-  .player:not(.short-player) .player-timeline .player-time { font-size:11px; text-shadow:0 1px 4px #000; }
+  .player:not(.short-player) .player-controls .player-timeline { position:absolute; bottom:0; left:12px; right:12px; height:44px; gap:8px; }
+  .app-shell .player:not(.short-player) .player-controls .player-timeline .player-seek { height:44px; }
+  .player:not(.short-player) .player-controls .player-timeline .player-time { font-size:11px; text-shadow:0 1px 4px #000; }
   .player:not(.short-player).controls-visible .player-caption { translate:0 calc(var(--caption-bottom) - 58px); }
 }
 @media (max-width:1000px) and (max-height:500px) {
