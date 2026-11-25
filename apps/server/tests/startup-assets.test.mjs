@@ -20,8 +20,8 @@ test('the splash uses responsive lossless assets with a PNG fallback and matchin
 });
 
 test('small header and account logos do not download the full 1024px source',async()=>{
-  for(const name of ['Header','AccountSession']){
-    const source=await readFile(new URL('../web/src/components/'+name+'.tsx',import.meta.url),'utf8');
+  for(const path of ['../../../packages/web-ui/src/components/AppNavigation.tsx','../web/src/components/AccountSession.tsx']){
+    const source=await readFile(new URL(path,import.meta.url),'utf8');
     assert.ok(source.includes('/virelo-icon-180.png?v=ribbon-1'));
     assert.ok(!source.includes('/virelo-icon.png'));
   }

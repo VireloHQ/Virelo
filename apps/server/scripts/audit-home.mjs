@@ -69,6 +69,44 @@ try{
   await page.waitForTimeout(100);check(await row.evaluate(e=>e.scrollLeft)>0,mode+' keyboard shelf scroll');
   const play=page.locator('.home-feature').getByRole('button',{name:/^(Play|Resume)$/});
   await play.click();await page.waitForURL('**/watch/*');check(page.url().includes('/watch/'),mode+' hero play destination');await page.goBack();await page.locator('.home-feature').waitFor();
+  await page.setViewportSize({width:1440,height:900});
+  check(await page.locator('.topbar').getByRole('button',{name:/Switch to (sidebar|header)/}).count()===0,mode+' no layout switch in the header');
+  const openAppearance=async()=>{
+    await page.locator('.topbar').getByRole('button',{name:'Settings',exact:true}).click();
+    await page.locator('#settings-nav-appearance').click();
+  };
+  await openAppearance();
+  const layout=page.getByRole('button',{name:'Navigation layout',exact:true});
+  await layout.waitFor();
+  await page.evaluate(()=>{window.fixturePage=document.getElementById('settings-panel-appearance');});
+  await layout.focus();await page.keyboard.press('Enter');
+  const sidebarOption=page.getByRole('option',{name:'Sidebar',exact:true});
+  await sidebarOption.waitFor();
+  await page.keyboard.press('End');await page.keyboard.press('Enter');
+  await page.waitForFunction(()=>document.querySelector('.app-shell')?.dataset.navigation==='sidebar'&&document.activeElement?.getAttribute('aria-label')==='Navigation layout');
+  check(true,mode+' keyboard selection applies Sidebar and restores focus to its setting');
+  check(await page.evaluate(()=>window.fixturePage===document.getElementById('settings-panel-appearance')),mode+' changing navigation does not remount the settings view');
+  await page.waitForFunction(()=>{
+    const rail=document.querySelector('.topbar').getBoundingClientRect(),main=document.querySelector('main').getBoundingClientRect();
+    return rail.x===0&&rail.width<250&&main.x>=rail.width-1;
+  });
+  check(true,mode+' Sidebar fits beside the content');
+  check(await page.getByRole('group',{name:'Browse videos',exact:true}).isVisible()&&await page.getByRole('group',{name:'Saved items',exact:true}).isVisible(),mode+' Sidebar uses labelled link groups');
+  check(await page.locator('.topbar').getByRole('button',{name:/Switch to (sidebar|header)/}).count()===0,mode+' no layout switch in the sidebar');
+  await page.locator('.desktop-nav').getByRole('link',{name:'Home',exact:true}).click();await page.locator('.home-feature').waitFor();
+  await page.screenshot({path:join(screenshots,mode+'-sidebar.png')});
+  check(await page.getByRole('link',{name:'Account',exact:true}).count()===(mode==='npm'?1:0),mode+' only the self-hosted sidebar has an account link');
+  await page.reload();await page.locator('.app-shell[data-navigation="sidebar"]').waitFor();
+  await page.setViewportSize({width:390,height:844});
+  check(await page.locator('.mobile-nav a:visible').count()===5,mode+' mobile keeps its five navigation links');
+  await page.setViewportSize({width:901,height:540});
+  check(await page.locator('body').evaluate(e=>e.scrollWidth<=innerWidth+1),mode+' narrow desktop does not overflow with the sidebar');
+  await openAppearance();
+  await layout.click();
+  await page.getByRole('option',{name:'Header',exact:true}).click();
+  await page.locator('.app-shell[data-navigation="header"]').waitFor();
+  check(true,mode+' Header is restored from Settings on a short desktop viewport');
+  await page.getByRole('link',{name:'Home',exact:true}).first().click();await page.locator('.home-feature').waitFor();
   for(const [w,h] of [[1440,1000],[320,720],[375,812],[844,390],[3440,1440]]){
    await page.setViewportSize({width:w,height:h});await page.evaluate(()=>scrollTo(0,0));await page.waitForTimeout(180);
    check(await page.locator('body').evaluate(e=>e.scrollWidth<=innerWidth+1),mode+' no page overflow '+w);

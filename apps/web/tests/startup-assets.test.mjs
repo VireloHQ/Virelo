@@ -20,7 +20,7 @@ test('the splash uses responsive lossless assets with a PNG fallback and matchin
 });
 
 test('the small header logo does not download the full 1024px source',async()=>{
-  const header=await readFile(new URL('../web/src/components/Header.tsx',import.meta.url),'utf8');
+  const header=await readFile(new URL('../../../packages/web-ui/src/components/AppNavigation.tsx',import.meta.url),'utf8');
   assert.ok(header.includes('/virelo-icon-180.png?v=ribbon-1'));
   assert.ok(!header.includes('/virelo-icon.png'));
 });
