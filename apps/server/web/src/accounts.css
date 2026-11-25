@@ -73,6 +73,8 @@
 .app-shell .library-group .library-list > div { padding:16px 0; }
 .app-shell .library-group .library-list > div:last-child { padding-bottom:0; }
 .library-item-actions { display:flex; align-items:center; gap:8px; flex:none; }
+.download-standalone-help { flex-basis:100%; }
+.download-standalone-help a { text-decoration:underline; text-underline-offset:.2em; }
 .library-list > div > div:first-child { min-width:0; }
 .library-group .library-list span,.library-previous .library-list span { white-space:normal; overflow-wrap:anywhere; }
 .library-previous { border-top:1px solid var(--line); margin:0; padding:12px 0; }

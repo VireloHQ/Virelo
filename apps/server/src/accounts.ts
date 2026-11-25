@@ -9,7 +9,7 @@ export class AccountError extends Error {
 }
 
 export const defaultPermissions: AccountPermissions = {
-  manageLibraries: false, scanLibraries: false, manageMetadata: false, play: true, transcode: true
+  manageLibraries: false, scanLibraries: false, manageMetadata: false, play: true, transcode: true, download: false
 };
 const lifetime = 7 * 86400_000;
 const idleTime = 86400_000;
@@ -123,7 +123,7 @@ export class Accounts {
   get(id: number): Account | undefined {
     const row = this.db.prepare('SELECT * FROM accounts WHERE id=?').get(id) as Row | undefined;
     if (!row) return;
-    const permissions = JSON.parse(row.permissions) as AccountPermissions;
+    const permissions = { ...defaultPermissions, ...JSON.parse(row.permissions) } as AccountPermissions;
     return { id: row.id, username: row.username, displayName: row.display_name, isAdmin: Boolean(row.is_admin),
       enabled: Boolean(row.enabled), allLibraries: Boolean(row.all_libraries), revision: row.revision, createdAt: row.created_at,
       permissions: row.is_admin ? Object.fromEntries(Object.keys(defaultPermissions).map(key => [key, true])) as unknown as AccountPermissions : permissions,
