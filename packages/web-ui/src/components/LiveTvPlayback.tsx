@@ -140,7 +140,7 @@ export function LiveTvPlayback({title, service, source, channel}: {title:string;
       }
     }}>
     <video className="video-presentation" ref={videoRef} aria-label={title} playsInline crossOrigin="anonymous"
-      onClick={() => { if (minimized || controlsVisible) toggle(); else { revealControls(); scheduleControlsHide(); } }}
+      onClick={minimized ? undefined : () => { if (controlsVisible) toggle(); else { revealControls(); scheduleControlsHide(); } }}
       onPlay={() => { setPaused(false); revealControls(); scheduleControlsHide(); }}
       onPlaying={dock?.onPlaying}
       onPause={() => { setPaused(true); revealControls(); }}/>
@@ -149,7 +149,7 @@ export function LiveTvPlayback({title, service, source, channel}: {title:string;
       <Button variant="secondary" onPress={() => { containerRef.current?.focus(); setFailure(''); setPaused(true); setOpening(true); setTimeline(emptyTimeline); setAttempt(value => value+1); }}>{t("Try again")}</Button>
     </div> : !opening && !minimized && <PlayerControls live timeline={{...timeline,onSeek:seek}} paused={paused} busy={false} volume={volume} muted={muted} pip={pip} pipSupported={pipSupported}
       onToggle={toggle} onVolume={value => { setMuted(false); setVolume(value); }} onMute={mute} onFullscreen={fullscreen} onPip={togglePip}/>}
-    {minimized && <MiniplayerControls title={title} paused={paused} onToggle={toggle}/>}
+    {minimized && <MiniplayerControls paused={paused} onToggle={toggle}/>}
     {!minimized && menu && <PlayerActionMenu label={t("Video actions")} position={menu} returnFocus={containerRef.current} onClose={() => setMenu(null)}
       actions={[
         {label:paused?'Play':'Pause',icon:paused?<Play/>:<Pause/>,action:toggle},

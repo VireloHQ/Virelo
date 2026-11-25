@@ -6,6 +6,8 @@ The player shows a progress bar for every stream. On-demand streams use their no
 
 While a channel plays, browse to another page or select **Minimize player** to keep it playing inside Virelo. Select **Expand player** to return to the guide or **Close miniplayer** to stop the stream.
 
+Drag the picture to move it; it snaps to the nearest corner. Hover, tap, or focus the picture to reveal the controls. When the miniplayer has keyboard focus, use the arrow keys to choose a corner.
+
 For a single HLS stream, add its HTTPS link. For a channel list imported from a file or pasted text, channel URLs must be absolute. Relative channel URLs in a remote list are resolved against that list's URL.
 
 Virelo starts checking channel links in the background after you add a playlist. Checks run a few at a time, including channels behind **Load more**, without opening the player. Use the stop button to cancel; the pulse button lets you continue with unchecked channels or recheck the current filtered results. Click the result at the end of a row to check just that channel.

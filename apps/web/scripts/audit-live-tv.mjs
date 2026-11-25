@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { auditMiniplayerDrag } from '../../../scripts/miniplayer-audit.mjs';
 import { execFileSync,spawn } from 'node:child_process';
 import { mkdtemp,readFile,rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -274,7 +275,7 @@ try {
   await mini.waitFor();
   await player.waitForFunction(()=>{
     const video=document.querySelector('.live-tv-player video'), rect=video.getBoundingClientRect();
-    return rect.height>=64&&document.elementFromPoint(rect.x+rect.width/2,rect.y+rect.height/2)===video;
+    return rect.height>=64&&document.elementFromPoint(rect.x+rect.width/2,rect.y+rect.height/2)?.closest('.miniplayer-controls');
   }).catch(async error=>{
     const layout=await video.evaluate(element=>{
       const rect=element.getBoundingClientRect(), hit=document.elementFromPoint(rect.x+rect.width/2,rect.y+rect.height/2);
@@ -287,12 +288,14 @@ try {
   const miniTime=await video.evaluate(element=>element.currentTime);
   await player.waitForFunction(time=>{const v=document.querySelector('video');return !v.paused&&v.currentTime>time+.15;},miniTime);
   assert.equal(await player.evaluate(()=>document.pictureInPictureElement),null);
+  await auditMiniplayerDrag(page,mini,'Live TV frame');
   await mini.getByRole('button',{name:'Expand player',exact:true}).click();
   await page.waitForURL('**/app/live-tv');
   await first.waitFor();
   assert.ok(await video.evaluate((current,previous)=>current===previous,videoNode),'expanding keeps the same HLS player');
   await video.hover({position:{x:12,y:20}});
   await liveTransport.getByRole('button',{name:'Minimize player',exact:true}).click();
+  await mini.press('ArrowRight');
   await mini.getByRole('button',{name:'Close miniplayer',exact:true}).click();
   await page.locator('.live-tv-frame').waitFor({state:'detached'});
   const beforeReload=requests.length;

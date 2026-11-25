@@ -575,7 +575,7 @@ export function Player({item,queue,queueIndex,shuffled,onShuffle,onEnded,onNext,
       loop={!shorts&&(repeat==='one'||(repeat==='queue'&&queue?.length===1))}
       preload={typeof readQualityPreference(false)==='number'?'none':autoPlay?'auto':'metadata'}
       autoPlay={false}
-      onClick={minimized?toggle:handleVideoClick}
+      onClick={minimized?undefined:handleVideoClick}
       onVolumeChange={event=>onVolumeChange(event.currentTarget)}
       onPlay={()=>{if(qualityBlocked.current){videoRef.current?.pause();return;}sourceTransition.current=false;setPlaying(true);syncExternalAudio(true);requestExternalAudioPlayback();revealControls();scheduleControlsHide();}}
       onPlaying={()=>{syncExternalAudio(true);dock?.onPlaying();}}
@@ -609,7 +609,7 @@ export function Player({item,queue,queueIndex,shuffled,onShuffle,onEnded,onNext,
     {preparing&&preparing!=='subtitles'&&playRequested&&!playing&&<div className="player-status"><LoadingSpinner/><strong>{preparing==='audio'?t("Preparing audio…"):preparing==='quality'?t("Preparing {value0}…", { value0: selectedQuality&&selectedQuality>=2160?'4K':`${selectedQuality}p` }):t("Preparing subtitles…")}</strong>{preparationProgress>0&&<span>{Math.round(preparationProgress*100)}%</span>}</div>}
     {preparing==='subtitles'&&<span className="sr-only" role="status">{t("Preparing subtitles…")}</span>}
     {(source.error || playbackError) && <div className="player-status error"><strong>{t("Playback unavailable")}</strong><span>{source.error || playbackError}</span></div>}
-    {minimized?<MiniplayerControls title={item.title} paused={!pauseAction} onToggle={toggle}/>:shorts?<ShortsPlayerControls item={item} current={current} duration={duration} muted={muted} pip={pip}
+    {minimized?<MiniplayerControls paused={!pauseAction} onToggle={toggle}/>:shorts?<ShortsPlayerControls item={item} current={current} duration={duration} muted={muted} pip={pip}
       pipSupported={pipSupported} onSeek={seek} onMute={toggleMute} onPip={()=>void togglePip()} onNext={shorts.onNext}>
       {playbackSettings()}
     </ShortsPlayerControls>:<PlayerControls current={current} duration={duration} paused={!pauseAction}

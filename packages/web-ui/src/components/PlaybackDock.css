@@ -1,9 +1,15 @@
 .playback-dock { display:contents; }
 .playback-dock[data-minimized="true"] {
-  display:block; position:fixed; z-index:20; inset-inline-end:max(16px,env(safe-area-inset-right));
-  bottom:max(16px,env(safe-area-inset-bottom)); width:min(360px,calc(100vw - 32px));
+  --mini-gap:16px;
+  --mini-bottom:max(var(--mini-gap),env(safe-area-inset-bottom));
+  display:block; position:fixed; z-index:20; right:max(var(--mini-gap),env(safe-area-inset-right));
+  bottom:var(--mini-bottom); width:min(360px,calc(100vw - 32px));
   overflow:hidden; border:1px solid var(--line-strong); border-radius:10px; background:var(--surface);
   box-shadow:0 10px 38px #0008;
+}
+.playback-dock[data-minimized="true"][data-corner^="top-"] { top:calc(var(--topbar,0px) + var(--mini-gap)); bottom:auto; }
+.playback-dock[data-minimized="true"][data-corner$="-left"] {
+  left:calc(var(--navigation-rail,0px) + max(var(--mini-gap),env(safe-area-inset-left))); right:auto;
 }
 .page-shell:has(> .playback-dock[data-minimized="true"]) { padding-bottom:min(264px,50dvh); }
 .playback-dock[data-minimized="true"] :is(.watch-view,.watch-main,.shorts-view,.shorts-scroller,.short-slot,.short-stage,.live-tv,.live-tv-grid,.content-view) {
@@ -20,23 +26,44 @@
   display:block; width:100%; height:auto; aspect-ratio:16/9; border-radius:0; cursor:pointer;
 }
 .playback-dock[data-minimized="true"] .player .video-presentation { cursor:pointer; }
-.playback-dock[data-minimized="true"] .player .player-caption { bottom:49px; translate:0 0; font-size:13px; }
-.playback-dock[data-minimized="true"] .player-status { bottom:44px; padding:12px; }
+.playback-dock[data-minimized="true"] .player .player-caption { bottom:10px; translate:0 0; font-size:13px; }
+.playback-dock[data-minimized="true"] .player-status { padding:12px; }
 .miniplayer-controls {
-  position:relative; z-index:8; display:grid; grid-template-columns:44px minmax(0,1fr) 44px 44px;
-  align-items:center; min-height:44px; background:var(--surface); color:var(--text);
+  position:absolute; z-index:8; inset:0; color:white; cursor:grab;
+  user-select:none; touch-action:none;
 }
-.miniplayer-controls>span { overflow:hidden; white-space:nowrap; text-overflow:ellipsis; font-size:13px; font-weight:550; }
+.miniplayer-controls[data-dragging="true"] { cursor:grabbing; }
+.miniplayer-controls:focus-visible { outline:2px solid var(--color-focus); outline-offset:-3px; }
+.miniplayer-controls::before {
+  content:''; position:absolute; inset:0; pointer-events:none;
+  background:linear-gradient(#0007,transparent 55%);
+}
+.miniplayer-controls::before,.miniplayer-controls>button { opacity:0; transition:opacity 120ms ease-out; }
 .miniplayer-controls>button {
-  display:grid; place-items:center; width:44px; height:44px; padding:0;
-  border:0; border-radius:4px; background:transparent; color:inherit; cursor:pointer;
+  display:grid; place-items:center; position:absolute; width:44px; height:44px; padding:0;
+  border:0; border-radius:50%; background:#111c; color:inherit; cursor:pointer; pointer-events:none;
 }
+.miniplayer-toggle { top:50%; left:50%; translate:-50% -50%; }
+.miniplayer-expand { top:5px; left:5px; }
+.miniplayer-close { top:5px; right:5px; }
 .miniplayer-controls>button svg { width:18px; height:18px; }
-.miniplayer-controls>button:hover { background:var(--control-hover); }
+.miniplayer-controls>button:hover { background:#000e; }
 .miniplayer-controls>button:focus-visible { outline:2px solid var(--color-focus); outline-offset:-3px; }
+.miniplayer-controls:not([data-dragging]):is([data-revealed],:focus-visible,:has(:focus-visible))::before,
+.miniplayer-controls:not([data-dragging]):is([data-revealed],:focus-visible,:has(:focus-visible))>button {
+  opacity:1; pointer-events:auto;
+}
+@media (hover:hover) {
+  .miniplayer-controls:hover:not([data-dragging])::before,
+  .miniplayer-controls:hover:not([data-dragging])>button { opacity:1; pointer-events:auto; }
+}
+@media (prefers-reduced-motion:reduce) {
+  .miniplayer-controls::before,.miniplayer-controls>button { transition:none; }
+}
 @media (max-width:900px) {
   .playback-dock[data-minimized="true"] {
-    bottom:calc(var(--mobile-dock-offset,62px) + 10px); inset-inline-end:max(10px,env(safe-area-inset-right));
+    --mini-gap:10px;
+    --mini-bottom:calc(var(--mobile-dock-offset,62px) + var(--mini-gap));
     width:min(292px,calc(100vw - 20px));
   }
 }
