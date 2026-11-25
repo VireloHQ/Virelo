@@ -24,7 +24,8 @@ export function AppearanceSettings() {
   const {layout,setLayout}=useLibraryLayout();
   const { value, loading, saving, error, saveError, save } = useAppearance();
   const [draft, setDraft] = useState<Appearance>(value), [saved, setSaved] = useState(false), [editingColor, setEditingColor] = useState(false);
-  useEffect(() => { if (!saving && !saveError && !editingColor) setDraft(value); }, [value, saving, saveError, editingColor]);
+  // Keep the invalid draft and its error in place when focus moves to Reset.
+  useEffect(() => { if (!saving && !saveError && !editingColor) setDraft(current => isAppearance(current) ? value : current); }, [value, saving, saveError, editingColor]);
   const valid = isAppearance(draft), changed = draft.controllerStyle !== value.controllerStyle || draft.accentColor.toLowerCase() !== value.accentColor;
   const update = (patch: Partial<Appearance>, commit = true) => {
     const next = { ...draft, ...patch };

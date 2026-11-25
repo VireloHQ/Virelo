@@ -51,6 +51,11 @@ export class VireloDB {
         label TEXT NOT NULL,
         PRIMARY KEY (library_id, folder)
       );
+      CREATE TABLE IF NOT EXISTS home_hidden_libraries (
+        user_id INTEGER NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+        library_id INTEGER NOT NULL REFERENCES libraries(id) ON DELETE CASCADE,
+        PRIMARY KEY (user_id,library_id)
+      );
       CREATE TABLE IF NOT EXISTS media (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         library_id INTEGER NOT NULL,
@@ -470,15 +475,35 @@ export class VireloDB {
     `).all(...joins.params,...params,limit,offset) as unknown as MediaRecord[];
   }
 
+  hiddenHomeLibraries(scope?: CatalogScope): number[] {
+    if(!scope)return [];
+    const rows=this.db.prepare('SELECT library_id FROM home_hidden_libraries WHERE user_id=?').all(scope.userId) as {library_id:number}[];
+    if(!rows.length)return [];
+    const accessible=new Set(this.visibleLibraries(scope).map(library=>library.id));
+    return rows.map(row=>row.library_id).filter(id=>accessible.has(id));
+  }
+
+  setHomeLibraryHidden(userId:number, libraryId:number, hidden:boolean) {
+    if(hidden)this.db.prepare('INSERT OR IGNORE INTO home_hidden_libraries VALUES (?,?)').run(userId,libraryId);
+    else this.db.prepare('DELETE FROM home_hidden_libraries WHERE user_id=? AND library_id=?').run(userId,libraryId);
+  }
+
+  private homeScope(scope:CatalogScope|undefined, hidden:number[]) {
+    if(!scope||!hidden.length)return scope;
+    const excluded=new Set(hidden);
+    return {...scope,libraryIds:this.visibleLibraries(scope).map(library=>library.id).filter(id=>!excluded.has(id))};
+  }
+
   getHome(scope?: CatalogScope) {
-    const visible = this.catalogClause(scope), joins = this.personalJoins(scope);
+    const hiddenLibraryIds=this.hiddenHomeLibraries(scope);
+    const visible = this.catalogClause(this.homeScope(scope,hiddenLibraryIds)), joins = this.personalJoins(scope);
     // Curate one visible catalog snapshot; only bounded shelves are sent to clients.
     const items = this.db.prepare(`SELECT m.*,p.position AS progress_position,
       p.duration AS progress_duration,p.completed AS progress_completed,p.updated_at AS progress_updated_at,
       (l.media_id IS NOT NULL) AS liked
       FROM media m ${joins.sql}
       WHERE ${visible.sql} ORDER BY m.added_at DESC,m.id DESC`).all(...joins.params,...visible.params) as unknown as MediaRecord[];
-    return buildHome(items);
+    return {...buildHome(items),...(hiddenLibraryIds.length?{hiddenLibraryIds}:{})};
   }
 
 
@@ -494,7 +519,7 @@ export class VireloDB {
     `).all(...visible.params, includeMissingArtwork ? 1 : 0, safeLimit) as unknown as MediaRecord[];
   }
 
-  getShorts(options: { limit?: number; offset?: number; seed?: number; startId?: number; includeLandscapes?: boolean } = {}, scope?: CatalogScope): ShortsFeed {
+  getShorts(options: { limit?: number; offset?: number; seed?: number; startId?: number; includeLandscapes?: boolean; home?: boolean } = {}, scope?: CatalogScope): ShortsFeed {
     const requestedLimit = Number.isFinite(options.limit) ? Number(options.limit) : 50;
     const requestedOffset = Number.isFinite(options.offset) ? Number(options.offset) : 0;
     const limit = Math.min(Math.max(Math.trunc(requestedLimit), 1), 500);
@@ -502,7 +527,7 @@ export class VireloDB {
     const startId = Number.isSafeInteger(options.startId) && Number(options.startId) > 0 ? Number(options.startId) : 0;
     const dims = '(m.width IS NOT NULL AND m.height IS NOT NULL AND m.width>0 AND m.height>0)';
     const cond = options.includeLandscapes ? dims : `${dims} AND m.height>m.width`;
-    const visible = this.catalogClause(scope), joins = this.personalJoins(scope);
+    const visible = this.catalogClause(options.home?this.homeScope(scope,this.hiddenHomeLibraries(scope)):scope), joins = this.personalJoins(scope);
     const items = this.db.prepare(`
       SELECT m.*,p.position AS progress_position,p.duration AS progress_duration,p.completed AS progress_completed,(l.media_id IS NOT NULL) AS liked
       FROM media m ${joins.sql}

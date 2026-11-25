@@ -7,10 +7,16 @@ import { join, relative, resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { createVireloServer } from '../dist/server.js';
 import { hashPassword, verifyPassword, sessionDigest } from '../dist/accounts.js';
+import { attachmentHeader } from '../dist/download.js';
 
 process.env.VIRELO_LOG_LEVEL = 'silent';
 const password = 'A private test passphrase 2026';
 const cookieOf = response => { assert.ok(response.headers['set-cookie']); return response.headers['set-cookie'].split(';')[0]; };
+
+test('attachment names keep Unicode and use safe ASCII headers',()=>{
+  assert.equal(attachmentHeader('動画 (1).mp4'),"attachment; filename=\"__ (1).mp4\"; filename*=UTF-8''%E5%8B%95%E7%94%BB%20%281%29.mp4");
+  assert.ok(!/[\r\n]/.test(attachmentHeader('video\r\n.mp4')));
+});
 
 test('passwords use salted scrypt and support long Unicode passphrases', async () => {
   const one = await hashPassword(password), two = await hashPassword(password);
@@ -108,11 +114,58 @@ test('accounts enforce authentication, catalog privacy and administrative bounda
     const stream=await call('GET',`/api/media/${items[0].id}/stream`,undefined,viewerCookie,{headers:{range:'bytes=0-6'}});
     assert.equal(stream.statusCode,206);assert.equal(stream.body,'Private');assert.equal(stream.headers['cache-control'],'private, no-store');
     assert.equal((await call('GET',`/api/media/${items[0].id}/artwork/thumbnail`,undefined,viewerCookie)).headers['cache-control'],'private, no-store');
+    const preference = '/api/home/libraries/'+items[0].library_id;
+    assert.equal((await call('PUT',preference,{hidden:true})).statusCode,401);
+    assert.equal((await call('PUT',preference,{hidden:'true'},viewerCookie)).statusCode,400);
+    assert.equal((await call('PUT','/api/home/libraries/'+items[1].library_id,{hidden:true},viewerCookie)).statusCode,404);
+    assert.equal((await call('PUT',preference,{hidden:true},viewerCookie)).statusCode,200);
+    const hiddenHome=(await call('GET','/api/home',undefined,viewerCookie)).json();
+    assert.deepEqual(hiddenHome.hiddenLibraryIds,[items[0].library_id]);
+    assert.equal(hiddenHome.total,0,'all accessible items can be hidden without removing the library');
+    assert.equal((await call('GET','/api/home',undefined,ownerCookie)).json().total,2);
+    assert.equal((await call('GET','/api/shorts?home=1',undefined,viewerCookie)).json().total,0);
+    assert.equal((await call('GET','/api/shorts',undefined,viewerCookie)).json().total,1);
+    assert.equal((await call('GET','/api/media',undefined,viewerCookie)).json().length,1);
+    assert.equal((await call('GET','/api/libraries',undefined,viewerCookie)).json()[0].hideOnHome,true);
+    assert.equal((await call('GET','/api/libraries',undefined,ownerCookie)).json()[0].hideOnHome,false);
+    assert.equal((await call('PUT',preference,{hidden:false},viewerCookie)).statusCode,200);
+    assert.equal((await call('GET','/api/home',undefined,viewerCookie)).json().total,1);
     const secretCache=join(root,'cache','hls',String(items[1].id),'subtitles');await mkdir(secretCache,{recursive:true});await writeFile(join(secretCache,'0.vtt'),'SECRET SUBTITLE');
     for(const traversal of ['../','%2e%2e/','..%2f','%252e%252e/','..%5c']) {
       const result=await call('GET',`/hls/${items[0].id}/${traversal}${items[1].id}/subtitles/0.vtt`,undefined,viewerCookie);
       assert.equal(result.statusCode,404,traversal);assert.ok(!result.body.includes('SECRET'));
     }
+  });
+  await t.test('download preserves file bytes and range support and requires both permissions',async()=>{
+    const url='/api/media/'+items[0].id+'/download';
+    const bytes=await readFile(items[0].path);
+    assert.equal((await call('GET',url)).statusCode,401);
+    assert.equal((await call('GET',url,undefined,viewerCookie)).statusCode,403);
+    const head=await call('HEAD',url,undefined,ownerCookie);
+    assert.equal(head.statusCode,200);assert.equal(head.rawPayload.length,0);
+    assert.equal(Number(head.headers['content-length']),bytes.length);
+    assert.match(head.headers['content-disposition'],/^attachment;/);
+    assert.equal(head.headers['cache-control'],'private, no-store');
+    const revision=head.headers.etag;
+    assert.ok(revision);
+    const part=await call('GET',url,undefined,ownerCookie,{headers:{range:'bytes=0-6','if-range':revision}});
+    assert.equal(part.statusCode,206);assert.deepEqual(part.rawPayload,bytes.subarray(0,7));
+    assert.equal(part.headers['content-range'],`bytes 0-6/${bytes.length}`);
+    const full=await call('GET',url,undefined,ownerCookie,{headers:{range:'bytes=7-','if-range':'"other-revision"'}});
+    assert.equal(full.statusCode,200);assert.deepEqual(full.rawPayload,bytes);
+    assert.equal((await call('GET',url,undefined,ownerCookie,{headers:{range:'bytes=999-'}})).statusCode,416);
+    const update=async permissions=>{
+      const result=await call('PATCH','/api/accounts/'+viewerId,{permissions},ownerCookie);
+      assert.equal(result.statusCode,200,result.body);
+      viewerCookie=await login('viewer');
+    };
+    await update({download:true});
+    assert.equal((await call('HEAD','/api/media/'+items[1].id+'/download',undefined,viewerCookie)).statusCode,404);
+    assert.deepEqual((await call('GET',url,undefined,viewerCookie)).rawPayload,bytes);
+    await update({download:true,play:false});
+    assert.equal((await call('GET',url,undefined,viewerCookie,{headers:{range:'bytes=0-6'}})).statusCode,403);
+    await update({download:false,play:true});
+    assert.equal((await call('HEAD',url,undefined,viewerCookie)).statusCode,403);
   });
   await t.test('legacy favorites and progress belong only to the first administrator; each user has independent state',async()=>{
     const url='/api/media/'+items[0].id;

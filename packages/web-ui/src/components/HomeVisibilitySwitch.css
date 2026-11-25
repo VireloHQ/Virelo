@@ -1,0 +1,10 @@
+.library-list .home-visibility { display:grid; flex-shrink:0; }
+.library-list .home-visibility .switch__content { display:flex; align-items:center; gap:7px; min-height:44px; }
+.library-list .home-visibility .switch__content span { color:inherit; margin:0; white-space:normal; }
+.library-list .home-visibility .switch__control { flex:none; }
+@media (max-width:620px) {
+  .library-list > div:has(.home-visibility) { flex-wrap:wrap; }
+  .library-list > div:has(.home-visibility) > :is(.library-actions,.library-item-actions) {
+    max-width:100%; flex-wrap:wrap;
+  }
+}

@@ -106,6 +106,12 @@ The interface supports English, Japanese, Simplified Chinese, Korean and Russian
 
 Open **Settings → Appearance** to choose Virelo, Streamline, Theater or Centerstage controller layouts and an accent color. Custom colors are adjusted for readable controls. Appearance settings are saved to the signed-in account on the server and can be changed by every user, including non-administrators. Controller layouts apply to normal videos; Shorts keep their vertical controls. No video files are changed.
 
+## Download for offline viewing
+
+To save a video to your phone or computer, open its details and choose **Download original**. Virelo sends the file as-is, so use a local player that supports its format. Files are saved by the browser, not stored in an offline section of Virelo. If an installed Virelo app cannot save the file, open the video in your browser and try again; you may need to sign in again.
+
+Administrators can grant **Download original videos** per account in Account Manager. Viewers still need playback permission and access to that library. Revoking permission stops future downloads but does not remove copies already saved.
+
 ## Named playlists
 
 Open **Playlists** from Library or the desktop navigation. Add a video from its

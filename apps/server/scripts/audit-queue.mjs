@@ -284,9 +284,10 @@ try {
       const rows = [...element.querySelectorAll('.playback-queue-tile')].slice(0, 2);
       const gap = rows[1].getBoundingClientRect().top - rows[0].getBoundingClientRect().bottom;
       return gap >= 0 && gap <= 2.5 && rows.every(row => {
-        const contentHeight = Math.max(...['.playback-queue-art', '.playback-queue-copy'].map(selector => row.querySelector(selector).getBoundingClientRect().height));
+        const actions = [...row.querySelectorAll('.queue-item-actions button')].map(button => button.getBoundingClientRect().height);
+        const contentHeight = Math.max(...actions,...['.playback-queue-art', '.playback-queue-copy'].map(selector => row.querySelector(selector).getBoundingClientRect().height));
         return row.getBoundingClientRect().height - contentHeight <= 4.5
-          && [...row.querySelectorAll('.queue-item-actions button')].every(button => button.getBoundingClientRect().height >= 44);
+          && actions.every(height => height >= 44);
       });
     }), label + ' vertical rows stay compact without shrinking action targets');
     if(scenario.width>=1200){
