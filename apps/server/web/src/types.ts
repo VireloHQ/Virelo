@@ -4,7 +4,7 @@ export type { MediaItem, MediaKind, SortKey, QueueBehavior, FolderEntry, HomeDat
 export type { PlaylistSummary, PlaylistWrite } from './utils/playlist-values';
 export type PlaylistDetail = import('./utils/playlist-values').PlaylistSummary & { items: MediaItem[] };
 
-export interface Library { id:number; path:string; label:string; created_at:number; persistent:number; folderLabels?:Record<string,string> }
+export interface Library { id:number; path:string; label:string; created_at:number; persistent:number; folderLabels?:Record<string,string>; hideOnHome?:boolean }
 export interface Settings {
   audioAnalysisEnabled:boolean;
   externalMetadataEnabled: boolean;

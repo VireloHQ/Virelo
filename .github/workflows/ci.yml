@@ -75,6 +75,7 @@ jobs:
       - run: node scripts/audit-communication.mjs
       - run: node scripts/audit-scan-repair.mjs
       - run: node scripts/audit-accounts.mjs
+      - run: node scripts/audit-download.mjs
       - run: node scripts/audit-account-administration.mjs
       - run: node scripts/audit-server-recovery.mjs
       - run: node scripts/audit-custom-commands.mjs
