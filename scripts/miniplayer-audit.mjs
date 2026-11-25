@@ -95,17 +95,36 @@ export async function auditMiniplayer(page, label) {
   await page.waitForFunction(video=>video.paused&&!video.seeking&&Math.abs(video.currentTime-5)<.25,original);
   assert.equal(await mini.evaluate(node=>node.closest('.playback-dock').dataset.corner),corner,label+' scrubbing does not move the player');
   if(await page.evaluate(()=>Boolean(window.__client))){
-    const variants=new Set();
+    const variants={};
     for(const style of ['classic','streamline','theater','centerstage']){
-      await page.evaluate(controllerStyle=>window.__client.setQueryData(['appearance'],{controllerStyle,accentColor:'#c3a6ff'}),style);
-      await page.waitForFunction(style=>document.querySelector('.miniplayer-controls')?.dataset.controllerStyle===style,style);
-      variants.add(await mini.locator('.miniplayer-toggle').evaluate(button=>{
-        const bounds=button.getBoundingClientRect(), parent=button.parentElement.getBoundingClientRect();
-        const timeline=button.parentElement.querySelector('.miniplayer-timeline').getBoundingClientRect();
-        return [bounds.x-parent.x,bounds.y-parent.y,button.firstElementChild.getBoundingClientRect().width,timeline.x-parent.x].map(Math.round).join(',');
-      }));
+      await page.evaluate(async controllerStyle=>{
+        await window.__client.cancelQueries({queryKey:['appearance']});
+        window.__client.setQueryData(['appearance'],{controllerStyle,accentColor:'#c3a6ff'});
+      },style);
+      const rendered=await page.waitForFunction(async style=>{
+        // A changed data attribute can be visible before Chromium has laid out its descendants.
+        await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+        const controls=document.querySelector('.miniplayer-controls');
+        if(controls?.dataset.controllerStyle!==style)return false;
+        const button=controls.querySelector('.miniplayer-toggle');
+        const bounds=button.getBoundingClientRect(), parent=controls.getBoundingClientRect();
+        const timeline=controls.querySelector('.miniplayer-timeline').getBoundingClientRect();
+        return {
+          x:Math.round(bounds.x-parent.x),y:Math.round(bounds.y-parent.y),
+          icon:Math.round(button.firstElementChild.getBoundingClientRect().width),
+          timelineInset:Math.round(timeline.x-parent.x),
+          overlay:getComputedStyle(controls,'::before').backgroundImage
+        };
+      },style);
+      variants[style]=await rendered.jsonValue();
+      await rendered.dispose();
     }
-    assert.equal(variants.size,4,label+' each controller style has its own compact layout');
+    const classic=variants.classic;
+    const diagnostic=label+' '+JSON.stringify(variants);
+    assert.ok(variants.streamline.x<classic.x&&variants.streamline.y>classic.y,'Streamline places play at the lower left: '+diagnostic);
+    assert.ok(variants.centerstage.timelineInset>classic.timelineInset&&variants.centerstage.y>classic.y,'Centerstage lowers play and insets the timeline: '+diagnostic);
+    assert.ok(variants.theater.icon>classic.icon,'Theater uses a larger play icon: '+diagnostic);
+    assert.notEqual(variants.theater.overlay,variants.classic.overlay,label+' Theater uses its own overlay');
     await page.evaluate(()=>window.__client.setQueryData(['appearance'],{controllerStyle:'classic',accentColor:'#c3a6ff'}));
   }
   await mini.getByRole('button',{name:'Play',exact:true}).click();
