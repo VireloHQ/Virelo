@@ -116,7 +116,8 @@ test('the locale storage listener ignores events safely when the localStorage ge
 test('the appearance storage listener ignores events safely when the localStorage getter is denied', async t => {
   const env = environment(t);
   env.harness.query.useQuery = () => ({ data: { controllerStyle: 'classic', accentColor: '#c3a6ff' }, isPending: false, error: null });
-  const { AppearanceProvider } = await load('components/AppearanceProvider.tsx', { react: reactMock, '@tanstack/react-query': queryMock, '../api': apiMock });
+  const { AppearanceProvider } = await load('components/AppearanceProvider.tsx', { react: reactMock, '@tanstack/react-query': queryMock,
+    '../utils/appearance-storage': 'export const appearanceStorageApi = globalThis.__appearanceLifecycle.api;' });
   AppearanceProvider({ children: null });
   env.commit();
   env.denyStorage();

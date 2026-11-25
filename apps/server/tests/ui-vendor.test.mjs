@@ -20,7 +20,7 @@ test('scoped HeroUI styles cover every imported component and shared foundations
   assert.doesNotMatch(styles, /@import ["']@heroui\/styles["']/);
   for (const foundation of ['base','themes/default','utilities','variants'])
     assert.ok(css.includes('"@heroui/styles/' + foundation + '"'), foundation);
-  const components = {Button:'button',buttonVariants:'button',Input:'input',Switch:'switch',Modal:'modal',Popover:'popover'};
+  const components = {Button:'button',buttonVariants:'button',Input:'input',TextArea:'textarea',Switch:'switch',Modal:'modal',Popover:'popover'};
   for (const file of [...await sources(new URL('web/src/', root)), ...await sources(new URL('../../packages/web-ui/src/', root))]) {
     const source = await readFile(file, 'utf8');
     for (const match of source.matchAll(/import\s*\{([^}]+)\}\s*from\s*['"]@heroui\/react['"]/g)) {

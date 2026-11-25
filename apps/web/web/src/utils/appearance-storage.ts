@@ -11,3 +11,8 @@ export function writeAppearance(value: Appearance): Appearance {
   catch { throw new Error('Could not save appearance. Allow browser storage and try again.'); }
   return appearance;
 }
+
+export const appearanceStorageApi = {
+  appearance: async () => readAppearance(),
+  saveAppearance: async (value: Appearance) => writeAppearance(value)
+};

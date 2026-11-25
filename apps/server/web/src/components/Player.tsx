@@ -23,6 +23,7 @@ import { useBackgroundPlayback } from '@virelo/web-ui/hooks/useBackgroundPlaybac
 import { usePlaybackVolume } from '@virelo/web-ui/hooks/usePlaybackVolume.ts';
 import { usePlaybackSpeed } from '@virelo/web-ui/hooks/usePlaybackSpeed.ts';
 import { PlayerControls } from '@virelo/web-ui/components/PlayerControls.tsx';
+import { usePlayerControlsVisibility } from '@virelo/web-ui/hooks/usePlayerControlsVisibility.ts';
 import { previousVideoAction } from '@virelo/core/playback-previous';
 import { initialPlaybackPosition } from '@virelo/core/playback-initial-position';
 import { usePlaybackActivity } from '../hooks/usePlaybackActivity';
@@ -68,7 +69,6 @@ export function Player({item,queue,queueIndex,shuffled,onShuffle,onEnded,onNext,
   const presentation = useVideoPresentation(item.id, containerRef);
   const lastProgress = useRef(0);
   const playbackItemId = useRef(item.id);
-  const controlsTimer = useRef<number | null>(null);
   const longPressTimer = useRef<number | null>(null);
   const longPressTriggered = useRef(false);
   const touchRevealOnly = useRef(false);
@@ -116,7 +116,7 @@ export function Player({item,queue,queueIndex,shuffled,onShuffle,onEnded,onNext,
   const repeat=repeatMode??singleRepeat;
   const changeRepeat=onRepeatChange??setSingleRepeat;
   const [contextPosition,setContextPosition]=useState<{x:number;y:number;keyboard?:boolean}|null>(null);
-  const [controlsVisible,setControlsVisible] = useState(true);
+  const {controlsVisible,revealControls,scheduleControlsHide} = usePlayerControlsVisibility(videoRef,containerRef,Boolean(shorts));
   useEffect(()=>{
     const player=containerRef.current, controls=player?.querySelector<HTMLElement>('.player-controls');
     if(!player||!controls||shorts)return;
@@ -346,7 +346,6 @@ export function Player({item,queue,queueIndex,shuffled,onShuffle,onEnded,onNext,
   },[]);
 
   useEffect(()=>()=>{
-    if(controlsTimer.current!==null)window.clearTimeout(controlsTimer.current);
     if(autoBufferTimer.current!==null)window.clearTimeout(autoBufferTimer.current);
     if(seekTimer.current!==null)window.clearTimeout(seekTimer.current);
     seekToken.current++;
@@ -411,22 +410,6 @@ export function Player({item,queue,queueIndex,shuffled,onShuffle,onEnded,onNext,
   }
 
   function usesTouchControls(){return window.matchMedia('(hover: none), (pointer: coarse)').matches;}
-  function revealControls(){
-    if(controlsTimer.current!==null){window.clearTimeout(controlsTimer.current);controlsTimer.current=null;}
-    setControlsVisible(true);
-  }
-  function scheduleControlsHide(delay=2400){
-    if(shorts)return;
-    if(controlsTimer.current!==null)window.clearTimeout(controlsTimer.current);
-    const video=videoRef.current;
-    if(!video||video.paused){controlsTimer.current=null;return;}
-    controlsTimer.current=window.setTimeout(()=>{
-      const keyboardFocus=containerRef.current?.querySelector(':focus-visible');
-      if(keyboardFocus||document.querySelector('.player-action-menu')||containerRef.current?.querySelector('[aria-haspopup][aria-expanded="true"]')){scheduleControlsHide();return;}
-      setControlsVisible(false);
-      controlsTimer.current=null;
-    },delay);
-  }
 
   function syncExternalAudio(play=false,targetTime?:number){
     const video=videoRef.current;const audio=audioRef.current;

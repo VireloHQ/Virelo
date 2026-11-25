@@ -1,16 +1,17 @@
 import { t, useLocale } from '../i18n';
-import { Link } from '@tanstack/react-router';
+import { Link, useLocation } from '@tanstack/react-router';
 import { useUIStore } from '@virelo/web-ui/store.ts';
 import { House, SquaresFour, Gear, MonitorPlay, Heart } from '@phosphor-icons/react';
 
 export function MobileNav() {
   useLocale();
+  const liveTv = useLocation({select: location => location.pathname === '/live-tv'});
   const setHomeFilter = useUIStore(s=>s.setHomeFilter);
   return (
     <nav className="mobile-nav" aria-label={t("Mobile navigation")}>
       <Link to="/" activeOptions={{exact:true}} activeProps={{className:'active'}} onClick={()=>setHomeFilter('all')}><House weight="fill"/><span>{t("Home")}</span></Link>
       <Link to="/shorts" search={{}} activeProps={{className:'active'}}><MonitorPlay weight="fill"/><span>{t("Shorts")}</span></Link>
-      <Link to="/library" activeProps={{className:'active'}}><SquaresFour weight="fill"/><span>{t("Library")}</span></Link>
+      <Link to="/library" className={liveTv?'active':undefined} aria-current={liveTv?'location':undefined} activeProps={{className:'active'}}><SquaresFour weight="fill"/><span>{t("Library")}</span></Link>
       <Link to="/favorites" activeProps={{className:'active'}}><Heart weight="fill"/><span>{t("Favorites")}</span></Link>
       <Link to="/settings" activeProps={{className:'active'}}><Gear weight="fill"/><span>{t("Settings")}</span></Link>
     </nav>

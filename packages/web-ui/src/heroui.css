@@ -6,6 +6,7 @@
 @import "@heroui/styles/base/scrollbar.css" layer(base);
 @import "@heroui/styles/components/button.css" layer(components);
 @import "@heroui/styles/components/input.css" layer(components);
+@import "@heroui/styles/components/textarea.css" layer(components);
 @import "@heroui/styles/components/switch.css" layer(components);
 @import "@heroui/styles/components/modal.css" layer(components);
 @import "@heroui/styles/components/popover.css" layer(components);

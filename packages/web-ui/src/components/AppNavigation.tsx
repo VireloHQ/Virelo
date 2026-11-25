@@ -9,7 +9,7 @@ import { HeaderNavLabel } from './HeaderNavLabel';
 import { useNavigationLayout } from '../hooks/useNavigationLayout';
 import '../navigation-layout.css';
 
-export function AppNavigation({base,notifications,account}:{base:''|'/app';notifications?:ReactNode;account?:ReactNode}) {
+export function AppNavigation({base,notifications,account,liveTv}:{base:''|'/app';notifications?:ReactNode;account?:ReactNode;liveTv?:ReactNode}) {
   useLocale();
   const navigate = useNavigate();
   const pathname = useLocation({select:location=>location.pathname});
@@ -58,6 +58,7 @@ export function AppNavigation({base,notifications,account}:{base:''|'/app';notif
             <button className="home-header-category" aria-pressed={isHome&&homeFilter==='series'} onClick={()=>selectHomeCategory('series')}><HeaderNavLabel section="series">{t("Series")}</HeaderNavLabel></button>
             <Link to={base+'/library'} activeProps={{className:'active'}}><HeaderNavLabel section="library">{t("Library")}</HeaderNavLabel></Link>
             <Link to={base+'/shorts'} search={{}} activeProps={{className:'active'}}><HeaderNavLabel section="shorts">{t("Shorts")}</HeaderNavLabel></Link>
+            {liveTv}
           </div>
           <div className="navigation-group" role="group" aria-label={t("Saved items")}>
             <span className="navigation-group-label" aria-hidden="true">{t("Saved items")}</span>

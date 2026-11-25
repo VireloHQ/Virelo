@@ -9,11 +9,12 @@ export function playerPreview(): Plugin {
     configurePreviewServer(server) {
       const headers = readFileSync(resolve(server.config.root, server.config.build.outDir, '_headers'), 'utf8');
       const csp = headers.match(/^\s+Content-Security-Policy:\s*(.+)$/m)?.[1]?.trim();
-      if (!csp) throw new Error('Production CSP missing from preview build');
+      const liveTvCsp=headers.split(/^\/media\/iptv\/\*\s*$/m)[1]?.match(/^\s+Content-Security-Policy:\s*(.+)$/m)?.[1]?.trim();
+      if (!csp||!liveTvCsp) throw new Error('Production CSP missing from preview build');
       server.middlewares.use((request, response, next) => {
-        response.setHeader('Content-Security-Policy', csp);
         const url = new URL(request.url ?? '/', 'http://localhost');
-        if (/^\/(?:app(?:\/|$)|(?:library|favorites|playlists|settings|shorts)\/?$|(?:watch|title|playlists)\/)/.test(url.pathname)) request.url = '/app.html' + url.search;
+        response.setHeader('Content-Security-Policy',url.pathname.startsWith('/media/iptv/')?liveTvCsp:csp);
+        if (/^\/(?:app(?:\/|$)|(?:library|favorites|playlists|settings|shorts|live-tv)\/?$|(?:watch|title|playlists)\/)/.test(url.pathname)) request.url = '/app.html' + url.search;
         next();
       });
     }

@@ -6,6 +6,7 @@ import type { DataUsage } from '../../src/types';
 import type { PlaylistDetail, PlaylistSummary, PlaylistWrite } from './types';
 import type { CustomCommand, CustomCommandDefinition } from '../../src/custom-command-types';
 import type { Announcement,AnnouncementWrite,NotificationPage } from '../../src/notification-types';
+import type { IptvCheckResult,IptvGuide,IptvImport,IptvSourceInfo } from '@virelo/core/iptv';
 
 export interface QualityTranscodeState {
   status:string;
@@ -36,6 +37,20 @@ function withQuery(url: string, params: Record<string, string | number | undefin
 }
 
 export const api = {
+  liveTv: {
+    sources:()=>request<IptvSourceInfo[]>('/api/iptv/sources'),
+    channels:(id:string)=>request<IptvGuide>('/api/iptv/sources/'+encodeURIComponent(id)),
+    add:(input:IptvImport)=>request<IptvSourceInfo>('/api/iptv/sources',{method:'POST',body:JSON.stringify(input)}),
+    remove:(id:string)=>request<{ok:boolean}>('/api/iptv/sources/'+encodeURIComponent(id),{method:'DELETE'}),
+    check:(sourceId:string,channel:number,signal:AbortSignal)=>request<IptvCheckResult>('/api/iptv/check',{method:'POST',
+      body:JSON.stringify({sourceId,channel}),signal:AbortSignal.any([signal,AbortSignal.timeout(6000)])}),
+    play:async(sourceId:string,channel:number)=>{
+      const stream=await request<{id:string;url:string}>('/api/iptv/sessions',{method:'POST',body:JSON.stringify({sourceId,channel})});
+      return {url:stream.url,release:()=>{void request('/api/iptv/sessions/'+encodeURIComponent(stream.id),{method:'DELETE'}).catch(()=>{});}};
+    },
+    origins:()=>request<{origins:string[]}>('/api/iptv/origins'),
+    saveOrigins:(origins:string[])=>request<{origins:string[]}>('/api/iptv/origins',{method:'PUT',body:JSON.stringify({origins})})
+  },
   queueSessions: () => request<Array<{ key: string; playlistId?: number; label?: string; updatedAt: number; item: MediaItem }>>('/api/queue-sessions'),
   queueSession: (key: string) => request<QueueSession & { items: MediaItem[] }>(`/api/queue-sessions/${encodeURIComponent(key)}`),
   saveQueueSession: (session: QueueSession) => request<{ ok: boolean }>('/api/queue-sessions', { method: 'PUT', body: JSON.stringify(session) }),

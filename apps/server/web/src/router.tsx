@@ -23,6 +23,7 @@ const SettingsRouteView = createRouteView(() => import('./views/SettingsView'), 
 const WatchRouteView = createRouteView(() => import('./views/WatchView'), 'WatchView', 'watch');
 const DetailRouteView = createRouteView(() => import('./views/DetailView'), 'DetailView', 'detail');
 const ShortsRouteView = createRouteView(() => import('./views/ShortsView'), 'ShortsView', 'shorts');
+const LiveTvRouteView = createRouteView(() => import('./views/LiveTvView'), 'LiveTvView', 'library');
 
 function viewForPath(pathname: string) {
   const path = pathname.replace(/\/$/, '') || '/';
@@ -33,6 +34,7 @@ function viewForPath(pathname: string) {
   if (path === '/library') return LibraryRouteView;
   if (path === '/settings') return SettingsRouteView;
   if (path === '/shorts') return ShortsRouteView;
+  if (path === '/live-tv') return LiveTvRouteView;
   if (/^\/watch\/[^/]+$/.test(path)) return WatchRouteView;
   if (/^\/title\/[^/]+$/.test(path)) return DetailRouteView;
 }
@@ -82,7 +84,8 @@ const settingsRoute = createRoute({ getParentRoute:()=>rootRoute, path:'/setting
 const watchRoute = createRoute({ getParentRoute:()=>rootRoute, path:'/watch/$mediaId', component:()=> <PlaybackAccess><WatchRouteView/></PlaybackAccess>, validateSearch: validateWatchSearch });
 const detailRoute = createRoute({ getParentRoute:()=>rootRoute, path:'/title/$mediaId', component:DetailRouteView });
 const shortsRoute = createRoute({ getParentRoute:()=>rootRoute, path:'/shorts', component:()=> <PlaybackAccess><ShortsRouteView/></PlaybackAccess>, validateSearch:validateShortsSearch });
-const routeTree = rootRoute.addChildren([indexRoute, libraryRoute, favoritesRoute, playlistsRoute, playlistRoute, settingsRoute, watchRoute, detailRoute, shortsRoute]);
+const liveTvRoute = createRoute({ getParentRoute:()=>rootRoute, path:'/live-tv', component:()=> <PlaybackAccess><LiveTvRouteView/></PlaybackAccess> });
+const routeTree = rootRoute.addChildren([indexRoute, libraryRoute, favoritesRoute, playlistsRoute, playlistRoute, settingsRoute, watchRoute, detailRoute, shortsRoute,liveTvRoute]);
 export const router = createRouter({
   routeTree, defaultPreload: 'intent', scrollRestoration: true,
   defaultErrorComponent: RouteErrorView,

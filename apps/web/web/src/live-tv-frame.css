@@ -1,0 +1,15 @@
+.live-tv-frame { display:block; width:100%; height:28rem; border:0; }
+body:has(.live-tv-embed) { min-width:0; min-height:0; }
+.app-shell.live-tv-embed { min-height:0; display:flow-root; }
+.app-shell.live-tv-embed .content-view { width:100%; max-width:none; padding:0; }
+/* The iframe auto-sizes to its content; allow space for the popup on an empty guide. */
+.live-tv-embed .live-tv[data-import-open="true"] { min-height:30rem; }
+/* Leave room for a filter list even when the guide has few or no matching rows. */
+.live-tv-embed .live-tv-directory:has(.live-tv-filters .picker[data-open="true"]) { min-height:28rem; }
+.live-tv-import-backdrop .virelo-confirm-container {
+  align-self:flex-start;
+  margin-block-start:var(--live-tv-viewport-top,0px);
+  height:min(calc(100dvh - var(--live-tv-viewport-top,0px)),var(--live-tv-viewport-height,100dvh));
+  max-height:none;
+  padding:16px;
+}

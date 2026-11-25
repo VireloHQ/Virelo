@@ -4,6 +4,7 @@ import { auditPlayerTransport } from './helpers/player-transport-audit.mjs';
 import { auditPlayerSwitching } from './helpers/player-switching-audit.mjs';
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
+import { fileURLToPath } from 'node:url';
 import { mkdtemp, mkdir, readFile, writeFile, copyFile, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';

@@ -23,6 +23,7 @@ const SettingsRouteView = createRouteView(() => import('./views/SettingsView'), 
 const WatchRouteView = createRouteView(() => import('./views/WatchView'), 'WatchView', 'watch');
 const DetailRouteView = createRouteView(() => import('./views/DetailView'), 'DetailView', 'detail');
 const ShortsRouteView = createRouteView(() => import('./views/ShortsView'), 'ShortsView', 'shorts');
+const LiveTvRouteView = createRouteView(() => import('./views/LiveTvView'), 'LiveTvView', 'library');
 
 function viewForPath(pathname: string) {
   const path = pathname.replace(/^\/app(?=\/|$)/, '').replace(/\/$/, '') || '/';
@@ -33,6 +34,7 @@ function viewForPath(pathname: string) {
   if (path === '/library') return LibraryRouteView;
   if (path === '/settings') return SettingsRouteView;
   if (path === '/shorts') return ShortsRouteView;
+  if (path === '/live-tv') return LiveTvRouteView;
   if (/^\/watch\/[^/]+$/.test(path)) return WatchRouteView;
   if (/^\/title\/[^/]+$/.test(path)) return DetailRouteView;
 }
@@ -87,10 +89,12 @@ const settingsRoute = createRoute({ getParentRoute:()=>appRoute, path:'settings'
 const watchRoute = createRoute({ getParentRoute:()=>appRoute, path:'watch/$mediaId', component:WatchRouteView, validateSearch: validateWatchSearch });
 const detailRoute = createRoute({ getParentRoute:()=>appRoute, path:'title/$mediaId', component:DetailRouteView });
 const shortsRoute = createRoute({ getParentRoute:()=>appRoute, path:'shorts', component:ShortsRouteView, validateSearch:validateShortsSearch });
+const liveTvRoute = createRoute({ getParentRoute:()=>appRoute, path:'live-tv', component:LiveTvRouteView });
 const legacyLibraryRoute = createRoute({ getParentRoute:()=>rootRoute, path:'library', beforeLoad:()=>{ throw redirect({to:'/app/library'}); } });
 const legacyFavoritesRoute = createRoute({ getParentRoute:()=>rootRoute, path:'favorites', beforeLoad:()=>{ throw redirect({to:'/app/favorites'}); } });
 const legacySettingsRoute = createRoute({ getParentRoute:()=>rootRoute, path:'settings', beforeLoad:()=>{ throw redirect({to:'/app/settings'}); } });
 const legacyShortsRoute = createRoute({ getParentRoute:()=>rootRoute, path:'shorts', validateSearch:validateShortsSearch, beforeLoad:({search})=>{ throw redirect({to:'/app/shorts',search}); } });
+const legacyLiveTvRoute = createRoute({ getParentRoute:()=>rootRoute, path:'live-tv', beforeLoad:()=>{ throw redirect({to:'/app/live-tv'}); } });
 const legacyWatchRoute = createRoute({
   getParentRoute:()=>rootRoute,
   path:'watch/$mediaId',
@@ -104,11 +108,12 @@ const legacyDetailRoute = createRoute({
 });
 const routeTree = rootRoute.addChildren([
   indexRoute,
-  appRoute.addChildren([appIndexRoute, libraryRoute, favoritesRoute, playlistsRoute, playlistRoute, settingsRoute, watchRoute, detailRoute, shortsRoute]),
+  appRoute.addChildren([appIndexRoute, libraryRoute, favoritesRoute, playlistsRoute, playlistRoute, settingsRoute, watchRoute, detailRoute, shortsRoute, liveTvRoute]),
   legacyLibraryRoute,
   legacyFavoritesRoute,
   legacySettingsRoute,
   legacyShortsRoute,
+  legacyLiveTvRoute,
   legacyWatchRoute,
   legacyDetailRoute
 ]);
