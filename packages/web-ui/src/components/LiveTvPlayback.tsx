@@ -77,8 +77,13 @@ export function LiveTvPlayback({title, service, source, channel}: {title:string;
       const stream = await service.play(source,channel);
       if (disposed) { stream.release?.(); return; }
       release = stream.release;
-      if (video.canPlayType('application/vnd.apple.mpegurl')) video.src = stream.url;
-      else {
+      if (video.canPlayType('application/vnd.apple.mpegurl')) {
+        // Native playback can embed cross-origin media without exposing its data to scripts.
+        if (new URL(stream.url,location.href).origin!==location.origin) video.removeAttribute('crossorigin');
+        else video.crossOrigin='anonymous';
+        video.src = stream.url;
+      } else {
+        video.crossOrigin='anonymous';
         const { default:Hls } = await import('hls.js/light');
         if (disposed) return;
         if (!Hls.isSupported()) { fail('HLS playback is not available in this browser.'); return; }

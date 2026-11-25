@@ -1,6 +1,6 @@
 import { useCallback, useDeferredValue, useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Button, Input, Modal, TextArea } from '@heroui/react';
-import { Broadcast, CheckCircle, Clock, LockSimple, MagnifyingGlass, MinusCircle, Play, Playlist, Plus, Pulse, Question, Stop, TagSimple, Television, Trash, UploadSimple, XCircle } from '@phosphor-icons/react';
+import { Broadcast, CheckCircle, ClipboardText, Clock, FileText, LinkSimple, LockSimple, MagnifyingGlass, MinusCircle, Play, Playlist, Plus, Pulse, Question, Stop, TagSimple, Television, Trash, UploadSimple, XCircle } from '@phosphor-icons/react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { IPTV_MAX_BYTES, type IptvChannelInfo, type IptvCheckResult, type IptvGuide, type IptvImport, type IptvSourceInfo } from '@virelo/core/iptv';
 import { t, useLocale } from '@edition/i18n';
@@ -19,7 +19,13 @@ export type LiveTvService = {
   check: (id:string,index:number,signal:AbortSignal) => Promise<IptvCheckResult>;
   play: (id:string,index:number) => Promise<{url:string;release?:()=>void}>;
 };
-type ImportMode = 'url'|'stream'|'file'|'paste';
+const importModes = [
+  {value:'url',label:'Playlist link',Icon:LinkSimple},
+  {value:'stream',label:'Stream link',Icon:Broadcast},
+  {value:'file',label:'File',Icon:FileText},
+  {value:'paste',label:'Paste text',Icon:ClipboardText}
+] as const;
+type ImportMode = (typeof importModes)[number]['value'];
 type PlaylistInput = IptvImport & { file?:File };
 const pageSize = 100;
 const emptyChannels: IptvChannelInfo[] = [];
@@ -147,7 +153,7 @@ export function LiveTv({service,admin}:{service:LiveTvService;admin?:ReactNode})
         <Button variant="secondary"><Plus size={18} aria-hidden="true"/>{t("Add playlist")}</Button>
         <Modal.Backdrop className="virelo-confirm-backdrop live-tv-import-backdrop" isDismissable={!add.isPending} isKeyboardDismissDisabled={add.isPending}>
           <Modal.Container className="virelo-confirm-container" placement="center" size="sm" scroll="inside">
-            <Modal.Dialog className="virelo-confirm-dialog" aria-labelledby={importTitle}>
+            <Modal.Dialog className="virelo-confirm-dialog live-tv-import-dialog" aria-labelledby={importTitle}>
               <Modal.Header className="virelo-confirm-header">
                 <Modal.Heading id={importTitle} className="virelo-confirm-title">{t("Add playlist")}</Modal.Heading>
               </Modal.Header>
@@ -265,9 +271,9 @@ function PlaylistImport({titleId,pending,error,onImport,onCancel}: {
   return <form aria-labelledby={titleId} className="live-tv-import" onSubmit={event => { event.preventDefault(); if (!pending) submit(); }}>
     <Modal.Body className="virelo-confirm-body live-tv-import-fields">
       <div className="live-tv-modes" role="group" aria-label={t("Import from")}>
-        {(['url','stream','file','paste'] as const).map(value => <Button key={value} type="button" variant={mode===value?'secondary':'ghost'}
+        {importModes.map(({value,label,Icon}) => <Button key={value} type="button" variant={mode===value?'secondary':'ghost'}
           aria-pressed={mode===value} isDisabled={pending} onPress={() => setMode(value)}>
-          {value==='url'?t("Playlist link"):value==='stream'?t("Stream link"):value==='file'?t("File"):t("Paste text")}
+          <Icon size={16} aria-hidden="true"/>{t(label)}
         </Button>)}
       </div>
       <label className="live-tv-field"><span>{stream?t("Channel name"):t("Playlist name")}</span>

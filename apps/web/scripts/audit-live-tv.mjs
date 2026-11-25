@@ -48,10 +48,11 @@ try {
   let liveStart=0,liveEnd=10;
   let releaseDelayed;
   const delayed=new Promise(resolve=>{releaseDelayed=resolve;});
-  await context.route(provider+'/**',async route=>{
+  const serveFixture=async route=>{
     const {pathname}=new URL(route.request().url());
     requests.push(pathname);
-    const headers={'Access-Control-Allow-Origin':'*'};
+    // Playwright may add CORS headers to fulfilled requests, so explicitly use a different origin.
+    const headers={'Access-Control-Allow-Origin':pathname.startsWith('/native/')?'https://other.example':'*'};
     if(pathname==='/channels')return route.fulfill({body:collection,contentType:'text/plain',headers});
     if(pathname==='/station-0/index.m3u8')return route.fulfill({status:503,headers});
     if(pathname==='/station-1/index.m3u8')return route.abort('failed');
@@ -63,7 +64,8 @@ try {
       body:await readFile(join(directory,name)),contentType:name.endsWith('.ts')?'video/mp2t':'application/vnd.apple.mpegurl',headers
     });
     return route.fulfill({status:404,headers});
-  });
+  };
+  await context.route(provider+'/**',serveFixture);
   const page=await context.newPage();
   page.setDefaultTimeout(10000);
   const playerModules=[];
@@ -334,10 +336,22 @@ try {
     await form.getByRole('button',{name:mode,exact:true}).click();
     if(mode==='File')await form.locator('input[type=file]').setInputFiles({name:'Extra.m3u',mimeType:'audio/x-mpegurl',buffer:Buffer.from(importText)});
     else {
-      await form.getByLabel('Playlist text').fill('Not a playlist');
+      const paste=form.getByLabel('Playlist text');
+      assert.equal(await form.locator('.live-tv-modes button svg[aria-hidden=true]').count(),4);
+      for(const [width,height] of [[1024,430],[320,568]]){
+        await page.setViewportSize({width,height});
+        await paste.scrollIntoViewIfNeeded();
+        assert.ok(await paste.evaluate(field=>{
+          const bounds=field.getBoundingClientRect(), body=field.closest('.live-tv-import-fields').getBoundingClientRect();
+          const footer=field.form.querySelector('.virelo-confirm-footer').getBoundingClientRect();
+          return bounds.top>=body.top-1 && bounds.bottom<=Math.min(body.bottom,footer.top)+1
+            && document.elementFromPoint(bounds.left+bounds.width/2,bounds.bottom-3)===field;
+        }),`the complete paste field is reachable above the footer at ${width}×${height}`);
+      }
+      await paste.fill('Not a playlist');
       await form.getByRole('button',{name:'Add playlist',exact:true}).click();
       await form.getByRole('alert').waitFor();
-      await form.getByLabel('Playlist text').fill(importText);
+      await paste.fill(importText);
     }
     await form.getByRole('button',{name:'Add playlist',exact:true}).click();
     await importDialog.waitFor({state:'hidden'});
@@ -403,6 +417,30 @@ try {
     return video&&!video.paused&&video.currentTime>.15;
   });
   assert.deepEqual(errors,[]);
+  const nativeContext=await browser.newContext({serviceWorkers:'block'});
+  try{
+    const nativePage=await nativeContext.newPage();
+    if(await nativePage.evaluate(()=>document.createElement('video').canPlayType('application/vnd.apple.mpegurl'))){
+      await nativeContext.route(provider+'/**',serveFixture);
+      await nativePage.goto(base+'/app/live-tv');
+      const nativeFrame=nativePage.frameLocator('.live-tv-frame');
+      await nativeFrame.locator('.content-heading').getByRole('button',{name:'Add playlist',exact:true}).click();
+      const nativeForm=nativeFrame.getByRole('form',{name:'Add playlist',exact:true});
+      await nativeForm.getByRole('button',{name:'Stream link',exact:true}).click();
+      await nativeForm.getByLabel('Channel name').fill('Native HLS');
+      await nativeForm.getByLabel('Stream link',{exact:true}).fill(provider+'/native/index.m3u8');
+      await nativeForm.getByRole('button',{name:'Add stream',exact:true}).click();
+      await nativeFrame.getByRole('button',{name:'Check Native HLS: Could not confirm',exact:true}).waitFor({timeout:10000});
+      await nativeFrame.getByRole('button',{name:'Native HLS',exact:true}).click();
+      await nativePage.waitForFunction(()=>{
+        const video=document.querySelector('.live-tv-frame')?.contentDocument?.querySelector('video');
+        return video&&!video.paused&&video.currentTime>.15;
+      },null,{timeout:15000});
+      assert.equal(await nativeFrame.locator('video').getAttribute('crossorigin'),null);
+      assert.ok(requests.some(path=>/^\/native\/index\d+\.ts$/.test(path)),'native playback fetched a segment without CORS');
+      console.log('PASS native cross-origin HLS plays when the browser check cannot read the manifest');
+    }
+  }finally{await nativeContext.close();}
   console.log('PASS playlist dialog (URL, file and paste), direct HLS registration and playback, automatic checks, cache, scoped CSP, seek bars, fullscreen and in-app miniplayer');
 } finally {
   await browser?.close();

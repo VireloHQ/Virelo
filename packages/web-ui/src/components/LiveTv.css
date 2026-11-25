@@ -71,11 +71,17 @@
 .live-tv-channel-info { margin-top:14px; }
 .live-tv-channel-info h2 { margin:0; font-size:21px; font-weight:600; overflow-wrap:anywhere; }
 .live-tv-channel-info p { margin:4px 0 0; color:var(--text-muted); font-size:14px; overflow-wrap:anywhere; }
-.live-tv-import { display:flex; flex-direction:column; gap:16px; min-height:0; }
-.live-tv-import-fields { display:grid; align-content:start; gap:14px; }
-.live-tv-modes,.live-tv-file { display:flex; align-items:center; flex-wrap:wrap; gap:6px; }
-.live-tv-modes .button { min-height:40px; }
+.live-tv-import { display:flex; flex:1 1 auto; flex-direction:column; gap:12px; min-height:0; }
+.live-tv-import .live-tv-import-fields { display:flex; flex-direction:column; gap:12px; min-height:0; overflow:auto; overscroll-behavior:contain; scrollbar-width:thin; scrollbar-color:var(--line-strong) transparent; }
+.live-tv-import-fields > * { flex:none; min-width:0; }
+.live-tv-import .virelo-confirm-footer { flex:none; flex-direction:row; margin:0; }
+.live-tv-import .virelo-confirm-footer .button { width:auto; min-width:0; height:auto; white-space:normal; }
+.live-tv-modes { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:6px; }
+.live-tv-file { display:flex; align-items:center; flex-wrap:wrap; gap:6px; }
+.live-tv-modes .button { justify-content:flex-start; gap:6px; min-width:0; min-height:44px; height:auto; padding:6px 8px; text-align:start; white-space:normal; }
+.live-tv-modes .button svg { flex:none; }
 .live-tv-modes .button[aria-pressed="true"] { border-color:var(--line); }
+.live-tv-import-dialog.virelo-confirm-dialog { gap:12px; padding:clamp(14px,4vw,24px); }
 .live-tv-field { display:grid; gap:6px; }
 .live-tv :is(.live-tv-search,.live-tv-origins) :is(.input,.textarea),.live-tv-field :is(.input,.textarea) { width:100%; min-width:0; min-height:44px; border:1px solid var(--line); border-radius:4px; background:var(--page); }
 .live-tv-field :is(.input,.textarea):focus { box-shadow:none; outline:2px solid var(--color-focus); outline-offset:-2px; }
