@@ -378,8 +378,32 @@ try {
   await page.getByRole('button',{name:'Try again',exact:true}).click();
   await first.waitFor();
   assert.ok(await rail.isVisible());
+  await page.setViewportSize({width:320,height:568});
+  await add.click();
+  await form.getByRole('button',{name:'Stream link',exact:true}).click();
+  await form.getByLabel('Channel name').fill('Direct HLS');
+  const streamLink=form.getByLabel('Stream link',{exact:true});
+  const addStream=form.getByRole('button',{name:'Add stream',exact:true});
+  await streamLink.fill('http://live-fixture.example/direct/index.m3u8');
+  await addStream.click();
+  await form.getByRole('alert').getByText('Use an HTTPS link for a single HLS stream.',{exact:true}).waitFor();
+  const manifestPath='/direct/index.m3u8';
+  await streamLink.fill(provider+manifestPath+'?key=fixture-token');
+  await addStream.click();
+  await importDialog.waitFor({state:'hidden'});
+  const direct=frame.getByRole('button',{name:'Direct HLS',exact:true});
+  await direct.waitFor();
+  await frame.locator('.live-tv-channel-count').getByText('1',{exact:true}).waitFor();
+  assert.equal(await frame.locator('.live-channels > li').count(),1);
+  await frame.getByRole('button',{name:/^Check Direct HLS: [1-9]\d* ms$/}).waitFor();
+  assert.equal(requests.filter(path=>path===manifestPath).length,1,'only the background check reads the direct stream before playback');
+  await direct.click();
+  await page.waitForFunction(()=>{
+    const video=document.querySelector('.live-tv-frame')?.contentDocument?.querySelector('video');
+    return video&&!video.paused&&video.currentTime>.15;
+  });
   assert.deepEqual(errors,[]);
-  console.log('PASS playlist dialog (URL, file and paste), automatic 124-channel check, cache, scoped CSP, finite and live HLS seek bars, fullscreen and in-app miniplayer');
+  console.log('PASS playlist dialog (URL, file and paste), direct HLS registration and playback, automatic checks, cache, scoped CSP, seek bars, fullscreen and in-app miniplayer');
 } finally {
   await browser?.close();
   child?.kill();

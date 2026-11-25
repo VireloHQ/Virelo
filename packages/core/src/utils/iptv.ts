@@ -9,7 +9,7 @@ export type IptvChannel={name:string;groups:string[];url:string};
 export type IptvChannelInfo=Omit<IptvChannel,'url'>;
 export type IptvSourceInfo={id:string;name:string};
 export type IptvSource=IptvSourceInfo&{channels:IptvChannel[]};
-export type IptvImport={name:string;url?:string;text?:string};
+export type IptvImport={name:string;url?:string;text?:string;streamUrl?:string};
 export type IptvCheckResult=({status:'responding';milliseconds:number}|{status:'unavailable'|'unconfirmed'|'not-allowed'})&{checkedAt?:number};
 export type IptvCachedCheck=IptvCheckResult&{index:number;checkedAt:number};
 export type IptvGuide={channels:IptvChannelInfo[];checks:IptvCachedCheck[]};
@@ -22,6 +22,12 @@ export function iptvUrl(value:string,base?:string):URL|null {
     url.hash='';
     return url;
   }catch{return null;}
+}
+
+export function iptvStreamChannel(name:string,value:string):IptvChannel {
+  const url=iptvUrl(value);
+  if(!url)throw new Error('Use an HTTPS link for a single HLS stream.');
+  return {name,groups:[],url:url.href};
 }
 
 export function isHlsManifest(content:string) {
@@ -64,11 +70,7 @@ export function parseIptvChannels(content:string, name:string, from?:string):Ipt
   if(content.length>IPTV_MAX_BYTES||new TextEncoder().encode(content).length>IPTV_MAX_BYTES)
     throw new Error('This playlist is too large.');
   const lines=content.replace(/^\uFEFF/,'').split(/\r?\n/);
-  if(isHlsManifest(content)){
-    const url=from&&iptvUrl(from);
-    if(!url)throw new Error('Use an HTTPS link for a single HLS stream.');
-    return [{name,groups:[],url:url.href}];
-  }
+  if(isHlsManifest(content))return [iptvStreamChannel(name,from??'')];
   if(!content.trimStart().startsWith('#EXTM3U')&&!/^#EXTINF:/m.test(content))
     throw new Error('This is not an M3U playlist.');
   const channels:IptvChannel[]=[];
