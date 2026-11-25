@@ -14,6 +14,7 @@ import { MediaRow } from '@virelo/web-ui/components/MediaRow.tsx';
 import { sortSeriesEpisodes } from '@virelo/core/series-playback';
 import { loadMediaQueue } from '../utils/favorites';
 import { useAccount } from '../components/AccountSession';
+import { DownloadOriginal } from '../components/DownloadOriginal';
 
 export function DetailView() {
   useLocale();
@@ -55,7 +56,7 @@ export function DetailView() {
           <p>{item.overview || t("No description available.")}</p>
           {item.genres && <div className="genre-line">{item.genres.split(',').map(g=><span key={g}>{g.trim()}</span>)}</div>}
           <div className="detail-actions"><Button size="lg" isDisabled={account?.permissions.play===false} onPress={()=>void navigate({to:'/watch/$mediaId',params:{mediaId}})}><Play weight="fill"/> {canResume(item) ? t("Resume {value0}", { value0: formatTime(item.progress_position || 0) }) : t("Play")}</Button><FavoriteButton item={item} />{isSeries && <Button size="lg" variant="secondary" isDisabled={!episodes.length || account?.permissions.play===false} onPress={()=>{const first=episodes[0];if(first)void navigate({to:'/watch/$mediaId',params:{mediaId:String(first.id)},search:{queue:true,seriesTitle:item.series_title!,libraryId:item.library_id}});}}><Play weight="fill"/> {t("Play all")}</Button>}{settings?.externalMetadataEnabled && account?.permissions.manageMetadata && <Button size="lg" variant="secondary" isPending={refresh.isPending} onPress={()=>refresh.mutate()}><ArrowsClockwise/> {t("Fetch metadata")}</Button>}</div>
-          <div className="playlist-watch-actions"><SavePlaylist mediaIds={[item.id]}/><ShareButton label={t("Share video")} path={'/title/'+item.id} addresses={api.shareAddresses}/></div>
+          <div className="playlist-watch-actions"><SavePlaylist mediaIds={[item.id]}/><ShareButton label={t("Share video")} path={'/title/'+item.id} addresses={api.shareAddresses}/><DownloadOriginal id={item.id}/></div>
           {refresh.error && <p className="error-copy">{t(refresh.error.message)}</p>}
           <dl className="tech-meta"><div><dt>{t("File")}</dt><dd>{item.filename}</dd></div><div><dt>{t("Container")}</dt><dd>{item.container?.toUpperCase() || t("Unknown")}</dd></div><div><dt>{t("Audio")}</dt><dd>{item.audio_codec?.toUpperCase() || t("Unknown")}</dd></div></dl>
         </div>

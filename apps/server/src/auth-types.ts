@@ -4,6 +4,7 @@ export interface AccountPermissions {
   manageMetadata: boolean;
   play: boolean;
   transcode: boolean;
+  download: boolean;
 }
 
 export interface Account {
