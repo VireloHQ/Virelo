@@ -277,6 +277,7 @@ try {
     check(continuity.sameNode && continuity.sourceUnchanged && continuity.reloads === 0 && continuity.paused && continuity.loads === continuity.baseline && Math.abs(continuity.time-10)<.1, label + ' edits never reload or restart current video: ' + JSON.stringify(continuity));
     await queue.getByRole('button', { name: 'Use vertical queue', exact: true }).click();
     await page.waitForFunction(() => document.querySelector('.playback-queue')?.dataset.layout === 'vertical');
+    await settle(page);
     const geometry = await page.evaluate(() => { const p = document.querySelector('.player').getBoundingClientRect(), q = document.querySelector('.playback-queue').getBoundingClientRect(); return { side: q.left >= p.right, below: q.top >= p.bottom, width: document.documentElement.scrollWidth, viewport: innerWidth }; });
     check(scenario.width >= 1200 ? geometry.side : geometry.below, label + ' vertical layout adapts beside or below the video');
     check(geometry.width <= geometry.viewport + 1, label + ' no page horizontal overflow');
