@@ -97,9 +97,9 @@ test('shared setting exposes a browser-local switch and changes the actual prefe
 
 test('MediaRow disables mounting/hover timers and never revives an old active preview', async t => {
   const savedClear = globalThis.clearTimeout, savedWindow = Object.getOwnPropertyDescriptor(globalThis, 'window');
-  const timers = new Map(); let timerId = 1000, enabled = true, cursor = 0;
+  const timers = new Map(); let timerId = 1000, enabled = true, miniplayer = false, cursor = 0;
   const slots = [], effects = [], pending = [];
-  const harness = { enabled: () => enabled, hooks: {
+  const harness = { enabled: () => enabled, miniplayer: () => miniplayer, hooks: {
     useRef(value) { const index = cursor++; return slots[index] ??= { current: value }; },
     useState(value) { const index = cursor++; if (!(index in slots)) slots[index] = value; return [slots[index], next => { slots[index] = typeof next === 'function' ? next(slots[index]) : next; }]; },
     useEffect(setup, deps) { const index = cursor++, old = effects[index]; if (!old || deps.some((value, i) => old.deps[i] !== value)) pending.push(() => { old?.cleanup?.(); effects[index] = { deps, cleanup: setup() }; }); }
@@ -111,7 +111,8 @@ test('MediaRow disables mounting/hover timers and never revives an old active pr
     '@phosphor-icons/react': 'export const CaretLeft="left",CaretRight="right";',
     '@edition/components/MediaCard': 'export const MediaCard=()=>null;',
     '../hooks/useRowWheel': 'export const useRowWheel=()=>()=>{};',
-    '../hooks/usePreviewEnabled': 'export const usePreviewEnabled=()=>globalThis.__previewRowTest.enabled();'
+    '../hooks/usePreviewEnabled': 'export const usePreviewEnabled=()=>globalThis.__previewRowTest.enabled();',
+    './PlaybackDock': 'export const useMiniplayerOpen=()=>globalThis.__previewRowTest.miniplayer();'
   });
   Object.defineProperty(globalThis, 'window', { configurable: true, value: { setTimeout: callback => { const id = ++timerId; timers.set(id, callback); return id; } } });
   globalThis.clearTimeout = id => { if (!timers.delete(id)) savedClear(id); };
@@ -124,4 +125,7 @@ test('MediaRow disables mounting/hover timers and never revives an old active pr
   assert.equal(render().props.preview, true);
   enabled = false; assert.equal(render().props.onHoverChange, undefined);
   enabled = true; assert.equal(render().props.preview, false);
+  render().props.onHoverChange(true);
+  miniplayer = true; assert.equal(render().props.onHoverChange, undefined); assert.equal(timers.size, 0);
+  miniplayer = false; assert.equal(render().props.preview, false);
 });

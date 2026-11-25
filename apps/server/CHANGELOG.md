@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Keep playing videos, Shorts and Live TV in an in-app miniplayer when browsing. Queues keep advancing, and expanding the player restores the same playback.
+
 - Start the next queued video from the beginning when autoplay resume has never been configured. Preserve saved on/off choices and manual resume behavior.
 
 ## 0.7.0

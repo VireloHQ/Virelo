@@ -1,4 +1,5 @@
 import { sharedModuleBase } from '../../../scripts/vite-audit-url.mjs';
+import { auditMiniplayer, auditMinimizedQueue } from '../../../scripts/miniplayer-audit.mjs';
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 import { execFileSync, spawn } from 'node:child_process';
@@ -152,6 +153,7 @@ try {
     };
     const reset = async () => { await queue.getByRole('button', { name: 'Queue options', exact: true }).click(); await page.getByRole('menuitem', { name: 'Reset queue', exact: true }).click(); await settle(page); };
     await queue.waitFor(); await page.waitForFunction(() => { const video=document.querySelector('.player video'); return video&&video.readyState>=2&&!video.paused&&video.currentTime>.1; });
+    await auditMiniplayer(page,label+' Watch');
     await page.locator('.player').hover();await page.locator('.player-play-button').click();
     await page.waitForFunction(()=>document.querySelector('.player video').paused);
     const watchInfo=page.getByRole('region',{name:'Video information'});
@@ -275,6 +277,7 @@ try {
     check(continuity.sameNode && continuity.sourceUnchanged && continuity.reloads === 0 && continuity.paused && continuity.loads === continuity.baseline && Math.abs(continuity.time-10)<.1, label + ' edits never reload or restart current video: ' + JSON.stringify(continuity));
     await queue.getByRole('button', { name: 'Use vertical queue', exact: true }).click();
     await page.waitForFunction(() => document.querySelector('.playback-queue')?.dataset.layout === 'vertical');
+    await settle(page);
     const geometry = await page.evaluate(() => { const p = document.querySelector('.player').getBoundingClientRect(), q = document.querySelector('.playback-queue').getBoundingClientRect(); return { side: q.left >= p.right, below: q.top >= p.bottom, width: document.documentElement.scrollWidth, viewport: innerWidth }; });
     check(scenario.width >= 1200 ? geometry.side : geometry.below, label + ' vertical layout adapts beside or below the video');
     check(geometry.width <= geometry.viewport + 1, label + ' no page horizontal overflow');
@@ -363,6 +366,7 @@ try {
     check(await page.evaluate(() => window.__requests.filter(params => params.sort).every(params => params.sort === 'title')), label + ' random pagination uses stable source order');
     check(await page.evaluate(() => window.__mutations.length === 0 && window.__items.length === 24) && writes.length === 0, label + ' no library or source mutations');
     check(await page.evaluate(() => window.__queueSaves.length > 0 && window.__queueSaves.every(({state}) => state.ids.includes(state.selectedId) && state.ids.every(id => state.sourceIds.includes(id)))), label + ' queue history saves valid snapshots separately from library data');
+    if(scenario.name==='desktop') await auditMinimizedQueue(page,label);
     check(errors.length === 0, label + ' no uncaught browser errors: ' + errors.join('; '));
     await context.close(); lastPage = null;
   }

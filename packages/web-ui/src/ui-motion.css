@@ -68,12 +68,14 @@
 /* A route or settings category appears as one surface, already in its final position. */
 @media (prefers-reduced-motion:no-preference) {
   .app-shell .page-shell > :is(.home-view,.content-view,.detail-view,.watch-view,.shorts-view,.watch-empty),
+  .app-shell .playback-dock:not([data-minimized]) > :is(.content-view,.watch-view,.shorts-view,.watch-empty),
   .app-shell :is(.settings-saved,.error-copy,.favorite-error),
   .route-recovery-notice {
     transition:opacity var(--dur-short) var(--ease-out);
   }
   @starting-style {
     :root:not(:has(:focus-visible)) .app-shell .page-shell > :is(.home-view,.content-view,.detail-view,.watch-view,.shorts-view,.watch-empty),
+    :root:not(:has(:focus-visible)) .app-shell .playback-dock:not([data-minimized]) > :is(.content-view,.watch-view,.shorts-view,.watch-empty),
     .app-shell :is(.settings-saved,.error-copy,.favorite-error),
     .route-recovery-notice { opacity:0; }
   }

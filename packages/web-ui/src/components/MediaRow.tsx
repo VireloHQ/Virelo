@@ -5,13 +5,15 @@ import type { MediaItem } from '@edition/types';
 import { MediaCard } from '@edition/components/MediaCard';
 import { useRowWheel } from '../hooks/useRowWheel';
 import { usePreviewEnabled } from '../hooks/usePreviewEnabled';
+import { useMiniplayerOpen } from './PlaybackDock';
 
 export function MediaRow({title,items,playDirect=false,poster=false,short=false,seriesTitles=false,action,resumeSessions}:{
   title:string;items:MediaItem[];playDirect?:boolean;poster?:boolean;short?:boolean;seriesTitles?:boolean;action?:ReactNode;
   resumeSessions?: Record<number, { key: string; label: string }>;
 }) {
   useLocale();
-  const previewsEnabled=usePreviewEnabled();
+  const prefersPreviews=usePreviewEnabled(), miniplayerOpen=useMiniplayerOpen();
+  const previewsEnabled=prefersPreviews&&!miniplayerOpen;
   const ref=useRef<HTMLDivElement>(null);
   const hoverTimer=useRef<number|null>(null);
   const [activeId,setActiveId]=useState<number|null>(null);

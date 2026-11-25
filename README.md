@@ -26,6 +26,7 @@
 - **Make it your collection.** Search folders, save favorites, arrange playlists and shuffle the queue.
 - **A feed of your own.** Swipe through portrait clips in Shorts, using files already on your device.
 - **Playback that fits.** Subtitles, audio tracks, speed controls and optional volume leveling, where supported.
+- **Keep watching while you browse.** The in-app miniplayer keeps your video or Shorts playing as you move around Virelo. Drag it to a corner and hover or tap to show the controls.
 
 Available in English, Japanese, Simplified Chinese, Korean and Russian. [Localization details](docs/LOCALIZATION.md).
 

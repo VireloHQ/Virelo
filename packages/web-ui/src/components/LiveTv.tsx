@@ -7,6 +7,7 @@ import { t, useLocale } from '@edition/i18n';
 import { ConfirmationDialog } from './ConfirmationDialog';
 import { Select } from './Select';
 import { LiveTvPlayback } from './LiveTvPlayback';
+import { usePlaybackDock } from './PlaybackDock';
 import { useIptvChecks } from '../hooks/useIptvChecks';
 import './LiveTv.css';
 
@@ -38,6 +39,7 @@ const groupIcon = <TagSimple/>;
 
 export function LiveTv({service,admin}:{service:LiveTvService;admin?:ReactNode}) {
   const locale = useLocale(), id = useId();
+  const playback=usePlaybackDock(), minimized=playback?.minimized;
   const client = useQueryClient();
   const screen = useRef<HTMLElement>(null), guide = useRef<HTMLUListElement>(null);
   const [selected,setSelected] = useState<string|null>(null), [tuned,setTuned] = useState<number|null>(null);
@@ -115,6 +117,7 @@ export function LiveTv({service,admin}:{service:LiveTvService;admin?:ReactNode})
 
   function choose(next:string|null,checkNew=false) {
     checks.cancel();
+    playback?.onStopped();
     setFirstCheck(checkNew?next:null);
     setSelected(next); setTuned(null); setSearch(''); setGroup(''); setStatusFilter('all'); setLimit(pageSize);
   }
@@ -123,6 +126,7 @@ export function LiveTv({service,admin}:{service:LiveTvService;admin?:ReactNode})
     void checks.run((unchecked.length?unchecked:visible).map(({index})=>index));
   }
   function tune(index:number, pointer:boolean) {
+    if(index!==tuned)playback?.onStopped();
     setTuned(index);
     if (pointer && (screen.current?.parentElement?.clientWidth ?? Infinity) <= 720)
       window.requestAnimationFrame(() => screen.current?.scrollIntoView({block:'nearest',behavior:'instant'}));
@@ -136,8 +140,8 @@ export function LiveTv({service,admin}:{service:LiveTvService;admin?:ReactNode})
   const canAdd = !sources.isPending && !sources.isError;
   const importTitle = id+'-import-title';
   const checkLabel = checks.running?t("Cancel checks"):!visible.length||unchecked.length?t("Check channels"):t("Recheck channels");
-  return <div className="content-view live-tv" data-import-open={adding || undefined}>
-    <header className="content-heading">
+  return <div className="content-view live-tv" data-import-open={!minimized && adding || undefined}>
+    {!minimized && <><header className="content-heading">
       <div><h1>{t("Live TV")}</h1><p>{t("Watch channels from your own M3U or M3U8 playlists.")}</p></div>
       {canAdd && <Modal isOpen={adding} onOpenChange={changeAdding}>
         <Button variant="secondary"><Plus size={18} aria-hidden="true"/>{t("Add playlist")}</Button>
@@ -158,8 +162,9 @@ export function LiveTv({service,admin}:{service:LiveTvService;admin?:ReactNode})
     {sources.isPending && <p role="status" className="live-tv-message">{t("Loading…")}</p>}
     {sources.isError && <div className="live-tv-notice" role="alert"><p>{t(sources.error.message)}</p><Button variant="secondary" onPress={() => void sources.refetch()}>{t("Try again")}</Button></div>}
     {canAdd && !source && <p className="live-tv-message">{t("No playlists yet")}</p>}
+    </>}
     {source && <div className="live-tv-grid">
-      <section className="live-tv-directory" aria-labelledby={id+'-channels'}>
+      {!minimized && <section className="live-tv-directory" aria-labelledby={id+'-channels'}>
         <div className="live-tv-directory-head">
           <div className="live-tv-directory-title">
             <div className="live-tv-directory-meta"><h2 id={id+'-channels'}>{t("Channels")}</h2>
@@ -228,7 +233,7 @@ export function LiveTv({service,admin}:{service:LiveTvService;admin?:ReactNode})
           })}
         </ul>
         {visible.length > limit && <div className="live-tv-more"><Button variant="ghost" onPress={() => setLimit(value => value+pageSize)}>{t("Load more")}</Button></div>}
-      </section>
+      </section>}
       <section className="live-tv-screen" aria-label={t("Live TV")} data-tuned={Boolean(active)} ref={screen}>
         {tuned !== null && active ? <>
           <LiveTvPlayback key={source.id+':'+tuned} title={channelName(active,tuned)} service={service} source={source.id} channel={tuned}/>

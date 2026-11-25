@@ -34,5 +34,5 @@ test('detail, watch and route all accept the series queue in this edition', asyn
   assert.match(detail, /Play all/);
   assert.match(detail, /seriesTitle:item\.series_title!/);
   assert.match(watch, /sortSeriesEpisodes\(source/);
-  assert.match(router, /seriesTitle\?: string/);
+  assert.match(router, /seriesTitle: typeof input\.seriesTitle === 'string'/);
 });

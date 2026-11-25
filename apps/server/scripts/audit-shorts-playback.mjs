@@ -2,6 +2,7 @@ import { openPlaybackSetting } from './helpers/playback-settings.mjs';
 import { auditPlayerSettings } from './helpers/player-settings-audit.mjs';
 import { auditPlayerTransport } from './helpers/player-transport-audit.mjs';
 import { auditPlayerSwitching } from './helpers/player-switching-audit.mjs';
+import { auditMiniplayer } from '../../../scripts/miniplayer-audit.mjs';
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
@@ -127,6 +128,7 @@ api.mediaSource = async id => {
       await page.locator('.splash-screen').waitFor({ state: 'hidden' });
       const active = page.locator('.short-player video');
       await page.waitForFunction(() => { const v = document.querySelector('.short-player video'); return v && !v.paused && v.currentTime > 0.1; });
+      await auditMiniplayer(page,label+' Shorts');
       await page.getByRole('button', { name: 'Quality', exact: true }).waitFor();
       await page.getByRole('button', { name: 'Subtitles', exact: true }).waitFor();
       check(await page.getByRole('button', { name: 'Audio', exact: true }).innerText() === 'Audio', label + ' Shorts audio has a visible label');

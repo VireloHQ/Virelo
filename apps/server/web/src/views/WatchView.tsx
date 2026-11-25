@@ -3,7 +3,8 @@ import { t, useLocale } from '../i18n';
 import { PageSkeleton } from '@virelo/web-ui/components/PageSkeleton.tsx';
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Link, useParams, useSearch } from '@tanstack/react-router';
+import { Link } from '@tanstack/react-router';
+import { usePlaybackDock, usePlaybackSource } from '@virelo/web-ui/components/PlaybackDock.tsx';
 import { FloppyDisk, ListPlus } from '@phosphor-icons/react';
 import { api } from '../api';
 import { PlaybackQueue } from '@virelo/web-ui/components/PlaybackQueue.tsx';
@@ -24,8 +25,8 @@ import type { MediaItem, PlaylistDetail, QueueBehavior } from '../types';
 export function WatchView() {
   useLocale();
   const client = useQueryClient();
-  const { mediaId } = useParams({ from: '/watch/$mediaId' });
-  const searchParams = useSearch({ from: '/watch/$mediaId' });
+  const { mediaId, search:searchParams } = usePlaybackSource('watch');
+  const minimized=usePlaybackDock()?.minimized;
   const seriesQueue = Boolean(searchParams.seriesTitle && searchParams.libraryId);
   const queueEnabled = Boolean(searchParams.queue || searchParams.playlistId || seriesQueue || searchParams.resumeSession);
   const resumeQ = useQuery({ queryKey: ['queue-session', searchParams.resumeSession], queryFn: async ({ signal }) => { await waitForQueueSessionWrites(client, searchParams.resumeSession!); if (signal.aborted) throw signal.reason; return api.queueSession(searchParams.resumeSession!); }, enabled: Boolean(searchParams.resumeSession), staleTime: 0, refetchOnMount: 'always' });
@@ -60,12 +61,15 @@ export function WatchView() {
   }
   if (itemQ.isError) return <div className="watch-empty"><h1>{t("Video unavailable")}</h1><p>{t(itemQ.error.message)}</p><button onClick={() => void itemQ.refetch()}>{t("Try again")}</button></div>;
   if (itemQ.isLoading || !itemQ.data) return <PageSkeleton kind="watch"/>;
-  return <div className="watch-view"><Player item={itemQ.data} autoPlay/><WatchInfo item={itemQ.data} actions={<SavePlaylist mediaIds={[itemQ.data.id]}/>}/><WatchRecommendations item={itemQ.data}/></div>;
+  return <div className="watch-view"><Player item={itemQ.data} autoPlay/>{!minimized&&<>
+    <WatchInfo item={itemQ.data} actions={<SavePlaylist mediaIds={[itemQ.data.id]}/>}/><WatchRecommendations item={itemQ.data}/>
+  </>}</div>;
 }
 
 function QueuedWatch({ source, initialId, behavior, shuffle, playlist, refreshError, onRetry, saved, resumeKey, queueResumePosition }: { source: MediaItem[]; initialId: number; behavior: QueueBehavior; shuffle: boolean; playlist?: PlaylistDetail; refreshError?: string; onRetry: () => void; saved?: SavedQueueState; resumeKey?: string; queueResumePosition: boolean }) {
   useLocale();
   const { queue, items, activeIndex, update, select } = usePlaybackQueue(source, initialId, shuffle, saved);
+  const minimized=usePlaybackDock()?.minimized;
   const session = useQueueSession(queue, playlist?.id, resumeKey);
   const [resumeFromHistory, setResumeFromHistory] = useState(true);
   const selectManually = (index: number) => { setResumeFromHistory(true); select(index); };
@@ -93,12 +97,12 @@ function QueuedWatch({ source, initialId, behavior, shuffle, playlist, refreshEr
         onNext={() => advance(1)} onPrev={() => advance(-1)}
         canGoNext={items.length > 1 && (activeIndex < items.length - 1 || wraps)} canGoPrev={items.length > 1 && (activeIndex > 0 || wraps)}
         repeatMode={repeat} onRepeatChange={setRepeatOverride} shuffled={queue.shuffled} onShuffle={()=>update(toggleQueueShuffle)} autoPlay/>
-      <WatchInfo item={current} actions={<SavePlaylist mediaIds={[current.id]}/>}>
+      {!minimized&&<WatchInfo item={current} actions={<SavePlaylist mediaIds={[current.id]}/>}>
         {session.error && <p className="error-copy" role="alert">{t(session.error)}</p>}
         {refreshError && <p className="error-copy" role="alert"><Trans message="Could not refresh the queue. {value0} {value1}" values={{value0:t(refreshError),value1:<button type="button" onClick={onRetry}>{t("Try again")}</button>}}/></p>}
-      </WatchInfo>
+      </WatchInfo>}
     </div>
-    <PlaybackQueue items={items} activeIndex={activeIndex} repeatMode={repeat} onRepeatChange={setRepeatOverride}
+    {!minimized&&<><PlaybackQueue items={items} activeIndex={activeIndex} repeatMode={repeat} onRepeatChange={setRepeatOverride}
       onSelect={selectManually} state={queue} onEdit={change=>{setResumeFromHistory(true);update(change);}}
       heading={playlist && <Link to="/playlists/$playlistId" params={{playlistId:String(playlist.id)}} title={playlist.name}>{playlist.name}</Link>}
       menuActions={[
@@ -110,6 +114,6 @@ function QueuedWatch({ source, initialId, behavior, shuffle, playlist, refreshEr
         <span className="sr-only" role="status">{save.isPending ? t("Working…") : save.isSuccess && !dirty ? t("Saved") : ''}</span>
         {saveOpen && <SavePlaylist mediaIds={items.map(item=>item.id)} initialOpen={saveOpen} onClose={()=>setSaveOpen(null)}/>}
       </>}/>
-    <WatchRecommendations item={current}/>
+    <WatchRecommendations item={current}/></>}
   </div>;
 }

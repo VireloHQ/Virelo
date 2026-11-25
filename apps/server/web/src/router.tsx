@@ -1,4 +1,4 @@
-import { createRootRoute, createRoute, createRouter, Outlet } from '@tanstack/react-router';
+import { createRootRoute, createRoute, createRouter, Outlet, useMatch } from '@tanstack/react-router';
 import { createRouteView, RouteErrorView, RouteNavigationGuard, RoutePendingView } from './components/RouteRecovery';
 import { Header } from './components/Header';
 import { AppearanceProvider } from './components/AppearanceProvider';
@@ -11,6 +11,7 @@ import { PlaybackAccess, useAccount } from './components/AccountSession';
 import { ActivityDisclosure } from './components/ActivityDisclosure';
 import { useScanRefresh } from './hooks/useScanRefresh';
 import { MediaServicesProvider } from '@virelo/web-ui/media-services.tsx';
+import { PlaybackDock, type PlaybackSource, type WatchRouteSearch } from '@virelo/web-ui/components/PlaybackDock.tsx';
 import { api, artwork } from './api';
 const mediaServices = { api, artwork };
 
@@ -39,19 +40,6 @@ function viewForPath(pathname: string) {
   if (/^\/title\/[^/]+$/.test(path)) return DetailRouteView;
 }
 
-export interface WatchRouteSearch {
-  resumeSession?: string;
-  queue?: boolean;
-  favorites?: boolean;
-  playlistId?: number;
-  seriesTitle?: string;
-  folder?: string;
-  exactFolder?: boolean;
-  libraryId?: number;
-  sort?: SortKey;
-  search?: string;
-}
-
 function validateWatchSearch(input: Record<string, unknown>): WatchRouteSearch {
   return {
     resumeSession: typeof input.resumeSession === 'string' && /^(queue|playlist)-[a-zA-Z0-9-]{1,80}$/.test(input.resumeSession) ? input.resumeSession : undefined,
@@ -67,11 +55,27 @@ function validateWatchSearch(input: Record<string, unknown>): WatchRouteSearch {
   };
 }
 
+const playbackViews = {'watch':WatchRouteView,'shorts':ShortsRouteView,'live-tv':LiveTvRouteView};
+function renderPlayback(kind:PlaybackSource['kind']) {
+  const View=playbackViews[kind];
+  return <View/>;
+}
+function PlaybackRoutes() {
+  const watch=useMatch({from:'/watch/$mediaId',shouldThrow:false});
+  const shorts=useMatch({from:'/shorts',shouldThrow:false});
+  const live=useMatch({from:'/live-tv',shouldThrow:false});
+  const source:PlaybackSource|null=watch?{kind:'watch',mediaId:watch.params.mediaId,search:watch.search}
+    :shorts?{kind:'shorts',startId:shorts.search.startId}:live?{kind:'live-tv'}:null;
+  const allowed=useAccount()?.user.permissions.play !== false;
+  if(!allowed)return <>{source&&<PlaybackAccess>{null}</PlaybackAccess>}<Outlet/></>;
+  return <PlaybackDock source={source} playbackPath={(watch??shorts??live)?.pathname} libraryPath="/library" render={renderPlayback}><Outlet/></PlaybackDock>;
+}
+
 function Shell() {
   useScanRefresh();
   const policy=useAccount()?.monitoring;
   const layout=useNavigationLayout(s=>s.layout);
-  return <MediaServicesProvider services={mediaServices}><AppearanceProvider><div className={'app-shell'+(policy?.enabled?' activity-monitored':'')} data-navigation={layout}><RouteNavigationGuard viewForPath={viewForPath} /><Header /><main className="page-shell"><ActivityDisclosure policy={policy} compact/><Outlet /></main><MobileNav /></div></AppearanceProvider></MediaServicesProvider>;
+  return <MediaServicesProvider services={mediaServices}><AppearanceProvider><div className={'app-shell'+(policy?.enabled?' activity-monitored':'')} data-navigation={layout}><RouteNavigationGuard viewForPath={viewForPath} /><Header /><main className="page-shell"><ActivityDisclosure policy={policy} compact/><PlaybackRoutes/></main><MobileNav /></div></AppearanceProvider></MediaServicesProvider>;
 }
 
 const rootRoute = createRootRoute({ component: Shell, notFoundComponent: NotFoundView, errorComponent: RouteErrorView });
@@ -81,10 +85,10 @@ const favoritesRoute = createRoute({ getParentRoute:()=>rootRoute, path:'/favori
 const playlistsRoute = createRoute({ getParentRoute:()=>rootRoute, path:'/playlists', component:PlaylistsRouteView });
 const playlistRoute = createRoute({ getParentRoute:()=>rootRoute, path:'/playlists/$playlistId', component:PlaylistRouteView });
 const settingsRoute = createRoute({ getParentRoute:()=>rootRoute, path:'/settings', component:SettingsRouteView });
-const watchRoute = createRoute({ getParentRoute:()=>rootRoute, path:'/watch/$mediaId', component:()=> <PlaybackAccess><WatchRouteView/></PlaybackAccess>, validateSearch: validateWatchSearch });
+const watchRoute = createRoute({ getParentRoute:()=>rootRoute, path:'/watch/$mediaId', component:()=>null, validateSearch: validateWatchSearch });
 const detailRoute = createRoute({ getParentRoute:()=>rootRoute, path:'/title/$mediaId', component:DetailRouteView });
-const shortsRoute = createRoute({ getParentRoute:()=>rootRoute, path:'/shorts', component:()=> <PlaybackAccess><ShortsRouteView/></PlaybackAccess>, validateSearch:validateShortsSearch });
-const liveTvRoute = createRoute({ getParentRoute:()=>rootRoute, path:'/live-tv', component:()=> <PlaybackAccess><LiveTvRouteView/></PlaybackAccess> });
+const shortsRoute = createRoute({ getParentRoute:()=>rootRoute, path:'/shorts', component:()=>null, validateSearch:validateShortsSearch });
+const liveTvRoute = createRoute({ getParentRoute:()=>rootRoute, path:'/live-tv', component:()=>null });
 const routeTree = rootRoute.addChildren([indexRoute, libraryRoute, favoritesRoute, playlistsRoute, playlistRoute, settingsRoute, watchRoute, detailRoute, shortsRoute,liveTvRoute]);
 export const router = createRouter({
   routeTree, defaultPreload: 'intent', scrollRestoration: true,

@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { auditMiniplayerDrag } from '../../../scripts/miniplayer-audit.mjs';
 import { execFileSync,spawn } from 'node:child_process';
 import { mkdtemp,readFile,rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -263,12 +264,44 @@ try {
   await dialog.waitFor({state:'hidden'});
   const lastCheckTime=await lastChecked.getAttribute('datetime');
   const cached=await frame.getByRole('button',{name:/^Check Studio One: [1-9]\d* ms$/}).getAttribute('aria-label');
+  const frameNode=await page.locator('.live-tv-frame').elementHandle(), videoNode=await video.elementHandle();
+  await video.evaluate(element=>{delete element.seekable;element.currentTime=4;});
+  await video.hover({position:{x:12,y:20}});await play.click();
+  await player.waitForFunction(()=>{const v=document.querySelector('video');return !v.paused&&v.currentTime>4;});
   await page.goBack();
   assert.equal(new URL(page.url()).pathname,'/app/library');
   assert.ok(await page.locator('.topbar').evaluate((current,previous)=>current===previous,nav));
+  const mini=frame.getByRole('group',{name:'Miniplayer',exact:true});
+  await mini.waitFor();
+  assert.equal(await mini.getAttribute('data-controller-style'),'theater');
+  assert.ok(await mini.getByRole('slider',{name:'Seek',exact:true}).isEnabled());
+  await player.waitForFunction(()=>{
+    const video=document.querySelector('.live-tv-player video'), rect=video.getBoundingClientRect();
+    return rect.height>=64&&document.elementFromPoint(rect.x+rect.width/2,rect.y+rect.height/2)?.closest('.miniplayer-controls');
+  }).catch(async error=>{
+    const layout=await video.evaluate(element=>{
+      const rect=element.getBoundingClientRect(), hit=document.elementFromPoint(rect.x+rect.width/2,rect.y+rect.height/2);
+      return {rect:rect.toJSON(),viewport:[innerWidth,innerHeight],hit:hit?.outerHTML.slice(0,180)};
+    });
+    throw new Error('Live miniplayer picture is not visible: '+JSON.stringify(layout),{cause:error});
+  });
+  assert.ok(await page.locator('.live-tv-frame').evaluate((current,previous)=>current===previous,frameNode));
+  assert.ok(await video.evaluate((current,previous)=>current===previous,videoNode));
+  const miniTime=await video.evaluate(element=>element.currentTime);
+  await player.waitForFunction(time=>{const v=document.querySelector('video');return !v.paused&&v.currentTime>time+.15;},miniTime);
+  assert.equal(await player.evaluate(()=>document.pictureInPictureElement),null);
+  await auditMiniplayerDrag(page,mini,'Live TV frame');
+  await mini.getByRole('button',{name:'Expand player',exact:true}).click();
+  await page.waitForURL('**/app/live-tv');
+  await first.waitFor();
+  assert.ok(await video.evaluate((current,previous)=>current===previous,videoNode),'expanding keeps the same HLS player');
+  await video.hover({position:{x:12,y:20}});
+  await liveTransport.getByRole('button',{name:'Minimize player',exact:true}).click();
+  await mini.press('ArrowRight');
+  await mini.getByRole('button',{name:'Close miniplayer',exact:true}).click();
   await page.locator('.live-tv-frame').waitFor({state:'detached'});
   const beforeReload=requests.length;
-  await page.goForward();await first.waitFor();
+  await tv.click();await first.waitFor();
   await page.reload();await first.waitFor();
   await frame.getByRole('button',{name:cached,exact:true}).waitFor();
   await recheck.waitFor();
@@ -346,7 +379,7 @@ try {
   await first.waitFor();
   assert.ok(await rail.isVisible());
   assert.deepEqual(errors,[]);
-  console.log('PASS playlist dialog (URL, file and paste), automatic 124-channel check, cache, scoped CSP, finite and live HLS seek bars, fullscreen and navigation');
+  console.log('PASS playlist dialog (URL, file and paste), automatic 124-channel check, cache, scoped CSP, finite and live HLS seek bars, fullscreen and in-app miniplayer');
 } finally {
   await browser?.close();
   child?.kill();
