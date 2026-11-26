@@ -12,7 +12,7 @@
       ],
       "license": "AGPL-3.0-only",
       "dependencies": {
-        "@fastify/static": "^10.1.8",
+        "@fastify/static": "^10.1.12",
         "chokidar": "^6.0.0",
         "fastify": "^5.10.0",
         "open": "^11.0.0",
@@ -179,9 +179,9 @@
       }
     },
     "node_modules/@fastify/static": {
-      "version": "10.1.8",
-      "resolved": "https://registry.npmjs.org/@fastify/static/-/static-10.1.8.tgz",
-      "integrity": "sha512-3CbgWOXJX8f46xxsuOgQl9h0lyQQiABMG40kxRF5PWJk4LyBW5m3mLZoW5glnm2TUTC1gVFCBnqOt5S6zIIIrg==",
+      "version": "10.1.12",
+      "resolved": "https://registry.npmjs.org/@fastify/static/-/static-10.1.12.tgz",
+      "integrity": "sha512-D0pmf8OgurIsKiIjxC8ZJP/bCYnUSAiU6PS/se/6Me63UoliAu8FqrzDRX8FdgJMqFMXy45ISlfUZ1Gi6AJnqA==",
       "funding": [
         {
           "type": "github",
@@ -201,7 +201,7 @@
         "content-disposition": "^3.0.0",
         "fastify-plugin": "^6.0.0",
         "fastq": "^1.17.1",
-        "glob": "^13.0.0"
+        "glob": "^14.0.0"
       }
     },
     "node_modules/@isaacs/nonrecursive-glob-match": {
