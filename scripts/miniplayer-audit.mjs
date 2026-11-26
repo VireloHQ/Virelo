@@ -62,6 +62,7 @@ export async function auditMiniplayer(page, label) {
     assert.equal(await page.evaluate(()=>document.pictureInPictureElement),null,label+' does not use browser PiP');
   };
   const mini=page.getByRole('group',{name:'Miniplayer',exact:true});
+  assert.equal(await page.getByRole('button',{name:'Minimize player',exact:true}).count(),0,label+' has no manual minimize button');
   await page.getByRole('link',{name:'Library',exact:true}).first().click();
   await mini.waitFor();
   await assertSameVideo();
@@ -139,8 +140,7 @@ export async function auditMiniplayer(page, label) {
 export async function auditMinimizedQueue(page, label) {
   const player=page.locator('.playback-dock .player video');
   await page.waitForFunction(()=>{const video=document.querySelector('.playback-dock .player video');return video&&!video.paused&&video.currentTime>.1;});
-  await page.locator('.playback-dock .player').hover();
-  await page.getByRole('button',{name:'Minimize player',exact:true}).click();
+  await page.getByRole('link',{name:'Library',exact:true}).first().click();
   const mini=page.getByRole('group',{name:'Miniplayer',exact:true});
   await mini.waitFor();
   const url=page.url(), title=await player.evaluate(video=>video.closest('.player').getAttribute('aria-label'));

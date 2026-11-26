@@ -17,7 +17,6 @@ import './live-tv-frame.css';
 function EmbeddedLiveTv() {
   const frame=window.frameElement;
   const [minimized,setMinimized]=useState(frame?.hasAttribute('data-minimized') ?? false);
-  const [started,setStarted]=useState(false);
   useEffect(() => {
     if (!frame) return;
     const sync=()=>setMinimized(frame.hasAttribute('data-minimized'));
@@ -26,12 +25,11 @@ function EmbeddedLiveTv() {
     sync();
     return ()=>observer.disconnect();
   },[frame]);
-  const send=(action:'playing'|'stopped'|'minimize'|'restore'|'close')=>window.parent.postMessage('virelo:live-tv:'+action,location.origin);
+  const send=(action:'playing'|'stopped'|'restore'|'close')=>window.parent.postMessage('virelo:live-tv:'+action,location.origin);
   return <PlaybackDockContext.Provider value={{
-    source:{kind:'live-tv'},minimized,started,
-    onPlaying:()=>{setStarted(true);send('playing');},
-    onStopped:()=>{setStarted(false);send('stopped');},
-    minimize:()=>send('minimize'),restore:()=>send('restore'),close:()=>send('close')
+    source:{kind:'live-tv'},minimized,
+    onPlaying:()=>send('playing'),onStopped:()=>send('stopped'),
+    restore:()=>send('restore'),close:()=>send('close')
   }}>
     <div className="app-shell live-tv-embed"><div className="playback-dock" data-minimized={minimized || undefined}><LiveTv service={localLiveTv}/></div></div>
   </PlaybackDockContext.Provider>;

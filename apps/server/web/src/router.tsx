@@ -68,7 +68,7 @@ function PlaybackRoutes() {
     :shorts?{kind:'shorts',startId:shorts.search.startId}:live?{kind:'live-tv'}:null;
   const allowed=useAccount()?.user.permissions.play !== false;
   if(!allowed)return <>{source&&<PlaybackAccess>{null}</PlaybackAccess>}<Outlet/></>;
-  return <PlaybackDock source={source} playbackPath={(watch??shorts??live)?.pathname} libraryPath="/library" render={renderPlayback}><Outlet/></PlaybackDock>;
+  return <PlaybackDock source={source} playbackPath={(watch??shorts??live)?.pathname} render={renderPlayback}><Outlet/></PlaybackDock>;
 }
 
 function Shell() {
