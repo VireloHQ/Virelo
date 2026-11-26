@@ -52,9 +52,6 @@
 .favorite-button:focus-visible { outline:2px solid var(--color-focus); outline-offset:2px; }
 .favorite-error { color:#ffb4ab; font-size:13px; }
 .player-tools .favorite-error,.short-actions .favorite-error { position:absolute; right:12px; bottom:70px; width:min(280px,75vw); padding:12px; background:#18181b; border-radius:6px; }
-.favorites-empty { padding:64px 0; color:var(--text-muted); }
-.favorites-empty h2 { color:var(--text); font-size:22px; margin-bottom:12px; }
-.favorites-empty a { display:inline-block; margin-top:20px; text-decoration:underline; text-underline-offset:4px; }
 .app-shell .favorites-view .shorts-card.art-portrait .media-card-art { aspect-ratio:16/9; }
 .app-shell .favorites-view .shorts-card.art-portrait .media-card-art img { object-fit:contain; }
 .favorites-more { display:flex; justify-content:center; padding:32px 0; }

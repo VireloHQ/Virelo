@@ -2,7 +2,8 @@ import { t, useLocale } from '../i18n';
 import { PageSkeleton } from '@virelo/web-ui/components/PageSkeleton.tsx';
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Button } from '@heroui/react';
+import { Button, buttonVariants } from '@heroui/react';
+import { MediaEmptyState } from '@virelo/web-ui/components/MediaEmptyState.tsx';
 import { Play, Pause, Info } from '@phosphor-icons/react';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { api, artwork } from '../api';
@@ -47,7 +48,9 @@ function FilteredHome({filter}:{filter:HomeFilter}) {
   const pick=(items:MediaItem[]|undefined)=>(items??[]).filter(item=>filter==='all'||item.kind===filter);
   if(home.isLoading)return <PageSkeleton kind="home" />;
   if(home.isError&&!data)return <div className="home-load-error"><h1>{t("Couldn’t load your library")}</h1><p>{t("Try again to reconnect to your videos.")}</p><Button onPress={()=>void home.refetch()}>{t("Try again")}</Button></div>;
-  if(data?.total===0&&data.hiddenLibraryIds?.length)return <div className="home-load-error"><h1>{t("Nothing to show on Home")}</h1><p>{t("Choose which libraries appear on Home in Settings.")}</p><Link to="/app/settings" search={{section:"libraries"}}>{t("Libraries")}</Link></div>;
+  if(data?.total===0&&data.hiddenLibraryIds?.length)return <MediaEmptyState kind="home" heading="h1" title={t("Nothing to show on Home")}>
+    <Link to="/app/settings" search={{section:"libraries"}} className={buttonVariants({variant:'secondary'})}>{t("Library settings")}</Link>
+  </MediaEmptyState>;
   if(!data||data.total===0)return <EmptyState/>;
   const genres=hero?mediaGenres(hero.genres).slice(0,2):[];
   const metadata=hero?[hero.kind==='series'?t('Series'):hero.kind==='movie'?t('Movie'):null,hero.year,
@@ -104,8 +107,9 @@ function FilteredHome({filter}:{filter:HomeFilter}) {
       {filter==='all'&&shorts.data&&shorts.data.total>0&&<MediaRow title={t("Shorts")} items={shorts.data.items} short
         action={<Link to="/app/shorts" search={{}} className="row-link">{t("View all")}</Link>}/>}
       {filter!=='series'&&<MediaRow title={t("Movies")} items={movieDiscovery} poster/>}
-      {filter!=='all'&&!(filter==='movie'?data.movies:data.series).length&&<div className="home-category-empty"><h2>{filter==='movie'?t("No movies yet"):t("No series yet")}</h2>
-        <p>{t("Browse your library or add another folder in Settings.")}</p><Link to="/app/library">{t("Browse library")}</Link></div>}
+      {filter!=='all'&&!(filter==='movie'?data.movies:data.series).length&&<MediaEmptyState kind="home" className="home-category-empty" title={filter==='movie'?t("No movies yet"):t("No series yet")}>
+        <Link to="/app/library" className={buttonVariants({variant:'secondary'})}>{t("Browse library")}</Link>
+      </MediaEmptyState>}
     </div>
   </div>;
 }

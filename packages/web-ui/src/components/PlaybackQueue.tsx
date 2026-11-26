@@ -1,3 +1,4 @@
+import { MediaEmptyState } from './MediaEmptyState';
 import { t, useLocale } from '@edition/i18n';
 import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
@@ -121,7 +122,7 @@ export function PlaybackQueue({ items, activeIndex, repeatMode, onRepeatChange, 
       </div>
     </header>
     {feedback}
-    {editing && !items.length && <p className="playlist-empty-copy">{t("No available videos. Add a video from its details or save a queue to this playlist.")}</p>}
+    {editing && !items.length && <MediaEmptyState kind="playlists" heading="h3" title={t("No videos found")}/>}
     <DndContext sensors={sensors} collisionDetection={args => {
       const point = args.pointerCoordinates, bounds = queueList.current?.getBoundingClientRect();
       if (point && bounds && (point.x < bounds.left || point.x > bounds.right || point.y < bounds.top || point.y > bounds.bottom)) return [];

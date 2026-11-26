@@ -3,7 +3,8 @@ import { useMemo, useRef, useState, type ReactNode } from 'react';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { Button, buttonVariants } from '@heroui/react';
-import { Broadcast, CaretRight, FolderSimple, MagnifyingGlass, Play, Queue } from '@phosphor-icons/react';
+import { Broadcast, CaretRight, FolderSimple, Play, Queue } from '@phosphor-icons/react';
+import { MediaEmptyState } from '@virelo/web-ui/components/MediaEmptyState.tsx';
 import { api } from '../api';
 import { useUIStore } from '@virelo/web-ui/store.ts';
 import { MediaCard } from '../components/MediaCard';
@@ -29,6 +30,7 @@ const SORT_OPTIONS = [
 export function LibraryView() {
   useLocale();
   const search = useUIStore((s)=>s.search);
+  const clearSearch = useUIStore((s)=>s.setSearch);
   const searchQuery = search.trim();
   const searching = searchQuery.length > 0;
   const layout=useLibraryLayout(state=>state.layout);
@@ -84,10 +86,16 @@ export function LibraryView() {
     }});
   };
 
+  const emptyLibrary = !searching && librariesQ.isSuccess && libraries.length === 0;
+  const emptyFolder = !searching && foldersQ.isSuccess && (!explorer || activeLibraryId !== null) && !childFolders.length;
   const videos=<>
     {mediaQ.isError&&!mediaQ.data?<div className="search-empty" role="alert"><h2>{t('Could not load videos')}</h2><p>{t(mediaQ.error.message)}</p><Button onPress={()=>void mediaQ.refetch()}>{t('Try again')}</Button></div>:
       mediaQ.isLoading ? <div className="media-grid" role="status" aria-label={t("Loading videos")} aria-busy="true">{Array.from({length:12},(_,i)=><div className="skeleton grid-skeleton" key={i}/>)}</div> :
-      media.length ? <div className="media-grid">{media.map(item=><MediaCard key={item.id} item={item}/>)}</div> : (searching||(!explorer||activeLibraryId!==null)&&!childFolders.length)&&<div className="search-empty"><MagnifyingGlass/><h2>{t("No matches")}</h2><p>{t("Try another title, folder or file name.")}</p></div>}
+      media.length ? <div className="media-grid">{media.map(item=><MediaCard key={item.id} item={item}/>)}</div> :
+      (searching || emptyLibrary || emptyFolder) && <MediaEmptyState kind={searching?'search':'folder'} title={t(searching?"No matches":"No videos found")}>
+        {searching ? <Button variant="secondary" onPress={()=>clearSearch('')}>{t("Clear search")}</Button> :
+          emptyLibrary && canRename && <Link to="/app/settings" search={{section:"libraries"}} className={buttonVariants({variant:'secondary'})}>{t("Library settings")}</Link>}
+      </MediaEmptyState>}
     {mediaQ.isError&&mediaQ.data&&<p className="error-copy" role="alert">{t('Could not load videos')}</p>}
     {mediaQ.hasNextPage&&<div className="library-more"><Button variant="secondary" isPending={mediaQ.isFetchingNextPage} onPress={()=>void mediaQ.fetchNextPage()}>{t(mediaQ.isFetchNextPageError?'Try again':'Load more')}</Button></div>}
   </>;

@@ -3,7 +3,8 @@ import { useState } from 'react';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { Play } from '@phosphor-icons/react';
-import { Button } from '@heroui/react';
+import { Button, buttonVariants } from '@heroui/react';
+import { MediaEmptyState } from '@virelo/web-ui/components/MediaEmptyState.tsx';
 import { api } from '../api';
 import { useUIStore } from '@virelo/web-ui/store.ts';
 import { MediaCard } from '../components/MediaCard';
@@ -21,6 +22,7 @@ export function FavoritesView() {
   useLocale();
   const navigate = useNavigate();
   const search = useUIStore(s => s.search);
+  const clearSearch = useUIStore(s => s.setSearch);
   const [sort, setSort] = useState<SortKey>('title');
   const query = useInfiniteQuery({
     queryKey: ['favorites', search, sort],
@@ -47,10 +49,11 @@ export function FavoritesView() {
     </div>}
     {items.length > 0 ? <div className="media-grid">{items.map(item => <MediaCard key={item.id} item={item}
       layout="landscape" short={Boolean(item.width && item.height && item.height > item.width)} />)}</div>
-      : !query.isError && <div className="favorites-empty"><h2>{search ? t("No matching favorites") : t("No favorites yet")}</h2>
-        <p>{search ? t("Try another search.") : t("Use the heart on a video or Short to save it here.")}</p>
-        <Link to="/library">{t("Browse library")}</Link>
-      </div>}
+      : !query.isError && <MediaEmptyState kind={search ? 'search' : 'favorites'} title={search ? t("No matching favorites") : t("No favorites yet")}>
+        {search
+          ? <Button variant="secondary" onPress={() => clearSearch('')}>{t("Clear search")}</Button>
+          : <Link to="/library" className={buttonVariants({variant:'secondary'})}>{t("Browse library")}</Link>}
+      </MediaEmptyState>}
     {query.hasNextPage && <div className="favorites-more"><Button variant="secondary" isPending={query.isFetching}
       onPress={() => void query.fetchNextPage()}>{t("Show more")}</Button></div>}
   </div>;

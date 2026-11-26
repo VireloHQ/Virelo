@@ -27,13 +27,48 @@ try{
   page.on('pageerror',e=>errors.push(e.message));
   const base=mode==='npm'?(process.env.VIRELO_TEST_NPM_URL||'http://127.0.0.1:5198'):(process.env.VIRELO_TEST_WEB_URL||'http://127.0.0.1:5199');
   const prefix=mode==='npm'?'':'/app';
+  let empty=true;
   await page.route('**/__art?*',route=>route.fulfill(art?{body:art,contentType:'image/png'}:{body:'<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="700"><rect width="1200" height="700" fill="#324c65"/><circle cx="850" cy="280" r="180" fill="#739799"/></svg>',contentType:'image/svg+xml'}));
   if(mode==='npm')await page.route('**/api/**',route=>{
    const path=new URL(route.request().url()).pathname;
-   const body=path==='/api/auth/status'?authStatus:path==='/api/home'?buildHome(fixtures,86400000):path==='/api/shorts'?{total:1,items:fixtures.filter(i=>i.id===400)}:path==='/api/libraries'||path==='/api/queue-sessions'?[]:path==='/api/settings'?{}:path==='/api/scan/status'?{running:false}:{};
+   const body=path==='/api/auth/status'?authStatus:path==='/api/home'?buildHome(empty?[]:fixtures,86400000):path==='/api/shorts'?(empty?{total:0,items:[]}:{total:1,items:fixtures.filter(i=>i.id===400)}):['/api/libraries','/api/folders','/api/media','/api/playlists','/api/queue-sessions'].includes(path)?[]:path==='/api/settings'?{}:path==='/api/scan/status'?{running:false}:{};
    if(path.includes('/artwork'))return route.fulfill(art?{body:art,contentType:'image/webp'}:{body:'<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="700"><rect width="1200" height="700" fill="#324c65"/></svg>',contentType:'image/svg+xml'});
    return route.fulfill({json:body});
   });
+  const emptyArtwork=async(kind,title)=>{
+   const state=page.locator('.media-empty[data-art="'+kind+'"]');
+   await state.getByRole('heading',{name:title,exact:true}).waitFor();
+   await page.locator('.splash-screen').waitFor({state:'hidden'});
+   check(await state.evaluate(section=>{
+    const frame=section.getBoundingClientRect(), art=section.querySelector('svg').getBoundingClientRect();
+    return art.width>=120 && Math.abs((art.left+art.right-frame.left-frame.right)/2)<2 &&
+      document.documentElement.scrollWidth<=innerWidth+1;
+   }),mode+' centered '+kind+' art fits');
+   return state;
+  };
+  for(const [width,height] of [[1440,900],[320,720]]){
+   await page.setViewportSize({width,height});
+   for(const [path,kind,title] of [
+    ['', 'folder','Choose your video folder'],
+    ['/favorites','favorites','No favorites yet'],
+    ['/playlists','playlists','No playlists yet'],
+    ['/shorts','shorts','No Shorts yet'],
+    ['/library','folder','No videos found']
+   ]){
+    await page.goto(base+prefix+path);
+    await emptyArtwork(kind,title);
+    if(path==='/favorites')await page.screenshot({path:join(screenshots,mode+'-empty-favorites-'+width+'.png')});
+   }
+   await page.getByRole('button',{name:'Search',exact:true}).first().click();
+   const input=page.getByRole('textbox',{name:'Search library'});
+   await input.fill('no such film');
+   const result=await emptyArtwork('search','No matches');
+   await result.getByRole('button',{name:'Clear search',exact:true}).click();
+   await emptyArtwork('folder','No videos found');
+   check((await input.inputValue())==='',mode+' clears the search '+width);
+  }
+  empty=false;
+  await page.setViewportSize({width:1440,height:900});
   await page.goto(base+prefix+'/settings');await page.locator('.settings-heading').waitFor();await page.locator('.splash-screen').waitFor({state:'hidden'});
   if(mode==='web')await page.evaluate(async items=>{const {saveStoredMedia}=await import('/src/local-library.ts');for(const item of items)await saveStoredMedia(item);},fixtures);
   await page.getByRole('link',{name:'Home',exact:true}).first().click();await page.locator('.home-feature').waitFor();
@@ -151,6 +186,8 @@ try{
    await page.waitForFunction(()=>document.querySelector('[aria-label="Show Second on Home"]')?.checked===false);
    await page.goto(base+'/app');
    await page.getByRole('heading',{name:'Nothing to show on Home'}).waitFor();
+   await emptyArtwork('home','Nothing to show on Home');
+   await page.screenshot({path:join(screenshots,'web-empty-hidden-home-390.png')});
    check(await page.locator('.home-rows,.home-feature').count()===0,'hidden library removes all Home surfaces');
    const untouched=await page.evaluate(async()=>{
      const {api}=await import('/src/api.ts');
@@ -158,7 +195,7 @@ try{
        (await api.shorts({home:1})).total===0&&(await api.queueSession('queue-hide-test')).state.selectedId===1;
    });
    check(untouched,'visibility does not change normal Library, Shorts or queue data');
-   await page.getByRole('link',{name:'Libraries',exact:true}).click();
+   await page.getByRole('link',{name:'Library settings',exact:true}).click();
    await toggle.waitFor();
    check(!(await toggle.isChecked()),'Home visibility persisted across reload');
    await toggle.focus();await page.keyboard.press('Space');

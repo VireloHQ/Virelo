@@ -1,0 +1,55 @@
+.media-empty {
+  display: grid;
+  min-block-size: clamp(260px, 52svh, 470px);
+  place-items: center;
+  padding: clamp(20px, 4vw, 44px) 16px;
+  text-align: center;
+}
+.page-shell > .media-empty,
+.playback-dock:not([data-minimized]) > .media-empty {
+  min-block-size: max(260px, calc(100svh - var(--topbar, 0px) - var(--mobile-dock-offset, 0px) - var(--activity-notice-height, 0px)));
+}
+.media-empty__body {
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  min-inline-size: 0;
+  max-inline-size: min(100%, 38rem);
+}
+.media-empty__art {
+  display: block;
+  inline-size: clamp(184px, 32vw, 248px);
+  max-inline-size: 100%;
+  block-size: auto;
+  overflow: visible;
+  color: color-mix(in oklch, var(--color-brand) 78%, var(--text));
+}
+.empty-art-shadow { fill: color-mix(in oklch, var(--color-brand) 8%, transparent); }
+.empty-art-stack { fill: var(--surface); stroke: color-mix(in oklch, var(--color-brand) 24%, var(--line)); }
+.empty-art-face {
+  fill: color-mix(in oklch, var(--color-brand) 12%, var(--surface-2));
+  stroke: color-mix(in oklch, var(--color-brand) 46%, var(--line));
+  stroke-width: 1.5;
+}
+.empty-art-mark { fill: color-mix(in oklch, currentColor 12%, transparent); stroke: currentColor; stroke-width: 2.7; }
+.empty-art-detail { fill: none; stroke: color-mix(in oklch, currentColor 44%, transparent); stroke-width: 1.4; }
+.empty-art-play { fill: currentColor; }
+.media-empty__body > :is(h1,h2,h3) {
+  margin: 0;
+  color: var(--text);
+  font-size: clamp(1.25rem, 2.8vw, 1.625rem);
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: -.025em;
+  text-wrap: balance;
+  overflow-wrap: anywhere;
+}
+.media-empty__body > p { max-inline-size: 45ch; margin: 0; line-height: 1.5; }
+.media-empty__body > p:not(.error-copy) { color: var(--text-muted); }
+.media-empty__body > .button { margin-block-start: 2px; }
+.app-shell .media-empty .button { min-block-size: 44px; }
+.media-empty__actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+.explorer-content > .media-empty { min-block-size: 250px; }
+.playback-queue[data-editing] > .media-empty { min-block-size: 180px; padding-block: 18px; }
+.playback-queue[data-editing] > .media-empty svg { inline-size: 160px; }
+.playback-queue[data-editing] > .media-empty h3 { font-size: 1.125rem; }
