@@ -1450,7 +1450,6 @@
   "The web player opens files on the device you are using and needs no account. The self-hosted npm version runs on your computer and adds accounts, library permissions, automatic movie and series metadata, and network playback.": "The web player opens files on the device you are using and needs no account. The self-hosted npm version runs on your computer and adds accounts, library permissions, automatic movie and series metadata, and network playback.",
   "Live TV": "Live TV",
   "Miniplayer": "Miniplayer",
-  "Minimize player": "Minimize player",
   "Expand player": "Expand player",
   "Close miniplayer": "Close miniplayer",
   "Live": "Live",

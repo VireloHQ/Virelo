@@ -1,17 +1,9 @@
-import { ArrowsOutSimple, CaretDown, Pause, Play, X } from '@phosphor-icons/react';
+import { ArrowsOutSimple, Pause, Play, X } from '@phosphor-icons/react';
 import { t, useLocale } from '@edition/i18n';
 import { useAppearance } from '@edition/components/AppearanceProvider';
 import { usePlaybackDock } from './PlaybackDock';
 import { PlayerTimeline, type TimelineProps } from './PlayerTimeline';
 import { useMiniplayerDrag } from '../hooks/useMiniplayerDrag';
-
-export function MinimizePlayerButton() {
-  useLocale();
-  const dock = usePlaybackDock();
-  if (!dock?.started || dock.minimized) return null;
-  const label = t("Minimize player");
-  return <button type="button" aria-label={label} title={label} onClick={dock.minimize}><CaretDown aria-hidden="true"/></button>;
-}
 
 export function MiniplayerControls({paused,onToggle,title,subtitle,timeline}: {
   paused:boolean; onToggle:()=>void; title:string; subtitle?:string; timeline:TimelineProps;

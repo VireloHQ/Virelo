@@ -3,7 +3,6 @@ import type { CSSProperties, ReactNode } from 'react';
 import { ArrowDown, PictureInPicture, SpeakerHigh, SpeakerSlash } from '@phosphor-icons/react';
 import { FavoriteButton } from './FavoriteButton';
 import { MediaContextMenu } from './MediaContextMenu';
-import { MinimizePlayerButton } from './MiniplayerControls';
 import { useFavorite } from '@edition/hooks/useFavorite';
 import { useMediaServices } from '../media-services';
 import type { MediaItem } from '@edition/types';
@@ -49,7 +48,6 @@ export function ShortsPlayerControls({ item, current, duration, muted, pip, pipS
       </button>
       <FavoriteButton item={item} short />
       {children}
-      <MinimizePlayerButton/>
       {pipSupported && <button type="button" onClick={onPip} aria-label={pip ? t("Exit Picture in Picture") : t("Picture in Picture")} aria-pressed={pip}>
         <PictureInPicture weight={pip ? 'fill' : 'regular'} /><span>{t("PiP")}</span>
       </button>}

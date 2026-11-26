@@ -66,7 +66,7 @@ function PlaybackRoutes() {
   const live=useMatch({from:'/app/live-tv',shouldThrow:false});
   const source:PlaybackSource|null=watch?{kind:'watch',mediaId:watch.params.mediaId,search:watch.search}
     :shorts?{kind:'shorts',startId:shorts.search.startId}:live?{kind:'live-tv'}:null;
-  return <PlaybackDock source={source} playbackPath={(watch??shorts??live)?.pathname} libraryPath="/app/library" render={renderPlayback}><Outlet/></PlaybackDock>;
+  return <PlaybackDock source={source} playbackPath={(watch??shorts??live)?.pathname} render={renderPlayback}><Outlet/></PlaybackDock>;
 }
 
 function Shell() {

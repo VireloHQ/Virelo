@@ -18,7 +18,6 @@ export function LiveTvView() {
       switch (event.data) {
         case 'virelo:live-tv:playing': playback.onPlaying(); break;
         case 'virelo:live-tv:stopped': playback.onStopped(); break;
-        case 'virelo:live-tv:minimize': playback.minimize(); break;
         case 'virelo:live-tv:restore': playback.restore(); break;
         case 'virelo:live-tv:close': playback.close(); break;
       }
