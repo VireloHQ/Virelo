@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { api } from '../api';
 import { ScanProgress } from '@virelo/web-ui/components/ScanProgress.tsx';
+import { MediaEmptyState } from '@virelo/web-ui/components/MediaEmptyState.tsx';
 
 export function EmptyState() {
   useLocale();
@@ -25,17 +26,13 @@ export function EmptyState() {
     }
   });
 
-  return <div className="empty-state">
-    <div className="empty-icon"><FolderOpen/></div>
-    <h2>{libraries.data?.length ? t("No videos found") : t("Choose your video folder")}</h2>
-    {scan.data?.running
-      ? <ScanProgress status={scan.data}/>
-      : <p>{libraries.data?.length ? t("Reconnect or rescan the selected folder.") : t("Virelo reads videos directly in your browser. Your files are never uploaded.")}</p>}
-    <div className="empty-actions">
+  return <MediaEmptyState kind="folder" heading="h1" title={t(libraries.data?.length ? "No videos found" : "Choose your video folder")}>
+    {scan.data?.running && <ScanProgress status={scan.data}/>}
+    <div className="media-empty__actions">
       <Button isPending={add.isPending || scan.data?.running} onPress={()=>add.mutate()}><FolderOpen/> {t("Choose folder")}</Button>
       <Button variant="secondary" onPress={()=>void navigate({to:'/app/settings'})}><Gear/> {t("Settings")}</Button>
     </div>
-    {add.error && add.error.name !== 'AbortError' && <p className="error-copy">{t(add.error.message)}</p>}
-    <div className="local-privacy-note"><ShieldCheck/><span>{t("Files stay on this device")}</span></div>
-  </div>;
+    {add.error && add.error.name !== 'AbortError' && <p className="error-copy" role="alert">{t(add.error.message)}</p>}
+    <div className="local-privacy-note"><ShieldCheck aria-hidden="true"/><span>{t("Files stay on this device")}</span></div>
+  </MediaEmptyState>;
 }

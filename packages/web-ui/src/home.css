@@ -30,10 +30,9 @@
 .home-row-actions { display:flex; align-items:center; gap:14px; }
 .row-controls button:disabled { opacity:.25; cursor:default; }
 .app-shell .media-row:focus-visible { outline:2px solid var(--color-focus); outline-offset:-2px; }
-.home-simple-heading,.home-category-empty,.home-load-error { padding:36px var(--app-gutter); }
+.home-simple-heading,.home-load-error { padding:36px var(--app-gutter); }
 .home-simple-heading h1 { margin:0 0 28px; font-size:40px; font-weight:600; letter-spacing:-.035em; }
-.home-category-empty p,.home-load-error p { color:var(--text-muted); margin-bottom:24px; }
-.home-category-empty a { text-decoration:underline; text-underline-offset:4px; }
+.home-load-error p { color:var(--text-muted); margin-bottom:24px; }
 .app-shell .home-feature-text { height:480px; }
 @media(max-width:900px) {
   .home-mobile-categories { position:absolute; z-index:4; top:8px; left:var(--app-gutter); display:flex; }

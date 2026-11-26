@@ -2,7 +2,9 @@ import { t, useLocale } from '../i18n';
 import { PageSkeleton } from '@virelo/web-ui/components/PageSkeleton.tsx';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useInfiniteQuery } from '@tanstack/react-query';
-import { useNavigate } from '@tanstack/react-router';
+import { Link, useNavigate } from '@tanstack/react-router';
+import { buttonVariants } from '@heroui/react';
+import { MediaEmptyState } from '@virelo/web-ui/components/MediaEmptyState.tsx';
 import { usePlaybackDock, usePlaybackSource } from '@virelo/web-ui/components/PlaybackDock.tsx';
 import { api } from '../api';
 import { useLocalMediaUrl } from '../hooks/useLocalMediaUrl';
@@ -96,12 +98,9 @@ function ShortsFeedView({ startId }: { startId?: number }) {
       <button onClick={() => history.back()}>{t("Back")}</button></div>;
   }
   if (!query.isFetching && total === 0 && items.length === 0) {
-    return (
-      <div className="shorts-empty">
-        <p>{t("No vertical videos found. Portrait clips (height > width) appear here as Shorts.")}</p>
-        <button onClick={() => history.back()}>{t("Back")}</button>
-      </div>
-    );
+    return <MediaEmptyState kind="shorts" heading="h1" title={t("No Shorts yet")}>
+      <Link to="/app/library" className={buttonVariants({variant:'secondary'})}>{t("Browse library")}</Link>
+    </MediaEmptyState>;
   }
 
   return (

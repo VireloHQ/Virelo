@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { api } from '../api';
 import { ScanProgress } from '@virelo/web-ui/components/ScanProgress.tsx';
+import { MediaEmptyState } from '@virelo/web-ui/components/MediaEmptyState.tsx';
 import { useAccount } from './AccountSession';
 
 export function EmptyState() {
@@ -18,14 +19,13 @@ export function EmptyState() {
   const firstFolder = canManage && libraries.data?.length===0;
   const addFolder = () => void navigate({to:'/settings',hash:'libraries'});
   const startScan = async () => { await api.startScan(); await scan.refetch(); };
-  return <div className="empty-state">
-    <div className="empty-icon"><FolderOpen/></div>
-    <h2>{firstFolder?t("Choose your video folder"):t("No videos found")}</h2>
-    {scan.data?.running && !firstFolder ? <ScanProgress status={scan.data}/> : <p>{firstFolder?t("Add a folder from the computer running Virelo to start watching."):canManage?t("Add video files to this folder, then scan again. You can add other folders in Settings."):t("No videos are available for this account. Ask an administrator to grant library access.")}</p>}
-    <div className="empty-actions">
+  return <MediaEmptyState kind="folder" heading="h1" title={t(firstFolder?"Choose your video folder":"No videos found")}>
+    {scan.data?.running && !firstFolder ? <ScanProgress status={scan.data}/> :
+      !canManage && <p>{t("No videos are available for this account. Ask an administrator to grant library access.")}</p>}
+    {(canManage || account?.permissions.scanLibraries) && <div className="media-empty__actions">
       {hasFolders&&<Button onPress={()=>void navigate({to:'/library'})}><FolderOpen/> {t("Open library")}</Button>}
       {account?.permissions.scanLibraries&&(!canManage||hasFolders)&&<Button variant={hasFolders?'secondary':'primary'} isPending={scan.data?.running} onPress={()=>void startScan()}><ArrowsClockwise/> {t("Scan again")}</Button>}
       {canManage&&<Button variant={hasFolders?'secondary':'primary'} onPress={addFolder}><Gear/> {firstFolder?t("Add video folder"):t("Add folder")}</Button>}
-    </div>
-  </div>;
+    </div>}
+  </MediaEmptyState>;
 }

@@ -3,7 +3,8 @@ import { useState } from 'react';
 import { Button, Input, buttonVariants } from '@heroui/react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useParams } from '@tanstack/react-router';
-import { ListPlus, Play, Queue, Shuffle } from '@phosphor-icons/react';
+import { ListPlus, Play, Shuffle } from '@phosphor-icons/react';
+import { MediaEmptyState } from '@virelo/web-ui/components/MediaEmptyState.tsx';
 import { api } from '../api';
 import { PageSkeleton } from '@virelo/web-ui/components/PageSkeleton.tsx';
 import { PlaybackQueue } from '@virelo/web-ui/components/PlaybackQueue.tsx';
@@ -35,7 +36,7 @@ export function PlaylistsView() {
         <Link to="/playlists/$playlistId" params={{ playlistId: String(playlist.id) }}>
           <PlaylistArtwork playlist={playlist}/><div><h2 title={playlist.name}>{playlist.name}</h2><p>{t('{count} videos',{count:playlist.itemCount})}{playlist.unavailableCount ? ' · '+t('{count} unavailable videos',{count:playlist.unavailableCount}) : ''}</p></div><span>{t("Open")}</span>
         </Link>
-      </li>)}</ul> : <div className="playlist-empty"><Queue/><h2>{t("No playlists yet")}</h2><p>{t("Create one above, add a video from its details, or save a playback queue.")}</p></div>}
+      </li>)}</ul> : <MediaEmptyState kind="playlists" title={t("No playlists yet")}/>}
   </div>;
 }
 
