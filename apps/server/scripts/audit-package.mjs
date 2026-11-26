@@ -51,6 +51,8 @@ const globManifest = fromStatic.resolve('glob/package.json');
 const glob = fromStatic('glob/package.json');
 const minimatch = createRequire(globManifest)('minimatch/package.json');
 const locked = JSON.parse(await readFile(join(repo, 'release-lock.json'), 'utf8'));
+assert.equal(fromInstalled('@fastify/static/package.json').version, locked.packages['node_modules/@fastify/static'].version,
+  'consumer installation retains the patched static server');
 assert.equal(glob.version, locked.packages['node_modules/glob'].version, 'consumer installation retains the patched glob');
 assert.equal(minimatch.version, locked.packages['node_modules/minimatch'].version, 'consumer installation retains the patched minimatch');
 assert.ok(archive.files.some(file => file.path.endsWith('node_modules/minimatch/LICENSE.md')), 'bundled dependency licenses are preserved');

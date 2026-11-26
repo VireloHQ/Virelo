@@ -15,7 +15,7 @@ assert.ok(root.bundleDependencies.includes('@fastify/static'));
 const range = root.overrides.glob;
 const lock = JSON.parse(await readFile(new URL('../package-lock.json', import.meta.url), 'utf8'));
 const original = lock.packages['node_modules/@fastify/static'].dependencies.glob;
-assert.ok(['^13.0.0', range].includes(original), 'review changed upstream dependency requirements');
+assert.ok(['^14.0.0', range].includes(original), 'review changed upstream dependency requirements');
 assert.ok([original, range].includes(metadata.dependencies.glob));
 const desired = process.argv.includes('--restore') ? original : range;
 // Bundled dependencies do not inherit the publisher's overrides in a consumer project.
