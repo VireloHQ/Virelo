@@ -8,7 +8,7 @@ import { usePlaybackDock, usePlaybackSource } from '@virelo/web-ui/components/Pl
 import { FloppyDisk, ListPlus } from '@phosphor-icons/react';
 import { api } from '../api';
 import { PlaybackQueue } from '@virelo/web-ui/components/PlaybackQueue.tsx';
-import { SavePlaylist } from '@virelo/web-ui/components/SavePlaylist.tsx';
+import { SavePlaylist, type PlaylistPickerOpen } from '@virelo/web-ui/components/SavePlaylist.tsx';
 import { Player } from '../components/Player';
 import { WatchInfo, WatchRecommendations } from '../components/WatchInfo';
 import { queueDestination, type RepeatMode } from '@virelo/core/playback-repeat';
@@ -75,7 +75,7 @@ function QueuedWatch({ source, initialId, behavior, shuffle, playlist, refreshEr
   const selectManually = (index: number) => { setResumeFromHistory(true); select(index); };
   const layout = useQueueLayout(state => state.layout);
   const [repeatOverride, setRepeatOverride] = useState<RepeatMode | null>(null);
-  const [saveOpen, setSaveOpen] = useState<'pointer' | 'keyboard' | null>(null);
+  const [saveOpen, setSaveOpen] = useState<PlaylistPickerOpen | null>(null);
   const client = useQueryClient();
   const save = useMutation({
     mutationFn: () => api.updatePlaylist(playlist!.id, { revision: playlist!.revision, mediaIds: items.map(item => item.id) }),
@@ -107,7 +107,7 @@ function QueuedWatch({ source, initialId, behavior, shuffle, playlist, refreshEr
       heading={playlist && <Link to="/playlists/$playlistId" params={{playlistId:String(playlist.id)}} title={playlist.name}>{playlist.name}</Link>}
       menuActions={[
         ...(playlist ? [{label:t("Save current order"),icon:<FloppyDisk/>,disabled:!dirty || save.isPending,action:()=>save.mutate()}] : []),
-        {label:t("Save queue as playlist"),icon:<ListPlus/>,action:()=>setSaveOpen(document.activeElement?.matches(':focus-visible') ? 'keyboard' : 'pointer')}
+        {label:t("Save queue as playlist"),icon:<ListPlus/>,action:(anchor,keyboard)=>{if(anchor)setSaveOpen({anchor,keyboard});}}
       ]}
       feedback={<>
         {save.error && <p className="queue-save-error error-copy" role="alert">{t(save.error.message)}</p>}

@@ -6,7 +6,7 @@ import { useContextMenuPlacement } from '../hooks/useContextMenuPlacement';
 import type { ContextMenuPosition } from '../utils/context-menu';
 import '../player-ui.css';
 
-export type PlayerAction = { label:string; content:ReactNode } | { label:string; icon?:ReactNode; checked?:boolean; disabled?:boolean; action:()=>void };
+export type PlayerAction = { label:string; content:ReactNode } | { label:string; icon?:ReactNode; checked?:boolean; disabled?:boolean; action:(anchor:HTMLElement|null,keyboard:boolean)=>void };
 
 export function PlayerActionMenu({position,label,actions,returnFocus,onClose}:{
   position:ContextMenuPosition; label:string; actions:PlayerAction[]; returnFocus:HTMLElement|null; onClose:()=>void;
@@ -61,7 +61,7 @@ export function PlayerActionMenu({position,label,actions,returnFocus,onClose}:{
     }}>
     <div className="context-popover-content player-action-menu-content">
     {actions.map(option=>'content' in option?<Fragment key={option.label}>{option.content}</Fragment>:<button key={option.label} type="button" role={option.checked===undefined?'menuitem':'menuitemradio'} aria-checked={option.checked} disabled={option.disabled}
-      onClick={()=>{dismiss();option.action();}}>{option.icon}<span>{t(option.label)}</span>{option.checked&&<Check weight="bold"/>}</button>)}
+      onClick={event=>{dismiss();option.action(returnFocus,event.detail===0);}}>{option.icon}<span>{t(option.label)}</span>{option.checked&&<Check weight="bold"/>}</button>)}
     </div>
   </div>,document.fullscreenElement||document.body);
 }

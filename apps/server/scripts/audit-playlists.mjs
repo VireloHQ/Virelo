@@ -117,11 +117,13 @@ async function addFromDetails(page, base, prefix, title, id, label) {
     return innerWidth<=900||Math.abs(element.getBoundingClientRect().right-copy.getBoundingClientRect().right)<1;
   }),label+' detail copy uses the available horizontal space');
   check(await detail.locator('h1').evaluate(element=>getComputedStyle(element).textWrapStyle!=='balance'),label+' title wraps naturally instead of balancing into short lines');
-  await page.getByRole('button',{name:'Add to playlist',exact:true}).click();
+  const trigger=page.getByRole('button',{name:'Add to playlist',exact:true});
+  await page.locator('.splash-screen').waitFor({state:'hidden'});
+  await trigger.scrollIntoViewIfNeeded();
+  await trigger.click();
   const before = await page.locator('.save-playlist').boundingBox();
   const dialog=page.getByRole('dialog',{name:'Save to playlist'});
-  await dialog.getByRole('button',{name:'Playlist',exact:true}).click();
-  await dialog.getByRole('option',{name:title,exact:true}).click();
+  await dialog.getByRole('radio',{name:title,exact:true}).check();
   await dialog.getByRole('button',{name:'Save',exact:true}).click();
   await dialog.waitFor({state:'hidden'});
   await page.getByText('Saved to '+title+'.',{exact:true}).waitFor();
@@ -132,29 +134,47 @@ async function addFromDetails(page, base, prefix, title, id, label) {
   check(true,label+' playlist save feedback dismisses automatically');
 }
 async function auditLongPlaylistPicker(page,mode,base,prefix,label) {
-  const names=Array.from({length:16},(_,i)=>'Dropdown test '+String(i+1).padStart(2,'0'));
+  const names=Array.from({length:16},(_,i)=>'Picker test '+String(i+1).padStart(2,'0'));
   const created=[];
   for(const name of names) created.push(await call(page,mode,'createPlaylist',{name,mediaIds:[1]}));
   await page.goto(base+prefix+'/title/1');
-  await page.getByRole('button',{name:'Add to playlist',exact:true}).click();
+  const anchor=page.getByRole('button',{name:'Add to playlist',exact:true});
+  await anchor.waitFor();
+  await page.locator('.splash-screen').waitFor({state:'hidden'});
+  await anchor.scrollIntoViewIfNeeded();
+  await anchor.click();
   const dialog=page.getByRole('dialog',{name:'Save to playlist',exact:true});
-  const trigger=dialog.getByRole('button',{name:'Playlist',exact:true});
-  await trigger.click();
-  const list=dialog.getByRole('listbox',{name:'Playlist',exact:true});
-  await dialog.getByRole('option',{name:names.at(-1),exact:true}).waitFor();
-  const layout=await list.evaluate(element=>{
-    const style=getComputedStyle(element);
-    return {position:style.position,scrollable:element.scrollHeight>element.clientHeight,
-      overflowY:style.overflowY,insideDialog:!!element.closest('.virelo-confirm-body')};
-  });
-  check(layout.position==='static'&&layout.scrollable&&layout.overflowY==='auto'&&layout.insideDialog,
-    label+' a long playlist dropdown scrolls within its dialog: '+JSON.stringify(layout));
-  const last=dialog.getByRole('option',{name:names.at(-1),exact:true});
+  const list=dialog.locator('.playlist-picker-scroll');
+  const last=dialog.getByRole('radio',{name:names.at(-1),exact:true});
+  await last.waitFor();
+  const layout=await dialog.evaluate((element,buttonBounds)=>{
+    const bounds=element.getBoundingClientRect(), area=element.querySelector('.playlist-picker-scroll');
+    const gap=Math.min(Math.abs(bounds.top-buttonBounds.y-buttonBounds.height),Math.abs(bounds.bottom-buttonBounds.y));
+    return {anchored:!!element.closest('.playlist-picker-popover')&&gap<20,
+      modal:!!element.closest('.virelo-confirm-backdrop')&&Math.abs(bounds.x+bounds.width/2-innerWidth/2)<2,
+      scrollable:area.scrollHeight>area.clientHeight&&getComputedStyle(area).overflowY==='auto',
+      fits:bounds.top>=0&&bounds.bottom<=innerHeight&&bounds.left>=0&&bounds.right<=innerWidth};
+  },await anchor.boundingBox());
+  check((page.viewportSize().width>640?layout.anchored:layout.modal)&&layout.scrollable&&layout.fits,
+    label+' the picker opens in the right place with a capped scroll area: '+JSON.stringify(layout));
+  await page.screenshot({path:join(root,label.replaceAll(' ','-')+'-playlist-picker.png')});
+  const footer=dialog.getByRole('button',{name:'Save',exact:true});
+  const footerBefore=await footer.boundingBox();
   await last.scrollIntoViewIfNeeded();
-  check(await last.isVisible(),label+' the last playlist option can be reached by scrolling');
-  await last.click();
-  check((await trigger.textContent()).includes(names.at(-1)),label+' a previously clipped playlist option can be selected');
+  await last.check();
+  check(await last.isChecked()&&Math.abs((await footer.boundingBox()).y-footerBefore.y)<1,label+' scrolling reaches the last playlist without moving Save');
+  const search=dialog.getByRole('textbox',{name:'Search playlists',exact:true});
+  await search.fill(names.at(-1));
+  check(await dialog.getByRole('radio').count()===1&&await last.isChecked(),label+' search filters the list and preserves the selection');
   await dialog.getByRole('button',{name:'Cancel',exact:true}).click();await dialog.waitFor({state:'hidden'});
+  await page.waitForFunction(button=>document.activeElement===button,await anchor.elementHandle());
+  await anchor.click();await dialog.waitFor();
+  if(page.viewportSize().width>640) {
+    await page.locator('.topbar').click({position:{x:12,y:12}});
+    await dialog.waitFor({state:'hidden'});
+  } else {
+    await page.keyboard.press('Escape');await dialog.waitFor({state:'hidden'});
+  }
   for(const playlist of created) {
     const current=await call(page,mode,'playlist',playlist.id);
     await call(page,mode,'deletePlaylist',playlist.id,current.revision);
@@ -183,7 +203,7 @@ async function addFromContext(page,mode,base,prefix,label) {
   check(await card.locator('.media-card-link').evaluate(element=>element===document.activeElement),label+' Escape restores focus to the originating video');
   menu=await open();await menu.press('End');await page.keyboard.press('Enter');
   dialog=page.getByRole('dialog',{name:'Save to playlist',exact:true});await dialog.waitFor();
-  check(await dialog.evaluate(element=>element.closest('.virelo-confirm-backdrop').dataset.animate==='false'),label+' keyboard playlist action opens without pointer animation');
+  check(await dialog.evaluate(element=>element.closest('.virelo-confirm-backdrop,.playlist-picker-popover')?.dataset.animate==='false'),label+' keyboard playlist action opens without pointer animation');
   const title='Context '+label;
   await dialog.getByRole('textbox',{name:'Playlist name',exact:true}).fill(title);
   await dialog.getByRole('button',{name:'Save',exact:true}).click();await dialog.waitFor({state:'hidden'});
@@ -192,7 +212,7 @@ async function addFromContext(page,mode,base,prefix,label) {
   check(Boolean(saved)&&(await call(page,mode,'playlist',saved.id)).items.map(item=>item.id).join(',')==='4',label+' context action creates a playlist containing the selected video');
   menu=await open();await menu.getByRole('menuitem',{name:'Add to playlist',exact:true}).click();
   dialog=page.getByRole('dialog',{name:'Save to playlist',exact:true});await dialog.waitFor();
-  await dialog.getByRole('button',{name:'Playlist',exact:true}).click();await dialog.getByRole('option',{name:title,exact:true}).click();
+  await dialog.getByRole('radio',{name:title,exact:true}).check();
   await dialog.getByRole('button',{name:'Save',exact:true}).click();await dialog.waitFor({state:'hidden'});
   const existing=await call(page,mode,'playlist',saved.id);
   check(existing.itemCount===1,label+' context action appends to an existing playlist without duplicating a video');
@@ -201,7 +221,7 @@ async function addFromContext(page,mode,base,prefix,label) {
   await page.locator('.media-card').filter({hasText:'Clip 3'}).first().click({button:'right'});
   await page.getByRole('menu',{name:'Clip 3 actions',exact:true}).getByRole('menuitem',{name:'Add to playlist',exact:true}).click();
   dialog=page.getByRole('dialog',{name:'Save to playlist',exact:true});await dialog.waitFor();
-  await dialog.getByRole('button',{name:'Playlist',exact:true}).click();await dialog.getByRole('option',{name:renamed,exact:true}).click();
+  await dialog.getByRole('radio',{name:renamed,exact:true}).check();
   await dialog.getByRole('button',{name:'Save',exact:true}).click();await dialog.waitFor({state:'hidden'});
   const appended=await call(page,mode,'playlist',saved.id);
   check(appended.name===renamed,label+' context dialog refreshes a recently cached playlist changed elsewhere');
@@ -361,6 +381,7 @@ api.mediaSource=async id=>{if(!urls.has(id))urls.set(id,URL.createObjectURL(awai
     await page.keyboard.press('Escape');
     await page.locator('.watch-info-actions').getByRole('button',{name:'Add to playlist',exact:true}).click();
     const singleDialog=page.getByRole('dialog',{name:'Save to playlist',exact:true});
+    await singleDialog.getByRole('button',{name:'New playlist',exact:true}).click();
     await singleDialog.getByRole('textbox',{name:'Playlist name',exact:true}).fill('Single video');
     await singleDialog.getByRole('button',{name:'Save',exact:true}).click();await singleDialog.waitFor({state:'hidden'});
     const single=(await call(page,mode,'playlists')).find(row=>row.name==='Single video');
@@ -389,6 +410,7 @@ api.mediaSource=async id=>{if(!urls.has(id))urls.set(id,URL.createObjectURL(awai
     const saveCopy=page.getByRole('menuitem',{name:'Save queue as playlist',exact:true});
     await saveCopy.focus();await page.keyboard.press('Enter');
     const copyDialog=page.getByRole('dialog',{name:'Save to playlist'});
+    await copyDialog.getByRole('button',{name:'New playlist',exact:true}).click();
     await auditPlaylistField(page,copyDialog.getByRole('textbox',{name:'Playlist name',exact:true}),label+' save dialog',check);
     await copyDialog.getByRole('textbox',{name:'Playlist name',exact:true}).fill('Travel');
     await copyDialog.getByRole('textbox',{name:'Playlist name',exact:true}).press('Enter');await copyDialog.waitFor({state:'hidden'});

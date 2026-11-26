@@ -2,7 +2,7 @@ import { t, useLocale } from '@edition/i18n';
 import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { Check, Heart, Info, ListPlus, Play } from '@phosphor-icons/react';
-import { SavePlaylist } from './SavePlaylist';
+import { SavePlaylist, type PlaylistPickerOpen } from './SavePlaylist';
 import { useContextMenuPlacement } from '../hooks/useContextMenuPlacement';
 import type { ContextMenuPosition } from '../utils/context-menu';
 import type { MediaItem } from '@edition/types';
@@ -30,7 +30,7 @@ export function MediaContextMenu({
 }) {
   useLocale();
   const menuRef = useRef<HTMLDivElement>(null);
-  const [playlistOpen, setPlaylistOpen] = useState<'pointer' | 'keyboard'>();
+  const [playlistOpen, setPlaylistOpen] = useState<PlaylistPickerOpen>();
   const firstItemRef = useRef<HTMLButtonElement>(null);
   const previousFocusRef = useRef<HTMLElement|null>(null);
   const closeRef = useRef(onClose);
@@ -80,7 +80,7 @@ export function MediaContextMenu({
   if (playlistOpen) return <SavePlaylist mediaIds={[item.id]} initialOpen={playlistOpen} onClose={() => {
     const focus = previousFocusRef.current;
     onClose();
-    window.requestAnimationFrame(() => { if (focus?.isConnected) focus.focus({preventScroll:true}); });
+    window.requestAnimationFrame(() => { if (focus?.isConnected && document.activeElement === document.body) focus.focus({preventScroll:true}); });
   }}/>;
 
   return createPortal(
@@ -128,7 +128,11 @@ export function MediaContextMenu({
         {item.progress_position && item.progress_position > 10 && !item.progress_completed ? t("Resume playback") : t("Play now")}
       </MenuItem>
       <MenuItem icon={<Info />} onClick={() => choose(onDetails)}>{t("Open details")}</MenuItem>
-      <MenuItem icon={<ListPlus />} onClick={event => setPlaylistOpen(event.detail > 0 ? 'pointer' : 'keyboard')}>{t("Add to playlist")}</MenuItem>
+      <MenuItem icon={<ListPlus />} onClick={event => {
+        const anchor = event.currentTarget.getBoundingClientRect();
+        previousFocusRef.current?.focus({preventScroll:true});
+        setPlaylistOpen({anchor,keyboard:event.detail === 0});
+      }}>{t("Add to playlist")}</MenuItem>
       </div>
     </div>,
     document.fullscreenElement || document.body
