@@ -318,7 +318,7 @@ export async function addLocalLibrary(): Promise<Library> {
   });
 }
 
-export async function reconnectLocalLibrary(id: number): Promise<Library> {
+export async function reconnectLocalLibrary(id: number, requiredPath?: string): Promise<Library> {
   let library = knownLibraries.get(id) ?? await readStore<StoredLibrary>('libraries', id);
   if (!library) throw new Error('Library not found.');
   const existingHandle = library.handle ?? sessionHandles.get(id);
@@ -338,6 +338,8 @@ export async function reconnectLocalLibrary(id: number): Promise<Library> {
   if (pickerAvailable()) {
     const handle = await chooseDirectory();
     if (!handle) throw new Error('Folder selection is not available in this browser.');
+    if(requiredPath!==undefined&&(handle.name!==library.path||!await directoryFile(handle,requiredPath).catch(()=>null)))
+      throw new Error('This is not the original folder for this video.');
     return editLibraries(async()=>{
       const libraries=await readAll<StoredLibrary>('libraries'),current=libraries.find(item=>item.id===id);
       if(!current)throw new Error('Library not found.');
@@ -352,6 +354,8 @@ export async function reconnectLocalLibrary(id: number): Promise<Library> {
   const files = await chooseFallbackFiles();
   const firstOriginalPath = files[0]?.file.webkitRelativePath.replaceAll('\\', '/');
   const label = firstOriginalPath?.split('/')[0] || library.label;
+  if(requiredPath!==undefined&&(label!==library.path||!files.some(file=>file.relativePath===requiredPath)))
+    throw new Error('This is not the original folder for this video.');
   return editLibraries(async()=>{
     const libraries=await readAll<StoredLibrary>('libraries'),current=libraries.find(item=>item.id===id);
     if(!current)throw new Error('Library not found.');
@@ -810,6 +814,15 @@ async function repairThumbnail(id: number, retryMissing: boolean) {
   return url;
 }
 
+export class FolderReconnectError extends Error {}
+
+async function directoryFile(handle:FileSystemDirectoryHandle,path:string) {
+  let directory=handle;
+  const parts=path.split('/').filter(Boolean);
+  for(const part of parts.slice(0,-1))directory=await directory.getDirectoryHandle(part);
+  return directory.getFileHandle(parts.at(-1)!);
+}
+
 export async function localMediaFile(id: number) {
   let file = sessionFiles.get(id);
   if (!file) {
@@ -817,11 +830,9 @@ export async function localMediaFile(id: number) {
     if (!media) throw new Error('Video not found.');
     const library = await readStore<StoredLibrary>('libraries', media.library_id);
     const directoryHandle = library ? library.handle ?? sessionHandles.get(library.id) : undefined;
-    if (!library || !directoryHandle || await permissionState(library) !== 'granted') throw new Error('Open Settings and reconnect this folder.');
-    let directory = directoryHandle;
-    const parts = media.source_path.split('/').filter(Boolean);
-    for (const part of parts.slice(0, -1)) directory = await directory.getDirectoryHandle(part);
-    file = await (await directory.getFileHandle(parts.at(-1) ?? media.filename)).getFile();
+    if (!library) throw new Error('Library not found.');
+    if (!directoryHandle || await permissionState(library) !== 'granted') throw new FolderReconnectError('Select the original folder containing this video.');
+    file = await (await directoryFile(directoryHandle,media.source_path||media.filename)).getFile();
     sessionFiles.set(id, file);
   }
   return file;

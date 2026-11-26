@@ -131,18 +131,24 @@ try {
   await owner.route('**/api/home',async route=>{
     const response=await route.fetch();await route.fulfill({response,json:{...await response.json(),total:0}});
   });
+  await owner.route('**/api/libraries',route=>route.fulfill({json:[]}));
   for(const viewport of [{width:1440,height:1000},{width:390,height:844}]) {
     await page.setViewportSize(viewport);await page.goto(base);
-    await page.getByRole('heading',{name:'No videos found',exact:true}).waitFor();
-    await page.getByRole('button',{name:'Add folder',exact:true}).click();
+    await page.getByRole('heading',{name:'Choose your video folder',exact:true}).waitFor();
+    assert.equal(await page.getByRole('button',{name:'Scan again',exact:true}).count(),0,'first run has no rescan action');
+    await page.getByRole('button',{name:'Add video folder',exact:true}).click();
     await page.getByRole('heading',{name:'Libraries',exact:true}).waitFor();
     assert.equal(new URL(page.url()).hash,'#libraries','empty-state Add folder links directly to Libraries');
     assert.equal(await page.getByRole('textbox',{name:'Media folder path',exact:true}).isVisible(),true);
     assert.equal(await page.locator('#settings-panel-account').count(),0,'Account never replaces the requested section');
     await page.reload();await page.getByRole('heading',{name:'Libraries',exact:true}).waitFor();
-    await page.goBack();await page.getByRole('heading',{name:'No videos found',exact:true}).waitFor();
+    await page.goBack();await page.getByRole('heading',{name:'Choose your video folder',exact:true}).waitFor();
     await page.goForward();await page.getByRole('heading',{name:'Libraries',exact:true}).waitFor();
   }
+  await owner.unroute('**/api/libraries');
+  await page.goto(base);
+  await page.getByRole('button',{name:'Open library',exact:true}).click();
+  await page.waitForURL('**/library');
   await owner.unroute('**/api/home');await page.setViewportSize({width:1440,height:1000});
   await owner.route('**/api/scan/status',route=>route.fulfill({json:{running:true,total:10,scanned:4,message:'Restoring thumbnail · Shared.mp4'}}));
   await page.goto(base+'/settings#libraries');await page.locator('.library-scan .scan-progress').waitFor();
@@ -280,6 +286,7 @@ try {
   await addFolder.click();
   await page.waitForFunction(()=>document.querySelector('.add-library input')?.value==='');
   assert.equal(server.db.visibleLibraries().find(l=>l.path===addedFolder)?.persistent,1,'Add folder saves a new library outside the startup path');
+  await page.getByRole('button',{name:'Open library',exact:true}).waitFor();
   await owner.route('**/api/auth/status',async route=>{
     const response=await route.fetch();await route.fulfill({response,json:{...await response.json(),localAccess:false}});
   });

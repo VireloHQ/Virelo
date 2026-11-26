@@ -235,8 +235,9 @@ Use **Settings → Sharing → Share Virelo** to share this server, or **Share v
 beside a video's details/playback actions. QR codes have rounded modules and
 finder corners, a centered Virelo logo, and a self-contained PNG download.
 On the server PC, a LAN address is offered only when Virelo is already listening
-on that interface. Sharing never starts a tunnel, opens a port, includes a session
-token or bypasses sign-in/library permissions. Personal playlist/settings URLs
+on that interface. If the address only works on this PC, the sharing dialog shows
+setup instructions instead of a QR code. Sharing never starts a tunnel, opens a port,
+includes a session token or bypasses sign-in/library permissions. Personal playlist/settings URLs
 are not shared. Other devices must be able to reach the selected address.
 
 Enable **Settings → Playback → Volume leveling**, or **Player Settings → Audio →

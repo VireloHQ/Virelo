@@ -1,4 +1,11 @@
 {
+  "This is not the original folder for this video.": "이 동영상이 있던 원래 폴더가 아닙니다.",
+  "Checking network addresses…": "네트워크 주소 확인 중…",
+  "Could not load network addresses.": "네트워크 주소를 불러오지 못했습니다.",
+  "This address only works on this PC. To watch on another device, set up access on your local network.": "이 주소는 이 PC에서만 사용할 수 있습니다. 다른 기기에서 보려면 로컬 네트워크 접속을 설정하세요.",
+  "Set up access from another device": "다른 기기에서 볼 수 있도록 설정",
+  "Reconnect folder": "폴더 다시 연결",
+  "Select the original folder containing this video.": "이 동영상이 있는 원래 폴더를 선택하세요.",
   "Stream status": "스트림 상태",
   "All statuses": "모든 상태",
   "Responding": "응답 있음",

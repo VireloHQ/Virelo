@@ -1,4 +1,10 @@
 {
+  "Checking network addresses…": "네트워크 주소 확인 중…",
+  "Could not load network addresses.": "네트워크 주소를 불러오지 못했습니다.",
+  "This address only works on this PC. To watch on another device, set up access on your local network.": "이 주소는 이 PC에서만 사용할 수 있습니다. 다른 기기에서 보려면 로컬 네트워크 접속을 설정하세요.",
+  "Set up access from another device": "다른 기기에서 볼 수 있도록 설정",
+  "Add video folder": "동영상 폴더 추가",
+  "Add a folder from the computer running Virelo to start watching.": "Virelo가 실행 중인 컴퓨터에서 동영상 폴더를 추가하고 시청을 시작하세요.",
   "Stream status": "스트림 상태",
   "All statuses": "모든 상태",
   "Responding": "응답 있음",

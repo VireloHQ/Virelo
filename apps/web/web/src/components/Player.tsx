@@ -1,5 +1,7 @@
 import { t, useLocale } from '../i18n';
 import { useEffect, useRef, useState } from 'react';
+import { Button } from '@heroui/react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useVolumeLeveling } from '@virelo/web-ui/hooks/useVolumeLeveling.ts';
 import { audioMeasurement } from '@virelo/web-ui/utils/volume-leveling.ts';
 import { ArrowsOut, FastForward, Pause, PictureInPicture, Play, Repeat, Rewind, SpeakerHigh, SpeakerSlash } from '@phosphor-icons/react';
@@ -81,6 +83,17 @@ export function Player({item,queue,queueIndex,shuffled,onShuffle,onEnded,onNext,
   const pendingQuality = useRef<{token:number;position:number;shouldPlay:boolean;restoreExternalAudio:boolean;url:string|null}|null>(null);
   const initialPositionApplied = useRef(false);
   const source = useLocalMediaUrl(item.id);
+  const client=useQueryClient();
+  const reconnect=useMutation({
+    mutationFn:({libraryId,path}:{libraryId:number;path:string})=>api.reconnectLibrary(libraryId,path),
+    onSuccess:()=>{
+      wantsPlayback.current=true;
+      setPlayRequested(true);
+      setPlaybackError('');
+      source.retry();
+      void client.invalidateQueries({predicate:query=>['libraries','home','media','watch-queue','shorts','scan'].includes(String(query.queryKey[0]))});
+    }
+  });
   const [mediaFile,setMediaFile] = useState<File|null>(null);
   const [playbackInfo,setPlaybackInfo] = useState<PlaybackInfo|null>(null);
   const [selectedAudio,setSelectedAudio] = useState<number|null>(null);
@@ -208,7 +221,7 @@ export function Player({item,queue,queueIndex,shuffled,onShuffle,onEnded,onNext,
       if(wantsPlayback.current)requestVideoPlayback();
     });
     return()=>{current=false;audioPreparationToken.current++;subtitlePreparationToken.current++;qualityPreparationToken.current++;audioPreparationAbort.current?.abort();qualityPreparationAbort.current?.abort();};
-  },[autoPlay,item.id]);
+  },[autoPlay,item.id,source.revision]);
 
   useEffect(()=>{setActiveCaption('');},[item.id,selectedSubtitle]);
 
@@ -608,7 +621,10 @@ export function Player({item,queue,queueIndex,shuffled,onShuffle,onEnded,onNext,
     {codecProbeRequired&&!playbackInfo&&!source.loading&&!source.error&&!playbackError&&<div className="player-status"><LoadingSpinner/><strong>{t("Preparing video playback…")}</strong></div>}
     {preparing&&preparing!=='subtitles'&&playRequested&&!playing&&<div className="player-status"><LoadingSpinner/><strong>{preparing==='audio'?t("Preparing audio…"):preparing==='quality'?t("Preparing {value0}…", { value0: selectedQuality&&selectedQuality>=2160?'4K':`${selectedQuality}p` }):t("Preparing subtitles…")}</strong>{preparationProgress>0&&<span>{Math.round(preparationProgress*100)}%</span>}</div>}
     {preparing==='subtitles'&&<span className="sr-only" role="status">{t("Preparing subtitles…")}</span>}
-    {(source.error || playbackError) && <div className="player-status error"><strong>{t("Playback unavailable")}</strong><span>{source.error || playbackError}</span></div>}
+    {(source.error || playbackError) && <div className={`player-status error${source.canReconnect?' folder-reconnect':''}`} role="alert"><strong>{t("Playback unavailable")}</strong><span>{t(source.error || playbackError)}</span>
+      {source.canReconnect && <Button isPending={reconnect.isPending} onPress={()=>reconnect.mutate({libraryId:item.library_id,path:item.path})}>{t("Reconnect folder")}</Button>}
+      {source.canReconnect&&reconnect.error&&reconnect.error.name!=='AbortError'&&reconnect.error.message!==source.error&&<span>{t(reconnect.error.message)}</span>}
+    </div>}
     {minimized?<MiniplayerControls title={item.title} subtitle={item.series_title??undefined} paused={!pauseAction} onToggle={toggle}
       timeline={{current,duration,onSeek:seek}}/>:shorts?<ShortsPlayerControls item={item} current={current} duration={duration} muted={muted} pip={pip}
       pipSupported={pipSupported} onSeek={seek} onMute={toggleMute} onPip={()=>void togglePip()} onNext={shorts.onNext}>

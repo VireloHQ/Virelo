@@ -1,4 +1,10 @@
 {
+  "Checking network addresses…": "正在检查网络地址…",
+  "Could not load network addresses.": "无法获取网络地址。",
+  "This address only works on this PC. To watch on another device, set up access on your local network.": "此地址只能在这台电脑上使用。要在其他设备上观看，请先设置局域网访问。",
+  "Set up access from another device": "设置其他设备的访问",
+  "Add video folder": "添加视频文件夹",
+  "Add a folder from the computer running Virelo to start watching.": "请在运行 Virelo 的电脑上添加视频文件夹，然后即可观看。",
   "Stream status": "直播流状态",
   "All statuses": "全部状态",
   "Responding": "有响应",

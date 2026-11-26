@@ -2,6 +2,7 @@ import { Trans } from '@virelo/web-ui/i18n/Trans.tsx';
 import { t, useLocale } from '../i18n';
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from '@tanstack/react-router';
 import { Button, Input } from '@heroui/react';
 import { CheckCircle, FolderOpen, FolderPlus, Trash } from '@phosphor-icons/react';
 import { api } from '../api';
@@ -14,6 +15,7 @@ import type { Library } from '../types';
 export function LibrarySettings() {
   useLocale();
   const session = useAccount(), client = useQueryClient();
+  const navigate = useNavigate();
   const canManage = Boolean(session?.user.permissions.manageLibraries);
   const [path, setPath] = useState('');
   const [showPrevious, setShowPrevious] = useState(false);
@@ -55,6 +57,7 @@ export function LibrarySettings() {
       <p id="library-folder-help" className="account-help">{pick.isPending?t("Choose a folder in the window on this PC."):session?.localAccess?t("Browse for a folder on this PC, or enter its path. Then select Add folder."):t("Browsing is only available on localhost. Enter the folder path on the PC running Virelo, not on this device.")}</p>
     </form>}
     {(pick.error||save.error||remove.error)&&<p className="error-copy" role="alert">{t(pick.error?.message||save.error?.message||remove.error?.message||'')}</p>}
+    {save.isSuccess&&<div className="settings-section-actions"><Button onPress={()=>void navigate({to:'/library'})}><FolderOpen aria-hidden="true"/> {t("Open library")}</Button></div>}
     {libraries.isError&&<p className="error-copy" role="alert"><Trans message="Could not load libraries. {value0}" values={{value0:<button onClick={()=>void libraries.refetch()}>{t("Try again")}</button>}}/></p>}
     {temporary.length>0&&<section className="library-group" aria-labelledby="temporary-libraries-title">
       <h3 id="temporary-libraries-title">{t("Temporary folders")}</h3><p>{t("Available for this run only. Save a folder to keep it when Virelo starts elsewhere.")}</p>{list(temporary,true)}

@@ -1,4 +1,10 @@
 {
+  "Checking network addresses…": "Проверяем сетевые адреса…",
+  "Could not load network addresses.": "Не удалось получить сетевые адреса.",
+  "This address only works on this PC. To watch on another device, set up access on your local network.": "Этот адрес работает только на этом компьютере. Для просмотра с другого устройства настройте доступ по локальной сети.",
+  "Set up access from another device": "Настроить доступ с другого устройства",
+  "Add video folder": "Добавить папку с видео",
+  "Add a folder from the computer running Virelo to start watching.": "Чтобы начать просмотр, добавьте папку на компьютере, где запущен Virelo.",
   "Stream status": "Состояние потока",
   "All statuses": "Все состояния",
   "Responding": "Отвечает",
