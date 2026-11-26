@@ -51,7 +51,7 @@ does not claim full-file EBU R128 or true-peak mastering conformance.
 
 The player, library and settings support English, Japanese, Simplified Chinese, Korean and Russian. They initially follow the browser's preferred supported language, with English as the fallback. Change language in **Settings → Appearance → Language**. The choice is shared across player tabs on the same origin; if browser storage is blocked, it remains available in the current tab. Translations are bundled with Virelo. User filenames, titles and playlist names are not translated. See [Localization](https://github.com/VireloHQ/Virelo/blob/main/docs/LOCALIZATION.md) to add a language.
 
-Folder access requires a secure context, so production must use HTTPS. Browsers that can persist directory handles can reconnect the same folder after permission is granted. The fallback keeps selected files available for the current session and may ask for the folder again after a reload.
+Folder access requires a secure context, so production must use HTTPS. Browsers that can persist directory handles can reconnect the same folder after permission is granted. The fallback keeps selected files available for the current session. If access is lost after reloading, choose **Reconnect folder** in the player and select the original folder to return to the same video.
 
 Selecting an already registered folder with direct folder access refreshes the
 existing library instead of creating a duplicate, preserving its ID and personal

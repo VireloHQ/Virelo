@@ -1,4 +1,11 @@
 {
+  "This is not the original folder for this video.": "この動画が入っていた元のフォルダーではありません。",
+  "Checking network addresses…": "ネットワークアドレスを確認中…",
+  "Could not load network addresses.": "ネットワークアドレスを取得できませんでした。",
+  "This address only works on this PC. To watch on another device, set up access on your local network.": "このアドレスはこのPCでしか使えません。スマホなどで見るには、同じネットワークから接続できるように設定してください。",
+  "Set up access from another device": "別の端末で見るための設定",
+  "Reconnect folder": "フォルダーを再接続",
+  "Select the original folder containing this video.": "この動画が入っている元のフォルダーを選んでください。",
   "Stream status": "配信状態",
   "All statuses": "すべての状態",
   "Responding": "応答あり",

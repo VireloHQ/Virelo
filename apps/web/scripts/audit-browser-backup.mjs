@@ -117,6 +117,36 @@ try {
   await mobile.locator('#settings-title-backup').waitFor();
   assert.ok(await mobile.locator('#settings-title-backup').isVisible());
   assert.ok(await mobile.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+  const prepareFolder=async current=>current.evaluate(async()=>{
+    window.showDirectoryPicker=undefined;
+    const blob=await(await fetch('/__fixture.mp4')).blob();
+    window.fixtureFolder='Original videos';
+    const click=HTMLInputElement.prototype.click;
+    HTMLInputElement.prototype.click=function(){
+      if(!this.webkitdirectory)return click.call(this);
+      const file=new File([blob],'Recovery.mp4',{type:'video/mp4',lastModified:1700000000000});
+      Object.defineProperty(file,'webkitRelativePath',{value:window.fixtureFolder+'/Recovery.mp4'});
+      Object.defineProperty(this,'files',{value:[file]});
+      this.dispatchEvent(new Event('change',{bubbles:true}));
+    };
+  });
+  await prepareFolder(mobile);await loadTools(mobile);
+  const reconnectId=await mobile.evaluate(async()=>{
+    const library=await window.library.addLocalLibrary();
+    return (await window.library.listStoredMedia()).find(item=>item.library_id===library.id).id;
+  });
+  await mobile.goto('https://app.virelo.dev/watch/'+reconnectId);
+  await prepareFolder(mobile);
+  const reconnectFolder=mobile.getByRole('button',{name:'フォルダーを再接続',exact:true});
+  await reconnectFolder.waitFor();
+  await mobile.evaluate(()=>{window.fixtureFolder='Another folder';});
+  await reconnectFolder.click();
+  await mobile.getByText('この動画が入っていた元のフォルダーではありません。',{exact:true}).waitFor();
+  await mobile.evaluate(()=>{window.fixtureFolder='Original videos';});
+  await reconnectFolder.click();
+  await reconnectFolder.waitFor({state:'hidden'});
+  await mobile.waitForFunction(()=>document.querySelector('.player video')?.readyState>=2);
+  assert.equal(new URL(mobile.url()).pathname,'/watch/'+reconnectId,'successful reconnect stays on the same video');
 
   const empty=await browser.newContext({serviceWorkers:'block'});
   await empty.route(/https:\/\/(?:app\.virelo\.dev|virelo\.riyo\.me)\//,async route=>{const url=new URL(route.request().url());await route.fulfill({response:await route.fetch({url:base+url.pathname+url.search})});});

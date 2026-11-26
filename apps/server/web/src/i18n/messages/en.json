@@ -1,4 +1,10 @@
 {
+  "Checking network addresses…": "Checking network addresses…",
+  "Could not load network addresses.": "Could not load network addresses.",
+  "This address only works on this PC. To watch on another device, set up access on your local network.": "This address only works on this PC. To watch on another device, set up access on your local network.",
+  "Set up access from another device": "Set up access from another device",
+  "Add video folder": "Add video folder",
+  "Add a folder from the computer running Virelo to start watching.": "Add a folder from the computer running Virelo to start watching.",
   "Stream status": "Stream status",
   "All statuses": "All statuses",
   "Responding": "Responding",

@@ -102,7 +102,7 @@ export function SettingsView(){
         {activeSection==='accounts'&&isAdmin&&<div id="settings-panel-accounts" className="settings-card settings-section"><AccountManager/></div>}
         {activeSection==='admin'&&isAdmin&&<AdminSettings/>}
         {activeSection==='server'&&isAdmin&&<ServerManagement/>}
-        {activeSection==='sharing'&&<SharingSettings addresses={api.shareAddresses}/>}
+        {activeSection==='sharing'&&<SharingSettings addresses={api.shareAddresses} onSetup={isAdmin&&session?.localAccess?()=>openSection('server'):undefined}/>}
         {activeSection==='announcements'&&isAdmin&&<AnnouncementSettings/>}
         {activeSection==='activity'&&isAdmin&&<section id="settings-panel-activity" className="settings-card settings-section" aria-labelledby="settings-title-activity"><div className="settings-card-head"><div><h2 id="settings-title-activity" tabIndex={-1}>{t("Activity")}</h2></div></div><ActivityView/></section>}
         {activeSection==='data'&&isAdmin&&<DataManagement/>}

@@ -1,4 +1,11 @@
 {
+  "This is not the original folder for this video.": "Это не исходная папка этого видео.",
+  "Checking network addresses…": "Проверяем сетевые адреса…",
+  "Could not load network addresses.": "Не удалось получить сетевые адреса.",
+  "This address only works on this PC. To watch on another device, set up access on your local network.": "Этот адрес работает только на этом компьютере. Для просмотра с другого устройства настройте доступ по локальной сети.",
+  "Set up access from another device": "Настроить доступ с другого устройства",
+  "Reconnect folder": "Подключить папку заново",
+  "Select the original folder containing this video.": "Выберите исходную папку, в которой находится это видео.",
   "Stream status": "Состояние потока",
   "All statuses": "Все состояния",
   "Responding": "Отвечает",

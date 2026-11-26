@@ -12,14 +12,20 @@ export function EmptyState() {
   const account = useAccount()?.user;
   const navigate = useNavigate();
   const scan = useQuery({ queryKey:['scan'], queryFn:api.scanStatus, refetchInterval:(q)=>q.state.data?.running ? 500 : 5000 });
+  const canManage = Boolean(account?.permissions.manageLibraries);
+  const libraries = useQuery({ queryKey:['libraries'], queryFn:api.libraries, enabled:canManage });
+  const hasFolders = Boolean(libraries.data?.length);
+  const firstFolder = canManage && libraries.data?.length===0;
+  const addFolder = () => void navigate({to:'/settings',hash:'libraries'});
   const startScan = async () => { await api.startScan(); await scan.refetch(); };
   return <div className="empty-state">
     <div className="empty-icon"><FolderOpen/></div>
-    <h2>{t("No videos found")}</h2>
-    {scan.data?.running ? <ScanProgress status={scan.data}/> : <p>{account?.permissions.manageLibraries ? t("Add video files to this folder, then scan again. You can add other folders in Settings.") : t("No videos are available for this account. Ask an administrator to grant library access.")}</p>}
+    <h2>{firstFolder?t("Choose your video folder"):t("No videos found")}</h2>
+    {scan.data?.running && !firstFolder ? <ScanProgress status={scan.data}/> : <p>{firstFolder?t("Add a folder from the computer running Virelo to start watching."):canManage?t("Add video files to this folder, then scan again. You can add other folders in Settings."):t("No videos are available for this account. Ask an administrator to grant library access.")}</p>}
     <div className="empty-actions">
-      {account?.permissions.scanLibraries&&<Button isPending={scan.data?.running} onPress={()=>void startScan()}><ArrowsClockwise/> {t("Scan again")}</Button>}
-      {account?.permissions.manageLibraries&&<Button variant="secondary" onPress={()=>void navigate({to:'/settings',hash:'libraries'})}><Gear/> {t("Add folder")}</Button>}
+      {hasFolders&&<Button onPress={()=>void navigate({to:'/library'})}><FolderOpen/> {t("Open library")}</Button>}
+      {account?.permissions.scanLibraries&&(!canManage||hasFolders)&&<Button variant={hasFolders?'secondary':'primary'} isPending={scan.data?.running} onPress={()=>void startScan()}><ArrowsClockwise/> {t("Scan again")}</Button>}
+      {canManage&&<Button variant={hasFolders?'secondary':'primary'} onPress={addFolder}><Gear/> {firstFolder?t("Add video folder"):t("Add folder")}</Button>}
     </div>
   </div>;
 }
