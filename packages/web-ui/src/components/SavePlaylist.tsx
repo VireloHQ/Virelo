@@ -17,6 +17,8 @@ const subscribeMobile = (notify: () => void) => {
   query.addEventListener('change', notify);
   return () => query.removeEventListener('change', notify);
 };
+// Focusing before the floating panel repositions must not scroll past its trigger and dismiss it.
+const focusName = (input: HTMLInputElement | null) => input?.focus({ preventScroll: true });
 
 export function SavePlaylist({ mediaIds, initialOpen, onClose }: { mediaIds: number[]; initialOpen?: PlaylistPickerOpen; onClose?: () => void }) {
   useLocale();
@@ -126,7 +128,7 @@ function PlaylistPicker({ id, mediaIds: selectedMediaIds, anchorRef, portal, ani
         onChange={event=>setSearch(event.target.value)} onKeyDown={event=>{if(event.key==='Enter'&&!event.nativeEvent.isComposing)event.preventDefault();}}/>
     </label>}
     <div className="playlist-picker-scroll">
-      {create ? <label className="playlist-field"><span>{t("Playlist name")}</span><Input autoFocus aria-label={t("Playlist name")} maxLength={100} disabled={saving} value={name} onChange={event=>setName(event.target.value)}/></label>
+      {create ? <label className="playlist-field"><span>{t("Playlist name")}</span><Input ref={focusName} aria-label={t("Playlist name")} maxLength={100} disabled={saving} value={name} onChange={event=>setName(event.target.value)}/></label>
         : visible.length ? <div className="playlist-picker-options" role="radiogroup" aria-label={t("Playlist")}>
           {visible.map(item => <label className="playlist-picker-option" key={item.id} title={item.name}>
             <input type="radio" name={id} checked={target === item.id} disabled={saving} onChange={()=>{setTarget(item.id); setError('');}}/>

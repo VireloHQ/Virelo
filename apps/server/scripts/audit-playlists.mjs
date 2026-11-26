@@ -410,10 +410,14 @@ api.mediaSource=async id=>{if(!urls.has(id))urls.set(id,URL.createObjectURL(awai
     const saveCopy=page.getByRole('menuitem',{name:'Save queue as playlist',exact:true});
     await saveCopy.focus();await page.keyboard.press('Enter');
     const copyDialog=page.getByRole('dialog',{name:'Save to playlist'});
+    const scrollBeforeCreate=await page.evaluate(()=>window.scrollY);
     await copyDialog.getByRole('button',{name:'New playlist',exact:true}).click();
-    await auditPlaylistField(page,copyDialog.getByRole('textbox',{name:'Playlist name',exact:true}),label+' save dialog',check);
-    await copyDialog.getByRole('textbox',{name:'Playlist name',exact:true}).fill('Travel');
-    await copyDialog.getByRole('textbox',{name:'Playlist name',exact:true}).press('Enter');await copyDialog.waitFor({state:'hidden'});
+    const copyName=copyDialog.getByRole('textbox',{name:'Playlist name',exact:true});
+    check(await copyName.evaluate(input=>input===document.activeElement),label+' new playlist focuses the name in place');
+    if(name==='desktop')check(await page.evaluate(()=>window.scrollY)===scrollBeforeCreate,label+' switching to the name field does not scroll the watch page');
+    await auditPlaylistField(page,copyName,label+' save dialog',check);
+    await copyName.fill('Travel');
+    await copyName.press('Enter');await copyDialog.waitFor({state:'hidden'});
     const copy=(await call(page,mode,'playlists')).find(row=>row.name==='Travel');
     check(copy?.itemCount===2,label+' saves the current queue as a separate named playlist');
     check(await queueOptions.evaluate(button=>button===document.activeElement),label+' saving from Queue options returns keyboard focus to the queue');
