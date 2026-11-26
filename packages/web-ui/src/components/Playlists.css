@@ -10,6 +10,8 @@
   display:flex; flex-direction:column; width:min(344px,calc(100vw - 24px)); min-width:0;
   padding:0; border:0; border-radius:10px; background:transparent; overflow:hidden; z-index:110;
   box-shadow:0 12px 36px #0006;
+  /* Switching to the name field must not make the floating panel a page scroll anchor. */
+  overflow-anchor:none;
 }
 .playlist-picker-popover[data-animate="false"] { animation:none; transition:none; }
 .virelo-confirm-container.playlist-picker-container { width:min(344px,calc(100vw - 24px)); overflow:hidden; }

@@ -414,7 +414,10 @@ api.mediaSource=async id=>{if(!urls.has(id))urls.set(id,URL.createObjectURL(awai
     await copyDialog.getByRole('button',{name:'New playlist',exact:true}).click();
     const copyName=copyDialog.getByRole('textbox',{name:'Playlist name',exact:true});
     check(await copyName.evaluate(input=>input===document.activeElement),label+' new playlist focuses the name in place');
-    if(name==='desktop')check(await page.evaluate(()=>window.scrollY)===scrollBeforeCreate,label+' switching to the name field does not scroll the watch page');
+    if(name==='desktop'){
+      const scrollAfterCreate=await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(()=>resolve(window.scrollY)))));
+      check(scrollAfterCreate===scrollBeforeCreate,label+' switching to the name field does not scroll the watch page: '+scrollBeforeCreate+' -> '+scrollAfterCreate);
+    }
     await auditPlaylistField(page,copyName,label+' save dialog',check);
     await copyName.fill('Travel');
     await copyName.press('Enter');await copyDialog.waitFor({state:'hidden'});
