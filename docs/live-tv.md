@@ -4,7 +4,7 @@ Open **Live TV** in the desktop header or sidebar, or from **Library** on a phon
 
 The player shows a progress bar for every stream. On-demand streams use their normal timeline. The live bar is full when you are watching live, and shows your position if you rewind. If the stream does not offer seeking, the bar is full but disabled.
 
-While a channel plays, browse to another page or select **Minimize player** to keep it playing inside Virelo. Select **Expand player** to return to the guide or **Close miniplayer** to stop the stream.
+While a channel plays, browse to another page to keep it playing in the miniplayer. Select **Expand player** to return to the guide or **Close miniplayer** to stop the stream.
 
 Drag the picture to move it; it snaps to the nearest corner. The title and timeline stay visible. Hover, tap, or focus the picture to reveal the controls in your selected player style. Use the arrow keys on the focused picture to choose a corner, or focus the timeline to seek when supported.
 

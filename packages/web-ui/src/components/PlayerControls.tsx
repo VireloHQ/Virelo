@@ -3,7 +3,6 @@ import { Fragment, useRef, useState, type CSSProperties, type ReactNode } from '
 import { Button, Popover } from '@heroui/react';
 import { ArrowsOut, Pause, PictureInPicture, Play, Shuffle, SkipBack, SkipForward, SpeakerHigh, SpeakerSlash } from '@phosphor-icons/react';
 import { RepeatControl } from './RepeatControl';
-import { MinimizePlayerButton } from './MiniplayerControls';
 import { PlayerTimeline, type TimelineProps } from './PlayerTimeline';
 import { useAppearance } from '@edition/components/AppearanceProvider';
 import type { RepeatMode } from '@virelo/core/playback-repeat';
@@ -56,7 +55,6 @@ export function PlayerControls(props: PlayerControlsProps) {
       <div className="player-tools">
         {!props.live && props.favorite}
         <PlayerVolume volume={props.volume} muted={props.muted} onVolume={props.onVolume} onMute={props.onMute}/>
-        <MinimizePlayerButton/>
         <button type="button" aria-label={t("Fullscreen")} onClick={props.onFullscreen}><ArrowsOut/></button>
         {props.pipSupported && <button type="button" aria-label={props.pip ? t("Exit Picture in Picture") : t("Picture in Picture")} aria-pressed={props.pip} onClick={props.onPip}><PictureInPicture/></button>}
         {!props.live && props.settings}

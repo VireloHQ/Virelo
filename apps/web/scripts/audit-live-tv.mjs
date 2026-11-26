@@ -298,7 +298,9 @@ try {
   await first.waitFor();
   assert.ok(await video.evaluate((current,previous)=>current===previous,videoNode),'expanding keeps the same HLS player');
   await video.hover({position:{x:12,y:20}});
-  await liveTransport.getByRole('button',{name:'Minimize player',exact:true}).click();
+  assert.equal(await liveTransport.getByRole('button',{name:'Minimize player',exact:true}).count(),0,'Live TV has no manual minimize button');
+  await page.goBack();
+  await mini.waitFor();
   await mini.press('ArrowRight');
   await mini.getByRole('button',{name:'Close miniplayer',exact:true}).click();
   await page.locator('.live-tv-frame').waitFor({state:'detached'});

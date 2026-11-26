@@ -1496,7 +1496,6 @@
   "The web player opens files on the device you are using and needs no account. The self-hosted npm version runs on your computer and adds accounts, library permissions, automatic movie and series metadata, and network playback.": "Веб-плеер открывает файлы на текущем устройстве и не требует учётной записи. Версия npm работает на вашем компьютере и добавляет учётные записи, права доступа к библиотекам, автоматический поиск сведений о фильмах и сериалах и просмотр по сети.",
   "Live TV": "Прямой эфир",
   "Miniplayer": "Мини-плеер",
-  "Minimize player": "Свернуть плеер",
   "Expand player": "Развернуть плеер",
   "Close miniplayer": "Закрыть мини-плеер",
   "Live": "Прямой эфир",
