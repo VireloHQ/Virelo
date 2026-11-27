@@ -27,11 +27,12 @@ try{
   page.on('pageerror',e=>errors.push(e.message));
   const base=mode==='npm'?(process.env.VIRELO_TEST_NPM_URL||'http://127.0.0.1:5198'):(process.env.VIRELO_TEST_WEB_URL||'http://127.0.0.1:5199');
   const prefix=mode==='npm'?'':'/app';
-  let empty=true;
+  let empty=true,includeLandscapes=false;
   await page.route('**/__art?*',route=>route.fulfill(art?{body:art,contentType:'image/png'}:{body:'<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="700"><rect width="1200" height="700" fill="#324c65"/><circle cx="850" cy="280" r="180" fill="#739799"/></svg>',contentType:'image/svg+xml'}));
   if(mode==='npm')await page.route('**/api/**',route=>{
    const path=new URL(route.request().url()).pathname;
-   const body=path==='/api/auth/status'?authStatus:path==='/api/home'?buildHome(empty?[]:fixtures,86400000):path==='/api/shorts'?(empty?{total:0,items:[]}:{total:1,items:fixtures.filter(i=>i.id===400)}):['/api/libraries','/api/folders','/api/media','/api/playlists','/api/queue-sessions'].includes(path)?[]:path==='/api/settings'?{}:path==='/api/scan/status'?{running:false}:{};
+   const shorts=empty?[]:fixtures.filter(i=>i.id===400||(includeLandscapes&&i.id===2));
+   const body=path==='/api/auth/status'?authStatus:path==='/api/home'?buildHome(empty?[]:fixtures,86400000):path==='/api/shorts'?{total:shorts.length,items:shorts}:['/api/libraries','/api/folders','/api/media','/api/playlists','/api/queue-sessions'].includes(path)?[]:path==='/api/settings'?{shortsIncludeLandscapes:includeLandscapes}:path==='/api/scan/status'?{running:false}:{};
    if(path.includes('/artwork'))return route.fulfill(art?{body:art,contentType:'image/webp'}:{body:'<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="700"><rect width="1200" height="700" fill="#324c65"/></svg>',contentType:'image/svg+xml'});
    return route.fulfill({json:body});
   });
@@ -77,6 +78,31 @@ try{
   for(const title of ['Continue watching','Up next','Not watched yet','Your favorites','Recently added','Movies','A movie in 90 minutes','Your series','Adventure','Shorts']){
    check(await page.getByRole('heading',{name:title,exact:true}).count()===1,mode+' shelf '+title);
   }
+  const shortsRow=page.getByRole('region',{name:'Shorts titles',exact:true});
+  const portraitFrames=()=>shortsRow.locator('.media-card-art').evaluateAll(items=>items.length>0&&items.every(item=>{
+   const {width,height}=item.getBoundingClientRect();
+   return height>width&&Math.abs(width/height-9/16)<0.01;
+  }));
+  await shortsRow.locator('.art-portrait').first().waitFor();
+  check(await portraitFrames()&&await shortsRow.locator('.art-landscape').count()===0,mode+' default Home Shorts are portrait cards');
+  includeLandscapes=true;
+  if(mode==='web')await page.evaluate(async()=>{const {api}=await import('/src/api.ts');await api.saveSettings({shortsIncludeLandscapes:true});});
+  await page.reload();
+  const landscapeShort=shortsRow.locator('.art-landscape').first();
+  await landscapeShort.waitFor();
+  for(const [width,height] of [[1440,900],[320,720]]){
+   await page.setViewportSize({width,height});
+   check(await portraitFrames(),mode+' allowing landscape videos keeps every Shorts card 9:16 at '+width);
+  }
+  const shortsHref=await landscapeShort.locator('.media-card-link').getAttribute('href');
+  const shortsUrl=new URL(shortsHref,base);
+  check(shortsUrl.pathname===prefix+'/shorts'&&Number(shortsUrl.searchParams.get('startId'))>0,mode+' the landscape card still opens its video in Shorts');
+  await page.setViewportSize({width:1440,height:900});
+  await shortsRow.locator('..').screenshot({path:join(screenshots,mode+'-portrait-shorts.png')});
+  includeLandscapes=false;
+  if(mode==='web')await page.evaluate(async()=>{const {api}=await import('/src/api.ts');await api.saveSettings({shortsIncludeLandscapes:false});});
+  await page.reload();
+  await page.locator('.home-feature').waitFor();
   check(await page.getByRole('heading',{name:'Drama',exact:true}).count()===0,mode+' identical genre collection omitted');
   check(await page.locator('.media-card').evaluateAll(cards=>cards.length>0&&cards.every(card=>{
     const link=card.querySelector(':scope > a.media-card-link');

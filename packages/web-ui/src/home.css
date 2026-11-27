@@ -27,6 +27,8 @@
   .home-feature-dots button:hover span,.home-rotation-toggle:hover { opacity:1; }
 }
 .app-shell .home-curated-rows { margin-top:-24px; padding-bottom:72px; }
+/* The Shorts shelf uses one card shape regardless of the video's playback aspect ratio. */
+.app-shell .home-view .shorts-row .shorts-card .media-card-art { aspect-ratio:9/16; }
 .home-row-actions { display:flex; align-items:center; gap:14px; }
 .row-controls button:disabled { opacity:.25; cursor:default; }
 .app-shell .media-row:focus-visible { outline:2px solid var(--color-focus); outline-offset:-2px; }
