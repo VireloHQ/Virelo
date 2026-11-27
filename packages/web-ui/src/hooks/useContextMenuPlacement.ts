@@ -2,10 +2,11 @@ import { useLayoutEffect, useState, type CSSProperties, type RefObject } from 'r
 import { contextMenuPlacement, type ContextMenuPosition } from '../utils/context-menu';
 
 export function useContextMenuPlacement(ref: RefObject<HTMLDivElement | null>, point: ContextMenuPosition,
-  returnFocus?: HTMLElement | null) {
+  returnFocus?: HTMLElement | null, expanded = false) {
   const keyboard = Boolean(point.keyboard || (point.x === 0 && point.y === 0));
   const [placement, setPlacement] = useState(() => contextMenuPlacement(point,
     { width: 280, height: 0 }, { width: window.innerWidth, height: window.innerHeight }));
+  // Reposition expanded content before paint, rather than waiting for the observer.
   useLayoutEffect(() => {
     const menu = ref.current;
     if (!menu) return;
@@ -25,7 +26,7 @@ export function useContextMenuPlacement(ref: RefObject<HTMLDivElement | null>, p
     resize.observe(menu);
     if (content) resize.observe(content);
     return () => resize.disconnect();
-  }, [ref, point.x, point.y, point.keyboard, keyboard, returnFocus]);
+  }, [ref, point.x, point.y, point.keyboard, keyboard, returnFocus, expanded]);
   return {
     side: placement.side, animate: !keyboard,
     style: { left: placement.left, top: placement.top, maxHeight: placement.maxHeight,

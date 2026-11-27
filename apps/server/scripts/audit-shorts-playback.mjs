@@ -201,6 +201,21 @@ api.mediaSource = async id => {
       await page.waitForFunction(() => Math.abs(document.querySelector('.short-player video').currentTime - 5) < 0.7);
       check(true, label + ' keyboard seek keeps five-second steps');
       await active.click({ button: 'right' });
+      const addPlaylist = page.getByRole('menuitem', { name: 'Add to playlist', exact: true });
+      await addPlaylist.click();
+      const playlistPicker = page.getByRole('region', { name: 'Save to playlist', exact: true });
+      await playlistPicker.waitFor();
+      const playlistFits=await playlistPicker.evaluate(async panel => {
+        await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+        const menu=panel.closest('.media-context-menu'), box=menu?.getBoundingClientRect();
+        return {box:box?.toJSON(),width:innerWidth,height:innerHeight};
+      });
+      const {box:playlistBox,width:screenWidth,height:screenHeight}=playlistFits;
+      check(playlistBox && playlistBox.top>=0 && playlistBox.bottom<=screenHeight && playlistBox.left>=0 && playlistBox.right<=screenWidth,
+        label + ' Shorts expands the playlist picker inside its existing context menu: '+JSON.stringify(playlistFits));
+      await page.keyboard.press('Escape');
+      await playlistPicker.waitFor({state:'hidden'});
+      check(await addPlaylist.isVisible(), label + ' cancelling the picker keeps Shorts actions available');
       await page.getByRole('menuitem', { name: /Resume playback|Play now/ }).click();
       await page.waitForFunction(() => !document.querySelector('.short-player video').paused);
       check(true, label + ' context Play stays in the Shorts player');
