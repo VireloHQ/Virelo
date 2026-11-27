@@ -1,10 +1,10 @@
 import { t, useLocale } from '@edition/i18n';
-import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode, type MouseEvent } from 'react';
 import { createPortal } from 'react-dom';
-import { CaretDown, Check, Heart, Info, ListPlus, Play } from '@phosphor-icons/react';
+import { CaretRight, Check, Heart, Info, ListPlus, Play } from '@phosphor-icons/react';
 import { PlaylistPicker } from './SavePlaylist';
 import { useContextMenuPlacement } from '../hooks/useContextMenuPlacement';
-import type { ContextMenuPosition } from '../utils/context-menu';
+import { contextPlaylistPlacement, type ContextMenuPosition } from '../utils/context-menu';
 import type { MediaItem } from '@edition/types';
 
 type MenuPosition = ContextMenuPosition;
@@ -31,14 +31,32 @@ export function MediaContextMenu({
   useLocale();
   const menuRef = useRef<HTMLDivElement>(null);
   const [playlistOpen, setPlaylistOpen] = useState(false);
+  const [playlistVisit, setPlaylistVisit] = useState(0);
+  const [playlistMotion, setPlaylistMotion] = useState(false);
   const playlistId = useId();
   const playlistTrigger = useRef<HTMLButtonElement>(null);
+  const playlistPanel = useRef<HTMLDivElement>(null);
   const playlistPending = useRef(false);
   const firstItemRef = useRef<HTMLButtonElement>(null);
   const previousFocusRef = useRef<HTMLElement|null>(null);
   const closeRef = useRef(onClose);
   closeRef.current = onClose;
   const placement = useContextMenuPlacement(menuRef, position, returnFocus, playlistOpen);
+  const playlistPlacement = contextPlaylistPlacement(placement.left, placement.width, window.innerWidth);
+  const playlistSide = playlistPlacement.side;
+
+  useLayoutEffect(() => {
+    const row = playlistTrigger.current, menu = menuRef.current, panel = playlistPanel.current;
+    if (!playlistOpen || playlistSide==='bottom' || !row || !menu || !panel) return;
+    const top = row.offsetTop - (row.closest('.context-popover-content')?.scrollTop ?? 0), bottom = top + row.offsetHeight;
+    const below = window.innerHeight - placement.top - top - 16;
+    const above = placement.top + bottom - 16;
+    const alignBelow = below >= 300 || below >= above;
+    panel.style.setProperty('--playlist-panel-top',alignBelow?top+'px':'auto');
+    panel.style.setProperty('--playlist-panel-bottom',alignBelow?'auto':menu.offsetHeight-bottom+'px');
+    panel.style.setProperty('--playlist-panel-height',Math.max(0,alignBelow?below:above)+'px');
+    panel.style.setProperty('--playlist-panel-origin',alignBelow?'24px':'calc(100% - 24px)');
+  }, [playlistOpen, playlistSide, placement.top]);
 
   useEffect(() => {
     previousFocusRef.current = returnFocus ?? (document.activeElement instanceof HTMLElement ? document.activeElement : null);
@@ -82,9 +100,11 @@ export function MediaContextMenu({
     closeMenu();
     action();
   };
-  const togglePlaylist = () => {
+  const togglePlaylist = (animate:boolean) => {
     if (playlistPending.current) return;
+    setPlaylistMotion(animate);
     if (playlistOpen) playlistTrigger.current?.focus({preventScroll:true});
+    else setPlaylistVisit(visit => visit + 1);
     setPlaylistOpen(!playlistOpen);
   };
 
@@ -93,6 +113,7 @@ export function MediaContextMenu({
       ref={menuRef}
       className="media-context-menu context-popover"
       data-side={placement.side} data-animate={placement.animate}
+      data-playlist-side={playlistPlacement.side} data-playlist-motion={playlistMotion}
       style={placement.style}
       onContextMenu={(event) => { event.preventDefault(); event.stopPropagation(); }}
       onClick={(event) => event.stopPropagation()}
@@ -106,11 +127,17 @@ export function MediaContextMenu({
         if (event.key === 'Escape' && !event.nativeEvent.isComposing) {
           event.preventDefault();
           if (playlistPending.current) return;
-          if (playlistOpen) togglePlaylist();
+          if (playlistOpen) togglePlaylist(false);
           else closeMenu();
           return;
         }
         if (!(event.target instanceof HTMLElement) || !event.target.closest('[role="menuitem"]')) return;
+        if (event.target === playlistTrigger.current && !playlistOpen
+          && ((playlistPlacement.side === 'right' && event.key === 'ArrowRight') || (playlistPlacement.side === 'left' && event.key === 'ArrowLeft'))) {
+          event.preventDefault();
+          togglePlaylist(false);
+          return;
+        }
         const items = Array.from(menuRef.current?.querySelectorAll<HTMLButtonElement>('[role="menuitem"]') ?? []);
         const index = items.indexOf(document.activeElement as HTMLButtonElement);
         let next: number | undefined;
@@ -140,17 +167,20 @@ export function MediaContextMenu({
         {item.progress_position && item.progress_position > 10 && !item.progress_completed ? t("Resume playback") : t("Play now")}
       </MenuItem>
       <MenuItem icon={<Info />} onClick={() => choose(onDetails)}>{t("Open details")}</MenuItem>
-      <MenuItem ref={playlistTrigger} icon={<ListPlus />} end={<CaretDown size={14} aria-hidden="true"/>}
-        expanded={playlistOpen} controls={playlistOpen?playlistId:undefined} onClick={togglePlaylist}>{t("Add to playlist")}</MenuItem>
+      <MenuItem ref={playlistTrigger} icon={<ListPlus />} end={<CaretRight size={14} aria-hidden="true"/>}
+        expanded={playlistOpen} controls={playlistVisit?playlistId:undefined} onClick={event=>togglePlaylist(event.detail > 0)}>{t("Add to playlist")}</MenuItem>
       </div>
-      {playlistOpen && <PlaylistPicker key={item.id} id={playlistId} mediaIds={[item.id]} pending={playlistPending} onSaved={closeMenu}/>}
       </div>
+      {playlistVisit > 0 && <div ref={playlistPanel} className="context-playlist-panel" hidden={!playlistOpen} inert={!playlistOpen}
+        style={{'--playlist-panel-width':playlistPlacement.width+'px'} as CSSProperties}>
+        <PlaylistPicker key={item.id+':'+playlistVisit} id={playlistId} mediaIds={[item.id]} pending={playlistPending} onSaved={closeMenu}/>
+      </div>}
     </div>,
     document.fullscreenElement || document.body
   );
 }
 
-function MenuItem({ children, icon, end, onClick, ref, expanded, controls }: { children: ReactNode; icon: ReactNode; end?: ReactNode; onClick: () => void; ref?: React.Ref<HTMLButtonElement>; expanded?: boolean; controls?: string }) {
+function MenuItem({ children, icon, end, onClick, ref, expanded, controls }: { children: ReactNode; icon: ReactNode; end?: ReactNode; onClick: (event:MouseEvent<HTMLButtonElement>) => void; ref?: React.Ref<HTMLButtonElement>; expanded?: boolean; controls?: string }) {
   return <button type="button" ref={ref} className="media-context-menu-item" role="menuitem" aria-expanded={expanded} aria-controls={controls} onClick={onClick}>
     <span className="media-context-menu-icon" aria-hidden="true">{icon}</span>
     <span className="media-context-menu-label">{children}</span>

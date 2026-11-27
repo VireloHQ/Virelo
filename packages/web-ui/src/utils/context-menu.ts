@@ -24,3 +24,12 @@ export function contextMenuPlacement(point: ContextMenuPosition, size: { width: 
   viewport: { width: number; height: number }) {
   return sidePopoverPlacement({ left: point.x, right: point.x, top: point.y, bottom: point.y }, size, viewport);
 }
+
+export function contextPlaylistPlacement(menuLeft:number, menuWidth:number, viewportWidth:number) {
+  const width = 280, minWidth = 240, gutter = 24; // 16px screen margin + 8px menu gap.
+  const right = viewportWidth - menuLeft - menuWidth - gutter;
+  const left = menuLeft - gutter;
+  if (right >= width || (right >= minWidth && right >= left)) return { side:'right', width:Math.min(width,right) } as const;
+  if (left >= minWidth) return { side:'left', width:Math.min(width,left) } as const;
+  return { side:'bottom', width:menuWidth } as const;
+}

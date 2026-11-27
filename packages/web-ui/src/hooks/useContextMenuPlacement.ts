@@ -18,7 +18,7 @@ export function useContextMenuPlacement(ref: RefObject<HTMLDivElement | null>, p
       const height = menu.offsetHeight + (content ? content.scrollHeight - content.clientHeight : 0);
       const next = contextMenuPlacement(anchor, { width: menu.offsetWidth, height },
         { width: window.innerWidth, height: window.innerHeight });
-      setPlacement(previous => previous.left === next.left && previous.top === next.top
+      setPlacement(previous => previous.left === next.left && previous.top === next.top && previous.width === next.width
         && previous.anchor === next.anchor && previous.side === next.side && previous.maxHeight === next.maxHeight ? previous : next);
     };
     measure();
@@ -28,7 +28,7 @@ export function useContextMenuPlacement(ref: RefObject<HTMLDivElement | null>, p
     return () => resize.disconnect();
   }, [ref, point.x, point.y, point.keyboard, keyboard, returnFocus, expanded]);
   return {
-    side: placement.side, animate: !keyboard,
+    side: placement.side, animate: !keyboard, left: placement.left, top: placement.top, width: placement.width,
     style: { left: placement.left, top: placement.top, maxHeight: placement.maxHeight,
       '--popover-anchor-y': placement.anchor + 'px' } as CSSProperties
   };
