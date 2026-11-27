@@ -208,6 +208,10 @@ async function auditLongPlaylistPicker(page,mode,base,prefix,label) {
   if(page.viewportSize().width>=1000) {
     const contextTrigger=contextMenu.getByRole('menuitem',{name:'Add to playlist',exact:true});
     const panel=page.locator('.context-playlist-panel');
+    check(await panel.evaluate(element=>{
+      const pane=getComputedStyle(element), menu=getComputedStyle(element.parentElement);
+      return pane.backgroundColor===menu.backgroundColor&&pane.borderRadius===menu.borderRadius&&pane.boxShadow===menu.boxShadow&&pane.borderTopWidth==='0px';
+    }),label+' the submenu uses the parent menu surface instead of a separate card');
     check(await panel.evaluate(element=>parseFloat(getComputedStyle(element).transitionDuration)<.02),label+' reduced motion makes submenu switches immediate');
     await page.emulateMedia({reducedMotion:'no-preference'});
     await panel.evaluate(element=>{
@@ -223,6 +227,15 @@ async function auditLongPlaylistPicker(page,mode,base,prefix,label) {
     await panel.and(page.locator('[data-fades="2"]')).waitFor();
     await expanded.getByRole('button',{name:'New playlist',exact:true}).click();
     check(await expanded.locator('.playlist-picker-fields').getAttribute('data-animate')==='true',label+' pointer creation uses the submenu motion');
+    await expanded.getByRole('textbox',{name:'Playlist name',exact:true}).fill('Example playlist');
+    check(await contextSave.isEnabled(),label+' a typed playlist name enables Save');
+    check(await contextSave.evaluate(button=>{
+      const row=button.closest('.media-context-menu').querySelector('[aria-expanded="true"]');
+      const save=getComputedStyle(button), menuRow=getComputedStyle(row);
+      return save.borderRadius===menuRow.borderRadius&&save.fontSize===menuRow.fontSize
+        &&save.getPropertyValue('--button-bg').trim()===menuRow.getPropertyValue('--control-pressed').trim();
+    }),label+' save uses the menu control shape and emphasis');
+    await page.screenshot({path:join(root,label.replaceAll(' ','-')+'-context-playlist-new.png'),animations:'disabled'});
     await expanded.getByRole('button',{name:'Back',exact:true}).press('Enter');
     check(await expanded.locator('.playlist-picker-fields').getAttribute('data-animate')==='false',label+' keyboard return skips the animation');
     await page.emulateMedia({reducedMotion:'reduce'});
