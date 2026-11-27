@@ -75,6 +75,7 @@ export function PlaylistPicker({ id, mediaIds: selectedMediaIds, overlay, onSave
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
   const panel = useRef<HTMLDivElement>(null);
+  const [viewportLayer, setViewportLayer] = useState<HTMLDivElement|null>(null);
   const newPlaylist = useRef<HTMLButtonElement>(null);
   const rows = playlists.data ?? [];
   const create = creating ?? (playlists.isSuccess && rows.length === 0);
@@ -156,8 +157,11 @@ export function PlaylistPicker({ id, mediaIds: selectedMediaIds, overlay, onSave
           <Modal.Dialog id={id} className="playlist-picker" aria-label={title}>{content}</Modal.Dialog>
         </Modal.Container>
       </Modal.Backdrop>
-    : <Popover.Content ref={panel} isOpen onOpenChange={openChange} isNonModal isKeyboardDismissDisabled={saving} triggerRef={overlay.anchorRef} placement="bottom start" offset={8} containerPadding={12}
-        shouldCloseOnInteractOutside={element=>!pending.current && !overlay.anchorRef.current?.contains(element)} className="playlist-picker-popover" data-animate={animate} UNSTABLE_portalContainer={portal}>
-        <Popover.Dialog id={id} className="playlist-picker" aria-label={title}>{content}</Popover.Dialog>
-      </Popover.Content>;
+    : createPortal(<div ref={setViewportLayer} className="playlist-picker-viewport">
+        {viewportLayer && <Popover.Content ref={panel} isOpen onOpenChange={openChange} isNonModal isKeyboardDismissDisabled={saving}
+          triggerRef={overlay.anchorRef} placement="bottom start" offset={8} containerPadding={12} maxHeight={414} boundaryElement={viewportLayer}
+          shouldCloseOnInteractOutside={element=>!pending.current && !overlay.anchorRef.current?.contains(element)} className="playlist-picker-popover" data-animate={animate} UNSTABLE_portalContainer={viewportLayer}>
+          <Popover.Dialog id={id} className="playlist-picker" aria-label={title}>{content}</Popover.Dialog>
+        </Popover.Content>}
+      </div>, portal);
 }

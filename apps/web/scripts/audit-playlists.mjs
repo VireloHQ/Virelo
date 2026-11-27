@@ -480,6 +480,10 @@ api.mediaSource=async id=>{if(!urls.has(id))urls.set(id,URL.createObjectURL(awai
     const saveCopy=page.getByRole('menuitem',{name:'Save queue as playlist',exact:true});
     await saveCopy.focus();await page.keyboard.press('Enter');
     const copyDialog=page.getByRole('dialog',{name:'Save to playlist'});
+    if(name==='desktop')check(await copyDialog.evaluate(element=>{
+      const layer=element.closest('.playlist-picker-viewport');
+      return layer && getComputedStyle(layer).position==='fixed' && layer.getBoundingClientRect().top===0;
+    }),label+' the queue picker is isolated from the scrolled watch page');
     const scrollBeforeCreate=await page.evaluate(()=>window.scrollY);
     await copyDialog.getByRole('button',{name:'New playlist',exact:true}).click();
     const copyName=copyDialog.getByRole('textbox',{name:'Playlist name',exact:true});
