@@ -21,7 +21,7 @@ the package maintainer publishes it separately after approving the release.
 
    The package audit checks known dependency advisories, installs the actual
    archive in temporary storage and verifies the CLI, HTTP assets and initial
-   administrator setup. It also checks that upgrading from 0.6.0 and 0.6.1 retains an
+   administrator setup. It also checks that upgrading from 0.6.0, 0.6.1, and 0.7.0 retains an
    administrator and saved library. It never uses personal libraries or publishes anything.
 
    Installed production dependencies must have zero findings. The source audit
@@ -40,12 +40,12 @@ the package maintainer publishes it separately after approving the release.
 ## Publish manually
 
 Sign in with an account that can publish `virelo`, then publish the newly checked
-archive. For 0.7.0:
+archive. For 0.8.0:
 
 ```sh
 npm login --registry=https://registry.npmjs.org/
 npm whoami --registry=https://registry.npmjs.org/
-npm publish ./virelo-0.7.0.tgz --access public --registry=https://registry.npmjs.org/
+npm publish ./virelo-0.8.0.tgz --access public --registry=https://registry.npmjs.org/
 ```
 
 Complete any npm authentication or two-factor prompt yourself. Never put a token
@@ -53,5 +53,5 @@ or one-time password in source files, logs or release notes. A dry run does not
 prove publication permission. Published name/version pairs cannot be reused.
 
 After publication, check `npm view virelo version` and
-`npx --yes virelo@0.7.0 --version` before announcing the npm release. A previously
+`npx --yes virelo@0.8.0 --version` before announcing the npm release. A previously
 cached `npx virelo` installation may need `npx virelo@latest` to pick up the update.

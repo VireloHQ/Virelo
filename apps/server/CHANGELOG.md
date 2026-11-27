@@ -1,12 +1,18 @@
 # Changelog
 
-## Unreleased
+## 0.8.0
 
-- Add an HTTPS HLS link directly to Live TV as one channel, with the same approved-provider rules.
-
-- Keep playing videos, Shorts and Live TV in an in-app miniplayer when browsing. Queues keep advancing, and expanding the player restores the same playback.
-
+- Watch Live TV from your own M3U or M3U8 playlists, or add a single HTTPS HLS stream. The channel guide can check and remember source responses. Administrators approve stream sources on self-hosted servers; Virelo does not supply channels.
+- Keep videos, Shorts and Live TV playing in a corner miniplayer while you browse. Queues keep advancing, and expanding the miniplayer restores playback to the full player.
+- Choose a header or sidebar in desktop appearance settings. Pick which libraries appear on Home without removing them from Library or search.
+- Let permitted self-hosted accounts download the original video file. Download permission is separate from playback permission.
+- Guide new administrators to add a video folder first. When the server is PC-only, sharing explains how to enable access from another device before showing a QR code.
+- Find and create playlists in a bounded, searchable picker. On desktop, it opens near the button or beside the context menu. The Live TV importer also opens near its button on desktop.
+- Add illustrated empty states and keep Home Shorts thumbnails portrait even when landscape videos are included.
 - Start the next queued video from the beginning when autoplay resume has never been configured. Preserve saved on/off choices and manual resume behavior.
+- Bundle the patched `@fastify/static` dependency tree in the published server.
+
+Stop the old server and start 0.8.0 with the same data directory to keep your accounts and libraries.
 
 ## 0.7.0
 
