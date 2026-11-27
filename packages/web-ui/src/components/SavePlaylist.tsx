@@ -73,6 +73,7 @@ export function PlaylistPicker({ id, mediaIds: selectedMediaIds, overlay, onSave
   const mobile = useSyncExternalStore(subscribeMobile, () => mobileQuery().matches);
   const playlists = useQuery({ queryKey: ['playlists'], queryFn: api.playlists, refetchOnMount: 'always' });
   const [creating, setCreating] = useState<boolean|null>(null);
+  const [modeMotion, setModeMotion] = useState(false);
   const [name, setName] = useState('');
   const [search, setSearch] = useState('');
   const [target, setTarget] = useState<number>();
@@ -118,11 +119,7 @@ export function PlaylistPicker({ id, mediaIds: selectedMediaIds, overlay, onSave
     return () => document.removeEventListener('pointerdown', outside, true);
   }, [mobile, anchorRef, pending, close]);
   const title = t("Save to playlist");
-  const content = <form className="playlist-picker-form" onSubmit={event=>{event.preventDefault(); void save();}} aria-busy={saving}>
-    {overlay && <header className="playlist-picker-heading">
-      <div><h2>{title}</h2><p>{t('{count} videos',{count:mediaIds.length})}</p></div>
-      <Button type="button" variant="ghost" isIconOnly aria-label={t("Cancel")} isDisabled={saving} onPress={dismiss}><X aria-hidden="true"/></Button>
-    </header>}
+  const fields = <>
     {!create && rows.length > 8 && <label className="playlist-picker-search">
       <MagnifyingGlass aria-hidden="true"/><Input inputMode="search" aria-label={t("Search playlists")} placeholder={t("Search playlists")} value={search}
         onChange={event=>setSearch(event.target.value)} onKeyDown={event=>{if(event.key==='Enter'&&!event.nativeEvent.isComposing)event.preventDefault();}}/>
@@ -138,13 +135,20 @@ export function PlaylistPicker({ id, mediaIds: selectedMediaIds, overlay, onSave
           </label>)}
         </div> : playlists.isPending ? <p role="status">{t("Loading playlists…")}</p> : term && <p>{t("No matching playlists")}</p>}
     </div>
+  </>;
+  const content = <form className="playlist-picker-form" onSubmit={event=>{event.preventDefault(); void save();}} aria-busy={saving}>
+    {overlay && <header className="playlist-picker-heading">
+      <div><h2>{title}</h2><p>{t('{count} videos',{count:mediaIds.length})}</p></div>
+      <Button type="button" variant="ghost" isIconOnly aria-label={t("Cancel")} isDisabled={saving} onPress={dismiss}><X aria-hidden="true"/></Button>
+    </header>}
+    {overlay ? fields : <div className="playlist-picker-fields" key={create?'create':'choose'} data-animate={modeMotion} data-create={create}>{fields}</div>}
     {!create && playlists.isError && <p className="playlist-picker-feedback error-copy" role="alert"><Trans message="Could not load existing playlists. {value0}"
       values={{value0:<Button type="button" variant="ghost" size="sm" onPress={()=>void playlists.refetch()}>{t("Try again")}</Button>}}/></p>}
     {error && <p className="playlist-picker-feedback error-copy" role="alert">{t(error)}{!create && <Button type="button" variant="ghost" size="sm" onPress={()=>void playlists.refetch()}>{t("Refresh playlists")}</Button>}</p>}
     <footer className="playlist-picker-footer">
       {create ? (rows.length > 0 || playlists.isError) && <Button type="button" variant="ghost" isDisabled={saving}
-        onPress={()=>{setCreating(false);setError('');requestAnimationFrame(()=>newPlaylist.current?.focus({preventScroll:true}));}}>{t("Back")}</Button>
-        : <Button ref={newPlaylist} type="button" variant="ghost" isDisabled={saving} onPress={()=>{setCreating(true);setError('');}}><ListPlus aria-hidden="true"/>{t("New playlist")}</Button>}
+        onPress={event=>{setModeMotion(event.pointerType!=='keyboard');setCreating(false);setError('');requestAnimationFrame(()=>newPlaylist.current?.focus({preventScroll:true}));}}>{t("Back")}</Button>
+        : <Button ref={newPlaylist} type="button" variant="ghost" isDisabled={saving} onPress={event=>{setModeMotion(event.pointerType!=='keyboard');setCreating(true);setError('');}}><ListPlus aria-hidden="true"/>{t("New playlist")}</Button>}
       <Button type="submit" isPending={saving} isDisabled={saving || !mediaIds.length || (create ? !name.trim() : !rows.some(item=>item.id===target))}>{t("Save")}</Button>
     </footer>
   </form>;

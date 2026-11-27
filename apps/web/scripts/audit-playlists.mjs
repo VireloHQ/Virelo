@@ -178,15 +178,26 @@ async function auditLongPlaylistPicker(page,mode,base,prefix,label) {
   await page.goto(base+prefix+'/library');
   await page.locator('.media-card').filter({hasText:'Clip 4'}).first().click({button:'right'});
   const contextMenu=page.getByRole('menu',{name:'Clip 4 actions',exact:true});
+  const menuBefore=await contextMenu.boundingBox();
   await contextMenu.getByRole('menuitem',{name:'Add to playlist',exact:true}).click();
   const expanded=page.getByRole('region',{name:'Save to playlist',exact:true});
   await expanded.getByRole('radio',{name:names.at(-1),exact:true}).waitFor();
   const lastOption=expanded.getByRole('radio').last();
   check(await expanded.evaluate(element=>{
-    const box=element.closest('.media-context-menu').getBoundingClientRect();
+    const box=element.parentElement.getBoundingClientRect();
     const list=element.querySelector('.playlist-picker-scroll');
     return box.top>=0&&box.bottom<=innerHeight&&box.left>=0&&box.right<=innerWidth&&list.scrollHeight>list.clientHeight;
   }),label+' the expanded context menu fits the viewport and caps a long playlist list');
+  const menuAfter=await contextMenu.boundingBox();
+  const submenu=await expanded.evaluate(element=>element.closest('.media-context-menu').dataset.playlistSide);
+  if(page.viewportSize().width>=1000) {
+    const panel=await expanded.boundingBox();
+    const row=await contextMenu.getByRole('menuitem',{name:'Add to playlist',exact:true}).boundingBox();
+    check(submenu!=='bottom'&&Math.abs(menuBefore.y-menuAfter.y)<2&&
+      (submenu==='right'?panel.x>=menuAfter.x+menuAfter.width:panel.x+panel.width<=menuAfter.x),label+' desktop submenu opens beside the menu without moving it');
+    check(Math.min(Math.abs(panel.y-row.y),Math.abs(panel.y+panel.height-row.y-row.height))<2,
+      label+' the submenu stays attached to its row near screen edges');
+  } else if(page.viewportSize().width<=390)check(submenu==='bottom',label+' phone submenu falls back below the menu');
   const contextSave=expanded.getByRole('button',{name:'Save',exact:true});
   const contextSaveY=(await contextSave.boundingBox()).y;
   await lastOption.scrollIntoViewIfNeeded();
@@ -194,6 +205,28 @@ async function auditLongPlaylistPicker(page,mode,base,prefix,label) {
   check(await expanded.locator('.playlist-picker-scroll').evaluate(list=>list.scrollTop>0)
     &&await lastOption.isChecked()&&Math.abs((await contextSave.boundingBox()).y-contextSaveY)<1,label+' scrolling the in-menu list keeps Save in place');
   await page.screenshot({path:join(root,label.replaceAll(' ','-')+'-context-playlist.png')});
+  if(page.viewportSize().width>=1000) {
+    const contextTrigger=contextMenu.getByRole('menuitem',{name:'Add to playlist',exact:true});
+    const panel=page.locator('.context-playlist-panel');
+    check(await panel.evaluate(element=>parseFloat(getComputedStyle(element).transitionDuration)<.02),label+' reduced motion makes submenu switches immediate');
+    await page.emulateMedia({reducedMotion:'no-preference'});
+    await panel.evaluate(element=>{
+      element.addEventListener('transitionrun',event=>{
+        if(event.target===element&&event.propertyName==='opacity')element.dataset.fades=(Number(element.dataset.fades??0)+1).toString();
+      });
+    });
+    await contextTrigger.click();
+    await expanded.waitFor({state:'hidden'});
+    await panel.and(page.locator('[data-fades="1"]')).waitFor({state:'attached'});
+    check(await panel.evaluate(element=>element.inert&&element.dataset.fades==='1'),label+' pointer close fades without leaving an interactive submenu');
+    await contextTrigger.click();
+    await panel.and(page.locator('[data-fades="2"]')).waitFor();
+    await expanded.getByRole('button',{name:'New playlist',exact:true}).click();
+    check(await expanded.locator('.playlist-picker-fields').getAttribute('data-animate')==='true',label+' pointer creation uses the submenu motion');
+    await expanded.getByRole('button',{name:'Back',exact:true}).press('Enter');
+    check(await expanded.locator('.playlist-picker-fields').getAttribute('data-animate')==='false',label+' keyboard return skips the animation');
+    await page.emulateMedia({reducedMotion:'reduce'});
+  }
   await page.locator('.topbar').click({position:{x:12,y:12}});
   await contextMenu.waitFor({state:'hidden'});
   for(const playlist of created) {

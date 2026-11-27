@@ -208,10 +208,10 @@ api.mediaSource = async id => {
       const playlistFits=await playlistPicker.evaluate(async panel => {
         await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
         const menu=panel.closest('.media-context-menu'), box=menu?.getBoundingClientRect();
-        return {box:box?.toJSON(),width:innerWidth,height:innerHeight};
+        return {box:box?.toJSON(),picker:panel.parentElement.getBoundingClientRect().toJSON(),width:innerWidth,height:innerHeight};
       });
-      const {box:playlistBox,width:screenWidth,height:screenHeight}=playlistFits;
-      check(playlistBox && playlistBox.top>=0 && playlistBox.bottom<=screenHeight && playlistBox.left>=0 && playlistBox.right<=screenWidth,
+      const {box:playlistBox,picker,width:screenWidth,height:screenHeight}=playlistFits;
+      check([playlistBox,picker].every(rect=>rect&&rect.top>=0&&rect.bottom<=screenHeight&&rect.left>=0&&rect.right<=screenWidth),
         label + ' Shorts expands the playlist picker inside its existing context menu: '+JSON.stringify(playlistFits));
       await page.keyboard.press('Escape');
       await playlistPicker.waitFor({state:'hidden'});

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { stripTypeScriptTypes } from 'node:module';
 const source = await readFile(new URL('../../../packages/web-ui/src/utils/context-menu.ts', import.meta.url), 'utf8');
-const { contextMenuPlacement: place, sidePopoverPlacement: submenu } = await import('data:text/javascript;base64,' +
+const { contextMenuPlacement: place, sidePopoverPlacement: submenu, contextPlaylistPlacement } = await import('data:text/javascript;base64,' +
   Buffer.from(stripTypeScriptTypes(source)).toString('base64'));
 
 test('context bubbles and nested settings share curved tails with rounded tips',async()=>{
@@ -57,4 +57,11 @@ test('small-screen side bubbles stay inside the viewport and scroll tall content
       assert.ok(result.maxHeight < size.height);
     }
   }
+});
+
+test('the playlist submenu keeps its parent in place and uses the available side', () => {
+  assert.deepEqual(contextPlaylistPlacement(320,280,1440),{side:'right',width:280});
+  assert.deepEqual(contextPlaylistPlacement(1040,280,1440),{side:'left',width:280});
+  assert.deepEqual(contextPlaylistPlacement(242,280,800),{side:'right',width:254});
+  assert.deepEqual(contextPlaylistPlacement(16,288,320),{side:'bottom',width:288});
 });
