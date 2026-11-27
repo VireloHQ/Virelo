@@ -205,10 +205,14 @@ api.mediaSource = async id => {
       await addPlaylist.click();
       const playlistPicker = page.getByRole('region', { name: 'Save to playlist', exact: true });
       await playlistPicker.waitFor();
-      check(await playlistPicker.evaluate(panel => {
+      const playlistFits=await playlistPicker.evaluate(async panel => {
+        await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
         const menu=panel.closest('.media-context-menu'), box=menu?.getBoundingClientRect();
-        return box && box.top>=0 && box.bottom<=innerHeight && box.left>=0 && box.right<=innerWidth;
-      }), label + ' Shorts expands the playlist picker inside its existing context menu');
+        return {box:box?.toJSON(),width:innerWidth,height:innerHeight};
+      });
+      const {box:playlistBox,width:screenWidth,height:screenHeight}=playlistFits;
+      check(playlistBox && playlistBox.top>=0 && playlistBox.bottom<=screenHeight && playlistBox.left>=0 && playlistBox.right<=screenWidth,
+        label + ' Shorts expands the playlist picker inside its existing context menu: '+JSON.stringify(playlistFits));
       await page.keyboard.press('Escape');
       await playlistPicker.waitFor({state:'hidden'});
       check(await addPlaylist.isVisible(), label + ' cancelling the picker keeps Shorts actions available');

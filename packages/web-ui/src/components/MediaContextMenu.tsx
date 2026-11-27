@@ -38,7 +38,7 @@ export function MediaContextMenu({
   const previousFocusRef = useRef<HTMLElement|null>(null);
   const closeRef = useRef(onClose);
   closeRef.current = onClose;
-  const placement = useContextMenuPlacement(menuRef, position, returnFocus);
+  const placement = useContextMenuPlacement(menuRef, position, returnFocus, playlistOpen);
 
   useEffect(() => {
     previousFocusRef.current = returnFocus ?? (document.activeElement instanceof HTMLElement ? document.activeElement : null);
