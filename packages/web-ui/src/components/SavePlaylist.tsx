@@ -10,7 +10,7 @@ import { playlistName } from '@edition/utils/playlist-values';
 import './ConfirmationDialog.css';
 import './Playlists.css';
 
-export type PlaylistPickerOpen = { anchor: HTMLElement | DOMRect; keyboard: boolean };
+export type PlaylistPickerOpen = { anchor: HTMLElement; keyboard: boolean };
 const mobileQuery = () => window.matchMedia('(max-width: 640px), (max-width: 900px) and (pointer: coarse)');
 const subscribeMobile = (notify: () => void) => {
   const query = mobileQuery();
@@ -19,11 +19,13 @@ const subscribeMobile = (notify: () => void) => {
 };
 // Focusing before the floating panel repositions must not scroll past its trigger and dismiss it.
 const focusName = (input: HTMLInputElement | null) => input?.focus({ preventScroll: true });
+const focusInline = (element: HTMLElement | null) => {
+  if (element && !element.contains(document.activeElement)) element.focus({preventScroll:true});
+};
 
 export function SavePlaylist({ mediaIds, initialOpen, onClose }: { mediaIds: number[]; initialOpen?: PlaylistPickerOpen; onClose?: () => void }) {
   useLocale();
   const trigger = useRef<HTMLButtonElement>(null);
-  const marker = useRef<HTMLSpanElement>(null);
   const pending = useRef(false);
   const [open, setOpen] = useState(Boolean(initialOpen));
   const [animate, setAnimate] = useState(initialOpen ? !initialOpen.keyboard : false);
@@ -34,9 +36,8 @@ export function SavePlaylist({ mediaIds, initialOpen, onClose }: { mediaIds: num
     const timeout = window.setTimeout(() => setNotice(''), 3500);
     return () => window.clearTimeout(timeout);
   }, [notice]);
-  const anchor = initialOpen?.anchor;
   const portal = document.fullscreenElement ?? document.body;
-  const anchorRef = anchor instanceof HTMLElement ? { current: anchor } : anchor ? marker : trigger;
+  const anchorRef = initialOpen ? { current: initialOpen.anchor } : trigger;
   const close = () => {
     setOpen(false);
     onClose?.();
@@ -56,17 +57,15 @@ export function SavePlaylist({ mediaIds, initialOpen, onClose }: { mediaIds: num
       onPressStart={event=>setAnimate(event.pointerType !== 'keyboard')} onPress={toggle}>
       <ListPlus aria-hidden="true"/>{t("Add to playlist")}
     </Button>}
-    {anchor && !(anchor instanceof HTMLElement) && open && createPortal(
-      <span ref={marker} aria-hidden="true" className="playlist-picker-anchor" style={{ left: anchor.left, top: anchor.top, width: anchor.width, height: anchor.height }}/>, portal)}
-    {open && <PlaylistPicker id={dialogId} mediaIds={mediaIds} anchorRef={anchorRef} portal={portal} animate={animate} close={close} pending={pending}
+    {open && <PlaylistPicker id={dialogId} mediaIds={mediaIds} overlay={{anchorRef, portal, animate, close}} pending={pending}
       onSaved={name => { setNotice(name); close(); }}/>}
     {notice && createPortal(<span className="playlist-save-notice" role="status">{t('Saved to {name}.',{name:notice})}</span>, portal)}
   </div>;
 }
 
-function PlaylistPicker({ id, mediaIds: selectedMediaIds, anchorRef, portal, animate, close, onSaved, pending }: {
-  id: string; mediaIds: number[]; anchorRef: RefObject<Element|null>; portal: Element; animate: boolean;
-  close: () => void; onSaved: (name: string) => void; pending: RefObject<boolean>;
+export function PlaylistPicker({ id, mediaIds: selectedMediaIds, overlay, onSaved, pending }: {
+  id: string; mediaIds: number[]; overlay?: { anchorRef: RefObject<Element|null>; portal: Element; animate: boolean; close: () => void };
+  onSaved: (name: string) => void; pending: RefObject<boolean>;
 }) {
   const { api } = useMediaServices();
   const client = useQueryClient();
@@ -106,10 +105,11 @@ function PlaylistPicker({ id, mediaIds: selectedMediaIds, anchorRef, portal, ani
     }
   }
 
-  const dismiss = () => { if (!pending.current) close(); };
+  const dismiss = () => { if (!pending.current) overlay?.close(); };
   const openChange = (value: boolean) => { if (!value) dismiss(); };
+  const anchorRef = overlay?.anchorRef, close = overlay?.close;
   useEffect(() => {
-    if (mobile) return;
+    if (mobile || !anchorRef || !close) return;
     const outside = (event: PointerEvent) => {
       const target = event.target;
       if (target instanceof Node && !panel.current?.contains(target) && !anchorRef.current?.contains(target) && !pending.current) close();
@@ -119,10 +119,10 @@ function PlaylistPicker({ id, mediaIds: selectedMediaIds, anchorRef, portal, ani
   }, [mobile, anchorRef, pending, close]);
   const title = t("Save to playlist");
   const content = <form className="playlist-picker-form" onSubmit={event=>{event.preventDefault(); void save();}} aria-busy={saving}>
-    <header className="playlist-picker-heading">
+    {overlay && <header className="playlist-picker-heading">
       <div><h2>{title}</h2><p>{t('{count} videos',{count:mediaIds.length})}</p></div>
       <Button type="button" variant="ghost" isIconOnly aria-label={t("Cancel")} isDisabled={saving} onPress={dismiss}><X aria-hidden="true"/></Button>
-    </header>
+    </header>}
     {!create && rows.length > 8 && <label className="playlist-picker-search">
       <MagnifyingGlass aria-hidden="true"/><Input inputMode="search" aria-label={t("Search playlists")} placeholder={t("Search playlists")} value={search}
         onChange={event=>setSearch(event.target.value)} onKeyDown={event=>{if(event.key==='Enter'&&!event.nativeEvent.isComposing)event.preventDefault();}}/>
@@ -149,14 +149,16 @@ function PlaylistPicker({ id, mediaIds: selectedMediaIds, anchorRef, portal, ani
     </footer>
   </form>;
 
+  if (!overlay) return <section ref={focusInline} id={id} className="playlist-picker-inline" aria-label={title} tabIndex={-1}>{content}</section>;
+  const {portal, animate} = overlay;
   return mobile
     ? <Modal.Backdrop isOpen onOpenChange={openChange} isDismissable={!saving} isKeyboardDismissDisabled={saving} className="virelo-confirm-backdrop" data-animate={animate} UNSTABLE_portalContainer={portal}>
         <Modal.Container className="virelo-confirm-container playlist-picker-container" data-animate={animate} placement="center" scroll="inside">
           <Modal.Dialog id={id} className="playlist-picker" aria-label={title}>{content}</Modal.Dialog>
         </Modal.Container>
       </Modal.Backdrop>
-    : <Popover.Content ref={panel} isOpen onOpenChange={openChange} isNonModal isKeyboardDismissDisabled={saving} triggerRef={anchorRef} placement="bottom start" offset={8} containerPadding={12}
-        shouldCloseOnInteractOutside={element=>!pending.current && !anchorRef.current?.contains(element)} className="playlist-picker-popover" data-animate={animate} UNSTABLE_portalContainer={portal}>
+    : <Popover.Content ref={panel} isOpen onOpenChange={openChange} isNonModal isKeyboardDismissDisabled={saving} triggerRef={overlay.anchorRef} placement="bottom start" offset={8} containerPadding={12}
+        shouldCloseOnInteractOutside={element=>!pending.current && !overlay.anchorRef.current?.contains(element)} className="playlist-picker-popover" data-animate={animate} UNSTABLE_portalContainer={portal}>
         <Popover.Dialog id={id} className="playlist-picker" aria-label={title}>{content}</Popover.Dialog>
       </Popover.Content>;
 }
