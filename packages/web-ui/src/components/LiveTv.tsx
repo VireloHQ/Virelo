@@ -1,4 +1,4 @@
-import { useCallback, useDeferredValue, useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useDeferredValue, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Button, Input, Modal, TextArea } from '@heroui/react';
 import { Broadcast, CheckCircle, ClipboardText, Clock, FileText, LinkSimple, LockSimple, MagnifyingGlass, MinusCircle, Play, Playlist, Plus, Pulse, Question, Stop, TagSimple, Television, Trash, UploadSimple, XCircle } from '@phosphor-icons/react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -9,6 +9,7 @@ import { Select } from './Select';
 import { LiveTvPlayback } from './LiveTvPlayback';
 import { usePlaybackDock } from './PlaybackDock';
 import { useIptvChecks } from '../hooks/useIptvChecks';
+import { useCompactDialog } from '../hooks/useCompactDialog';
 import './LiveTv.css';
 
 export type LiveTvService = {
@@ -53,6 +54,8 @@ export function LiveTv({service,admin}:{service:LiveTvService;admin?:ReactNode})
   const [statusFilter,setStatusFilter] = useState<StatusFilter>('all');
   const query = useDeferredValue(search.trim().toLocaleLowerCase());
   const [adding,setAdding] = useState(false);
+  const compact = useCompactDialog();
+  const importTrigger = useRef<HTMLButtonElement>(null);
   const [firstCheck,setFirstCheck] = useState<string|null>(null);
   const sources = useQuery({queryKey:['iptv-sources'],queryFn:service.sources});
   const source = sources.data?.find(item => item.id === selected) ?? sources.data?.[0];
@@ -98,7 +101,7 @@ export function LiveTv({service,admin}:{service:LiveTvService;admin?:ReactNode})
     return service.add({...input,text});
   },onSuccess:async result => {
     await client.invalidateQueries({queryKey:['iptv-sources']});
-    choose(result.id,true); setAdding(false);
+    choose(result.id,true); closeImport();
   }});
 
   const playlists = useMemo(() => (sources.data ?? []).map(item => ({value:item.id,label:item.name})),[sources.data]);
@@ -138,32 +141,35 @@ export function LiveTv({service,admin}:{service:LiveTvService;admin?:ReactNode})
       window.requestAnimationFrame(() => screen.current?.scrollIntoView({block:'nearest',behavior:'instant'}));
   }
 
+  function closeImport() {
+    const panel = document.getElementById(importId);
+    if (!compact && (panel?.contains(document.activeElement) || document.activeElement===document.body))
+      importTrigger.current?.focus({preventScroll:true});
+    setAdding(false);
+  }
   function changeAdding(open:boolean) {
     if (add.isPending) return;
-    add.reset(); setAdding(open);
+    add.reset();
+    if (open) setAdding(true);
+    else closeImport();
   }
 
   const canAdd = !sources.isPending && !sources.isError;
-  const importTitle = id+'-import-title';
+  const importId = id+'-import';
   const checkLabel = checks.running?t("Cancel checks"):!visible.length||unchecked.length?t("Check channels"):t("Recheck channels");
-  return <div className="content-view live-tv" data-import-open={!minimized && adding || undefined}>
-    {!minimized && <><header className="content-heading">
+  return <div className="content-view live-tv" data-import-open={!minimized && compact && adding || undefined}>
+    {!minimized && <header className="content-heading">
       <div><h1>{t("Live TV")}</h1><p>{t("Watch channels from your own M3U or M3U8 playlists.")}</p></div>
-      {canAdd && <Modal isOpen={adding} onOpenChange={changeAdding}>
-        <Button variant="secondary"><Plus size={18} aria-hidden="true"/>{t("Add playlist")}</Button>
-        <Modal.Backdrop className="virelo-confirm-backdrop live-tv-import-backdrop" isDismissable={!add.isPending} isKeyboardDismissDisabled={add.isPending}>
-          <Modal.Container className="virelo-confirm-container" placement="center" size="sm" scroll="inside">
-            <Modal.Dialog className="virelo-confirm-dialog live-tv-import-dialog" aria-labelledby={importTitle}>
-              <Modal.Header className="virelo-confirm-header">
-                <Modal.Heading id={importTitle} className="virelo-confirm-title">{t("Add playlist")}</Modal.Heading>
-              </Modal.Header>
-              <PlaylistImport titleId={importTitle} pending={add.isPending} error={add.error}
-                onImport={input => add.mutate(input)} onCancel={() => changeAdding(false)}/>
-            </Modal.Dialog>
-          </Modal.Container>
-        </Modal.Backdrop>
-      </Modal>}
-    </header>
+      {canAdd && <Button ref={importTrigger} variant="secondary" aria-expanded={adding}
+        aria-haspopup={compact?'dialog':undefined} aria-controls={adding?importId:undefined} onPress={() => changeAdding(!adding)}>
+        <Plus size={18} aria-hidden="true"/>{t("Add playlist")}
+      </Button>}
+    </header>}
+    <div className="live-tv-body">
+    {!minimized && adding && <PlaylistImport id={importId} compact={compact} pending={add.isPending} error={add.error}
+      onImport={input => add.mutate(input)} onCancel={() => changeAdding(false)}/>}
+    <div className="live-tv-content">
+    {!minimized && <>
     {admin}
     {sources.isPending && <p role="status" className="live-tv-message">{t("Loading…")}</p>}
     {sources.isError && <div className="live-tv-notice" role="alert"><p>{t(sources.error.message)}</p><Button variant="secondary" onPress={() => void sources.refetch()}>{t("Try again")}</Button></div>}
@@ -249,17 +255,24 @@ export function LiveTv({service,admin}:{service:LiveTvService;admin?:ReactNode})
         </> : <div className="live-tv-placeholder"><Television size={32} aria-hidden="true"/><p>{t("Choose a channel to watch.")}</p></div>}
       </section>
     </div>}
+    </div>
+    </div>
   </div>;
 }
 
-function PlaylistImport({titleId,pending,error,onImport,onCancel}: {
-  titleId:string; pending:boolean; error:Error|null; onImport:(input:PlaylistInput)=>void; onCancel:()=>void
+function PlaylistImport({id,compact,pending,error,onImport,onCancel}: {
+  id:string; compact:boolean; pending:boolean; error:Error|null; onImport:(input:PlaylistInput)=>void; onCancel:()=>void
 }) {
   const [mode,setMode] = useState<ImportMode>('url');
   const [name,setName] = useState(''), [url,setUrl] = useState(''), [paste,setPaste] = useState('');
   const fileInput = useRef<HTMLInputElement>(null);
+  const inlinePanel = useRef<HTMLElement>(null);
   const [file,setFile] = useState<File|null>(null);
   const stream = mode==='stream';
+  const titleId = id+'-title';
+  useLayoutEffect(() => { if(!compact) inlinePanel.current?.focus({preventScroll:true}); },[compact]);
+  const Fields = compact ? Modal.Body : 'div';
+  const Actions = compact ? Modal.Footer : 'div';
   const submit = () => {
     const label = name.trim() || (mode==='file' ? file?.name.replace(/\.m3u8?$/i,'').slice(0,120) : undefined) || (stream?t("Live TV"):t("Playlist"));
     if (stream) { onImport({name:label,streamUrl:url.trim()}); return; }
@@ -268,8 +281,8 @@ function PlaylistImport({titleId,pending,error,onImport,onCancel}: {
     if (file) onImport({name:label,file});
   };
 
-  return <form aria-labelledby={titleId} className="live-tv-import" onSubmit={event => { event.preventDefault(); if (!pending) submit(); }}>
-    <Modal.Body className="virelo-confirm-body live-tv-import-fields">
+  const form = <form aria-labelledby={titleId} className="live-tv-import" onSubmit={event => { event.preventDefault(); if (!pending) submit(); }}>
+    <Fields className="virelo-confirm-body live-tv-import-fields">
       <div className="live-tv-modes" role="group" aria-label={t("Import from")}>
         {importModes.map(({value,label,Icon}) => <Button key={value} type="button" variant={mode===value?'secondary':'ghost'}
           aria-pressed={mode===value} isDisabled={pending} onPress={() => setMode(value)}>
@@ -291,10 +304,31 @@ function PlaylistImport({titleId,pending,error,onImport,onCancel}: {
         <TextArea rows={4} value={paste} maxLength={IPTV_MAX_BYTES} required spellCheck={false} readOnly={pending} onChange={event => setPaste(event.currentTarget.value)}/>
       </label>}
       {error && <p className="error-copy" role="alert">{t(error.message)}</p>}
-    </Modal.Body>
-    <Modal.Footer className="virelo-confirm-footer">
+    </Fields>
+    <Actions className="virelo-confirm-footer">
       <Button type="button" variant="secondary" isDisabled={pending} onPress={onCancel}>{t("Cancel")}</Button>
       <Button type="submit" isPending={pending} isDisabled={pending || (mode==='file'&&!file)}>{stream?t("Add stream"):t("Add playlist")}</Button>
-    </Modal.Footer>
+    </Actions>
   </form>;
+  return compact ?
+    <Modal.Backdrop isOpen onOpenChange={open => { if (!open) onCancel(); }}
+      className="virelo-confirm-backdrop live-tv-import-backdrop" isDismissable={!pending} isKeyboardDismissDisabled={pending}>
+      <Modal.Container className="virelo-confirm-container" placement="center" size="sm" scroll="inside">
+        <Modal.Dialog id={id} className="virelo-confirm-dialog live-tv-import-dialog" aria-labelledby={titleId}>
+          <Modal.Header className="virelo-confirm-header">
+            <Modal.Heading id={titleId} className="virelo-confirm-title">{t("Add playlist")}</Modal.Heading>
+          </Modal.Header>
+          {form}
+        </Modal.Dialog>
+      </Modal.Container>
+    </Modal.Backdrop> :
+    <section id={id} ref={inlinePanel} tabIndex={-1} className="live-tv-import-inline" aria-labelledby={titleId}
+      onKeyDown={event => {
+        if(event.key==='Escape' && !event.nativeEvent.isComposing && !pending) {
+          event.stopPropagation(); event.preventDefault(); onCancel();
+        }
+      }}>
+      <h2 id={titleId}>{t("Add playlist")}</h2>
+      {form}
+    </section>;
 }
