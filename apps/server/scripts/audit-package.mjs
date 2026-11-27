@@ -95,7 +95,7 @@ try {
 }
 
 // Exercise the actual published schemas without using an existing user profile.
-for (const previousVersion of ['0.6.0', '0.6.1']) {
+for (const previousVersion of ['0.6.0', '0.6.1', '0.7.0']) {
   const previous = join(root, 'previous-' + previousVersion);
   npm(['install', '--prefix', previous, '--omit=dev', '--ignore-scripts', '--no-fund', '--no-audit', 'virelo@' + previousVersion]);
   const { startServer: startPrevious } = await import(pathToFileURL(join(previous, 'node_modules/virelo/dist/server.js')).href);
