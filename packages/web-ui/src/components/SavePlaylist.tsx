@@ -1,22 +1,17 @@
 import { Trans } from '../i18n/Trans';
 import { t, useLocale } from '@edition/i18n';
-import { useEffect, useId, useRef, useState, useSyncExternalStore, type RefObject } from 'react';
+import { useEffect, useId, useRef, useState, type RefObject } from 'react';
 import { createPortal } from 'react-dom';
 import { Button, Input, Modal, Popover } from '@heroui/react';
 import { Check, ListPlus, MagnifyingGlass, X } from '@phosphor-icons/react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMediaServices } from '../media-services';
+import { useCompactDialog } from '../hooks/useCompactDialog';
 import { playlistName } from '@edition/utils/playlist-values';
 import './ConfirmationDialog.css';
 import './Playlists.css';
 
 export type PlaylistPickerOpen = { anchor: HTMLElement; keyboard: boolean };
-const mobileQuery = () => window.matchMedia('(max-width: 640px), (max-width: 900px) and (pointer: coarse)');
-const subscribeMobile = (notify: () => void) => {
-  const query = mobileQuery();
-  query.addEventListener('change', notify);
-  return () => query.removeEventListener('change', notify);
-};
 // Focusing before the floating panel repositions must not scroll past its trigger and dismiss it.
 const focusName = (input: HTMLInputElement | null) => input?.focus({ preventScroll: true });
 const focusInline = (element: HTMLElement | null) => {
@@ -70,7 +65,7 @@ export function PlaylistPicker({ id, mediaIds: selectedMediaIds, overlay, onSave
   const { api } = useMediaServices();
   const client = useQueryClient();
   const [mediaIds] = useState(selectedMediaIds);
-  const mobile = useSyncExternalStore(subscribeMobile, () => mobileQuery().matches);
+  const mobile = useCompactDialog();
   const playlists = useQuery({ queryKey: ['playlists'], queryFn: api.playlists, refetchOnMount: 'always' });
   const [creating, setCreating] = useState<boolean|null>(null);
   const [modeMotion, setModeMotion] = useState(false);

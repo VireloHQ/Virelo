@@ -71,10 +71,23 @@
 .live-tv-channel-info { margin-top:14px; }
 .live-tv-channel-info h2 { margin:0; font-size:21px; font-weight:600; overflow-wrap:anywhere; }
 .live-tv-channel-info p { margin:4px 0 0; color:var(--text-muted); font-size:14px; overflow-wrap:anywhere; }
+.live-tv-import-inline {
+  display:grid; gap:12px; width:min(384px,100%); margin:0 0 20px;
+  padding:16px; border:1px solid var(--line-strong); border-radius:10px; background:var(--surface);
+}
+.live-tv-import-inline h2 { margin:0; font-size:1.0625rem; font-weight:690; line-height:1.25; }
+@media (min-width:901px) {
+  /* Both share a row so the embedded frame fits the form without moving the guide. */
+  .live-tv-body:has(> .live-tv-import-inline) { display:grid; }
+  .live-tv-body:has(> .live-tv-import-inline) > * { grid-area:1 / 1; min-width:0; }
+  .live-tv-body:has(> .live-tv-import-inline) > .live-tv-content { z-index:0; }
+  .live-tv-import-inline { align-self:start; justify-self:end; margin-block-start:-24px; z-index:1; box-shadow:0 12px 36px #0006; }
+}
+@media (max-width:900px) { .live-tv .content-heading:has(+ .live-tv-body > .live-tv-import-inline) { margin-bottom:10px; } }
 .live-tv-import { display:flex; flex:1 1 auto; flex-direction:column; gap:12px; min-height:0; }
 .live-tv-import .live-tv-import-fields { display:flex; flex-direction:column; gap:12px; min-height:0; overflow:auto; overscroll-behavior:contain; scrollbar-width:thin; scrollbar-color:var(--line-strong) transparent; }
 .live-tv-import-fields > * { flex:none; min-width:0; }
-.live-tv-import .virelo-confirm-footer { flex:none; flex-direction:row; margin:0; }
+.live-tv-import .virelo-confirm-footer { display:flex; flex:none; flex-direction:row; margin:0; }
 .live-tv-import .virelo-confirm-footer .button { width:auto; min-width:0; height:auto; white-space:normal; }
 .live-tv-modes { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:6px; }
 .live-tv-file { display:flex; align-items:center; flex-wrap:wrap; gap:6px; }
@@ -85,6 +98,7 @@
 .live-tv-field { display:grid; gap:6px; }
 .live-tv :is(.live-tv-search,.live-tv-origins) :is(.input,.textarea),.live-tv-field :is(.input,.textarea) { width:100%; min-width:0; min-height:44px; border:1px solid var(--line); border-radius:4px; background:var(--page); }
 .live-tv-field :is(.input,.textarea):focus { box-shadow:none; outline:2px solid var(--color-focus); outline-offset:-2px; }
+.live-tv-import-fields .textarea { scroll-margin-block:3px; }
 .live-tv-file span { min-width:0; overflow-wrap:anywhere; }
 .live-tv-admin { margin:0 0 20px; }
 .live-tv-origins { display:grid; gap:14px; width:min(100%,580px); padding:18px; margin:10px 0 0; border:1px solid var(--line); border-radius:12px; background:var(--surface); }

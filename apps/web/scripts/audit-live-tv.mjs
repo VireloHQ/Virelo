@@ -96,10 +96,11 @@ try {
   assert.equal(requests.length,0,'opening the screen never connects to a provider');
   const add=frame.locator('.content-heading').getByRole('button',{name:'Add playlist',exact:true});
   const importDialog=frame.getByRole('dialog',{name:'Add playlist',exact:true});
-  const form=importDialog.getByRole('form',{name:'Add playlist',exact:true});
+  const form=frame.getByRole('form',{name:'Add playlist',exact:true});
   await frame.getByText('No playlists yet',{exact:true}).waitFor();
   assert.equal(await frame.getByRole('form',{name:'Add playlist',exact:true}).count(),0,'the empty guide has no inline form');
   await add.press('Enter');
+  await importDialog.waitFor();
   await form.getByLabel('Playlist name').fill('Discard this draft');
   await page.keyboard.press('Escape');
   await importDialog.waitFor({state:'hidden'});
@@ -340,15 +341,21 @@ try {
     else {
       const paste=form.getByLabel('Playlist text');
       assert.equal(await form.locator('.live-tv-modes button svg[aria-hidden=true]').count(),4);
+      await paste.fill('Draft during resize');
       for(const [width,height] of [[1024,430],[320,568]]){
         await page.setViewportSize({width,height});
+        await (width>640?frame.locator('.live-tv-import-inline'):importDialog).waitFor();
+        assert.equal(await paste.inputValue(),'Draft during resize');
         await paste.scrollIntoViewIfNeeded();
-        assert.ok(await paste.evaluate(field=>{
+        await paste.evaluate(field=>field.scrollIntoView({block:'nearest'}));
+        const pasteLayout=await paste.evaluate(field=>{
           const bounds=field.getBoundingClientRect(), body=field.closest('.live-tv-import-fields').getBoundingClientRect();
           const footer=field.form.querySelector('.virelo-confirm-footer').getBoundingClientRect();
-          return bounds.top>=body.top-1 && bounds.bottom<=Math.min(body.bottom,footer.top)+1
-            && document.elementFromPoint(bounds.left+bounds.width/2,bounds.bottom-3)===field;
-        }),`the complete paste field is reachable above the footer at ${width}×${height}`);
+          const hit=document.elementFromPoint(bounds.left+bounds.width/2,bounds.bottom-3);
+          return {top:bounds.top,bottom:bounds.bottom,bodyTop:body.top,bodyBottom:body.bottom,footerTop:footer.top,reachable:hit===field};
+        });
+        assert.ok(pasteLayout.top>=pasteLayout.bodyTop-1&&pasteLayout.bottom<=Math.min(pasteLayout.bodyBottom,pasteLayout.footerTop)+1
+          &&pasteLayout.reachable,`the complete paste field is reachable above the footer at ${width}×${height}: ${JSON.stringify(pasteLayout)}`);
       }
       await paste.fill('Not a playlist');
       await form.getByRole('button',{name:'Add playlist',exact:true}).click();
@@ -356,7 +363,7 @@ try {
       await paste.fill(importText);
     }
     await form.getByRole('button',{name:'Add playlist',exact:true}).click();
-    await importDialog.waitFor({state:'hidden'});
+    await form.waitFor({state:'hidden'});
     await frame.getByRole('button',{name:'Extra Channel',exact:true}).waitFor();
     await frame.getByRole('button',{name:/^Check Extra Channel: [1-9]\d* ms$/}).waitFor();
     await page.setViewportSize({width:320,height:740});
@@ -368,6 +375,32 @@ try {
   await page.setViewportSize({width:1440,height:900});
   const desktop=page.getByRole('navigation',{name:'Main navigation'});
   assert.equal(await desktop.getByRole('link',{name:'Live TV',exact:true}).getAttribute('aria-current'),'page');
+  const guidePanel=frame.locator('.live-tv-directory');
+  await add.scrollIntoViewIfNeeded();
+  const guideBefore=await guidePanel.boundingBox();
+  await add.press('Enter');
+  const inlineImport=frame.getByRole('region',{name:'Add playlist',exact:true});
+  await inlineImport.waitFor();
+  assert.equal(await importDialog.count(),0,'desktop import is not a dialog');
+  assert.equal(await frame.locator('.live-tv-import-backdrop').count(),0,'desktop import leaves the guide undimmed');
+  assert.equal(await add.getAttribute('aria-controls'),await inlineImport.getAttribute('id'));
+  const [triggerBox,importBox]=await Promise.all([add.boundingBox(),inlineImport.boundingBox()]);
+  assert.ok(triggerBox&&importBox&&Math.abs(triggerBox.x+triggerBox.width-importBox.x-importBox.width)<2
+    &&importBox.y>=triggerBox.y+triggerBox.height&&importBox.y<=triggerBox.y+triggerBox.height+12,
+    'desktop import appears directly below the trigger');
+  const guideBox=await guidePanel.boundingBox();
+  assert.ok(guideBox&&guideBefore&&Math.abs(guideBox.y-guideBefore.y)<2&&guideBox.x+guideBox.width<importBox.x,
+    'the channel guide stays beside the form instead of moving below it');
+  assert.ok(await inlineImport.evaluate(panel=>panel===document.activeElement),'opening the desktop form moves focus to it');
+  await page.keyboard.press('Tab');
+  assert.ok(await form.getByRole('button',{name:'Playlist link',exact:true}).evaluate(button=>button===document.activeElement));
+  await page.keyboard.press('Escape');
+  await form.waitFor({state:'hidden'});
+  assert.ok(await add.evaluate(button=>button===document.activeElement),'Escape restores focus to the desktop trigger');
+  await add.click();
+  await form.getByRole('button',{name:'Cancel',exact:true}).click();
+  await form.waitFor({state:'hidden'});
+  assert.equal(await add.getAttribute('aria-expanded'),'false');
   await page.locator('.topbar').getByRole('button',{name:'Settings',exact:true}).click();
   await page.locator('#settings-nav-appearance').click();
   await page.getByRole('button',{name:'Navigation layout',exact:true}).click();
@@ -443,7 +476,7 @@ try {
       console.log('PASS native cross-origin HLS plays when the browser check cannot read the manifest');
     }
   }finally{await nativeContext.close();}
-  console.log('PASS playlist dialog (URL, file and paste), direct HLS registration and playback, automatic checks, cache, scoped CSP, seek bars, fullscreen and in-app miniplayer');
+  console.log('PASS responsive playlist import (URL, file and paste), direct HLS registration and playback, automatic checks, cache, scoped CSP, seek bars, fullscreen and in-app miniplayer');
 } finally {
   await browser?.close();
   child?.kill();
