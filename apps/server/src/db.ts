@@ -116,6 +116,8 @@ export class VireloDB {
     const libraryColumns = this.db.prepare('PRAGMA table_info(libraries)').all() as Array<{name:string}>;
     if (!libraryColumns.some(column => column.name === 'persistent'))
       this.db.exec('ALTER TABLE libraries ADD COLUMN persistent INTEGER NOT NULL DEFAULT 0');
+    if (!libraryColumns.some(column => column.name === 'metadata_enabled'))
+      this.db.exec('ALTER TABLE libraries ADD COLUMN metadata_enabled INTEGER NOT NULL DEFAULT 1 CHECK(metadata_enabled IN (0,1))');
     this.mergeLibraryAliases();
   }
 
@@ -148,7 +150,9 @@ export class VireloDB {
         if (hasGrants) {
           this.db.prepare('INSERT OR IGNORE INTO account_libraries(user_id,library_id) SELECT user_id,? FROM account_libraries WHERE library_id=?').run(previous.id, library.id);
         }
-        this.db.prepare('UPDATE libraries SET persistent=MAX(persistent,?) WHERE id=?').run(library.persistent, previous.id);
+        this.db.prepare('UPDATE libraries SET persistent=MAX(persistent,?),metadata_enabled=MIN(metadata_enabled,?) WHERE id=?')
+          .run(library.persistent,library.metadata_enabled,previous.id);
+        if (!this.isLibraryMetadataEnabled(previous.id)) this.clearLibraryMetadata(previous.id);
         this.db.prepare('DELETE FROM libraries WHERE id=?').run(library.id);
       }
       this.db.exec('COMMIT');
@@ -208,6 +212,24 @@ export class VireloDB {
     return this.db.prepare('SELECT * FROM libraries ORDER BY created_at ASC').all() as unknown as Library[];
   }
 
+  isLibraryMetadataEnabled(id: number) {
+    const row = this.db.prepare('SELECT metadata_enabled FROM libraries WHERE id=?').get(id);
+    return row?.metadata_enabled === 1;
+  }
+
+  setLibraryMetadataEnabled(id: number, enabled: boolean) {
+    this.db.exec('BEGIN IMMEDIATE');
+    try {
+      const changed = this.db.prepare('UPDATE libraries SET metadata_enabled=? WHERE id=? AND metadata_enabled!=?')
+        .run(Number(enabled),id,Number(enabled)).changes;
+      if (changed && !enabled) this.clearLibraryMetadata(id);
+      this.db.exec('COMMIT');
+    } catch (error) {
+      this.db.exec('ROLLBACK');
+      throw error;
+    }
+  }
+
   visibleLibraries(scope?: CatalogScope): Library[] {
     return this.listLibraries().filter(l => (l.persistent === 1 || this.sessionPinned.has(l.id))
       && (!scope || scope.libraryIds === null || scope.libraryIds.includes(l.id)));
@@ -234,12 +256,18 @@ export class VireloDB {
   private reassignMedia() {
     const libraries=this.visibleLibraries();
     const rows=this.db.prepare('SELECT id,path,library_id FROM media').all() as Array<{id:number;path:string;library_id:number}>;
-    const update=this.db.prepare('UPDATE media SET library_id=?,folder=? WHERE id=?');
+    const update=this.db.prepare('UPDATE media SET library_id=?,folder=?,metadata_revision=metadata_revision+1 WHERE id=?');
+    const clear=this.resetExternalMetadataStatement('id=?');
     for (const row of rows) {
       if(this.unverifiedLibrary(row.library_id))continue;
       const path=canonicalMediaPath(row.path),owner=this.ownerForPath(path,libraries);
-      if (owner&&owner.id!==row.library_id&&!this.unverifiedLibrary(owner.id))
+      if (owner&&owner.id!==row.library_id&&!this.unverifiedLibrary(owner.id)) {
         update.run(owner.id,relative(owner.path,dirname(path)).replaceAll('\\','/'),row.id);
+        if (!owner.metadata_enabled) {
+          const parsed=parseMediaName(path);
+          clear.run(parsed.title,parsed.title.toLowerCase(),parsed.year,0,Date.now(),row.id);
+        }
+      }
     }
   }
 
@@ -362,6 +390,12 @@ export class VireloDB {
       const sameLibrary=row.library_id===input.library_id;
       return this.unverifiedLibrary(row.library_id,sameLibrary)||(!sameLibrary&&this.unverifiedLibrary(input.library_id));
     }))throw Error('Media file not found');
+    const metadataEnabled = owner ? !!owner.metadata_enabled : this.isLibraryMetadataEnabled(input.library_id);
+    if (!metadataEnabled) {
+      const parsed = parseMediaName(input.path);
+      input = {...input,title:parsed.title,sort_title:parsed.title.toLowerCase(),year:parsed.year,
+        overview:null,genres:null,poster_path:null,backdrop_path:null,external_id:null};
+    }
     const now = Date.now();
     this.db.prepare(`
       INSERT INTO media(
@@ -369,6 +403,7 @@ export class VireloDB {
         video_codec,audio_codec,container,folder,size,mtime,thumbnail_path,poster_path,backdrop_path,overview,genres,external_id,added_at,updated_at
       ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
       ON CONFLICT(path) DO UPDATE SET
+        metadata_revision=media.metadata_revision+(media.library_id!=excluded.library_id),
         library_id=excluded.library_id, filename=excluded.filename, title=excluded.title, sort_title=excluded.sort_title,
         kind=excluded.kind, series_title=excluded.series_title, season=excluded.season, episode=excluded.episode, year=excluded.year,
         duration=CASE WHEN media.size!=excluded.size OR media.mtime!=excluded.mtime THEN excluded.duration ELSE COALESCE(excluded.duration,media.duration) END,
@@ -387,8 +422,12 @@ export class VireloDB {
       input.poster_path,input.backdrop_path,input.overview,input.genres,input.external_id,now,now
     );
     const record=this.getMediaByPath(input.path)!;
-    if(process.platform==='win32')this.db.prepare(`UPDATE media SET library_id=?,folder=?,size=?,mtime=?,duration=?,width=?,height=?,video_codec=?,audio_codec=?,container=?,updated_at=? WHERE id IN (${MEDIA_ALIASES}) AND id!=?`)
-      .run(record.library_id,record.folder,record.size,record.mtime,record.duration,record.width,record.height,record.video_codec,record.audio_codec,record.container,now,record.id,record.id);
+    if(process.platform==='win32')this.db.prepare(`UPDATE media SET metadata_revision=metadata_revision+(library_id!=?),library_id=?,folder=?,size=?,mtime=?,duration=?,width=?,height=?,video_codec=?,audio_codec=?,container=?,updated_at=? WHERE id IN (${MEDIA_ALIASES}) AND id!=?`)
+      .run(record.library_id,record.library_id,record.folder,record.size,record.mtime,record.duration,record.width,record.height,record.video_codec,record.audio_codec,record.container,now,record.id,record.id);
+    if (!metadataEnabled && existing && (conflicts.some(row=>row.library_id!==record.library_id) || record.external_id || record.overview || record.genres || record.poster_path || record.backdrop_path)) {
+      this.resetExternalMetadataStatement().run(input.title,input.sort_title,input.year,0,now,record.id);
+      return this.getMedia(record.id)!;
+    }
     return record;
   }
 
@@ -411,14 +450,28 @@ export class VireloDB {
 
   updateExternalMetadata(id: number, data: Partial<Pick<MediaRecord,'title'|'overview'|'genres'|'poster_path'|'backdrop_path'|'external_id'|'year'>>, expectedRevision?: number) {
     const current = this.getMedia(id);
-    if (!current || (expectedRevision !== undefined && current.metadata_revision !== expectedRevision)) return;
-    this.db.prepare(`UPDATE media SET metadata_blocked=0,metadata_revision=metadata_revision+1,title=?,sort_title=?,overview=?,genres=?,poster_path=?,backdrop_path=?,external_id=?,year=?,updated_at=? WHERE id IN (${MEDIA_ALIASES})`)
+    if (!current || !this.isLibraryMetadataEnabled(current.library_id) || (expectedRevision !== undefined && current.metadata_revision !== expectedRevision)) return;
+    this.db.prepare(`UPDATE media SET metadata_blocked=0,metadata_revision=metadata_revision+1,title=?,sort_title=?,overview=?,genres=?,poster_path=?,backdrop_path=?,external_id=?,year=?,updated_at=? WHERE id IN (${MEDIA_ALIASES}) AND library_id IN (SELECT id FROM libraries WHERE metadata_enabled=1)`)
       .run(data.title ?? current.title,(data.title ?? current.title).toLowerCase(),data.overview ?? current.overview,data.genres ?? current.genres,data.poster_path ?? current.poster_path,data.backdrop_path ?? current.backdrop_path,data.external_id ?? current.external_id,data.year ?? current.year,Date.now(),id);
   }
 
+  private resetExternalMetadataStatement(where = `id IN (${MEDIA_ALIASES})`) {
+    return this.db.prepare(`UPDATE media SET title=?,sort_title=?,year=?,overview=NULL,genres=NULL,poster_path=NULL,backdrop_path=NULL,external_id=NULL,
+      metadata_blocked=MAX(metadata_blocked,?),metadata_revision=metadata_revision+1,updated_at=? WHERE ${where}`);
+  }
+
+  private clearLibraryMetadata(libraryId: number) {
+    const rows = this.db.prepare('SELECT id,path FROM media WHERE library_id=?').all(libraryId) as Array<{id:number;path:string}>;
+    const clear = this.resetExternalMetadataStatement('id=?');
+    const now = Date.now();
+    for (const {id,path} of rows) {
+      const parsed = parseMediaName(path);
+      clear.run(parsed.title,parsed.title.toLowerCase(),parsed.year,0,now,id);
+    }
+  }
+
   clearExternalMetadata(id: number, parsed: {title: string; year: number|null}) {
-    this.db.prepare(`UPDATE media SET title=?,sort_title=?,year=?,overview=NULL,genres=NULL,poster_path=NULL,backdrop_path=NULL,external_id=NULL,metadata_blocked=1,metadata_revision=metadata_revision+1,updated_at=? WHERE id IN (${MEDIA_ALIASES})`)
-      .run(parsed.title, parsed.title.toLowerCase(), parsed.year, Date.now(), id);
+    this.resetExternalMetadataStatement().run(parsed.title, parsed.title.toLowerCase(), parsed.year, 1, Date.now(), id);
     return this.getMedia(id);
   }
 
@@ -514,7 +567,8 @@ export class VireloDB {
       SELECT m.*,p.position AS progress_position,p.duration AS progress_duration,p.completed AS progress_completed,
         (l.media_id IS NOT NULL) AS liked
       FROM media m LEFT JOIN progress p ON p.media_id=m.id LEFT JOIN likes l ON l.media_id=m.id
-      WHERE ${visible.sql} AND m.metadata_blocked=0 AND (m.external_id IS NULL OR (?=1 AND (m.poster_path IS NULL OR m.backdrop_path IS NULL)))
+      WHERE ${visible.sql} AND m.library_id IN (SELECT id FROM libraries WHERE metadata_enabled=1)
+        AND m.metadata_blocked=0 AND (m.external_id IS NULL OR (?=1 AND (m.poster_path IS NULL OR m.backdrop_path IS NULL)))
       ORDER BY m.added_at ASC LIMIT ?
     `).all(...visible.params, includeMissingArtwork ? 1 : 0, safeLimit) as unknown as MediaRecord[];
   }

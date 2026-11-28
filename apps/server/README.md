@@ -278,7 +278,9 @@ Virelo works without FFmpeg for formats supported by the browser. Installing `ff
 - on-demand audio-only AAC/HLS fallback for incompatible audio, without re-encoding video the browser can already play
 - Auto video quality that adapts to network conditions, plus manual resolution selection up to the source quality
 
-Virelo can automatically match filenames to movie and series metadata, then cache posters, backdrops, and episode artwork locally. Configure this from **Settings → Metadata**. Source video files are never sent to the metadata provider.
+Virelo can automatically match filenames to movie and series metadata. **Settings → Metadata → Fetch online metadata across libraries** controls whether the server makes those requests at all. Turning it off pauses matching without removing existing results. Source video files are never sent to the metadata provider.
+
+Administrators can turn off **Online metadata** for a specific library in **Settings → Libraries**. Virelo immediately restores filename-based titles and removes matched descriptions, genres, years, and artwork from that library's catalog. It does not change original files, generated thumbnails, playlists, favorites, or watch progress. Shared downloaded artwork may remain in the local cache. Turn the library's switch back on and scan again to match it, as long as the global switch is on. Videos individually cleared using the metadata reset remain excluded from automatic matching.
 
 Audio and subtitle choices, including subtitle Off, are saved in your browser. Compatible track configurations restore the selected track even if stream IDs or order change. Different configurations use that video's defaults without overwriting the saved choices; ambiguous or unsupported tracks are not guessed.
 

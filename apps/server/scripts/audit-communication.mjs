@@ -84,13 +84,13 @@ const auditSettingsSave=async(page,mode)=>{
     await setSwitch('Watch local folders',true);
     await waitSaved('libraryWatchEnabled',false);
     await page.locator('#settings-nav-network').click();
-    await setSwitch('Online metadata',true);
+    await setSwitch('Fetch online metadata across libraries',true);
     const request=page.waitForRequest(request=>new URL(request.url()).pathname==='/api/settings'&&request.method()==='POST');
     await page.getByRole('button',{name:'Save settings',exact:true}).click();
     assert.deepEqual((await request).postDataJSON(),{externalMetadataEnabled:true});
     await waitSaved('externalMetadataEnabled',true);await waitSaved('libraryWatchEnabled',false);
     check(true,'saving metadata submits only its section and leaves the library draft unsaved');
-    await setSwitch('Online metadata',false);
+    await setSwitch('Fetch online metadata across libraries',false);
     await page.getByRole('button',{name:'Save settings',exact:true}).click();await waitSaved('externalMetadataEnabled',false);
     await page.locator('#settings-nav-libraries').click();
     check(await page.getByRole('switch',{name:'Watch local folders',exact:true}).isChecked(),'another section save preserves the pending library draft');

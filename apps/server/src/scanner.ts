@@ -135,6 +135,8 @@ export async function scanLibrary(db: VireloDB, library: Library, dataDir: strin
       const parsed = parseMediaName(path);
       const sourceChanged=Boolean(previous&&(previous.mtime!==Math.trunc(info.mtimeMs)||previous.size!==info.size));
       const probe = await probeMedia(path,{kind:'background',owner:'scan',scope:resolve(dataDir),signal});
+      // Matching or clearing may have completed while the probe was running.
+      const metadata = previous && db.getMedia(previous.id);
       const parent = dirname(path);
       let folder = '';
       try {
@@ -145,13 +147,13 @@ export async function scanLibrary(db: VireloDB, library: Library, dataDir: strin
         library_id: library.id,
         path: previous?.path ?? path,
         filename: basename(path),
-        title: previous?.title || parsed.title,
-        sort_title: (previous?.title || parsed.title).toLowerCase(),
+        title: metadata?.title || parsed.title,
+        sort_title: metadata?.sort_title || parsed.title.toLowerCase(),
         kind: parsed.kind,
         series_title: parsed.seriesTitle,
         season: parsed.season,
         episode: parsed.episode,
-        year: parsed.year,
+        year: metadata?.external_id ? metadata.year ?? parsed.year : parsed.year,
         duration: probe?.duration ?? (sourceChanged?null:previous?.duration) ?? null,
         width: probe?.width ?? (sourceChanged?null:previous?.width) ?? null,
         height: probe?.height ?? (sourceChanged?null:previous?.height) ?? null,
@@ -162,11 +164,11 @@ export async function scanLibrary(db: VireloDB, library: Library, dataDir: strin
         size: info.size,
         mtime: Math.trunc(info.mtimeMs),
         thumbnail_path: previous?.thumbnail_path ?? null,
-        poster_path: previous?.poster_path ?? null,
-        backdrop_path: previous?.backdrop_path ?? null,
-        overview: previous?.overview ?? null,
-        genres: previous?.genres ?? null,
-        external_id: previous?.external_id ?? null
+        poster_path: metadata?.poster_path ?? null,
+        backdrop_path: metadata?.backdrop_path ?? null,
+        overview: metadata?.overview ?? null,
+        genres: metadata?.genres ?? null,
+        external_id: metadata?.external_id ?? null
       });
       await repairImages(db,record,dataDir,status,sourceChanged,signal);
       if (previous) status.updated++; else status.added++;

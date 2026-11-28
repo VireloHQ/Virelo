@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Turn off online metadata for individual libraries. Disabling a library removes its matches and artwork from the catalog, without affecting other libraries, original files, generated thumbnails or personal viewing data.
+
 ## 0.8.0
 
 - Watch Live TV from your own M3U or M3U8 playlists, or add a single HTTPS HLS stream. The channel guide can check and remember source responses. Administrators approve stream sources on self-hosted servers; Virelo does not supply channels.

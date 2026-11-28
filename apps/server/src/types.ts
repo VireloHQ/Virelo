@@ -19,6 +19,7 @@ export interface Library {
   label: string;
   created_at: number;
   persistent: number;
+  metadata_enabled: number;
 }
 
 export interface MediaRecord {

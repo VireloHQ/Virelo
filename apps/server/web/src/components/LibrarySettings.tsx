@@ -3,7 +3,7 @@ import { t, useLocale } from '../i18n';
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
-import { Button, Input } from '@heroui/react';
+import { Button, Input, Switch } from '@heroui/react';
 import { CheckCircle, FolderOpen, FolderPlus, Trash } from '@phosphor-icons/react';
 import { api } from '../api';
 import { useAccount } from './AccountSession';
@@ -37,6 +37,7 @@ export function LibrarySettings() {
     <div><strong>{library.label}</strong>{canManage&&<span>{library.path}</span>}</div>
     <div className="library-item-actions">
       <HomeVisibilitySwitch library={library} save={api.setHomeLibraryHidden}/>
+      {session?.user.isAdmin&&<LibraryMetadataSwitch library={library}/>}
       {canManage&&temporary&&<Button variant="secondary" isPending={save.isPending&&save.variables?.path===library.path} isDisabled={save.isPending} onPress={()=>saveLibrary(library)}>{t("Save library")}</Button>}
       {canManage&&<Button isIconOnly variant="ghost" isDisabled={remove.isPending} aria-label={t("Remove {value0}", { value0: library.label })} onPress={()=>remove.mutate(library.id)}><Trash/></Button>}
     </div>
@@ -59,6 +60,7 @@ export function LibrarySettings() {
     {(pick.error||save.error||remove.error)&&<p className="error-copy" role="alert">{t(pick.error?.message||save.error?.message||remove.error?.message||'')}</p>}
     {save.isSuccess&&<div className="settings-section-actions"><Button onPress={()=>void navigate({to:'/library'})}><FolderOpen aria-hidden="true"/> {t("Open library")}</Button></div>}
     {libraries.isError&&<p className="error-copy" role="alert"><Trans message="Could not load libraries. {value0}" values={{value0:<button onClick={()=>void libraries.refetch()}>{t("Try again")}</button>}}/></p>}
+    {session?.user.isAdmin&&Boolean(libraries.data?.length)&&<p id="library-metadata-help" className="account-help">{t("Turn off online metadata for a library to remove its matched titles, descriptions and artwork. Original videos and generated thumbnails stay.")}</p>}
     {temporary.length>0&&<section className="library-group" aria-labelledby="temporary-libraries-title">
       <h3 id="temporary-libraries-title">{t("Temporary folders")}</h3><p>{t("Available for this run only. Save a folder to keep it when Virelo starts elsewhere.")}</p>{list(temporary,true)}
     </section>}
@@ -82,4 +84,27 @@ export function LibrarySettings() {
       {startScan.error&&<p className="error-copy" role="alert">{t(startScan.error.message)}</p>}
     </div>
   </>;
+}
+
+function LibraryMetadataSwitch({library}:{library:Library}) {
+  const client=useQueryClient();
+  const save=useMutation({
+    mutationFn:(enabled:boolean)=>api.setLibraryMetadata(library.id,enabled),
+    onSuccess:async({enabled})=>{
+      client.setQueryData<Library[]>(['libraries'],items=>items?.map(item=>item.id===library.id?{...item,metadata_enabled:Number(enabled)}:item));
+      await Promise.all([
+        client.invalidateQueries({predicate:q=>['libraries','home','media','folders','favorites','related','series-episodes','search','watch-queue','queue','queue-session'].includes(String(q.queryKey[0]))}),
+        client.invalidateQueries({queryKey:['shorts','row']}),
+        client.invalidateQueries({predicate:q=>q.queryKey[0]==='shorts'&&q.queryKey[1]!=='row',refetchType:'none'}),
+        client.invalidateQueries({queryKey:['playlist'],refetchType:'none'})
+      ]);
+    }
+  });
+  return <div className="library-metadata-switch">
+    <Switch isSelected={save.isPending?save.variables:library.metadata_enabled!==0} isDisabled={save.isPending}
+      onChange={enabled=>save.mutate(enabled)} aria-label={t("Online metadata for {value0}",{value0:library.label})} aria-describedby="library-metadata-help">
+      <Switch.Content><span>{t("Online metadata")}</span><Switch.Control><Switch.Thumb/></Switch.Control></Switch.Content>
+    </Switch>
+    {save.isError&&<p className="error-copy" role="alert">{t("Could not save the library's metadata setting.")}</p>}
+  </div>;
 }

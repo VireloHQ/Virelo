@@ -144,7 +144,7 @@ test('cancelled discovery never prunes records and shutdown stops scheduling met
     {id:1,path:root,label:'Media'},root,state,abort.signal);
   assert.equal(state.errors,0);
   const stop=new AbortController();let attempts=0;
-  const db={getSettings:()=>({externalMetadataEnabled:true}),listMetadataCandidates:()=>[{id:1},{id:2}],
+  const db={getSettings:()=>({externalMetadataEnabled:true}),listMetadataCandidates:()=>[{id:1,library_id:1},{id:2,library_id:1}],isLibraryMetadataEnabled:()=>true,
     getMedia(){attempts++;throw Error('Unmatchable fixture');}};
   const result=await refreshMissingMetadata(db,root,()=>stop.abort(),undefined,stop.signal);
   assert.equal(attempts,1);assert.equal(result.attempted,1);assert.equal(result.failed,1);
