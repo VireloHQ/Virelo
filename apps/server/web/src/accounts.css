@@ -72,7 +72,13 @@
 .app-shell .library-group .library-list { margin-top:16px; }
 .app-shell .library-group .library-list > div { padding:16px 0; }
 .app-shell .library-group .library-list > div:last-child { padding-bottom:0; }
-.library-item-actions { display:flex; align-items:center; gap:8px; flex:none; }
+.library-item-actions { display:flex; align-items:center; gap:8px 12px; flex:none; flex-wrap:wrap; max-width:100%; }
+.library-list > div:has(.library-metadata-switch) { flex-wrap:wrap; }
+.library-list .library-metadata-switch { display:grid; }
+.library-metadata-switch .switch__content { display:flex; align-items:center; gap:7px; min-height:44px; }
+.library-list .library-metadata-switch .switch__content span { color:inherit; margin:0; }
+.library-metadata-switch .switch__control { flex:none; }
+#library-metadata-help { margin:0 0 16px; }
 .download-standalone-help { flex-basis:100%; }
 .download-standalone-help a { text-decoration:underline; text-underline-offset:.2em; }
 .library-list > div > div:first-child { min-width:0; }

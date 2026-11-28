@@ -404,6 +404,15 @@ export async function createVireloServer(config: RuntimeConfig, pickFolder: (sig
     )}));
   };
   app.get('/api/libraries', async request => namedLibraries(request.catalogScope!));
+  app.put<{ Params:{id:string}; Body:{enabled?:unknown} }>('/api/libraries/:id/metadata', async (request,reply)=>{
+    const scope=accounts.scope(fresh(request,true)), id=Number(request.params.id);
+    if (!Number.isSafeInteger(id) || !db.visibleLibraries(scope).some(library=>library.id===id))
+      return reply.code(404).send({error:'Library not found.'});
+    const enabled=request.body?.enabled;
+    if (typeof enabled!=='boolean') return reply.code(400).send({error:'Invalid settings.'});
+    db.setLibraryMetadataEnabled(id,enabled);
+    return {enabled};
+  });
   app.put<{ Params:{id:string}; Body:{hidden?:boolean} }>('/api/home/libraries/:id', async (request,reply)=>{
     const scope=accounts.scope(fresh(request)), id=Number(request.params.id);
     if(!Number.isSafeInteger(id)||!db.visibleLibraries(scope).some(library=>library.id===id))
@@ -491,7 +500,7 @@ export async function createVireloServer(config: RuntimeConfig, pickFolder: (sig
   app.get<{ Params: { id: string } }>('/api/media/:id', async (request, reply) => {
     const media = db.getMedia(Number(request.params.id), request.catalogScope!);
     if (!media) return reply.code(404).send({ error: 'Not found' });
-    return media;
+    return {...media,libraryMetadataEnabled:db.isLibraryMetadataEnabled(media.library_id)};
   });
   app.post<{ Params: { id: string }; Body: { position?: number; duration?: number } }>('/api/media/:id/progress', async (request, reply) => {
     const id = Number(request.params.id);
@@ -612,8 +621,12 @@ export async function createVireloServer(config: RuntimeConfig, pickFolder: (sig
   });
 
   app.post<{ Params: { id: string } }>('/api/media/:id/metadata/refresh', async (request, reply) => {
-    try { await refreshMetadata(db, config.dataDir, Number(request.params.id)); return db.getMedia(Number(request.params.id), request.catalogScope!); }
+    const id=Number(request.params.id);
+    try { await refreshMetadata(db, config.dataDir, id); }
     catch (error) { return reply.code(400).send({ error: error instanceof Error ? error.message : 'Metadata refresh failed' }); }
+    const media=db.getMedia(id,accounts.scope(fresh(request)));
+    if (!media) return reply.code(404).send({error:'Media not found.'});
+    return {...media,libraryMetadataEnabled:db.isLibraryMetadataEnabled(media.library_id)};
   });
 
   app.get<{ Params: { id: string; kind: string } }>('/api/media/:id/artwork/:kind', async (request, reply) => {
